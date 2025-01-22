@@ -1,0 +1,99 @@
+.d .forums-vote-wrap .answers-wrap  {
+    padding-inline-start: 0;
+}
+
+.d .forums-vote-wrap .answers-wrap > li {
+    padding-top: 5px;
+    padding-bottom: 5px;
+    list-style: none;
+}
+
+.d .forums-vote-wrap .answers-wrap > li.title,
+.d .forums-vote-wrap .results-wrap > li.title {
+    font-weight: bold;
+    box-shadow: none;
+    padding: 5px 0;
+}
+
+.d .forums-vote-wrap .submit-wrap {
+    padding-top: 6px;
+}
+
+.d .forums-vote-wrap .submit-wrap .btn-wrap {
+    display: inline-block;
+}
+
+.d .forums-vote-wrap .submit-wrap .btn-wrap input[type='submit'] {
+    cursor: pointer;
+}
+
+.d .forums-vote-wrap .submit-wrap a.opt-out {
+    margin-left: 5px;
+}
+
+.d .forums-vote-wrap .results-wrap .progress-wrap {
+    border-radius: 5px;
+    border: 1px solid #CCC;
+	border-color: var(--default-panel-divider-outer-side-color);
+    margin-right: 5px;
+    width: 370px;
+    overflow: hidden;
+}
+
+.d .forums-vote-wrap .results-wrap .progress-wrap .progress .txt {
+    padding: 6px;
+    width: 358px;
+}
+
+.d .forums-vote-wrap .results-wrap > li {
+    padding: 5px 0;
+}
+
+.d .forums-vote-wrap .results-wrap .percents,
+.d .forums-vote-wrap .results-wrap .progress-wrap {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.d .forums-vote-wrap .results-wrap .percents {
+    color: #868686;
+}
+
+.d .forums-vote-wrap .total {
+    padding-top: 5px;
+    color: #868686;
+}
+
+
+@media screen and (max-width: 784px) {
+
+    .r .forums-vote-wrap .answers-wrap {
+        padding: 0;
+    }
+
+    .r .forums-vote-wrap .results-wrap .progress-wrap {
+        margin-right: 0;
+        width: 364px;
+    }
+
+    .r .forums-vote-wrap .results-wrap .progress-wrap .progress .txt {
+        width: 352px;
+    }
+
+    .r .forums-vote-wrap .results-wrap .percents {
+        margin-top: 5px;
+        vertical-align: baseline;
+    }
+}
+
+
+@media screen and (max-width: 386px) {
+
+    .r .forums-vote-wrap .results-wrap .progress-wrap {
+        width: 298px;
+    }
+
+    .r .forums-vote-wrap .results-wrap .progress-wrap .progress .txt {
+        width: 286px;
+    }
+}

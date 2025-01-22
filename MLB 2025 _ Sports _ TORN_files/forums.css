@@ -1,0 +1,69 @@
+:root {
+    --forums-thread-pinned-post-divider-background: url(/images/v2/forums/blue_divider.png);
+    --forums-thread-parent-post-divider-background: repeating-linear-gradient(90deg, #d9d9d9, #d9d9d9 2px, #ccc 0, #ccc 4px);
+    --forums-thread-pinned-post-actions-background: linear-gradient(to bottom, #f4fafd 0%, #d8dde0 100%);
+    --forums-thread-pinned-post-actions-hover-background: linear-gradient(to bottom, #d8dde0 0%, #f4fafd 100%);
+    --forums-thread-legend-list-bugs-closed: #333;
+    --forums-thread-quote-border-color: #ccc;
+    --forums-thread-copy-tooltip-arrow-border-color: #fff;
+    --forums-thread-copy-tooltip-arrow-bg-color: #ddd;
+
+    --forums-table-color: #000;
+    --forums-table-border-color: #000;
+
+    --forum-row-color: #999;
+    --forum-new-row-color: #333;
+    --forum-row-qty-color: #999;
+    --forum-new-row-icon-filter: none;
+
+    --breadcrumbs-border-bottom-color: #CCC;
+    --breadcrumbs-border-top-color: #FFF;
+    --breadcrumbs-bg-gradient: linear-gradient(0deg, #DDDDDD 0%, #FFFFFF 100%);
+    --breadcrumbs-text-shadow: 0 1px 0 #FFF;
+    --breadcrumbs-color: #666;
+    --breadcrumbs-arrow-shadow-left-color: #CCC;
+    --breadcrumbs-arrow-shadow-right-color: #FFF;
+    --breadcrumbs-active-bg-gradient: linear-gradient(180deg, #DDDDDD 0%, #FFFFFF 100%);
+
+    --breadcrumbs-dark-border-bottom-color: #000;
+    --breadcrumbs-dark-border-top-color: #555;
+    --breadcrumbs-dark-bg-gradient: linear-gradient(180deg, #666666 0%, #333333 100%);
+    --breadcrumbs-dark-text-shadow: 0 0 2px #000000;
+    --breadcrumbs-dark-color: #FFFFFF;
+    --breadcrumbs-dark-arrow-shadow-left-color: #191919;
+    --breadcrumbs-dark-arrow-shadow-right-color: #474747;
+    --breadcrumbs-dark-active-bg-gradient: linear-gradient(180deg, #222222 0%, #444444 100%);
+
+    --issue-status-color: #666;
+    --issue-status-text-shadow: none;
+    --issue-status-hover-color: #666;
+    --issue-status-active-linear-gradient: linear-gradient(180deg, #DDDDDD 0%, #FFFFFF 100%);
+    --issue-status-bg-color: #FFF;
+    --issue-status-box-shadow: 0 1px 2px #25252580;
+    --issue-status-title-border-bottom: 1px solid #DDD;
+    --issue-status-hover-bg-color: #0000001A;
+
+    --issue-status-black-color: #FFF;
+    --issue-status-black-text-shadow: 0 0 2px #000000;
+    --issue-status-black-hover-color: #FFF;
+    --issue-status-black-active-linear-gradient: linear-gradient(0deg, #666666 0%, #333333 100%);
+    --issue-status-black-bg-color: #555;
+    --issue-status-black-box-shadow: 0 1px 2px #00000080;
+    --issue-status-black-title-border-bottom: 1px solid #222;
+    --issue-status-black-hover-bg-color: #00000066;
+
+    --issue-status-scrollbar-color: #fbfbfb #ddd;
+    --issue-status-scrollbar-track-bg-color: #ddd;
+    --issue-status-scrollbar-thumb-bg-color: #f2f2f2;
+    --issue-status-scrollbar-thumb-border-color: #ddd;
+    --issue-status-scrollbar-corner-bg-color: #ddd;
+    --issue-status-hover-scrollbar-thumb-bg-color: #fff;
+
+    --issue-status-black-scrollbar-color: #666 #333;
+    --issue-status-black-scrollbar-track-bg-color: #333;
+    --issue-status-black-scrollbar-thumb-bg-color: #666;
+    --issue-status-black-scrollbar-thumb-border-color: #333;
+    --issue-status-black-scrollbar-corner-bg-color: #333;
+    --issue-status-black-hover-scrollbar-color: #888 #333;
+    --issue-status-black-hover-scrollbar-thumb-bg-color: #888;
+}

@@ -1,0 +1,90 @@
+.d .wai,
+.d .wai-skip-content {
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    top:auto;
+    left: -10000px;
+    width: 1px;
+}
+
+.d textarea.mail-text-area.wai,
+.d textarea.tiny-area.wai {
+    height: 1px !important;
+    overflow: hidden;
+    position: absolute;
+    top: -10px;
+    width: 1px !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent;
+    resize: none !important;
+}
+
+.d .wai-links,
+.d .wai-label {
+    position: absolute;
+    left: -10000px;
+    top: -10000px;
+}
+
+.d .action-wrap h5#wai-action-desc {
+    font-size: 12px;
+}
+
+.d .wai-btn {
+    background-color: transparent;
+    background-repeat: no-repeat;
+    border: none;
+    cursor: pointer;
+    overflow: hidden;
+    outline: none;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+}
+
+.d .wai-btn:focus {
+    border: none;
+}
+
+.d button.close-icon.wai-btn {
+    padding-right: 15px;
+    padding-left: 15px;
+}
+
+@media screen and (max-width: 1000px) {
+    .r.without-sidebar .t-wai-reset {
+        height: auto;
+        overflow: auto;
+        position: static;
+        top: auto;
+        width: auto;
+    }
+
+    .r.without-sidebar .bazaar-wrap.confirm .t-wai-reset {
+        height: 1px;
+        overflow: auto;
+        position: absolute;
+        top: -10px;
+        width: 1px;
+    }
+}
+
+@media screen and (max-width: 784px) {
+    .r .t-wai-reset {
+        height: auto;
+        overflow: auto;
+        position: static;
+        top: auto;
+        width: auto;
+    }
+
+    .r .bazaar-wrap.confirm .t-wai-reset {
+        height: 1px;
+        overflow: auto;
+        position: absolute;
+        top: -10px;
+        width: 1px;
+    }
+}

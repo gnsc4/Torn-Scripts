@@ -1,0 +1,80 @@
+.clearfix:before, .clearfix:after {
+    content: "";
+    display: table;
+}
+
+.clearfix:after {clear: both;}
+
+.clearfix {*zoom: 1;}
+
+.prettycheckbox,
+.prettyradio,
+.prettycheckbox a,
+.prettyradio a {
+    display: inline-block;
+	vertical-align: middle;
+}
+
+.prettycheckbox,
+.prettyradio {
+    padding:0;
+    margin:0;
+    font-size: 0;
+}
+
+.prettyradio a {
+    width: 13px;
+    height: 14px;
+    background: url(/images/v2/job/radio_buttons.png) left bottom no-repeat;
+    cursor: pointer;
+    margin:0;
+}
+
+.prettycheckbox a {
+    width: 13px;
+    height: 14px;
+    background: url(/images/v2/checkboxes.png) left bottom no-repeat;
+    cursor: pointer;
+    margin:0;
+}
+
+.prettycheckbox a.disabled,
+.prettyradio a.disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.prettycheckbox:hover a.disabled,
+.prettyradio:hover a.disabled {
+    opacity: 0.5;
+	background-position: left bottom;
+}
+
+.prettycheckbox[aria-disabled="true"] label,
+.prettyradio[aria-disabled="true"] label {
+	color: #CCC;
+}
+
+.prettycheckbox a:focus,
+.prettyradio a:focus {outline: 0 none;}
+
+.prettycheckbox:hover a,
+.prettyradio:hover a {background-position: right bottom; }
+
+.prettycheckbox a.checked,
+.prettyradio a.checked { background-position: left top; }
+
+.prettycheckbox:hover a.checked,
+.prettyradio:hover a.checked { background-position: right top; }
+
+
+.prettycheckbox label,
+.prettyradio label {
+	height: 14px;
+	line-height: 14px;
+	display: inline-block;
+	vertical-align: middle;
+    margin: 0 0 0 5px;
+    cursor: pointer;
+    font-size: 12px;
+}

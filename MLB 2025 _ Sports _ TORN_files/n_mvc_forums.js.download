@@ -1,0 +1,3015 @@
+hasher.prependHash = '/';
+
+(function ($) {
+    $.fn.highlightText = function () {
+        // handler first parameter
+        // is the first parameter a regexp?
+        var re,
+            hClass,
+            reStr,
+            argType = $.type(arguments[0]),
+            defaultTagName = $.fn.highlightText.defaultTagName;
+
+        if (argType === "regexp") {
+            // first argument is a regular expression
+            re = arguments[0];
+        }
+        // is the first parameter an array?
+        else if (argType === "array") {
+            // first argument is an array, generate
+            // regular expression string for later use
+            reStr = arguments[0].join("|");
+        }
+        // is the first parameter a string?
+        else if (argType === "string") {
+            // store string in regular expression string
+            // for later use
+            reStr = arguments[0];
+        }
+        // else, return out and do nothing because this
+        // argument is required.
+        else {
+            return;
+        }
+
+        // the second parameter is optional, however,
+        // it must be a string or boolean value. If it is
+        // a string, it will be used as the highlight class.
+        // If it is a boolean value and equal to true, it
+        // will be used as the third parameter and the highlight
+        // class will default to "highlight". If it is undefined,
+        // the highlight class will default to "highlight" and
+        // the third parameter will default to false, allowing
+        // the plugin to match partial matches.
+        // ** The exception is if the first parameter is a regular
+        // expression, the third parameter will be ignored.
+        argType = $.type(arguments[1]);
+        if (argType === "string") {
+            hClass = arguments[1];
+        } else if (argType === "boolean") {
+            hClass = "highlight";
+            if (reStr) {
+                //reStr = "\\b" + reStr + "\\b";
+                reStr = "" + reStr + "";
+            }
+        } else {
+            hClass = "highlight";
+        }
+
+        if (arguments[2] && reStr) {
+            //reStr = reStr = "\\b" + reStr + "\\b";
+            reStr = reStr = "" + reStr + "";
+        }
+
+        // if re is not defined ( which means either an array or
+        // string was passed as the first parameter ) create the
+        // regular expression.
+        if (!re) {
+            re = new RegExp("(" + reStr + ")", "ig");
+        }
+
+        // iterate through each matched element
+        return this.each(function () {
+            // select all contents of this element
+            $(this).find("*").andSelf().contents()
+
+                // filter to only text nodes that aren't already highlighted
+                .filter(function () {
+                    return this.nodeType === 3 && $(this).closest("." + hClass).length === 0;
+                })
+
+                // loop through each text node
+                .each(function () {
+                    var output;
+                    output = this.nodeValue
+                        .replace(re, "<" + defaultTagName + " data class='" + hClass + "'>$1</" + defaultTagName + ">");
+
+                    if (output !== this.nodeValue) {
+                        $(this).wrap("<p></p>").parent()
+                            .html(output).contents().unwrap();
+                    }
+                });
+        });
+    };
+
+    $.fn.highlightText.defaultTagName = "mark";
+
+})(jQuery);
+
+jQuery(function () {
+    var QUOTE_STORE_ID = 'forum__selected_quote';
+
+    function changePrettyCheckable(parent, o) {
+        var value = !!parseInt(o);
+        parent.find('input').attr('checked', value);
+    }
+
+    var editorOptionsStorage = new function () {
+        return {
+            getContent: function (id) {
+                var content = localStorage.getItem(EDITOR_CONTENT_PREFIX + id);
+                return content;
+            },
+            get: function (id) {
+                try {
+                    var options = JSON.parse(localStorage.getItem(EDITOR_CONTENT_PREFIX + id + 'options'));
+                    if (typeof options == "object") {
+                        return options
+                    } else {
+                        return {
+                            post_id: options,
+                            action: 'edit'
+                        }
+                    }
+                } catch (e) {
+                    return null
+                }
+            },
+            set: function (id, action, post_id) {
+
+                var options = {
+                    action: action,
+                    post_id: post_id
+                };
+                var options = localStorage.setItem(EDITOR_CONTENT_PREFIX + id + 'options', JSON.stringify(options));
+            },
+            clear: function (id) {
+                localStorage.removeItem(EDITOR_CONTENT_PREFIX + id + 'options');
+            }
+        }
+    }
+
+    function disabelQuoteForOpera() {
+        if (isOperaMini()) {
+            $('.forums-thread-wrap .thread-list > li .action-wrap > li.quote').addClass('disabled');
+        }
+    };
+
+    function specialBtnCookie(action, val) {
+        if (action == 'get') {
+            return $.cookie('forums_special_flag');
+        } else {
+            $.cookie('forums_special_flag', val);
+        }
+    };
+
+    window.getThisPageUrlParams = function () {
+        var hash = hasher.getHash();
+        var q = queryStringToObj(hash);
+        if (q.p) {
+            window.history.replaceState({}, document.title, 'forums.php#' + hash);
+            return q
+        } else {
+            var t = queryStringToObj(location.search);
+            return t
+        }
+    };
+
+    var pageWrap = $('#forums-page-wrap'), pageLink = 'forums.php', callbacks = Array(), loadOnHashContent = true;
+
+    var mainUpdateWrap = null;
+    var mainContentLoadState = {
+        update: false,
+        main: false,
+        data: null
+    };
+
+    function initShowContentSelectors(list) {
+        var maxQuoteHeight = 50;
+        var showContent = '<div class="show-more"><a href="#" class="wai-support t-blue h">Show more</a></div>';
+        $.each(list.find('blockquote .quote-post'), function (el, _) {
+            var parent = $(this);
+            if (parent.children('.quote-post-content').height() > maxQuoteHeight) {
+                parent.after(showContent);
+            } else {
+                parent.removeClass('hideContent').addClass('showContent');
+            }
+        });
+    };
+
+    window.getRequestParam = function (name) {
+        if (name = (new RegExp('[?&]' + encodeURIComponent(name) + '=([^&]*)')).exec(location.search))
+            return decodeURIComponent(name[1]);
+    };
+
+    function checkPostLength(html) {
+        var div = document.createElement("div");
+        div.innerHTML = html;
+        var text = div.textContent || div.innerText || "";
+        return (text.length > 0 || $(div).find('img').length);
+    };
+
+    function replaceURLstring(func) {
+        if (typeof window.history.replaceState === 'function') {
+            //window.history.replaceState({}, document.title, '/forums.php#!' + hasher.getHash());
+        }
+        if (typeof func === 'function') {
+            func();
+        }
+    };
+    var isAnamateScrollInProgress = false;
+
+    function animateScroll(targetPosition, animateTime) {
+        var frameWrapper = $('.computer-frame-wrap');
+        if (!frameWrapper.length) {
+            if (isAnamateScrollInProgress)
+                return;
+
+            isAnamateScrollInProgress = true;
+
+            $('html, body').animate({
+                scrollTop: targetPosition
+            }, animateTime, function () {
+                isAnamateScrollInProgress = false;
+            });
+        }
+    }
+
+    function scrollToElement(dataId) {
+        if (!dataId)
+            return;
+
+        var target = pageWrap.find('.thread-list>li[data-id=' + dataId + ']');
+
+        if (target.length) {
+            animateScroll(target.offset().top, 500);
+        }
+    };
+
+    function addLastClass(selectors) {
+        selectors.not('.clear').last().addClass('last');
+    }
+
+    function addQuoteContainer(postContainer, that, singleQuote) {
+        that.closest('form').find('input[name=remove_quote]').val('0');
+        const $lastQuote = postContainer.find('.quote-post:last');
+        if ($lastQuote.length) {
+            var postContent = $lastQuote.html()
+            var posterName = $lastQuote.attr('data-quote-author-name')
+            var posterID = $lastQuote.attr('data-quote-author-id')
+
+            that.before(buildQuoteTemplate(createQuoteTemplate(posterID, posterName, postContent), false, parseInt(singleQuote)));
+            that.prev().fadeIn('slow', function () {
+                $(this).removeClass('hide');
+            });
+        }
+    }
+
+    function addPollContainer(postContainer, that) {
+        var poll = postContainer.find('.forums-vote-wrap');
+        if (poll.length) {
+            that.prev().fadeIn('slow', function () {
+                $(this).removeClass('hide');
+            });
+        }
+    }
+
+    var livePosts = {
+        link: null,
+        initInterval: function () {
+            this.loadNewLivePosts(pageWrap.find('.live-posts .thread-list'));
+            this.link = setInterval(function () {
+                this.loadNewLivePosts(pageWrap.find('.live-posts .thread-list'));
+            }.bind(this), 10000);
+        },
+        closeInterval: function () {
+            if (this.link) {
+                clearInterval(this.link);
+            }
+        },
+        loadNewLivePosts: function (contentList) {
+            var data = {
+                step: 'getNewLivePosts'
+            };
+            getAction({
+                type: "post",
+                action: pageLink,
+                data: data,
+                success: function (str) {
+                    try {
+                        var response = JSON.parse(str);
+                        //console.dev('Posts: ', response.list.length);
+                        if (response.list.length) {
+                            for (var i in response.list) {
+                                var li = $(response.list[i]).hide();
+                                contentList.prepend(li);
+                                li.fadeIn("slow", function () {
+
+                                })
+                                initAccordionT();
+                            }
+
+                        }
+                    } catch (e) {
+                        console.warn(e);
+                    }
+                }
+            });
+        }
+
+    };
+
+    var threadViewedPostsTimeout;
+
+    function removeHiddenInput(editorForm, name) {
+        if (!editorForm.children) {
+            return
+        }
+
+        editorForm.children('input[name=' + name + ']').remove()
+    }
+
+    function addHiddenInput(editorForm, name, options) {
+        removeHiddenInput(editorForm, name)
+        options.type = 'hidden';
+        options.name = name;
+        $('<input>').attr(options).prependTo(editorForm);
+    }
+
+
+    var forumSearchCache = (function (storage, limit) {
+        var STORAGE_KEY_NAME = 'forumSearchCache';
+        return {
+            get: function () {
+                var cache = JSON.parse(storage.getItem(STORAGE_KEY_NAME) || '[]');
+                return cache.slice(0, limit);
+            },
+            set: function (item) {
+                var list = this.get();
+
+                list = [item].concat(list.filter(function (value) {
+                    return (
+                        value !== item ||
+                        value.indexOf(item) === -1
+                    );
+                }));
+
+                storage.setItem(STORAGE_KEY_NAME, JSON.stringify(list.slice(0, limit)));
+                return list
+            }
+        }
+    })(localStorage, 5);
+
+
+    function initializeSearchCacheAutocomplete() {
+        var $searchAutocompleteWrap = $('.fm-search .search-autocomplete-wrap'),
+            $inputSearch = $(".fm-search input[name=searchword]");
+
+        $inputSearch.autocomplete({
+            source: function (request, response) {
+                var list = forumSearchCache.get();
+                response(list)
+            },
+            minLength: -1,
+            appendTo: ".fm-search .autocomplete-wrap .viewport",
+            position: {
+                of: null
+            },
+            create: function (event) {
+                $inputSearch.focus(function () {
+                    $inputSearch.autocomplete("search", "");
+                });
+            },
+            open: function (event, ui) {
+                $searchAutocompleteWrap.add($inputSearch).addClass('open');
+            },
+            close: function (event, ui) {
+                $searchAutocompleteWrap.add($inputSearch).removeClass('open');
+            }
+        });
+    }
+
+
+
+    var afterLoadFunc = {
+        main: function (getRequest) {
+            callUpdateConstruct();
+            $forumsTabs = $('.forums-main-wrap .forums-wrap');
+            $forumsBox = $forumsTabs.find('.forums-box');
+            $searchBox = $forumsTabs.find('.search-box');
+            $updatesBox = $forumsTabs.find('.updates-box');
+
+            isInitTabsForums = false;
+
+            initializeUpdatesScrollbar();
+
+            initDropdown($('#forum-category'), 'forum-category', { width: '100%', scrollHeight: '240' });
+
+            initDropdown($('#forum-type'), 'forum-type', { width: '100%', scrollHeight: '240' });
+            $('.small-select-menu-wrap .select-wrap').fadeIn(1500);
+            getUserItemsCookie();
+            changeWidthBar();
+
+            initializeSearchCacheAutocomplete()
+        },
+        forums: function (getRequest) {
+            isInitAccordion = false;
+            initAccordion();
+        },
+        threads: function (getRequest) {
+            typeof initEditor === 'function' && initEditor(
+                '#editor-wrapper',
+                {
+                    autosavePrefix: 'forum-' + queryStringToObj(hasher.getHash()).t,
+                    imageType: 'forumEditor',
+                    actionButtons: [{
+                        title: 'Post',
+                        action: ({ getContent, setContent, clearDraft }) => {
+                            var $form = $('#editor-form')
+                            var data = {
+                                step: $form.attr('data-action'),
+                                post: getContent()
+                            }
+                            $form.find('[name]').each(function () {
+                                data[$(this).prop('name')] = $(this).val();
+                            });
+                            $form.find('input[type=checkbox]').each(function () {
+                                data[$(this).prop('name')] = $(this).prop('checked');
+                            });
+                            getAction({
+                                type: "post",
+                                action: pageLink,
+                                data: data,
+                                success: function (str) {
+                                    try {
+                                        var msg = JSON.parse(str);
+                                        if (msg.success) {
+                                            setContent('')
+                                            clearDraft()
+                                            window.localStorage.removeItem(getQuoteStoreID())
+                                            callbacks.push(function () {
+                                                animateScroll(0, 'slow');
+                                            });
+                                            var q = getThisPageUrlParams();
+                    
+                                            if (q.p == 'reports') {
+                                                resetHash('p=reports');
+                                            } else if (data['action'] == 'edit') {
+                                                resetHash((function (obj) {
+                                                    var str = [];
+                                                    for (var p in obj)
+                                                        if (obj.hasOwnProperty(p)) {
+                                                            str.push(encodeURIComponent(p) + "=" + encodeURIComponent(obj[p]));
+                                                        }
+                                                    return str.join("&");
+                                                })(q));
+                                            } else {
+                                                resetHash(msg.link.replace('forums.php?', ''));
+                                            }
+                                        } else {
+                                            displayRequestMsg(msg);
+                                        }
+                                    } catch (e) {
+                                        console.warn(str, e);
+                                        var msgContent = $(str)
+                                        if (msgContent.find('.info-msg').length) {
+                                            displayRequestMsg({
+                                                success: false,
+                                                text: msgContent.find('.info-msg .msg').html()
+                                            })
+                                        }
+                                    }
+                                },
+                                before: function () {
+                                    displayRequestMsg();
+                                }
+                            });
+                            
+                        }
+                    }],
+                    customClass: 'editorRoot'
+                }
+            )
+
+            pageWrap.find('.post li').each(function () {
+                if ($(this).html() == '<br>' || $(this).html() == '') {
+                    $(this).remove();
+                }
+            });
+
+            tutorialSwitcher();
+            $(".post-container object[type='application/x-shockwave-flash']").append('<param name="wmode" value="opaque"/><param name="scale" value="exactfit"/>');
+
+            var $imgsGallery = $('.post-container img:not(.profile-sign img)');
+
+            $('.profile-sign img').removeAttr('style');
+
+            $imgsGallery.each(function () {
+
+                var parent = $(this).closest('a');
+                if (!parent.length) {
+                    $(this).wrap('<a class="full" rel="page_thread" href="' + $(this).attr('src') + '"></a>');
+                }
+            });
+
+            $('.post-container').find('.full').colorbox({
+                transition: 'none',
+                scalePhotos: false,
+                maxWidth: '100%',
+                current: function () {
+                    var quotePost = $(this).closest('.quote-post');
+                    if (quotePost.length) {
+                        return 'Posted by ' + quotePost.siblings('.author-quote').html();
+                    } else {
+                        return 'Posted by ' + $(this).parents('.column-wrap').find('.name-id').html();
+                    }
+                }
+            });
+
+
+            if (!getRequest) {
+
+            }
+
+
+            var forumCategory = '';
+
+            $('.forums-thread .forum-category').each(function (index) {
+                forumCategory = 'forum-category' + index;
+                $(this).attr('id', forumCategory);
+                $(this).siblings('.select-list').addClass(forumCategory);
+                initDropdown($('#' + forumCategory), forumCategory, { width: '237', scrollHeight: '240' });
+            });
+
+            $('.small-select-menu-wrap .select-wrap').fadeIn(1500);
+
+            isInitAccordionT = false;
+            initAccordionT();
+
+            disabelQuoteForOpera();
+
+            initShowContentSelectors(pageWrap.find('.thread-list>li'));
+
+            $('.forums-thread .post table').wrap('<div class="table-wrap"></div>');
+            var r = queryStringToObj(hasher.getHash());
+
+            // TODO: this is a workaround to make autoScroll work properly in case of huge
+            // images amount on the page. There is no way to easy handle this on the back-end
+            // without a big cost of runtime over images size calculations (height + width).
+            // A brand new editor will solve the issue. As for now the only way is:
+            setTimeout(() => scrollToElement(r.to), 500)
+            // scrollToElement(r.to);
+
+            var postsList = pageWrap.find('.thread-list>li .new-post');
+            var firstPostOnPage = pageWrap.find('.thread-list>li .column-wrap').first();
+
+            if (!firstPostOnPage.hasClass('new-post') && postsList.length && !r.to) {
+                animateScroll(postsList.first().offset().top, 1000);
+            }
+
+            pageWrap.find('.thread-list > li .new-post').addClass('viewed-post');
+        },
+        newthread: function () {
+            var urlParams = getThisPageUrlParams();
+            var isBugsAndIssuesForum = urlParams.f == 19;
+
+            if (isBugsAndIssuesForum && isTornMobileApp()) {
+                var applicationDataTitle = localStorage.getItem('applicationDataTitle');
+                if (applicationDataTitle) {
+                    pageWrap.find(".thread-title input[name=title]").val(applicationDataTitle);
+                }
+                var applicationData = localStorage.getItem('applicationData');
+                if (applicationData) {
+                    applicationData = "<p>" + applicationData + "</p>";
+                }
+            }
+            initEditor(
+                '#editor-wrapper',
+                {
+                    content: applicationData,
+                    autosavePrefix: 'forum-' + queryStringToObj(hasher.getHash()).f,
+                    imageType: 'forumEditor',
+                    withPoll: true,
+                    actionButtons: [{
+                        title: 'Post',
+                        action: ({ getContent, setContent, clearDraft }) => {
+                            var $form = $('#editor-form')
+                            var data = {
+                                step: $form.attr('data-action'),
+                                post: getContent()
+                            }
+                            $form.find('[name]').each(function () {
+                                if ($(this).is(':checkbox')) {
+                                    data[$(this).prop('name')] = $(this).prop('checked');
+                                } else {
+                                    data[$(this).prop('name')] = $(this).val();
+                                }
+                            });
+                            if (!data.title) {
+                                displayRequestMsg({
+                                    text: 'Please add a title to your new thread',
+                                    success: false,
+                                })
+                                return
+                            }
+                            displayRequestMsg()
+
+                            getAction({
+                                type: "post",
+                                action: pageLink,
+                                data: data,
+                                success: function (str) {
+                                    try {
+                                        var msg = JSON.parse(str);
+                                        if (msg.success) {
+                                            setContent('')
+                                            clearDraft()
+                                            callbacks.push(function () {
+                                                animateScroll(0, 'slow');
+                                            });
+                                            resetHash(msg.link.replace('forums.php?', ''));
+                                        } else {
+                                            displayRequestMsg(msg);
+                                        }
+                                    } catch (e) {
+                                        console.warn(str, e);
+                                        var msgContent = $(str)
+                                        if (msgContent.find('.info-msg').length) {
+                                            displayRequestMsg({
+                                                success: false,
+                                                text: msgContent.find('.info-msg .msg').html()
+                                            })
+                                        }
+                                    }
+                                },
+                                before: function () {
+                                    displayRequestMsg();
+                                }
+                            });
+                            
+                        }
+                    }],
+                    customClass: 'editorRoot'
+                }
+            );
+
+
+            $('.create-form').validate({
+                onkeyup: function (element) {
+                    $(element).valid();
+                },
+                onfocusout: function (element) {
+                    $(element).valid();
+                },
+                ignore: 'input:hidden',
+                errorClass: "error",
+                validClass: "",
+                errorPlacement: function (error, element) {
+                    return true;
+                },
+                highlight: function (element, errorClass) {
+                    $(element).parents(".input-wrap").addClass(errorClass);
+
+                },
+                unhighlight: function (element, errorClass) {
+                    $(element).parents(".input-wrap").removeClass(errorClass);
+                },
+                rules: {
+                    title: {
+                        required: true
+                    },
+                    question: {
+                        required: true
+                    },
+                    'vote[1]': {
+                        required: true
+                    },
+                    'vote[2]': {
+                        required: true
+                    }
+                }
+            });
+
+            var dropdownWidth = $('.type-enabled').hasClass('non-related-enabled') ? '149' : '137';
+            initDropdown($('#announ_type'), 'select-list', { width: dropdownWidth, scrollHeight: '240' });
+            $('.small-select-menu-wrap .select-wrap').fadeIn(1500);
+        },
+        search: function (getRequest) {
+            $(".post-container object[type='application/x-shockwave-flash']").append('<param name="wmode" value="opaque"/><param name="scale" value="exactfit"/>');
+
+            var $imgsGallery = $('.post-container img:not(.profile-sign img)');
+            $imgsGallery.each(function () {
+                if (!$(this).parents('a').hasClass('full')) {
+                    $(this).wrap('<a class="full" rel="page_thread" href="' + $(this).attr('src') + '"></a>');
+                }
+            });
+            $('.post-container').find('.full').colorbox({
+                transition: 'none',
+                scalePhotos: false,
+                maxWidth: '100%',
+                current: function () {
+                    return 'Posted by ' + $(this).parents('.column-wrap').find('.name-id').html();
+                }
+            });
+            isInitAccordionT = false;
+            initAccordionT();
+
+            var r = queryStringToObj(hasher.getHash());
+
+            if (r.q != undefined) {
+
+                var searchContainer = $('.search-wrap .forums-thread[data-words]');
+                var arr = searchContainer.attr('data-words').split(',').sort(function (a, b) {
+                    return b.length - a.length;
+                });
+
+
+                if (parseInt(r.q) != r.q.trim()) {
+
+                    if ([0, 1].indexOf(parseInt(r.y)) > -1) {
+                        $.each(arr, function (i, word) {
+                            pageWrap.find('.title').highlightText(word, "bigwords", true);
+                        });
+                    }
+                    $.each(arr, function (i, word) {
+                        word && pageWrap.find('.post').highlightText(word, "bigwords", true);
+                    });
+                }
+            }
+            $('.forums-thread .post table').wrap('<div class="table-wrap"></div>');
+            addLastClass(pageWrap.find('.thread-list>li'));
+        },
+        reports: function (getRequest) {
+            tutorialSwitcher();
+            $(".post-container object[type='application/x-shockwave-flash']").append('<param name="wmode" value="opaque"/><param name="scale" value="exactfit"/>');
+
+            var $imgsGallery = $('.post-container img:not(.profile-sign img)');
+
+            $imgsGallery.each(function () {
+                if (!$(this).parents('a').hasClass('full')) {
+                    $(this).wrap('<a class="full" rel="page_thread" href="' + $(this).attr('src') + '"></a>');
+                }
+            });
+
+            $('.post-container').find('.full').colorbox({
+                transition: 'none',
+                scalePhotos: false,
+                maxWidth: '100%',
+                current: function () {
+                    return 'Posted by ' + $(this).parents('.column-wrap').find('.name-id').html();
+                }
+            });
+
+            $('.small-select-menu-wrap .select-wrap').fadeIn(1500);
+
+            isInitAccordionT = false;
+            initAccordionT();
+        },
+        livePosts: function (getRequest) {
+            $(".post-container object[type='application/x-shockwave-flash']").append('<param name="wmode" value="opaque"/><param name="scale" value="exactfit"/>');
+            var $imgsGallery = $('.post-container img:not(.profile-sign img)');
+            $imgsGallery.each(function () {
+                if (!$(this).parents('a').hasClass('full')) {
+                    $(this).wrap('<a class="full" rel="page_thread" href="' + $(this).attr('src') + '"></a>');
+                }
+            });
+            pageWrap.find('.post-container .full').colorbox({
+                transition: 'none',
+                scalePhotos: false,
+                maxWidth: '100%',
+                current: function () {
+                    return 'Posted by ' + $(this).parents('.column-wrap').find('.name-id').html();
+                }
+            });
+            isInitAccordionT = false;
+            initAccordionT();
+
+            livePosts.initInterval();
+        }
+    };
+
+    var afterChangeRoutingFunctions = {
+        main: function () {
+
+        },
+        threads: function () {
+            threadViewedPostsTimeout && clearTimeout(threadViewedPostsTimeout)
+        },
+        livePosts: function () {
+            livePosts.closeInterval();
+        }
+    };
+
+
+    function afterChangeRouter(step) {
+        if (typeof afterChangeRoutingFunctions[step] == 'function') {
+            afterChangeRoutingFunctions[step]();
+        }
+    };
+
+    function resetHash(hash) {
+        hasher.resetHash(hash);
+        handleChanges(hash, '');
+    };
+
+    function displayRequestMsg(msg) {
+        if (!pageWrap.find('#request-result-wrap').length) {
+            pageWrap.find('.content-title').after('<div class="m-top10" id="request-result-wrap"></div>');
+        }
+        if (msg) {
+            informationMessageTemplateIn(pageWrap.find('#request-result-wrap').empty(), false, true, msg.success ? 'green' : 'red');
+            pageWrap.find('#request-result-wrap').find('.msg').empty().append(msg.text);
+        } else {
+            informationMessageTemplateIn(pageWrap.find('#request-result-wrap').empty(), false, true, '');
+        }
+    };
+
+    var isInitAccordion = false;
+    var isInitAccordionT = false;
+
+    function initAccordion() {
+        if (window.innerWidth <= maxTabletSize && !isInitAccordion) {
+            initializeAccordion($('.threads-list'), {
+                activate: function (e, event) {
+                    event.newHeader.find('a').click(function (r) {
+                        r.stopPropagation();
+                    });
+                },
+            });
+            isInitAccordion = true;
+        }
+        if (window.innerWidth > maxTabletSize && isInitAccordion) {
+            $('.threads-list').accordion('destroy');
+            isInitAccordion = false;
+        }
+    };
+
+    function initAccordionT() {
+        if (window.innerWidth <= maxTabletSize && !isInitAccordionT) {
+            $('.thread-list').accordion({
+                header: '.poster',
+                active: true,
+                animated: false,
+                collapsible: true,
+                heightStyle: "content",
+                activate: function (e, event) {
+                    event.newHeader.find('a').click(function (r) {
+                        r.stopPropagation();
+                    });
+                }
+            });
+
+            isInitAccordionT = true;
+        }
+
+        if (window.innerWidth > maxTabletSize && isInitAccordionT) {
+            $('.thread-list').accordion('destroy');
+            isInitAccordionT = false;
+        }
+    };
+
+    function updateComputerScroll() {
+    };
+
+    //Main forum
+    function checkContentWrapper(el) {
+        if (pageWrap.hasClass('user-logged')) {
+            if (el != undefined) {
+                if (el.hasClass('disabled')) {
+                    return false;
+                } else {
+                    return true;
+                }
+            } else {
+                return true;
+            }
+        } else {
+            return false;
+        }
+    };
+
+    function actionIsAllowed(el) {
+        return !el.hasClass('disabled');
+    };
+
+    var isInitTabsForums = false;
+    var $forumsTabs = $('.forums-main-wrap .forums-wrap');
+    var $forumsBox = $forumsTabs.find('.forums-box');
+    var $searchBox = $forumsTabs.find('.search-box');
+    var $updatesBox = $forumsTabs.find('.updates-box');
+
+    /**
+     * @deprecated - scrollbars rebuilt to native
+     */
+    function initializeUpdatesScrollbar() {
+        /* TODO new scrollbar
+        $('.dashboard .panel-scrollbar').tinyscrollbar({
+            scroll: true,
+            sizethumb: 50
+        });
+        */
+        //$('.scrollbar-inner').scrollbar();
+    };
+
+    pageWrap.on('click', '.title-toggle', function () {
+        $(this).toggleClass('active').next().toggle();
+        //initializeUpdatesScrollbar();
+        setUserItemsCookie();
+    });
+
+    function setUserItemsCookie() {
+        var $itemTitlesActive = {
+            userSearchForum: $('.fm-search .title-toggle').hasClass('active'),
+            userRatingForum: $('.rating .title-toggle').hasClass('active'),
+            userMyThreads: $('#my-threads .title-toggle').hasClass('active'),
+            userSubsThreads: $('#subs-threads .title-toggle').hasClass('active'),
+            userFeedThreads: $('#feed-threads .title-toggle').hasClass('active'),
+            userPopThreads: $('#pop-threads .title-toggle').hasClass('active'),
+            userFriendsThreads: $('#friends-threads .title-toggle').hasClass('active')
+        };
+
+        if (!$.cookie('userForumPreferences')) {
+            $.cookie('userForumPreferences', JSON.stringify($itemTitlesActive), { expires: 18262 });
+        } else {
+            $.cookie('userForumPreferences', JSON.stringify($itemTitlesActive));
+        }
+    };
+
+    function getUserItemsCookie() {
+        if ($.cookie('userForumPreferences')) {
+            var cookies = $.parseJSON($.cookie('userForumPreferences'));
+
+            var fmSearch = $('.fm-search .title-toggle');
+            var fmRating = $('.rating .title-toggle');
+            var fmMyThreads = $('#my-threads .title-toggle');
+            var fmSubsThreads = $('#subs-threads .title-toggle');
+            var fmFeedThreads = $('#feed-threads .title-toggle');
+            var fmPopThreads = $('#pop-threads .title-toggle');
+            var fmFriendsThreads = $('#friends-threads .title-toggle');
+
+            cookies.userSearchForum ? fmSearch.addClass('active') : fmSearch.removeClass('active').next().hide();
+            cookies.userRatingForum ? fmRating.addClass('active') : fmRating.removeClass('active').next().hide();
+            cookies.userMyThreads ? fmMyThreads.addClass('active') : fmMyThreads.removeClass('active').next().hide();
+            cookies.userSubsThreads ? fmSubsThreads.addClass('active') : fmSubsThreads.removeClass('active').next().hide();
+            cookies.userFeedThreads ? fmFeedThreads.addClass('active') : fmFeedThreads.removeClass('active').next().hide();
+            cookies.userPopThreads ? fmPopThreads.addClass('active') : fmPopThreads.removeClass('active').next().hide();
+            cookies.userFriendsThreads ? fmFriendsThreads.addClass('active') : fmFriendsThreads.removeClass('active').next().hide();
+        }
+    };
+
+    function changeWidthBar() {
+        var lengthRating = $.trim($('.rating-qty').text()).length;
+        $('.rating').addClass('w' + lengthRating);
+    };
+
+
+    //Forums list page
+    pageWrap.on('click', 'ul.breadcrumbs>li.subscribe', function () {
+        var $el = $(this);
+        var $elName = $el.find('.subscribe-name');
+        var act = !$el.hasClass('act');
+
+        $el.toggleClass('act');
+        var thread = $el.attr('data-thread');
+        var data = {
+            thread: thread,
+            step: 'subscribe',
+            act: act | 0
+        };
+
+        getAction({
+            type: "post",
+            action: pageLink,
+            data: data,
+            success: function (str) {
+                var msg = JSON.parse(str);
+                if (msg.success) {
+                    if ($el.hasClass('act')) {
+                        $elName.text('Unsubscribe');
+                    } else {
+                        $elName.text('Subscribe');
+                    }
+                }
+            }
+        });
+    });
+
+    pageWrap.on('click', '.breadcrumbs > li.issue-status .icon-wrap', function () {
+        var $el = $(this);
+        var $parent = $el.parents('.issue-status');
+        if ($parent.hasClass('no-action'))
+            return;
+
+        if ($parent.hasClass('special')) {
+            var hash = queryStringToObj(hasher.getHash().replace(/[#\/]/g, ''));
+            var flag = (!$el.hasClass('active')) | 0;
+            hash['sp'] = flag;
+            hash['start'] = 0;
+            hash['s'] = 0;
+            hash['as'] = 0;
+            specialBtnCookie('set', flag);
+            resetHash($.param(hash));
+        } else {
+            $parent.siblings('.issue-status').removeClass('act');
+            $parent.toggleClass('act');
+        }
+
+    });
+
+    pageWrap.on('click', 'ul.breadcrumbs > li[data-url]', function () {
+        var $el = $(this);
+        var hrefs = $el.attr('data-url').split('?');
+        if (hrefs[0] === 'forums.php') {
+            replaceURLstring(function () {
+                resetHash(hrefs[1]);
+            });
+        }
+    });
+
+    function dataList(selector, value) {
+        pageWrap.on('click', '.forums-committee-wrap .breadcrumbs > li.issue-status [data-list=' + selector + '] .list-desc>li', function () {
+            var hash = queryStringToObj(hasher.getHash().replace(/[#\/]/g, ''));
+            var checkObj = ['p', 'f', 'b', 'a'];
+            $.each(checkObj, function (_, e) {
+                var v = getRequestParam(e);
+                if (typeof hash[e] === "undefined" && v !== undefined) {
+                    hash[e] = v;
+                }
+            });
+
+            hash[value] = $(this).attr('data-val');
+            hash['start'] = 0;
+            hash['sp'] = 0;
+
+            replaceURLstring(function () {
+                resetHash($.param(hash));
+            });
+        });
+    };
+
+    function threadDataList(selector, value, title) {
+        pageWrap.on('click', '.forums-thread-wrap .breadcrumbs > li.issue-status [data-list=' + selector + '] .list-desc>li', function () {
+            var el = $(this);
+            var parent = el.parents('.issue-status');
+            var data = {
+                step: 'setsettings',
+                thread_id: parent.data('thread'),
+                forum_id: parent.data('forum')
+            };
+            data[value] = el.data('val');
+            getAction({
+                type: "post",
+                action: pageLink,
+                data: data,
+                success: function (str) {
+                    try {
+                        var msg = JSON.parse(str);
+                        if (msg.success) {
+                            parent.find('.icon-wrap').attr('title', title + el.text());
+                        }
+                    } catch (e) {
+                        console.warn(e);
+                    }
+
+                }
+            });
+        });
+    };
+
+    dataList('status', 's');
+    dataList('assign', 'as');
+    threadDataList('status', 's', 'Status: ');
+    threadDataList('assign', 'as', 'Assigned to: ');
+
+
+    pageWrap.on('click', '.issue-status .list-desc > li', function (event) {
+        event.preventDefault();
+        var $el = $(this);
+        var $parent = $el.parents('.issue-status');
+        if ($parent.hasClass('status')) {
+            $el.parents('.issue-status')
+                .find('.icon-wrap i')
+                .removeClass()
+                .addClass('issue-' + $el.attr('class') + '-icon');
+        }
+        if ($parent.hasClass('assign')) {
+            var icon = '';
+
+            $el.parent().children().removeClass('active');
+            $el.addClass('active');
+            if ($el.attr('data-val') !== '0') {
+                icon = 'issue-admin-assigned-icon';
+            } else {
+                icon = 'issue-admin-icon';
+            }
+            $el.parents('.issue-status')
+                .find('.icon-wrap i')
+                .removeClass()
+                .addClass(icon);
+        }
+        $parent.removeClass('act');
+    });
+
+    pageWrap.on('click', '.issue-status .list-desc > li', function (event) {
+        event.preventDefault();
+        var $el = $(this);
+        var $parent = $el.parents('.issue-status');
+        if ($parent.hasClass('status')) {
+            $el.parents('.issue-status')
+                .find('.icon-wrap i')
+                .removeClass()
+                .addClass('issue-' + $el.attr('class') + '-icon');
+        }
+        $parent.removeClass('act');
+    });
+
+    pageWrap.on('click', '.dashboard .mark-as-read-action', function (event) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+
+        var $el = $(this),
+            parent = $el.closest('.dashboard'),
+            type = $el.data('type');
+
+        if (!type)
+            return;
+
+        getAction({
+            type: "post",
+            action: pageLink,
+            data: {
+                step: 'markFeedsAsRead',
+                type: type
+            },
+            success: function (str) {
+                try {
+                    var msg = JSON.parse(str);
+                    if (msg.success) {
+                        parent.find('.panel.fm-list>li').removeClass('new');
+                        parent.find('.title-toggle .qty').text('(0)');
+                        $el.hide();
+                    } else {
+                        console.dev(msg);
+                    }
+                } catch (e) {
+                    console.dev(e);
+                }
+            }
+        });
+
+
+    })
+
+    pageWrap.on('click', '.subs-threads .remove-link', function (event) {
+        event.preventDefault();
+        var $el = $(this);
+        var href = $el.attr('href').replace('#', '');
+        var parent = $el.parents('.panel > li');
+        var $list = parent.parent();
+        var dashboard = $el.closest('.dashboard');
+        var qty = dashboard.find('.title-black .qty');
+
+        if (href > 0) {
+            var data = {
+                thread: href,
+                step: 'subscribe',
+                act: 0
+            };
+
+            getAction({
+                type: "post",
+                action: pageLink,
+                data: data,
+                success: function (str) {
+                    if (parent.hasClass('last')) {
+                        parent.prev().addClass('last');
+                    }
+
+                    if (parent.hasClass('new')) {
+                        var amount = qty.text().replace(/[()]/g, '') - 1;
+                        qty.text('(' + (Math.max(amount, 0)) + ')');
+                    }
+
+                    parent.remove();
+
+                    if ($list.children().length == 0) {
+                        $list.append('<li class="last"><div class="bold p10"><span>You have no subscribed threads</span></div></li>');
+                    }
+                }
+            });
+        }
+
+    });
+
+    pageWrap.on('click', '.search-wrap .btn input[type=submit]', function (event) {
+        event.preventDefault();
+
+        var el = $(this);
+        var parent = el.closest('.search-wrap');
+        var searchword = parent.find('input[name=searchword]').val();
+        var forum = parent.find('[name=forum]').val();
+        var type = parent.find('[name=type]').val();
+        var hash = {
+            p: 'search',
+            q: searchword,
+            f: forum,
+            y: type
+        };
+        forumSearchCache.set(searchword);
+        
+        replaceURLstring(function () {
+            let params = $.param(hash);
+            // prevent character : encoding
+            // requered for searches like by:Username
+            params = params.replace(/%3A/g, ':');
+            hasher.setHash(params);
+        });
+    });
+
+    pageWrap.on('click', '.threads-list .thread-name', function (event) {
+        event.stopPropagation();
+        var _this = this;
+        //console.dev(this, event, getBrowserWidth(), maxTabletSize);
+        if (getBrowserWidth() < getMaxTabletSize()) {
+            replaceURLstring(function () {
+                var h = $(_this).attr('href')
+                if (h) {
+                    var nh = h.replace('forums.php?', '');
+                    hasher.setHash(nh);
+                }
+            });
+        }
+    });
+
+    pageWrap.on('keyup', '.forums-create-new form input[name=title]', function (e) {
+        var $el = $(this);
+        var $button = $el.closest('#editor-form').find('button');
+        if (isInputNameInvalid({ name: e.target.value })) {
+            $el.addClass('error');
+            $button.attr('disabled', true);
+        } else {
+            if ($el.hasClass('error')) {
+                $el.removeClass('error');
+                $button.attr('disabled', false);
+            }
+        }
+    });
+
+    pageWrap.on('submit', '#editor-form', function (event) {
+        event.preventDefault();
+    })
+
+    pageWrap.on('submit', '.forums-new-multi-wrap .create-form, .forums-new-post-wrap .create-form', function (event) {
+        event.preventDefault();
+        var parent = $(this);
+        var $textarea = parent.find('.tiny-area');
+
+        //if (!isOperaMini()) {
+        var key = tinyMCE.editors.length ? tinyMCE.activeEditor.id : $textarea.attr('id');
+        var isTinymceValid = tinyMCE.editors.length;
+        var isTinymceEmpty = false;
+        var isTextareaEmpty = !$textarea.val().trim();
+        if (isTinymceValid) {
+            tinyMCE.activeEditor.save();
+            isTinymceEmpty = !checkPostLength(tinymce.activeEditor.getContent()) || tinymce.activeEditor.getContent() == null;
+        }
+
+        if (isTinymceValid && isTinymceEmpty || !isTinymceValid && isTextareaEmpty) {
+            parent.find('.post-wrap .input-wrap').addClass('error');
+            return false;
+        }
+
+        //}
+        parent.valid();
+        var action = parent.attr('data-action');
+        var data = {
+            step: action
+        };
+        parent.find('[name]').each(function () {
+            data[$(this).prop('name')] = $(this).val();
+        });
+        parent.find('input[type=checkbox]').each(function () {
+            data[$(this).prop('name')] = $(this).prop('checked');
+        });
+
+        data.post = isTinymceValid ? (data.post || tinymce.activeEditor.getContent()) : $textarea.val();
+
+        data.userAgent = localStorage.getItem('applicationData');
+
+        if (isTinymceValid) {
+            $('.show-panels').hide();
+        }
+
+        getAction({
+            type: "post",
+            action: pageLink,
+            data: data,
+            success: function (str) {
+                try {
+                    var msg = JSON.parse(str);
+                    var f = false;
+                    if (msg.success) {
+                        cleanLocalAreaContent(key);
+                        callbacks.push(function () {
+                            animateScroll(0, 'slow');
+                        });
+                        var q = getThisPageUrlParams();
+
+                        if (q.p == 'reports') {
+                            resetHash('p=reports');
+                        } else if (data['action'] == 'edit') {
+                            resetHash((function (obj) {
+                                var str = [];
+                                for (var p in obj)
+                                    if (obj.hasOwnProperty(p)) {
+                                        str.push(encodeURIComponent(p) + "=" + encodeURIComponent(obj[p]));
+                                    }
+                                return str.join("&");
+                            })(q));
+                        } else {
+                            resetHash(msg.link.replace(/[#\/]/g, ''));
+                        }
+
+                    } else {
+                        displayRequestMsg(msg);
+                    }
+                } catch (e) {
+                    console.warn(str, e);
+                }
+                //$('.white-tooltip').remove();
+            },
+            before: function () {
+                displayRequestMsg();
+            }
+        });
+    });
+
+    pageWrap.on('click', '.poll-action-wrap .poll-action', function (event) {
+        event.preventDefault();
+
+        var $pollWrap = $(this).parents(".forums-new-poll-wrap").find('.poll-wrap');
+        $pollWrap.toggle();
+        var isPoll = $pollWrap.is(':visible');
+        $pollWrap.find('.poll-flag').val(+isPoll);
+        var addPollLinkName = 'Add Poll';
+        if (isPoll) {
+            addPollLinkName = 'Remove Poll';
+        }
+        $(this).html(addPollLinkName);
+        $(window).resize();
+    });
+
+    function getNewNumVotes() {
+        return $('.votes-wrap > li .num').length + 1;
+    };
+
+    pageWrap.on('click', '.add-vote-wrap .add-option', function (event) {
+        event.preventDefault();
+        var template = Handlebars.templates['poll-votes'];
+        var newNum = getNewNumVotes();
+
+        $('.votes-wrap').append(template({ num_first: newNum, num_last: newNum + 1 }));
+        $(window).resize();
+    });
+
+
+    //Tread view
+
+    function allPostsPinnedPosts(currentPostWrapper) {
+        var post_id = +currentPostWrapper.attr('data-post');
+        var $threadWrapper = currentPostWrapper.closest('.thread-list');
+        return $threadWrapper.find('.post-wrap[data-post=' + post_id + ']')
+    }
+
+    pageWrap.on('click', '.forums-thread .action-wrap li.like, .forums-thread .action-wrap li.dislike', function () {
+        var that = this;
+
+        var $el = $(this);
+        if ($el.hasClass('disabled'))
+            return;
+
+        if (checkContentWrapper($(this)))
+            return;
+
+        var currentPostWrapper = $el.closest('.post-wrap');
+        var thread_id = +currentPostWrapper.attr('data-thread'),
+            post_id = +currentPostWrapper.attr('data-post');
+
+        if (post_id == 0)
+            return;
+
+        var postWrapContainer = allPostsPinnedPosts(currentPostWrapper);
+
+        if (that.clicked) {
+            return;
+        }
+
+        that.clicked = true;
+
+        var $confirmInstanceContainer = postWrapContainer.find('.confirm-box li.like.dislike .confirm');
+
+        var listContainer = postWrapContainer.find('.action-wrap');
+
+        var $likes = listContainer.find('li.like');
+        var $dislikes = listContainer.find('li.dislike');
+
+        var $rateItemIcon, $rateItemValue;
+
+        if ($el.hasClass('like')) {
+            $rateItemIcon = $likes.find('.like-item');
+            $rateItemValue = $likes.find('.value');
+        } else {
+            $rateItemIcon = $dislikes.find('.like-item');
+            $rateItemValue = $dislikes.find('.value');
+        }
+        var rateValue = +$rateItemValue.first().text();
+
+        var data = {
+            post_id: post_id,
+            thread_id: thread_id,
+            step: 'ratePost',
+            unrate: false
+        };
+
+        var isLike = $el.hasClass('like');
+
+        if ($el.hasClass('active')) {
+            data.unrate = true
+        } else {
+            data.value = isLike ? 1 : -1;
+        }
+
+        getAction({
+            type: "post",
+            action: pageLink,
+            data: data,
+            success: function (str) {
+                that.clicked = false;
+                try {
+                    var msg = JSON.parse(str);
+
+                    if (!msg.success) {
+                        var errorText = msg.text || "Rating limit has been reached.";
+                        $confirmInstanceContainer.removeClass('t-green').addClass('t-red').text(errorText);
+                    } else {
+                        $likes.removeClass('disabled');
+                        $dislikes.removeClass('disabled');
+
+                        var ariaLabelLikeDislike = ($el.hasClass('like')) ? 'Likes: ' : 'Dislikes: ';
+
+                        if (data.unrate) {
+                            rateValue -= 1;
+                            $rateItemValue.text(rateValue).removeClass('active');
+                            $likes.removeClass('disabled').removeClass('active');
+                            $dislikes.removeClass('disabled').removeClass('active');
+                            $rateItemIcon.removeClass('voted');
+                            $el.find('button').attr('aria-label', ariaLabelLikeDislike + rateValue);
+                        } else {
+                            rateValue += 1;
+
+                            $rateItemValue.text(rateValue).addClass('active');
+                            $likes.addClass(isLike ? 'active' : 'disabled');
+                            $dislikes.addClass(isLike ? 'disabled' : 'active');
+                            $rateItemIcon.addClass('voted');
+                            $el.find('button').attr('aria-label', ariaLabelLikeDislike + rateValue + '. Voted.');
+                        }
+
+                        setTimeout(function () {
+                            $likes.removeClass('active').addClass('disabled');
+                            $dislikes.removeClass('active').addClass('disabled');
+                        }, 300000)
+
+                        $confirmInstanceContainer.removeClass('t-red').addClass('t-green').text(msg.text);
+                    }
+
+                    eventConfirm($el);
+
+                    var $confirmWrap = $el.parents('.confirm-wrap');
+
+                    fadeOutConfirmBox($confirmWrap, ['dislike-confirm', 'like-confirm'], function () {
+                        $confirmWrap.removeClass().addClass('confirm-wrap')
+                    });
+
+                } catch (e) {
+                    console.dev(e);
+                }
+            },
+            before: function () {
+                $likes.addClass('disabled');
+                $dislikes.addClass('disabled');
+            }
+        });
+
+    });
+
+
+    pageWrap.on('click', '.forums-thread .action-wrap > li.report, ' +
+        '.forums-thread .action-wrap > li.delete, ' +
+        '.forums-thread .action-wrap > li.ban, ' +
+        '.forums-thread .action-wrap > li.move, ' +
+        '.forums-thread .action-wrap > li.pin, ' +
+        '.forums-thread .action-wrap > li.sticky, ' +
+        '.forums-thread .action-wrap > li.lock',
+        function () {
+            if ($(this).hasClass('disabled'))
+                return;
+            if (!checkContentWrapper()) {
+                eventConfirm($(this));
+            }
+        });
+
+    pageWrap.on('click', '.confirm-box .ban .btn', function () {
+        var el = $(this);
+        var parent = el.parents('.confirm-box > li');
+        var author = el.closest('.post-wrap').attr('data-author');
+        if (author) {
+            var data = {
+                ajax: true,
+                step: 'banuser',
+                author: author
+            };
+
+            parent.find('[type=text]').each(function () {
+                data[$(this).attr('name')] = $(this).val();
+            });
+
+            getAction({
+                type: "post",
+                action: pageLink,
+                data: data,
+                success: function (str) {
+                    try {
+                        var msg = JSON.parse(str);
+                        parent.find('.result').addClass(msg.success ? 't-green' : 't-red').html(msg.text);
+                    } catch (e) {
+                        parent.find('.result').addClass('t-red').html(str);
+                    }
+                },
+                before: function () {
+                    parent.find('.ask').hide().next().show();
+                }
+            });
+        }
+    });
+
+    pageWrap.on('click', '.confirm-box .report .btn', function () {
+        var el = $(this);
+        var $confirmWrap = el.parents('.confirm-wrap');
+        var parent = el.parents('.confirm-box > li');
+        var reason = parent.find('[name=reason]').val();
+        var post_id = el.closest('.post-wrap').attr('data-post');
+        if (reason != '' && post_id > 0) {
+            var data = {
+                ajax: true,
+                step: 'report',
+                reason: reason,
+                post_id: post_id
+            };
+            getAction({
+                type: "post",
+                action: pageLink,
+                data: data,
+                success: function (str) {
+                    try {
+                        var msg = JSON.parse(str);
+                        if (msg.success) {
+                            el.closest('.post-wrap').find('.action-wrap >li.report').addClass('active');
+                            parent.find('.ask').hide().html('<div class="confirm t-green bold">' +
+                                'This post has already been reported!' +
+                                '</div><span class="cancel"><a href="#" class="wai-support t-blue h">Cancel</a></span>');
+                            parent.find('.result').addClass('t-green').show().empty().text(msg.text);
+                        } else {
+                            parent.find('.result').addClass('t-red').show().empty().text(msg.text);
+                        }
+                        eventConfirm($confirmWrap.find('.action-wrap >li.report'));
+
+                        fadeOutConfirmBox($confirmWrap, ['report-confirm'], function () {
+                            $confirmWrap.removeClass().addClass('confirm-wrap');
+                            parent.find('.ask').show();
+                            parent.find('.result').hide();
+                        });
+
+                        /*setTimeout(function () {
+                            $confirmWrap.find('.confirm-box').fadeOut(1000, function () {
+                                $confirmWrap.removeClass().addClass('confirm-wrap');
+                                parent.find('.ask').show();
+                                parent.find('.result').hide();
+                            });
+                        }, 1000);*/
+                    } catch (e) {
+
+                    }
+                },
+                before: function () {
+
+                }
+            });
+        }
+    });
+
+    pageWrap.on('submit', '.confirm-box>.move form', function (e) {
+        e.preventDefault();
+        var form = $(this);
+        var wrap = form.closest('.post-wrap');
+        var thread = wrap.data('thread');
+
+        if (thread) {
+            var forum = form.find('[name=forum]').val();
+
+            var data = {
+                ajax: true,
+                step: 'move',
+                thread: thread,
+                forum: forum
+            };
+
+
+            form.find('[type=text]').each(function () {
+                data[$(this).attr('name')] = $(this).val();
+            });
+
+            getAction({
+                type: "post",
+                action: pageLink,
+                data: data,
+                success: function (str) {
+                    var msg = JSON.parse(str);
+                    if (msg.success) {
+                        hasher.setHash('p=threads&' + msg.link);
+                    }
+                }
+            });
+        }
+    });
+    pageWrap.on('click', '.confirm-box>.move .btn', function (e) {
+        e.preventDefault();
+        $(this).closest('form').submit();
+    });
+
+    pageWrap.on('click', '.confirm-box .delete a.yes', function (event) {
+        event.preventDefault();
+        var el = $(this);
+        var parent = el.parents('.thread-list > li');
+        var post_id = el.closest('.post-wrap').attr('data-post');
+        var forum = el.closest('.post-wrap').attr('data-forum').replace('/', '');
+        if (post_id) {
+            var data = {
+                ajax: true,
+                step: 'deletepost',
+                post_id: post_id
+            };
+
+            getAction({
+                type: "post", action: pageLink,
+                data: data,
+                success: function (str) {
+                    var msg = JSON.parse(str);
+                    if (msg.success) {
+                        if (!parent.hasClass('parent-post')) {
+                            setTimeout(function () {
+                                parent.fadeOut(500, function () {
+                                    if (parent.hasClass('last')) {
+                                        parent.prev().addClass('last').find('.post-delimiter').remove();
+                                    }
+                                    if (parent.siblings().length === 0) {
+                                        var hash = queryStringToObj(hasher.getHash().replace(/[#\/]/g, ''));
+                                        hash['start'] -= 20;
+                                        resetHash($.param(hash));
+                                    }
+                                    parent.remove();
+                                });
+                            }, 0);
+                        } else {
+                            hasher.setHash(forum);
+                        }
+                    }
+
+                },
+                before: function () {
+
+                }
+            });
+        }
+    });
+
+    pageWrap.on('click', '.confirm-box .lock a.yes', function (event) {
+        event.preventDefault();
+        var el = $(this);
+
+        var parent = el.parents('.confirm-wrap').find('.action-wrap>.lock');
+        var box = el.parents('.confirm-box>li');
+        var thread_id = el.closest('.post-wrap').attr('data-thread');
+        if (thread_id) {
+            var data = {
+                ajax: true,
+                step: 'lockthread',
+                thread_id: thread_id
+            };
+            getAction({
+                type: "post", action: pageLink,
+                data: data,
+                success: function (str) {
+                    var msg = JSON.parse(str);
+                    if (msg.success) {
+                        if (msg.status == '0') {
+                            parent.removeClass('active');
+                            parent.find('span').text('Lock');
+                            box.find('.ask .confirm').text('Are you sure you would like to lock this post?');
+                            box.find('.ask').hide().next().show().addClass('t-green').text('Post is successfully unlocked!');
+                            handleChanges(hasher.getHash(), '');
+                        } else {
+                            parent.addClass('active');
+                            parent.find('span').text('Unlock');
+                            box.find('.ask .confirm').text('Are you sure you would like to unlock this post?');
+                            el.parents('.confirm-wrap').find('.action-wrap>.quote,.action-wrap>.edit').remove();
+                            box.find('.ask').hide().next().show().addClass('t-green').text('Post is successfully locked!');
+                            $('.forums-thread').addClass('uneditable');
+                            $('.forums-new-post-wrap').hide();
+                        }
+                    } else {
+                        box.find('.ask').hide().next().show().addClass('t-red').text('Error!');
+                    }
+                    setTimeout(function () {
+                        box.parent().fadeOut(500, function () {
+                            box.find('.result').hide().prev().show().find('.no').trigger('click');
+                        });
+                    }, 2000);
+
+                },
+                before: function () {
+
+                }
+            });
+        }
+    });
+
+    pageWrap.on('click', '.confirm-box .sticky a.yes', function (event) {
+        event.preventDefault();
+        var el = $(this);
+
+        var parent = el.parents('.confirm-wrap').find('.action-wrap>.sticky');
+        var box = el.parents('.confirm-box>li');
+        var thread_id = el.closest('.post-wrap').attr('data-thread');
+        if (thread_id) {
+            var data = {
+                ajax: true,
+                step: 'stickyThread',
+                thread_id: thread_id,
+                sticky: !parent.hasClass('active')
+            };
+            getAction({
+                type: "post", action: pageLink,
+                data: data,
+                success: function (str) {
+                    var msg = JSON.parse(str);
+                    if (msg.success) {
+                        if (msg.status) {
+                            parent.addClass('active');
+                            box.find('.ask .confirm').text('Are you sure you would like to mark this thread as normal?');
+                            box.find('.ask').hide().next().show().addClass('t-green').text('Thread marked as sticky');
+                        } else {
+                            parent.removeClass('active');
+                            box.find('.ask .confirm').text('Are you sure you would like to mark this thread as sticky?');
+                            box.find('.ask').hide().next().show().addClass('t-green').text('Thread marked as normal');
+                        }
+                    } else {
+                        box.find('.ask').hide().next().show().addClass('t-red').text('Error!');
+                    }
+                    setTimeout(function () {
+                        box.parent().fadeOut(500, function () {
+                            box.find('.result').hide().prev().show().find('.no').trigger('click');
+                        });
+                    }, 2000);
+
+                },
+                before: function () {
+
+                }
+            });
+        }
+    });
+
+    pageWrap.on('click', '.confirm-box .pin a.yes', function (event) {
+        event.preventDefault();
+        var el = $(this);
+        var parent = el.parents('.thread-list > li');
+        var box = el.parents('.confirm-box>li');
+        var post_id = parent.data('id');
+        if (post_id) {
+            var data = {
+                ajax: true,
+                step: 'pinPost',
+                post_id: post_id
+            };
+
+            getAction({
+                type: "post", action: pageLink,
+                data: data,
+                success: function (str) {
+                    var msg = JSON.parse(str);
+                    if (msg.success) {
+                        if (msg.pinned) {
+                            parent.addClass('active');
+                            parent.find('span').text('Unpin');
+                            box.find('.ask .confirm').text('Are you sure you would like to unpin this post?');
+                            box.find('.ask').hide().next().show().addClass('t-green').text('Post is successfully pinend!');
+                        } else {
+                            parent.removeClass('active');
+                            parent.find('span').text('Pin');
+                            box.find('.ask .confirm').text('Are you sure you would like to pin this post?');
+                            box.find('.ask').hide().next().show().addClass('t-green').text('Post is successfully unpinned!');
+                        }
+
+                        handleChanges(hasher.getHash(), '');
+                    }
+
+                },
+                before: function () {
+
+                }
+            });
+        }
+    });
+
+
+    pageWrap.on('click', '.thread-list>li .post-container .quote .show-quote a', function (e) {
+
+        e.preventDefault();
+        var parent = $(this).closest('.show-quote');
+        parent.prevAll('.quote-post').removeClass('hide hideContent');
+        parent.remove();
+    });
+
+    pageWrap.on('click', '.thread-list>li .post-container .quote .show-more a', function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        var $this = $(this);
+        $this.closest('blockquote').children('.quote-post').removeClass("hideContent").addClass('showContent');
+        $this.closest('.show-more').remove();
+    });
+
+    pageWrap.on('click', '.thread-list>li .post-container .decoda-spoiler-button', function (e) {
+        var $this = $(this);
+        var $spoilerContent = $(this).siblings('.decoda-spoiler-content');
+        $this.html($spoilerContent.hasClass('hide') ? $this.data('text-hide') : $this.data('text-show'))
+
+        $spoilerContent.toggleClass('hide')
+    });
+
+    function eventConfirm(element) {
+        var actionWrapper = element.parents('.confirm-wrap');
+        var action = element.attr('data-event') || 'default';
+        actionWrapper.find('.confirm-box').show();
+        actionWrapper.removeClass().addClass('confirm-wrap ' + $.trim(action) + '-confirm');
+        actionWrapper.find('.confirm-box .' + $.trim(action)).focus();
+    }
+
+    function fadeOutConfirmBox($confirmWrap, classNames, callback) {
+        setTimeout(function () {
+            var runCallback = false;
+            for (var i in classNames) {
+                runCallback = runCallback || $confirmWrap.hasClass(classNames[i]);
+            }
+            if (runCallback) {
+                $confirmWrap.find('.confirm-box').fadeOut(1000, callback);
+            }
+        }, 3000);
+    }
+
+    pageWrap.on('click', '.confirm-box .no, .confirm-box .cancel', function (e) {
+        e.preventDefault()
+        if (!checkContentWrapper()) {
+            eventConfirm($(this));
+        }
+    });
+
+
+    $('.thread-list .user.name, .thread-list .user.faction').live('click', function (event) {
+        event.stopPropagation();
+    });
+
+    pageWrap.on('click', '.forums-vote-wrap .opt-out', function (event) {
+        event.preventDefault();
+
+        var parent = $(this).closest('.forums-vote-wrap');
+        var thread = parent.find('input[name=thread]').val();
+        getAction({
+            type: "post",
+            action: pageLink,
+            data: {
+                step: 'outPoll',
+                thread: thread
+            },
+            success: function (str) {
+                parent.html(str);
+            },
+            before: function () {
+
+            }
+        });
+    });
+
+    pageWrap.on('submit', '.forums-vote-wrap form', function (event) {
+        event.preventDefault();
+        var el = $(this);
+        var parent = el.closest('.forums-vote-wrap');
+        var votes = Array();
+        parent.find('.answers-wrap>li input').each(function () {
+            if ($(this).prop('checked')) {
+                votes.push($(this).val());
+            }
+        });
+        var thread = parent.find('input[name=thread]').val();
+        var poll = parent.find('input[name=poll]').val();
+        if (votes.length > 0) {
+            var data = {
+                ajax: true,
+                step: 'vote',
+                votes: votes,
+                thread: thread,
+                poll: poll
+            };
+
+            getAction({
+                type: "post", action: pageLink,
+                data: data,
+                success: function (str) {
+                    parent.html(str);
+                },
+                before: function () {
+
+                }
+            });
+        } else {
+            return;
+        }
+    });
+
+    function changeEditorFormInputs(opt) {
+        var parent = pageWrap.find('.forums-create-new');
+        if (opt.title) {
+            parent.find('.submitpost').val(opt.title.toUpperCase());
+            parent.find('.title-black').text(opt.title);
+        }
+
+        var editorForm = parent.find('form');
+
+        if (opt.action === 'reply') {
+            addHiddenInput(editorForm, 'action', { value: 'reply' })
+            removeHiddenInput(editorForm, 'quoted_post_id')
+            removeHiddenInput(editorForm, 'post_id')
+        }
+
+        if (opt.id) {
+            addHiddenInput(editorForm, 'post_id', { value: opt.id })
+            addHiddenInput(editorForm, 'action', { value: 'edit' })
+        }
+
+        if (opt.quotedPostId) {
+            addHiddenInput(editorForm, 'quoted_post_id', { value: opt.quotedPostId })
+        }
+
+        var postWrap = parent.find('.post-editor-wrap');
+        postWrap.prevAll('.post-quote-wrap').remove();
+
+        if (typeof opt.callback == 'function') {
+            opt.callback(postWrap);
+        }
+
+        if (opt.postTitle !== undefined) {
+            parent.find('.title-wrap').removeClass('hide').find('input').val(opt.postTitle);
+            parent.find('.sticky').removeClass('hide');
+            changePrettyCheckable(parent.find('.sticky').children(), opt.sticky);
+        } else {
+            parent.find('.title-wrap').addClass('hide').find('input').val('');
+
+            parent.find('.sticky').addClass('hide');
+            changePrettyCheckable(parent.find('.sticky').children(), false);
+        }
+    }
+
+
+    var disposeEditor
+    function setActionForm(opt, editor) {
+        var focusOnEditor = opt.focusOnEditor !== undefined ? opt.focusOnEditor : true;
+
+        changeEditorFormInputs(opt);
+
+        var editorWrap = $('#editor-wrapper');
+        var editorWrapEdit = $('#editor-wrapper-edit');
+
+        if (editorWrap.length) {
+            if (opt.action === 'edit') {
+                editorWrap.hide();
+                editorWrapEdit.show();
+                $('.forums-new-post-wrap').removeClass('hide');
+                if (disposeEditor) {
+                    disposeEditor()
+                }
+                disposeEditor = initEditor(
+                    '#editor-wrapper-edit',
+                    {
+                        content: opt.content,
+                        imageType: 'forumEditor',
+                        autosavePrefix: 'forumedit-' + queryStringToObj(hasher.getHash()).t,
+                        actionButtons: [{
+                            title: 'Edit',
+                            action: ({ getContent, setContent, clearDraft }) => {
+                                var $form = $('#editor-form')
+                                var data = {
+                                    step: $form.attr('data-action'),
+                                    action: 'edit',
+                                    post: getContent()
+                                }
+                                $form.find('[name]').each(function () {
+                                    data[$(this).prop('name')] = $(this).val();
+                                });
+                                $form.find('input[type=checkbox]').each(function () {
+                                    data[$(this).prop('name')] = $(this).prop('checked');
+                                });
+                                getAction({
+                                    type: "post",
+                                    action: pageLink,
+                                    data: data,
+                                    success: function (str) {
+                                        try {
+                                            window.localStorage.removeItem(getQuoteStoreID())
+                                            var msg = JSON.parse(str);
+                                            if (msg.success) {
+                                                setContent('')
+                                                clearDraft()
+                                                callbacks.push(function () {
+                                                    animateScroll(0, 'slow');
+                                                });
+                                                var q = getThisPageUrlParams();
+                        
+                                                if (q.p == 'reports') {
+                                                    resetHash('p=reports');
+                                                } else if (data['action'] == 'edit') {
+                                                    resetHash((function (obj) {
+                                                        var str = [];
+                                                        for (var p in obj)
+                                                            if (obj.hasOwnProperty(p)) {
+                                                                str.push(encodeURIComponent(p) + "=" + encodeURIComponent(obj[p]));
+                                                            }
+                                                        return str.join("&");
+                                                    })(q));
+                                                } else {
+                                                    resetHash(msg.link.replace('forums.php?', ''));
+                                                }
+                                            } else {
+                                                displayRequestMsg(msg);
+                                            }
+                                        } catch (e) {
+                                            console.warn(str, e);
+                                            var msgContent = $(str)
+                                            if (msgContent.find('.info-msg').length) {
+                                                displayRequestMsg({
+                                                    success: false,
+                                                    text: msgContent.find('.info-msg .msg').html()
+                                                })
+                                            }
+                                        }
+                                    },
+                                    before: function () {
+                                        displayRequestMsg();
+                                    }
+                                });
+                            }
+                        },
+                        {
+                            title: 'Cancel',
+                            action: ({ getContent, setContent, clearDraft }) => {
+                                var opt = {
+                                    action: 'reply',
+                                    content: getContent,
+                                    title: 'Reply'
+                                };
+                                changeEditorFormInputs(opt);
+                                setContent('');
+                                clearDraft();
+                                editorWrapEdit.hide();
+                                disposeEditor()
+                                editorWrap.show();
+                            },
+                            customClass: "wai-support t-blue h p0",
+                        }],
+                        customClass: 'editorRoot'
+                    }
+                );
+
+                if (focusOnEditor) {
+                    $('#main-input').focus();
+                    var target = pageWrap.find('#request-result-wrap');
+                    target.length && animateScroll(target.offset().top, 'slow');
+                }
+
+            } else if (opt.action === 'quote') {
+                editorWrap.prevAll('.post-quote-wrap').remove();
+
+                if (typeof opt.callback == 'function') {
+                    opt.callback(editorWrap);
+                }
+
+                if (focusOnEditor) {
+                    var target = pageWrap.find('#request-result-wrap');
+                    target.length && animateScroll(target.offset().top, 'slow');
+                }
+            }
+
+        }
+
+
+        editor = editor || tinyMCE.activeEditor;
+
+        if (editor) {
+            if (focusOnEditor) {
+                animateScroll($(document).height(), 'slow');
+            }
+
+            if (opt.action === 'edit') {
+                editorOptionsStorage.set(editor.id, 'edit', opt.id);
+            } else if (opt.action === 'quote') {
+                editorOptionsStorage.set(editor.id, 'quote', opt.id);
+            } else {
+                editorOptionsStorage.clear(editor.id);
+            }
+        }
+    };
+
+    function buildQuoteTemplate(quote, reply, isChecked) {
+        return '<div class="post-quote-wrap p10" style="display:none;">' +
+            quote +
+            '<div class="show-more m-top10">' +
+            '<a class="t-blue h remove-quote' + (reply ? ' remove-quote-reply' : '') + '" href="#">Remove quote</a>' +
+            '<div class="single-quote" style="display: inline-block;">' +
+            '<div class="choice-container">' +
+            '<input id ="single-quote" class="checkbox-css" type="checkbox" name="singleQuote" ' + (isChecked ? 'checked="checked"' : '') + '/>' +
+            '<label for="single-quote" class="marker-css">Single quote</label>' +
+            '</div>' +
+            '</div>' +
+            '</div>' +
+            '</div>'
+    };
+    
+    function stripColorboxClass(content) {
+        var tempDiv = $('<div></div>').html(content);
+    
+        tempDiv.find('.full.cboxElement').each(function() {
+            $(this).removeClass('cboxElement');
+        });
+    
+        return tempDiv.html();
+    }
+
+    pageWrap.on('click', '.forums-thread-wrap .forums-thread .action-wrap > li.edit', function (event) {
+        event.preventDefault();
+        var $el = $(this);
+        if ($el.hasClass('disabled'))
+            return;
+
+        var postWrap = $el.closest('.post-wrap');
+        var postContent = postWrap.find('.post-container .post').html();
+
+        if (!$el.closest('.forums-thread-wrap').hasClass('live-posts')) {
+            var originalContent = postWrap.find('.post-container .origin-post-content');
+            var opt = {
+                action: 'edit',
+                content: stripColorboxClass(postContent),
+                originContent: originalContent.val(),
+                title: 'Edit',
+                id: $el.attr('data-id'),
+                callback: function (that) {
+                    addQuoteContainer(postWrap, that, $el.attr('data-single-quote'));
+                    addPollContainer(postWrap, that)
+                },
+            };
+            if ($el.attr('data-topic') === '1') {
+                opt.postTitle = $el.closest('.forums-thread').find('#topic-title [data-title]').text().replace(/^\s+|\s+$/g, '');
+                opt.sticky = $el.attr('data-sticky');
+                opt.single = $el.attr('data-single-quote');
+            }
+
+            if (!isOperaMini()) {
+                setActionForm(opt);
+            }
+            if ($el.closest('.ad').length) {
+                $('.edit-ann-wrap').removeClass('hide');
+            }
+        }
+
+
+    });
+
+    pageWrap.on('click', '.forums-new-post-wrap .show-more a.remove-quote', function (event) {
+        event.preventDefault();
+        var form = $(this).closest('form');
+        if ($(this).hasClass('remove-quote-reply')) {
+            removeHiddenInput(form, 'quoted_post_id');
+        } else {
+            form.find('input[name=remove_quote]').val('1');
+        }
+
+        $(this).closest('.post-quote-wrap').fadeOut(500, function () {
+            $(this).remove()
+        })
+
+        window.localStorage.removeItem(getQuoteStoreID())
+    });
+
+    pageWrap.on('click', '.forums-thread .action-wrap > li.quote', function (event) {
+        if (isOperaMini()) {
+            return false;
+        }
+        var $el = $(this);
+        event.preventDefault();
+
+        var $posterWrap = $el.parents('.column-wrap').find('.poster-wrap');
+        $('#editor-form input[name=remove_quote]').val('0');
+        var posterName = $posterWrap.find('.poster-name').text();
+        var posterID = $posterWrap.find('.poster-id').text().replace(/\D/g, '');;
+        $el.parents('.post-wrap').find('.post .delimiter-ccc').remove();
+
+        var quotePayload = {
+            posterID,
+            postID: $el.attr('data-id'),
+            posterName,
+            content: $el.parents('.post-wrap').find('.post').html()
+        }
+
+        try {
+            window.localStorage.setItem(getQuoteStoreID(), JSON.stringify(quotePayload))
+        } catch (e) {
+            console.info('Storage quota exceeded')
+        }
+
+        setQuoteContent({
+            posterID: quotePayload.posterID,
+            postID: quotePayload.postID,
+            posterName: quotePayload.posterName,
+            content: quotePayload.content,
+            animType: 'slow'
+        })
+
+        bodyTinymceScrollDown();
+    });
+
+    function createReportEvent(devent, func) {
+        pageWrap.on('click', '.confirm-wrap.report-actions [data-event=' + devent + ']', function (e) {
+            e.preventDefault();
+            func.call(this, e)
+        });
+    };
+
+    function hideReportConfirmBox(element) {
+        element.closest('.report-actions').find('.confirm-box>li').hide();
+        element.closest('.report-actions').find('.action-wrap>span.t-gray-3').removeClass('t-gray-3').addClass('t-blue');
+        element.removeClass('t-blue').addClass('t-gray-3');
+    };
+
+    pageWrap.on('click', '.report-actions .confirm-box>li .cancel-r', function (e) {
+        e.preventDefault();
+        $(this).closest('.confirm-box>li').hide();
+        $(this).closest('.report-actions').find('.action-wrap>span.t-gray-3').removeClass('t-gray-3').addClass('t-blue');
+    });
+
+    pageWrap.on('click', '.report-actions .confirm-box>li.jail-r .btn-wrap', function (e) {
+        e.preventDefault();
+        var parent = $(this).closest('.post-wrap');
+        var box = $(this).closest('.confirm-box>li.jail-r');
+        var data = {
+            step: 'jailUser',
+            userID: parent.attr('data-reporter'),
+            reason: box.find('[name=reason]').val(),
+            notereason: box.find('[name=notereason]').val()
+        };
+        getAction({
+            type: "post",
+            action: 'jail.php',
+            data: data,
+            success: function (str) {
+                var msg = JSON.parse(str);
+                if (msg.success) {
+                    box.find('.ask').hide().next().show().addClass('t-green').text(msg.text);
+                } else {
+                    box.find('.ask').hide().next().show().addClass('t-red').text(msg.text);
+                }
+                setTimeout(function () {
+                    box.parent().fadeOut(500, function () {
+                        box.find('.result').hide().prev().show().find('.no').trigger('click');
+                    });
+                }, 2000);
+            },
+            before: function () {
+            }
+        });
+    });
+
+    pageWrap.on('click', '.report-actions .confirm-box>li.jail-a .btn-wrap', function (e) {
+        e.preventDefault();
+        var parent = $(this).closest('.post-wrap');
+        var box = $(this).closest('.confirm-box>li.jail-r');
+        var data = {
+            step: 'jailUser',
+            userID: parent.attr('data-author'),
+            reason: box.find('[name=reason]').val(),
+            notereason: box.find('[name=notereason]').val()
+        };
+        getAction({
+            type: "post",
+            action: 'jail.php',
+            data: data,
+            success: function (str) {
+                var msg = JSON.parse(str);
+                if (msg.success) {
+                    box.find('.ask').hide().next().show().addClass('t-green').text(msg.text);
+                } else {
+                    box.find('.ask').hide().next().show().addClass('t-red').text(msg.text);
+                }
+                setTimeout(function () {
+                    box.parent().fadeOut(500, function () {
+                        box.find('.result').hide().prev().show().find('.no').trigger('click');
+                    });
+                }, 2000);
+            },
+            before: function () {
+            }
+        });
+    });
+
+    pageWrap.on('click', 'form #bbc-editor-wrapper .submit-editor-button', function () {
+        window.sidebarIconsLiveTime = 0;
+        window.localStorage.removeItem(getQuoteStoreID())
+    })
+
+    pageWrap.on('click', '.report-actions .confirm-box>li.warn-a .btn-wrap', function (e) {
+        e.preventDefault();
+        var parent = $(this).closest('.post-wrap');
+        var box = $(this).closest('.confirm-box>li.jail-r');
+        var data = {
+            step: 'warnUser',
+            sendto: parent.attr('data-author'),
+            msg: box.find('[name=msg]').val(),
+            note: box.find('[name=note]').val()
+        };
+        getAction({
+            type: "post",
+            action: 'jail.php',
+            data: data,
+            success: function (str) {
+                var msg = JSON.parse(str);
+                if (msg.success) {
+                    box.find('.ask').hide().next().show().addClass('t-green').text(msg.text);
+                } else {
+                    box.find('.ask').hide().next().show().addClass('t-red').text('Error!');
+                }
+                setTimeout(function () {
+                    box.parent().fadeOut(500, function () {
+                        box.find('.result').hide().prev().show().find('.no').trigger('click');
+                    });
+                }, 2000);
+            },
+            before: function () {
+            }
+        });
+    });
+
+    pageWrap.on('click', '.report-actions .confirm-box>li.delete-r .yes', function (e) {
+        e.preventDefault();
+        var parent = $(this).closest('.post-wrap');
+        var box = $(this).closest('.confirm-box>li.delete-r');
+        var data = {
+            step: 'deleteReport',
+            post_id: parent.attr('data-post')
+        };
+        getAction({
+            type: "post",
+            action: pageLink,
+            data: data,
+            success: function (str) {
+                var msg = JSON.parse(str);
+
+                if (msg.success) {
+                    box.find('.ask').hide().next().show().addClass('t-green').text(msg.text);
+                } else {
+                    box.find('.ask').hide().next().show().addClass('t-red').text('Error!');
+                }
+
+                setTimeout(function () {
+                    var pli = parent.closest('.thread-list>li');
+                    pli.fadeOut(500, function () {
+                        if (pli.hasClass('last')) {
+                            pli.prev().addClass('last').find('.post-delimiter').remove();
+                        }
+                        pli.remove();
+                    });
+                }, 500);
+            },
+            before: function () {
+            }
+        });
+    });
+
+    pageWrap.on('click', '.report-actions .confirm-box>li.lock-t .yes', function (e) {
+        e.preventDefault();
+        var parent = $(this).closest('.post-wrap');
+        var box = $(this).closest('.confirm-box>li.lock-t');
+        var data = {
+            step: 'lockthread',
+            thread_id: parent.attr('data-thread')
+        };
+        getAction({
+            type: "post",
+            action: pageLink,
+            data: data,
+            success: function (str) {
+                var msg = JSON.parse(str);
+
+                if (msg.success) {
+                    //box.find('.ask').hide().next().show().addClass('t-green').text(msg.text);
+                    if (!msg.status) {
+
+                        parent.find('.link-thread>.h span').addClass('t-red');
+                        parent.find('.report-actions .action-wrap [data-event=lock-t]').text('[Lock Thread]');
+                        box.find('.ask .confirm').text('Are you sure you would like to lock this post?');
+                        box.find('.ask').hide().next().show().addClass('t-green').text('Post is successfully unlocked!');
+                    } else {
+                        parent.find('.link-thread>.h span').removeClass('t-red');
+                        parent.find('.report-actions .action-wrap [data-event=lock-t]').text('[Unlock Thread]');
+                        box.find('.ask .confirm').text('Are you sure you would like to unlock this post?');
+                        box.find('.ask').hide().next().show().addClass('t-green').text('Post is successfully locked!');
+                    }
+                } else {
+                    box.find('.ask').hide().next().show().addClass('t-red').text('Error!');
+                }
+            },
+            before: function () {
+            }
+        });
+    });
+
+    pageWrap.on('click', '.report-actions .confirm-box>li.move-t .btn-wrap', function (e) {
+        var el = $(this);
+        var wrap = el.closest('.post-wrap');
+        var parent = el.closest('.confirm-box>li');
+        var thread = wrap.attr('data-thread');
+        if (thread) {
+            var forum = parent.find('.forum-category').val();
+            var data = {
+                step: 'move',
+                thread: thread,
+                forum: forum
+            };
+            getAction({
+                type: "post",
+                action: pageLink,
+                data: data,
+                success: function (str) {
+                    var msg = JSON.parse(str);
+                    if (msg.success) {
+                        resetHash('p=reports');
+                    }
+                },
+                before: function () {
+                }
+            });
+        }
+    });
+
+    createReportEvent('edit', function (e) {
+        var parent = $(this).closest('.action-wrap');
+        var dataParent = parent.closest('.post-wrap');
+
+        var editor = parent.closest('.forums-thread-wrap').nextAll('.edit-ann-wrap');
+
+        editor.find('input[name=thread_id]').val(dataParent.attr('data-thread'));
+        editor.find('input[name=forum_id]').val(dataParent.attr('data-forum'));
+        editor.find('input[name=post_id]').val(dataParent.attr('data-post'));
+        editor.removeClass('hide');
+
+
+        if (tinymce.activeEditor) {
+            tinymce.activeEditor.execCommand('mceSetContent', true, dataParent.closest('.post-wrap').find('.post').html());
+            animateScroll($(document).height(), 'slow');
+        }
+
+        cleanLocalAreaContent(tinyMCE.activeEditor.id);
+    });
+
+    createReportEvent('delete', function () {
+        hideReportConfirmBox($(this));
+        var confirmBox = $(this).closest('.action-wrap').next();
+        confirmBox.children('.delete').show();
+    });
+
+    createReportEvent('delete-r', function () {
+        hideReportConfirmBox($(this));
+        var confirmBox = $(this).closest('.action-wrap').next();
+        confirmBox.children('.delete-r').show();
+    });
+
+    createReportEvent('lock-t', function () {
+        hideReportConfirmBox($(this));
+        var confirmBox = $(this).closest('.action-wrap').next();
+        confirmBox.children('.lock-t').show();
+    });
+
+    createReportEvent('move-t', function () {
+        hideReportConfirmBox($(this));
+        var confirmBox = $(this).closest('.action-wrap').next();
+        confirmBox.children('.move-t').show();
+    });
+
+    createReportEvent('jail-r', function () {
+        hideReportConfirmBox($(this));
+        var confirmBox = $(this).closest('.action-wrap').next();
+        confirmBox.children('.jail-r').show();
+    });
+
+    createReportEvent('jail-a', function () {
+        hideReportConfirmBox($(this));
+        var confirmBox = $(this).closest('.action-wrap').next();
+        confirmBox.children('.jail-a').show();
+    });
+
+    createReportEvent('kick-a', function () {
+        hideReportConfirmBox($(this));
+        var confirmBox = $(this).closest('.action-wrap').next();
+        confirmBox.children('.kick-a').show();
+    });
+
+    createReportEvent('warn-a', function () {
+        hideReportConfirmBox($(this));
+        var confirmBox = $(this).closest('.action-wrap').next();
+        confirmBox.children('.warn-a').show();
+    });
+
+    createReportEvent('ban-a', function () {
+        hideReportConfirmBox($(this));
+        var confirmBox = $(this).closest('.action-wrap').next();
+        confirmBox.children('.ban').show();
+    });
+
+    function getUpadates(source, wrap, msg) {
+        var template = Handlebars.templates[source];
+        if (template && wrap.length) {
+
+            wrap.find('.panel').html(template(msg));
+            wrap.find('.panel').children().last().addClass('last');
+            var total = msg.total;
+            wrap.find('.title-toggle .qty').text('(' + total + ')');
+            if (total == 0)
+                wrap.find('.title-toggle .mark-as-read-action').hide();
+            else
+                wrap.find('.title-toggle .mark-as-read-action').show();
+        }
+    };
+
+    function callUpdateConstruct() {
+        var data = {};
+        if (mainUpdateWrap !== null) {
+            data = {
+                wrap: {
+                    my: mainUpdateWrap.find('#my-threads'),
+                    subs: mainUpdateWrap.find('#subs-threads'),
+                    feed: mainUpdateWrap.find('#feed-threads'),
+                    pop: mainUpdateWrap.find('#pop-threads'),
+                    friends: mainUpdateWrap.find('#friends-threads')
+
+                },
+                source: {
+                    pop: 'update-pop-source',
+                    subs: 'update-subs-source',
+                    my: 'update-my-source-persistent',
+                    feed: 'update-feed-source',
+                    friends: 'update-friends-source'
+                }
+            };
+        }
+        if (mainContentLoadState.update && mainContentLoadState.main) {
+            var msg = JSON.parse(mainContentLoadState.data);
+            getUpadates(data.source.my, data.wrap.my, msg.my);
+            getUpadates(data.source.subs, data.wrap.subs, msg.subs);
+            getUpadates(data.source.pop, data.wrap.pop, msg.pop);
+            getUpadates(data.source.feed, data.wrap.feed, msg.feed);
+            getUpadates(data.source.friends, data.wrap.friends, msg.friends);
+            $(window).resize();
+        }
+    };
+
+
+    pageWrap.on('click', '.forums-committee-wrap a, .forum-list a', function (event) {
+        event.stopPropagation();
+    });
+
+    var sidebarPageBanners = {
+        forums: false,
+        newthread: false,
+        threads: true,
+        search: true,
+        main: false,
+        livePosts: false
+    };
+
+    function isTravelling() {
+        //var travellingLogos = ".mexico, .hawaii, .south-africa, .japan, .china, .argentina, .switzerland, .canada, .uk, .uae, .cayman-islands";
+        return $('.content-wrapper').hasClass('travelling') && !$('.computer-frame-wrap').length;
+    };
+
+    function checkForumSidebar(step) {
+        var $header = $('.header'),
+            isMain = step ? (step == "main") : $('.forums-main-wrap').length,
+            sidebarClass = !isTravelling() ? 'logged-out-sidebar' : '',
+            $forumsMainBar = $('.forums-main-bar');
+
+        if (isTravelling()) {
+            if (isMain || getBrowserWidth() <= getMinTabletSize()) {
+                $forumsMainBar.hide();
+            } else {
+                $forumsMainBar.show();
+                $('.content-wrapper').removeClass('logged-out').addClass('m-left20 ' + sidebarClass).find('.join-btn').hide();
+            }
+        } else if (!isMain && !isTravelling()) {
+            $('.logged-out-sidebar').removeClass('m-left20').addClass('logged-out');
+            $('.forums-main-bar').addClass('logged-out');
+        }
+    }
+
+    function successLoadFunc(str, step, getRequest) {
+        $('.mce-menu,.mce-panel').remove();
+        if (!$('.header').hasClass('logged-out')) {
+            $('.content-wrapper').addClass('m-left20');
+        }
+
+        if (str) {
+            pageWrap.html(str);
+        }
+        if (step === 'main') {
+            mainUpdateWrap = $('.forums-main-wrap .update-wrap');
+            mainContentLoadState.main = true;
+        }
+        $('title:first').html(pageWrap.find('title').html());
+        afterLoadFunc[step](getRequest);
+        checkForumSidebar(step);
+        checkTopPageLinksState($('.links-top-wrap'));
+        tutorialSwitcher();
+
+        for (var i in callbacks) {
+            callbacks[i]();
+        }
+        callbacks = Array();
+        updateComputerScroll();
+
+        $(window).resize();
+
+    };
+
+    function beforeLoadRequestFunction(step, nextOptions, prevOptions) {
+
+        var setObj = {
+            forums: function (opt) {
+                if (opt.sp === undefined && opt.f === 19) {
+                    opt.sp = specialBtnCookie('get');
+                }
+                var nextHash = $.param(opt);
+
+                if (hasher.getHash().replace(/^!/, '') !== nextHash)
+                    hasher.resetHash(nextHash);
+
+                return opt;
+            },
+            "threads": function (nextO, prevO) {
+                var mainLinkElement = pageWrap.find('.content-title .back-main');
+                var oldLink = mainLinkElement.attr('href');
+
+                if (mainLinkElement.get(0)) {
+                    var newLink = mainLinkElement.get(0).pathname + '?' + $.param(prevO);
+
+                    mainLinkElement.attr('href', newLink);
+                    mainLinkElement.find('span:last').html('Back to Forum');
+                } else {
+
+                }
+
+                return nextO
+            }
+        };
+
+        if (typeof setObj[step] == 'function') {
+            return setObj[step](nextOptions, prevOptions);
+        } else {
+            return nextOptions;
+        }
+    };
+
+    $('body').on('hover', '[title="Adobe Flash Player"]', function () {
+
+        var $el = $(this);
+
+        if ($el.attr('aria-describedby')) {
+            var tooltipIDs = "#" + $el.attr('aria-describedby').split(' ').join(', #');
+            $(tooltipIDs).remove();
+        }
+
+        $el.removeAttr('aria-describedby title');
+    });
+
+    function getQuoteStoreID() {
+        var formThread = document.querySelector('#editor-form input[name="thread_id"]');
+
+        if (!formThread || !formThread.value) {
+            console.warn('Missed ID for Quote saving')
+
+            return null
+        }
+
+        return QUOTE_STORE_ID + '_' + formThread.value
+    }
+
+    function createQuoteTemplate(posterID, posterName, postContent) {
+        return`
+            <div class="unreset editor-content">
+                <div class="quote unreset">
+                    <blockquote class="post-quote">
+                        <p class="author-quote">
+                            <strong>
+                                <a class="t-blue h" href="/profiles.php?XID=${posterID.replace(/\|/g, "")}">
+                                    ${posterName} [${posterID}]
+                                </a>
+                            </strong>
+                        </p>
+                        <div class="quote-post">
+                            ${postContent}
+                        </div>
+                    </blockquote>
+                </div>
+                <p></p>
+            </div>
+        `;
+    }
+
+    function setQuoteContent(data) {
+        if (!data.posterID) {
+            return
+        }
+
+        var postContent = data.content && data.content.replace('\n', '');
+        var quote = createQuoteTemplate(data.posterID, data.posterName, postContent)
+
+        setActionForm({
+            action: 'quote',
+            quotedPostId: data.postID,
+            callback: function (that) {
+                if (that.focusEditor) {
+                    that.focusEditor()
+                }
+                that.before(buildQuoteTemplate(quote, true, false));
+                that.prev().fadeIn(data.animType, function () {
+                    $(this).removeClass('hide');
+                });
+            }
+        });
+    }
+
+    function loadContent(step, nextOptions, prevOptions) {
+
+        var data = beforeLoadRequestFunction(step, nextOptions, prevOptions) || {};
+
+        data.title = true;
+        data.step = step;
+
+        if (step === 'main') {
+            mainContentLoadState.main = false;
+            getAction({
+                type: "post", action: pageLink,
+                data: { step: 'updates' },
+                success: function (str) {
+                    mainContentLoadState.update = true;
+                    mainContentLoadState.data = str;
+                    callUpdateConstruct();
+                },
+                before: function () {
+                    mainContentLoadState.update = false;
+                }
+            });
+        }
+
+        getAction({
+            type: "post",
+            action: pageLink,
+            data: data,
+            success: function (str) {
+                successLoadFunc(str, step, false);
+                $('[title="Adobe Flash Player"]').removeAttr('title');
+                if (isDesktopMedia()) {
+                    var $forumsThreadTitle = $('.forums-thread .title');
+                    $forumsThreadTitle.attr('title', '');
+                    initializeTooltip($forumsThreadTitle, 'white-tooltip');
+                }
+
+                var cachedData = window.localStorage.getItem(getQuoteStoreID())
+                var cachedQuote = cachedData && JSON.parse(cachedData)
+
+                if (cachedQuote) {
+                    addHiddenInput(
+                        $.find('#editor-form'),
+                        'quoted_post_id',
+                        {
+                            value: cachedQuote.postID
+                        }
+                    )
+
+                    setQuoteContent({
+                        posterID: cachedQuote.posterID,
+                        posterName: cachedQuote.posterName,
+                        content: cachedQuote.content,
+                        postID: cachedQuote.postID,
+                        animType: 'fast'
+                    });
+                }
+            },
+            before: function () {
+                checkForumSidebar(step);
+                $(window).scrollTop(0);
+                pageWrap.find('.content-title').nextAll().remove().after('');
+                informationMessageTemplate(pageWrap.find('.content-title'), false, false, '');
+                window.sidebarIconsLiveTime = 0;
+            }
+        });
+    }
+
+    var first_load = true;
+
+    function replaceHistoryState(hash) {
+        if (!location.search || window.location.pathname.split('/')[1] === 'laptop.php')
+            return;
+
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState({}, document.title, 'forums.php#' + hasher.prependHash + hash);
+        }
+    }
+
+    function handleChanges(newHash, oldHash) {
+        var oldParams = queryStringToObj(oldHash),
+            newParams = queryStringToObj(newHash);
+
+        if (newParams.p === 'treads') {
+            newParams.p = 'threads';
+        }
+        if (oldHash !== newHash || first_load) {
+            var body = $('body');
+            body.children('#cboxOverlay, #colorbox').hide();
+
+            afterChangeRouter(oldParams.p);
+
+            if (hasher.loadOnHashContent) {
+                if (newParams.p !== undefined && afterLoadFunc[newParams.p] !== undefined) {
+                    loadContent(newParams.p, newParams, oldParams);
+                    replaceHistoryState(newHash);
+                } else {
+                    var search = getRequestParam('p');
+                    if (!(search && !location.hash)) {
+                        loadContent('main', undefined, oldParams);
+                    } else {
+                        if (getRequestParam('p')) {
+                            successLoadFunc(null, search, true);
+                        }
+                    }
+                    replaceHistoryState(location.search.substr(1));
+                }
+                first_load = false;
+            }
+        }
+        hasher.loadOnHashContent = true;
+    }
+
+
+    hasher.init();
+    hasher.changed.add(handleChanges);
+    handleChanges(hasher.getHash(), '');
+
+    pageWrap.on('click', 'a:not(".show-panels"):not(.mce-content-body *)', function (event) {
+        // ignore click on user icons, related to https://dev-www.torn.com/forums.php#/p=threads&f=19&t=16092276&b=0&a=0
+        if (!$(this).parent().hasClass('iconShow')) {
+            event.stopPropagation();
+        }
+
+        var anchor = $(this).attr('href');
+
+        if (this.ctrlKey) {
+            this.ctrlKey = false;
+            return;
+        }
+        if (event.ctrlKey || event.metaKey) {
+            return;
+        }
+
+        if ($(this).hasClass('full')) {
+            return;
+        }
+
+        if (anchor && anchor.match(/#[a-zA-Z0-9]+/)) {
+            var ob = pageWrap.find('.post a[id=' + anchor.replace('#', '') + ']:first');
+            if (ob.length) {
+                event.preventDefault();
+                animateScroll(ob.offset().top, 2000);
+            }
+            return;
+        }
+
+        var $this = $(this),
+            linkElement = $this.get(0);
+        var href = $this.attr('href');
+        // console.dev(href);
+
+        if (linkElement && linkElement.pathname) {
+            var pathIndex = linkElement.pathname.indexOf('forums.php');
+            if (pathIndex > -1 && pathIndex < 2 && href.indexOf('forums.php') > -1) {
+                event.preventDefault();
+
+                if (linkElement.classList.contains('page-number')) {
+                    window.localStorage.removeItem(getQuoteStoreID())
+                }
+
+                replaceURLstring(function () {
+                    var hash = linkElement.hash.replace('/', '') || "";
+                    if (hash.indexOf('/') === 1) {
+                        hash = hash.slice(2)
+                    }
+                    hasher.setHash(linkElement.search.slice(1) || hash);
+                });
+            }
+        }
+    });
+
+    //copy link
+    pageWrap.on('click', '.copy-post-link button', function () {
+        var $this = $(this).closest('.copy-post-link');
+        $this.addClass('copied');
+        var postID = $this.closest('.thread-list > li').data('id');
+        var hash = location.hash.replace(/[\#!\/]/gi, '');
+        var q = queryStringToObj(hash);
+        q.to = postID;
+        var link = location.origin + location.pathname + '#' + hasher.prependHash + $.param(q);
+        copyTextToClipboard(link);
+        $(this).attr('aria-label', $this.find('.link-copied').text());
+    });
+
+    pageWrap.on('mouseenter blur', '.copy-post-link button', function () {
+        var $this = $(this).closest('.copy-post-link');
+        $this.removeClass('copied');
+        $(this).attr('aria-label', $this.find('.copy-link').text());
+    });
+
+    $(window).resize(function (e) {
+
+        var $forumsThreadTitle = $('.forums-thread .title');
+        var forumsThreadTitle = ($forumsThreadTitle.length == 1) ? $forumsThreadTitle.html() : '';
+
+        $('.issue-status').removeClass('act');
+        //Main page
+        if (getBrowserWidth() <= getMinTabletSize()) {
+            $('#forums-sidebar-wrap').hide();
+        } else {
+            $('#forums-sidebar-wrap').show();
+        }
+
+        if (getBrowserWidth() <= getMaxTabletSize() && !isInitTabsForums) {
+            $forumsTabs.tabs({
+                active: 0,
+            });
+            isInitTabsForums = true;
+
+            $searchBox.hide();
+            $updatesBox.hide();
+            $forumsBox.show();
+
+            if (forumsThreadTitle) {
+                $forumsThreadTitle.attr('title', forumsThreadTitle);
+            }
+        }
+
+        if (getBrowserWidth() > getMaxTabletSize() && isInitTabsForums) {
+            isInitTabsForums = false;
+
+            $searchBox.show();
+            $updatesBox.show();
+            $forumsBox.show();
+
+            $forumsThreadTitle.attr('title', '');
+            initializeTooltip($forumsThreadTitle, 'white-tooltip');
+        }
+        //initializeUpdatesScrollbar();
+
+        //forums list page
+        initAccordion();
+        initAccordionT();
+
+        var isSidebarHidden = false;
+        $(window).resize(function () {
+            if (getBrowserWidth() <= getMinTabletSize() && !isSidebarHidden) {
+                checkForumSidebar();
+                isSidebarHidden = true;
+            }
+
+            if (getBrowserWidth() > getMinTabletSize() && isSidebarHidden) {
+                checkForumSidebar();
+                isSidebarHidden = false;
+            }
+        });
+
+
+    }).resize();
+
+    isolatedNativeScroll('.forums-main-wrap .dashboard .cont-gray');
+});
