@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Torn Forum Post Extractor for Discord
 // @namespace   https://www.torn.com/
-// @version     0.87
+// @version     0.91
 // @description Extracts Torn forum posts and formats them for Discord
 // @author      GNSC4 [268863]
 // @include     https://www.torn.com/forums.php*
@@ -63,9 +63,11 @@
 
                     // Author Extraction:
                     let author = "Unknown Author";
+                    let authorContainer;
                     try {
                         const authorElement = await waitForAuthorElement(post);
                         if (authorElement) {
+                            authorContainer = authorElement.parentElement.parentElement.parentElement;
                             const href = authorElement.getAttribute('href');
                             const match = href.match(/XID=(\d+)/);
                             let authorName = authorElement.textContent.trim();
@@ -94,23 +96,15 @@
 
                     // Timestamp Extraction:
                     let timestamp = "Unknown Timestamp";
-                    const timestampElement = post.querySelector(".post-time"); // Get timestamp from within the post-container
-                    if (timestampElement) {
-                      const rawTimestamp = timestampElement.textContent.trim();
-                      const timestampRegex =
-                        /Posted on (\d{2}:\d{2}:\d{2}) - (\d{2}\/\d{2}\/\d{2})/;
-                      const match = rawTimestamp.match(timestampRegex);
-                      if (match) {
-                        const time = match[1];
-                        const date = match[2];
-                        const year = date.substring(6);
-                        const month = date.substring(3, 5);
-                        const day = date.substring(0, 2);
-                        timestamp = dayjs(
-                          `${year}-${month}-${day}T${time}`,
-                          "YY-MM-DDTHH:mm:ss"
-                        ).toISOString();
-                      }
+                    const postLi = post.closest('li');
+                    if (postLi) {
+                        const timestampSelector = `#forums-page-wrap > div.forums-thread-wrap.view-wrap > div > ul > li:nth-child(${Array.from(postLi.parentElement.children).indexOf(postLi) + 1}) > div.column-wrap > div.post-wrap.left > div.post-container.editor-content.bbcode-content > div.time-wrap > div`;
+                        const timestampElement = document.querySelector(timestampSelector);
+                        if (timestampElement) {
+                            const rawTimestamp = timestampElement.textContent.trim();
+                            logDebug("rawTimestamp:", rawTimestamp);
+                            timestamp = dayjs(rawTimestamp, 'Posted on HH:mm:ss - DD/MM/YY [(]X days ago[)]').toISOString();
+                        }
                     }
 
                     logDebug("Extracted post data:", { author, content, timestamp });
@@ -289,23 +283,25 @@
             const checkAuthor = () => {
                 // Get the li element that is the parent of the post-container
                 const postLi = post.closest('li');
+                logDebug("postLi:", postLi);
 
                 if (postLi) {
-                  // Construct a selector using the index of the li element
-                  const authorSelector = `#forums-page-wrap > div.forums-thread-wrap.view-wrap > div > ul > li:nth-child(${Array.from(postLi.parentElement.children).indexOf(postLi) + 1}) > div.column-wrap > div.poster-wrap.left > div.poster.white-grad > a.user.name`;
+                    // Construct a selector using the index of the li element
+                    const authorSelector = `#forums-page-wrap > div.forums-thread-wrap.view-wrap > div > ul > li:nth-child(${Array.from(postLi.parentElement.children).indexOf(postLi) + 1}) > div.column-wrap > div.poster-wrap.left > div.poster.white-grad > a.user.name`;
 
-                  // Find the author element using the dynamic selector
-                  const authorElement = document.querySelector(authorSelector);
+                    // Find the author element using the dynamic selector
+                    const authorElement = document.querySelector(authorSelector);
+                    logDebug("authorElement:", authorElement);
 
-                  if (authorElement) {
-                    const authorName = authorElement.textContent.trim();
+                    if (authorElement) {
+                        const authorName = authorElement.textContent.trim();
 
-                    if (authorName !== "" && !/^\[\d+\]$/.test(authorName)) {
-                        logDebug("Author element found:", authorElement);
-                        resolve(authorElement);
-                        return;
+                        if (authorName !== "" && !/^\[\d+\]$/.test(authorName)) {
+                            logDebug("Author element found:", authorElement);
+                            resolve(authorElement);
+                            return;
+                        }
                     }
-                  }
                 }
 
                 if (Date.now() - startTime > timeout) {
@@ -345,7 +341,7 @@
     }
 
     /**
-    * Processes a post's content, handling nested quotes recursively.
+     * Processes a post's content, handling nested quotes recursively.
      * @param {HTMLElement} element The element to process.
      * @returns {Promise<string>} The processed content.
      */
