@@ -46,8 +46,8 @@
         logDebug("waitForAuthorElement called with post:", post);
         return new Promise((resolve) => {
             const observer = new MutationObserver((mutations, obs) => {
-                const authorElement = post.closest('.thread-list').querySelector(
-                    '.user.left, .heading-name, .post-container .user-name'
+                const authorElement = post.querySelector(
+                    '.user.left a[href*="profiles.php"], .post-container .user-name a[href*="profiles.php"]'
                 );
                 if (authorElement) {
                     const authorName = authorElement.textContent.trim();
@@ -69,7 +69,7 @@
 
             setTimeout(() => {
                 observer.disconnect();
-                logDebug("No author element found. Assigning default value.");
+                logError("Timeout waiting for author element in post:", post.innerHTML);
                 resolve(null);
             }, 10000);
         });
