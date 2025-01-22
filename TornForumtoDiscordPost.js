@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Forum Post Extractor for Discord
 // @namespace    https://www.torn.com/
-// @version      0.76
+// @version      0.77
 // @description  Extracts Torn forum posts and formats them for Discord
 // @author       GNSC4 [268863]
 // @include      https://www.torn.com/forums.php*
