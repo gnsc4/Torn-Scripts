@@ -32,6 +32,24 @@
     let observer = null; // Global variable for the mutation observer.
     let highlightKeywordsRegex = null; // Global variable for precompiled regex for keyword highlighting.
 
+    /**
+     * Logs a debug message to the console if debug mode is enabled.
+     * @param {...any} args The arguments to log.
+     */
+    function logDebug(...args) {
+        if (config.debugMode) {
+            console.log(...args);
+        }
+    }
+
+    /**
+     * Logs an error message to the console.
+     * @param {...any} args The arguments to log.
+     */
+    function logError(...args) {
+        console.error(...args);
+    }
+
     // --- Functions ---
 
     /**
