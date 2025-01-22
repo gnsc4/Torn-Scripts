@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Forum Post Extractor for Discord
 // @namespace    https://www.torn.com/
-// @version      0.75
+// @version      0.76
 // @description  Extracts Torn forum posts and formats them for Discord
 // @author       GNSC4 [268863]
 // @include      https://www.torn.com/forums.php*
@@ -258,41 +258,41 @@
     }
 
     /**
-     * Waits for the author element within a post to be fully loaded and visible.
-     * @param {HTMLElement} post The post element to search within.
-     * @returns {Promise<HTMLElement>} A promise that resolves with the author element when it's found and visible.
-     */
+    * Waits for the author element within a post to be fully loaded and visible.
+    * @param {HTMLElement} post The post element to search within.
+    * @returns {Promise<HTMLElement>} A promise that resolves with the author element when it's found and visible.
+    */
     async function waitForAuthorElement(post) {
-        logDebug("waitForAuthorElement called with post:", post);
-        return new Promise((resolve) => {
-            const startTime = Date.now();
-            const timeout = 10000; // 10 seconds timeout
+    logDebug("waitForAuthorElement called with post:", post);
+    return new Promise((resolve) => {
+        const startTime = Date.now();
+        const timeout = 10000; // 10 seconds timeout
 
-            const checkAuthor = () => {
-                const authorElement = post.querySelector('.user.left a[href*="profiles.php"]') ||
-                                    post.querySelector('.heading-name a[href*="profiles.php"]') ||
-                                    post.querySelector('.first-post .user-name a[href*="profiles.php"]');
-                if (authorElement) {
-                    const authorName = authorElement.textContent.trim();
-                    if (authorName !== "" && !/^\[\d+\]$/.test(authorName)) {
-                        logDebug("Author element found:", authorElement);
-                        resolve(authorElement);
-                        return;
-                    }
-                }
+        const checkAuthor = () => {
+            // Updated selector to target the author element more accurately
+            const authorElement = post.querySelector('.post .poster-wrap a.user.name'); 
 
-                if (Date.now() - startTime > timeout) {
-                    logError("Timeout waiting for author element in post:", post);
-                    resolve(null);
+            if (authorElement) {
+                const authorName = authorElement.textContent.trim();
+                if (authorName !== "" && !/^\[\d+\]$/.test(authorName)) {
+                    logDebug("Author element found:", authorElement);
+                    resolve(authorElement);
                     return;
                 }
+            }
 
-                setTimeout(checkAuthor, config.retryDelay);
-            };
+            if (Date.now() - startTime > timeout) {
+                logError("Timeout waiting for author element in post:", post);
+                resolve(null);
+                return;
+            }
 
-            checkAuthor();
-        });
-    }
+            setTimeout(checkAuthor, config.retryDelay);
+        };
+
+        checkAuthor();
+    });
+}
 
     /**
      * Extracts the content from a post, handling text and YouTube embeds.
