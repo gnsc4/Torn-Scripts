@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name        Torn Forum Post Extractor for Discord
 // @namespace   https://www.torn.com/
-// @version     0.85
+// @version     0.86
 // @description Extracts Torn forum posts and formats them for Discord
 // @author      GNSC4 [268863]
 // @include     https://www.torn.com/forums.php*
 // @grant       GM_getValue
 // @grant       GM_setValue
+// @require     https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.10/dayjs.min.js
 // ==/UserScript==
 
 (function() {
@@ -104,7 +105,7 @@
                         const year = date.substring(6);
                         const month = date.substring(3, 5);
                         const day = date.substring(0, 2);
-                        timestamp = new Date(`${year}-${month}-${day}T${time}`).toISOString();
+                        timestamp = dayjs(`${year}-${month}-${day}T${time}`, 'YY-MM-DDTHH:mm:ss').toISOString();
                       }
                     }
 
@@ -284,14 +285,17 @@
             const checkAuthor = () => {
                 // Find the nearest ancestor with class 'thread-list'
                 const threadList = post.closest('.thread-list');
+                logDebug("threadList:", threadList);
 
                 if (threadList) {
                     // Get the sibling element before the thread-list
                     const authorContainer = threadList.previousElementSibling;
+                    logDebug("authorContainer:", authorContainer);
 
                     if (authorContainer) {
                         // Find the author element within the author container
                         const authorElement = authorContainer.querySelector('a.user.name');
+                        logDebug("authorElement:", authorElement);
 
                         if(authorElement){
                           const authorName = authorElement.textContent.trim();
@@ -321,7 +325,7 @@
     /**
      * Extracts the content from a post, handling text and YouTube embeds.
      * @param {HTMLElement} post The post element to extract content from.
-    * @returns {Promise<string>} The extracted content.
+     * @returns {Promise<string>} The extracted content.
      */
     async function extractContent(post) {
         logDebug("extractContent called with post:", post);
