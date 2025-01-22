@@ -23,8 +23,9 @@
         maxForumsToStore: 10,         // Maximum number of forums to store data for.
         notificationTimeout: 3000,    // Timeout for the notification message (in milliseconds).
         debugMode: true,            // Enable debug logging to the console.
-        retryDelay: 250,             // Delay between retries when waiting for elements to load (in milliseconds).
-        maxCopyLength: 2000          // Maximum length of text to copy to clipboard, in characters
+        retryDelay: 500,             // Delay between retries when waiting for elements to load (in milliseconds).
+        maxCopyLength: 2000,         // Maximum length of text to copy to clipboard, in characters
+        authorElementTimeout: 5000   // Timeout for waiting for author element
     };
 
     // --- Global Variables ---
@@ -236,7 +237,7 @@
         logDebug("waitForElement called with selector:", selector, "timeout:", timeout);
         return new Promise((resolve) => {
             const startTime = Date.now();
-    
+
             const checkElement = () => {
                 const element = document.querySelector(selector);
                 if (element) {
@@ -251,28 +252,33 @@
                     }
                 }
             };
-    
+
             checkElement();
         });
     }
 
-   /**
+    /**
      * Waits for the author element within a post to be fully loaded and visible.
-     * @param {HTMLElement} post - The post element to search within.
+     * @param {HTMLElement} post The post element to search within.
      * @returns {Promise<HTMLElement>} A promise that resolves with the author element when it's found and visible.
      */
-    function waitForAuthorElement(post) {
+    async function waitForAuthorElement(post) {
         logDebug("waitForAuthorElement called with post:", post);
         return new Promise((resolve) => {
             const startTime = Date.now();
-            const timeout = 10000;
+            const timeout = 10000; // 10 seconds timeout
 
             const checkAuthor = () => {
-                const authorElement = post.querySelector('.user.name');
-                if (authorElement && authorElement.offsetParent !== null) {
-                    logDebug("Author element found:", authorElement);
-                    resolve(authorElement);
-                    return;
+                const authorElement = post.querySelector('.user.left a[href*="profiles.php"]') ||
+                                    post.querySelector('.heading-name a[href*="profiles.php"]') ||
+                                    post.querySelector('.first-post .user-name a[href*="profiles.php"]');
+                if (authorElement) {
+                    const authorName = authorElement.textContent.trim();
+                    if (authorName !== "" && !/^\[\d+\]$/.test(authorName)) {
+                        logDebug("Author element found:", authorElement);
+                        resolve(authorElement);
+                        return;
+                    }
                 }
 
                 if (Date.now() - startTime > timeout) {
@@ -373,256 +379,239 @@
     /**
      * Displays a notification message to the user.
      * @param {string} message The message to display.
-     * @param {boolean} isError Whether the message is an error message.
+* @param {boolean} isError Whether the message is an error message.
      */
-    function displayNotification(message, isError = false) {
-        logDebug("displayNotification called with message:", message, "isError:", isError);
-        const notification = document.createElement('div');
-        notification.textContent = message;
-        notification.style.position = 'fixed';
-        notification.style.top = '50px'; // Position above the copy button
-        notification.style.left = '50%';
-        notification.style.transform = 'translateX(-50%)';
-        notification.style.backgroundColor = isError ? '#f44336' : '#4CAF50';
-        notification.style.color = 'white';
-        notification.style.padding = '10px 20px';
-        notification.style.borderRadius = '5px';
-        notification.style.zIndex = '1000';
-        notification.style.textAlign = 'center';
-        notification.style.fontSize = '16px';
-        notification.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
+function displayNotification(message, isError = false) {
+    logDebug("displayNotification called with message:", message, "isError:", isError);
+    const notification = document.createElement('div');
+    notification.textContent = message;
+    notification.style.position = 'fixed';
+    notification.style.top = '50px'; // Position above the copy button
+    notification.style.left = '50%';
+    notification.style.transform = 'translateX(-50%)';
+    notification.style.backgroundColor = isError ? '#f44336' : '#4CAF50';
+    notification.style.color = 'white';
+    notification.style.padding = '10px 20px';
+    notification.style.borderRadius = '5px';
+    notification.style.zIndex = '1000';
+    notification.style.textAlign = 'center';
+    notification.style.fontSize = '16px';
+    notification.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
 
-        document.body.appendChild(notification);
+    document.body.appendChild(notification);
 
-        setTimeout(() => {
-            document.body.removeChild(notification);
-        }, config.notificationTimeout);
+    setTimeout(() => {
+        document.body.removeChild(notification);
+    }, config.notificationTimeout);
+}
+
+/**
+ * Logs an error message to the console if debug mode is enabled.
+ * @param {...any} args The arguments to log.
+ */
+function logError(...args) {
+    if (config.debugMode) {
+        console.error(...args);
     }
+}
 
-    /**
-     * Logs an error message to the console if debug mode is enabled.
-     * @param {...any} args The arguments to log.
-     */
-    function logError(...args) {
-        if (config.debugMode) {
-            console.error(...args);
+/**
+ * Logs a debug message to the console if debug mode is enabled.
+ * @param {...any} args The arguments to log.
+ */
+function logDebug(...args) {
+    if (config.debugMode) {
+        console.log(...args);
+    }
+}
+
+/**
+ * Precompiles the highlight keywords into a single regular expression.
+ */
+function precompileHighlightKeywords() {
+    logDebug("precompileHighlightKeywords called");
+    if (config.highlightKeywords.length > 0) {
+        const escapedKeywords = config.highlightKeywords.map(keyword => keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        highlightKeywordsRegex = new RegExp(`\\b(${escapedKeywords.join('|')})\\b`, 'gi');
+    }
+}
+
+// --- Main Execution ---
+
+/**
+ * Initializes the extraction process.
+ */
+async function initializeExtraction() {
+    logDebug("initializeExtraction called");
+    try {
+        // Prevent concurrent extractions
+        if (isExtracting) {
+            logDebug("Extraction already in progress. Skipping.");
+            return;
         }
-    }
 
-    /**
-     * Logs a debug message to the console if debug mode is enabled.
-     * @param {...any} args The arguments to log.
-     */
-    function logDebug(...args) {
-        if (config.debugMode) {
-            console.log(...args);
+        isExtracting = true;
+
+        // Precompile highlight keywords regex
+        precompileHighlightKeywords();
+
+        // Get the current forum URL
+        const currentForumUrl = window.location.href;
+
+        // Remove outdated data
+        extractedData = extractedData.filter(data => Date.now() - data.timestamp < config.maxDataAge);
+
+        // Find the index of the forum data for the current URL
+        const existingForumIndex = extractedData.findIndex(data => data.forumUrl === currentForumUrl);
+
+        // If data for this forum exists, remove older data from the same forum
+        if (existingForumIndex !== -1) {
+            extractedData.splice(existingForumIndex, 1);
         }
-    }
 
-    /**
-     * Precompiles the highlight keywords into a single regular expression.
-     */
-    function precompileHighlightKeywords() {
-        logDebug("precompileHighlightKeywords called");
-        if (config.highlightKeywords.length > 0) {
-            const escapedKeywords = config.highlightKeywords.map(keyword => keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-            highlightKeywordsRegex = new RegExp(`\\b(${escapedKeywords.join('|')})\\b`, 'gi');
+        // Extract posts from the current forum page
+        const newExtractedData = await extractPosts();
+
+        // Add the current forum URL and timestamp to the extracted data
+        extractedData.push({ forumUrl: currentForumUrl, timestamp: Date.now(), posts: newExtractedData });
+
+        // Limit the number of stored forums
+        if (extractedData.length > config.maxForumsToStore) {
+            extractedData.shift(); // Remove the oldest forum data
         }
+
+        // Format and display the extracted data
+        const discordFormattedPosts = await formatForDiscord(newExtractedData);
+        addCopyButton(discordFormattedPosts);
+
+    } catch (error) {
+        logError("Error initializing extraction:", error);
+        displayNotification(`Error initializing extraction: ${error.message}`, true);
+    } finally {
+        isExtracting = false;
+    }
+}
+
+/**
+ * Sets up the MutationObserver to watch for changes in the forum.
+ */
+function setupObserver() {
+    logDebug("setupObserver called");
+    // Disconnect any existing observer
+    if (observer) {
+        observer.disconnect();
+        logDebug("Existing observer disconnected.");
     }
 
-    // --- Main Execution ---
-
-    /**
-     * Initializes the extraction process.
-     */
-    async function initializeExtraction() {
-        logDebug("initializeExtraction called");
+    // Set up a new MutationObserver
+    observer = new MutationObserver(debounce(async (mutations) => {
+        logDebug("Mutation observer triggered.");
         try {
-            // Prevent concurrent extractions
-            if (isExtracting) {
-                logDebug("Extraction already in progress. Skipping.");
-                return;
-            }
-
-            isExtracting = true;
-
-            // Precompile highlight keywords regex
-            precompileHighlightKeywords();
-
-            // Get the current forum URL
-            const currentForumUrl = window.location.href;
-
-            // Remove outdated data
-            extractedData = extractedData.filter(data => Date.now() - data.timestamp < config.maxDataAge);
-
-            // Find the index of the forum data for the current URL
-            const existingForumIndex = extractedData.findIndex(data => data.forumUrl === currentForumUrl);
-
-            // If data for this forum exists, remove older data from the same forum
-            if (existingForumIndex !== -1) {
-                extractedData.splice(existingForumIndex, 1);
-            }
-
-            // Extract posts from the current forum page
-            const newExtractedData = await extractPosts();
-
-            // Add the current forum URL and timestamp to the extracted data
-            extractedData.push({ forumUrl: currentForumUrl, timestamp: Date.now(), posts: newExtractedData });
-
-            // Limit the number of stored forums
-            if (extractedData.length > config.maxForumsToStore) {
-                extractedData.shift(); // Remove the oldest forum data
-            }
-
-            // Format and display the extracted data
-            const discordFormattedPosts = await formatForDiscord(newExtractedData);
-            addCopyButton(discordFormattedPosts);
-
-        } catch (error) {
-            logError("Error initializing extraction:", error);
-            displayNotification(`Error initializing extraction: ${error.message}`, true);
-        } finally {
-            isExtracting = false;
-        }
-    }
-
-    /**
-     * Sets up the MutationObserver to watch for changes in the forum.
-     */
-    function setupObserver() {
-        logDebug("setupObserver called");
-        // Disconnect any existing observer
-        if (observer) {
-            observer.disconnect();
-            logDebug("Existing observer disconnected.");
-        }
-    
-        // Set up a new MutationObserver with specific target and debounce
-        observer = new MutationObserver(async (mutations) => {
-            logDebug("Mutation observer triggered.");
-            try {
-                let shouldExtract = false;
-                for (let mutation of mutations) {
-                    if (mutation.addedNodes) {
-                        for (let node of mutation.addedNodes) {
-                            if (node.nodeType === Node.ELEMENT_NODE) {
-                                if (node.classList.contains('post-container') || node.querySelector('.post-container')) {
-                                    shouldExtract = true;
-                                    break;
-                                }
+            let shouldExtract = false;
+            for (let mutation of mutations) {
+                if (mutation.addedNodes) {
+                    for (let node of mutation.addedNodes) {
+                        if (node.nodeType === Node.ELEMENT_NODE) {
+                            if (node.classList.contains('post-container') || node.querySelector('.post-container')) {
+                                shouldExtract = true;
+                                break;
                             }
                         }
                     }
-                    if (shouldExtract) break;
                 }
-    
-                if (shouldExtract) {
-                    logDebug("Mutation detected, initializing extraction.");
-                    await initializeExtraction();
-                }
-            } catch (error) {
-                logError("Error in observer callback:", error);
-                displayNotification(`Error in observer: ${error.message}`, true);
+                if (shouldExtract) break;
             }
-        });
-    
-        // Start observing the body for changes in the childList and subtree
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true
-        });
-    
-        logDebug("Mutation observer set up.");
-    }
 
-    // --- Helper Function ---
-    /**
-     * Debounces a function call to prevent it from being called too frequently.
-     * @param {function} func The function to debounce.
-     * @param {number} wait The delay in milliseconds.
-     * @returns {function} The debounced function.
-     */
-    function debounce(func, wait) {
-        let timeout;
-        return function(...args) {
-            const context = this;
-            clearTimeout(timeout);
-            timeout = setTimeout(() => func.apply(context, args), wait);
-        };
-    }
-
-    // --- API Key Management ---
-
-    /**
-    * Prompts the user to enter their API key.
-    */
-    function promptForApiKey() {
-        logDebug("promptForApiKey called");
-        let apiKey = prompt("Please enter your Torn API key:");
-        if (apiKey) {
-            logDebug("API key entered");
-            GM_setValue("tornApiKey", apiKey);
-            config.apiKey = apiKey;
-            
-        } else {
-            logError("API key prompt cancelled or empty key entered.");
-            displayNotification("API key is required for the script to function.", true);
+            if (shouldExtract) {
+                logDebug("Mutation detected, initializing extraction.");
+                await initializeExtraction();
+            }
+        } catch (error) {
+            logError("Error in observer callback:", error);
+            displayNotification(`Error in observer: ${error.message}`, true);
         }
-    }
+    }, config.retryDelay));
 
-    /**
-     * Properly initializes the script, including setting up the observer,
-     * after ensuring the API key is set.
-     */
-    async function initialize() {
-        if (!config.apiKey) {
-            logDebug("API key not set. Prompting for API key.");
-            promptForApiKey();
-        }
-        if (config.apiKey) {
-            logDebug("Initializing extraction process.");
-            await initializeExtraction();
-            logDebug("Setting up mutation observer.");
-            setupObserver();
-        }
-    }
+    // Start observing the body for changes in the childList and subtree
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
 
-    // --- Check for API Key ---
+    logDebug("Mutation observer set up.");
+}
 
-    // Check for stored API key
-    let storedApiKey = GM_getValue("tornApiKey");
-    logDebug("Stored API key:", storedApiKey);
+// --- Helper Function ---
+/**
+ * Debounces a function call to prevent it from being called too frequently.
+ * @param {function} func The function to debounce.
+ * @param {number} wait The delay in milliseconds.
+ * @returns {function} The debounced function.
+ */
+function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+        const context = this;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), wait);
+    };
+}
 
-    if (storedApiKey) {
-        config.apiKey = storedApiKey;
-        logDebug("Using stored API key.");
+// --- API Key Management ---
 
-        // Initialize extraction on page load after waiting for .posts-list
-        waitForElement('.thread-list', 30000)
-            .then(forumContainer => {
-                if (forumContainer) {
-                    logDebug("thread-list found on page load, initializing extraction.");
-                    initializeExtraction()
-                        .then(() => {
-                            logDebug("Initial extraction completed, setting up observer.");
-                            setupObserver();
-                        })
-                        .catch(error => {
-                            logError("Error during initial extraction:", error);
-                            displayNotification(`Error during initial extraction: ${error.message}`, true);
-                        });
-                } else {
-                    logError("thread-list not found within the timeout period.");
-                    displayNotification("Error: Forum content not detected.", true);
-                }
-            })
-            .catch(error => {
-                logError("Error waiting for thread-list:", error);
-                displayNotification(`Error: ${error.message}`, true);
-            });
+/**
+* Prompts the user to enter their API key.
+*/
+function promptForApiKey() {
+    logDebug("promptForApiKey called");
+    let apiKey = prompt("Please enter your Torn API key:");
+    if (apiKey) {
+        logDebug("API key entered");
+        GM_setValue("tornApiKey", apiKey);
+        config.apiKey = apiKey;
+        
     } else {
-        logDebug("No API key found.");
-        promptForApiKey();
+        logError("API key prompt cancelled or empty key entered.");
+        displayNotification("API key is required for the script to function.", true);
     }
+}
+
+// --- Initial Setup ---
+
+// Check for stored API key
+let storedApiKey = GM_getValue("tornApiKey");
+logDebug("Stored API key:", storedApiKey);
+
+if (storedApiKey) {
+    config.apiKey = storedApiKey;
+    logDebug("Using stored API key.");
+
+    // Initialize extraction on page load after waiting for .posts-list
+    waitForElement('.thread-list', 30000)
+        .then(forumContainer => {
+            if (forumContainer) {
+                logDebug("thread-list found on page load, initializing extraction.");
+                initializeExtraction()
+                    .then(() => {
+                        logDebug("Initial extraction completed, setting up observer.");
+                        setupObserver();
+                    })
+                    .catch(error => {
+                        logError("Error during initial extraction:", error);
+                        displayNotification(`Error during initial extraction: ${error.message}`, true);
+                    });
+            } else {
+                logError("thread-list not found within the timeout period.");
+                displayNotification("Error: Forum content not detected.", true);
+            }
+        })
+        .catch(error => {
+            logError("Error waiting for thread-list:", error);
+            displayNotification(`Error: ${error.message}`, true);
+        });
+} else {
+    logDebug("No API key found.");
+    promptForApiKey();
+}
 
 })();
