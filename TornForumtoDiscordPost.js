@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Forum Post Extractor for Discord
 // @namespace    https://www.torn.com/
-// @version      0.70
+// @version      0.71
 // @description  Extracts Torn forum posts and formats them for Discord
 // @author       GNSC4 [268863]
 // @include      https://www.torn.com/forums.php*
@@ -23,8 +23,10 @@
         maxForumsToStore: 10,         // Maximum number of forums to store data for.
         notificationTimeout: 3000,    // Timeout for the notification message (in milliseconds).
         debugMode: true,            // Enable debug logging to the console.
-        retryDelay: 250,             // Delay between retries when waiting for elements to load (in milliseconds).
-        maxCopyLength: 2000          // Maximum length of text to copy to clipboard, in characters
+        retryDelay: 500,             // Delay between retries when waiting for elements to load (in milliseconds).
+        maxCopyLength: 2000,         // Maximum length of text to copy to clipboard, in characters
+        forumLoadDelay: 2000,        // Initial delay to wait for the forum to load, in milliseconds
+        mutationObserverDelay: 250  // Delay to wait after a mutation is detected, in milliseconds
     };
 
     // --- Global Variables ---
@@ -256,28 +258,35 @@
         });
     }
 
-   /**
+    /**
      * Waits for the author element to be fully loaded and have a valid username.
      * @param {HTMLElement} post The post element to search within.
      * @returns {Promise<HTMLElement>} A promise that resolves with the fully loaded author element.
      */
-    async function waitForAuthorElement(post) {
+    function waitForAuthorElement(post) {
         logDebug("waitForAuthorElement called with post:", post);
         return new Promise((resolve) => {
-            const checkInterval = setInterval(() => {
+            const observer = new MutationObserver((mutations, obs) => {
                 const authorElement = post.querySelector('.user.left a[href*="profiles.php"]') ||
                                     post.querySelector('.heading-name a[href*="profiles.php"]') ||
                                     post.querySelector('.first-post .user-name a[href*="profiles.php"]');
-
                 if (authorElement) {
                     const authorName = authorElement.textContent.trim();
                     if (authorName !== "" && !/^\[\d+\]$/.test(authorName)) {
                         logDebug("Author element found:", authorElement);
-                        clearInterval(checkInterval);
+                        obs.disconnect();
                         resolve(authorElement);
+                        return;
                     }
                 }
-            }, config.retryDelay);
+            });
+
+            observer.observe(post, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                characterData: true
+            });
         });
     }
 
@@ -564,23 +573,22 @@
     }
 
     /**
-     * Properly initializes the script, including setting up the observer,
-     * after ensuring the API key is set.
+     * Extracts the thread ID from the current forum URL.
+     * @returns {string|null} The thread ID or null if not found.
      */
-    async function initialize() {
-        if (!config.apiKey) {
-            logDebug("API key not set. Prompting for API key.");
-            promptForApiKey();
+    function getCurrentThreadId() {
+        logDebug("getCurrentThreadId called");
+        // This regex should match the thread ID in various Torn forum URL formats
+        const match = window.location.href.match(/threads\.php.*[?&]t=([0-9]+)/);
+        if (match && match[1]) {
+            logDebug("getCurrentThreadId returning:", match[1]);
+            return match[1];
         }
-        if (config.apiKey) {
-            logDebug("Initializing extraction process.");
-            await initializeExtraction();
-            logDebug("Setting up mutation observer.");
-            setupObserver();
-        }
+        logDebug("getCurrentThreadId returning null");
+        return null;
     }
 
-    // --- Check for API Key ---
+    // --- Initial Setup ---
 
     // Check for stored API key
     let storedApiKey = GM_getValue("tornApiKey");
@@ -589,7 +597,30 @@
     if (storedApiKey) {
         config.apiKey = storedApiKey;
         logDebug("Using stored API key.");
-        initialize();
+
+        // Initialize extraction on page load after waiting for .thread-list
+        waitForElement('.thread-list', 30000)
+            .then(forumContainer => {
+                if (forumContainer) {
+                    logDebug("thread-list found on page load, initializing extraction.");
+                    initializeExtraction()
+                        .then(() => {
+                            logDebug("Initial extraction completed, setting up observer.");
+                            setupObserver();
+                        })
+                        .catch(error => {
+                            logError("Error during initial extraction:", error);
+                            displayNotification(`Error during initial extraction: ${error.message}`, true);
+                        });
+                } else {
+                    logError("thread-list not found within the timeout period.");
+                    displayNotification("Error: Forum content not detected.", true);
+                }
+            })
+            .catch(error => {
+                logError("Error waiting for thread-list:", error);
+                displayNotification(`Error: ${error.message}`, true);
+            });
     } else {
         logDebug("No API key found.");
         promptForApiKey();
