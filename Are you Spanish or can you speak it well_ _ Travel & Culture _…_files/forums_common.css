@@ -1,0 +1,584 @@
+/*  Form - search forum */
+.d .forums-main-wrap input[type='text'] {
+    border-radius: 5px;
+    height: 14px;
+    width: 215px;
+    padding: 9px 10px;
+}
+
+/* Dropdown UI */
+.d .forums-main-wrap .select-wrap .forum-category .ui-selectmenu-menu li {
+    margin: 0;
+    width: 233px;
+}
+
+.d .forums-main-wrap .select-wrap .forum-type .ui-selectmenu-menu li {
+    margin: 0;
+    width: 233px;
+}
+/*Breadcrumbs*/
+.d .breadcrumbs {
+    width: 100%;
+    border-bottom: 1px solid #CCC;
+    border-bottom-color: var(--breadcrumbs-border-bottom-color);
+    border-top: 1px solid #FFF;
+    border-top-color: var(--breadcrumbs-border-top-color);
+    background: linear-gradient(0deg, #DDDDDD 0%, #FFFFFF 100%);
+    background: var(--breadcrumbs-bg-gradient);
+    text-shadow: 0 1px 0 #FFF;
+    text-shadow: var(--breadcrumbs-text-shadow);
+    color: #666;
+    color: var(--breadcrumbs-color);
+    font-weight: bold;
+    letter-spacing: 1px;
+    padding-left: 0;
+}
+
+.d .breadcrumbs.breadcrumbs-dark {
+    border-bottom: 1px solid #000;
+    border-bottom-color: var(--breadcrumbs-dark-border-bottom-color);
+    border-top: 1px solid #555555;
+    border-top-color: var(--breadcrumbs-dark-border-top-color);
+    background: linear-gradient(180deg, #666666 0%, #333333 100%);
+    background: var(--breadcrumbs-dark-bg-gradient);
+    text-shadow: 0 0 2px #000000;
+    text-shadow: var(--breadcrumbs-dark-text-shadow);
+    color: #FFFFFF;
+    color: var(--breadcrumbs-dark-color);
+}
+
+.d .breadcrumbs > li {
+    float: left;
+    height: 30px;
+    line-height: 30px;
+    cursor: pointer;
+    color: #666;
+    color: var(--breadcrumbs-color);
+    position: relative;
+}
+
+.d .breadcrumbs.breadcrumbs-dark > li {
+    color: #FFF;
+    color: var(--breadcrumbs-dark-color);
+}
+
+.d .breadcrumbs > li .name:before,
+.d .breadcrumbs > li .name:after,
+.d .breadcrumbs > li .touch-name:before,
+.d .breadcrumbs > li .touch-name:after {
+    content: '';
+    display: block;
+    position: absolute;
+    top: 4px;
+    width: 21px;
+    height: 21px;
+    transform: rotate(45deg);
+    z-index: 1;
+}
+
+.d .breadcrumbs > li .name:before,
+.d .breadcrumbs > li .touch-name:before {
+    right: 6px;
+    border-top: 1px solid #CCC;
+    border-top-color: var(--breadcrumbs-arrow-shadow-left-color);
+    border-right: 1px solid #FFF;
+    border-right-color: var(--breadcrumbs-arrow-shadow-left-color);
+}
+
+.d .breadcrumbs.breadcrumbs-dark > li .name:before,
+.d .breadcrumbs.breadcrumbs-dark > li .touch-name:before {
+    border-top: 1px solid #191919;
+    border-top-color: var(--breadcrumbs-dark-arrow-shadow-left-color);
+    border-right: 1px solid #191919;
+    border-right-color: var(--breadcrumbs-dark-arrow-shadow-left-color);
+}
+
+.d .breadcrumbs > li .name:after,
+.d .breadcrumbs > li .touch-name:after {
+    right: 5px;
+    border-top: 1px solid #FFF;
+    border-top-color: var(--breadcrumbs-arrow-shadow-right-color);
+    border-right: 1px solid #FFF;
+    border-right-color: var(--breadcrumbs-arrow-shadow-right-color);
+}
+
+.d .breadcrumbs.breadcrumbs-dark > li .name:after,
+.d .breadcrumbs.breadcrumbs-dark > li .touch-name:after {
+    border-top: 1px solid #474747;
+    border-top-color: var(--breadcrumbs-dark-arrow-shadow-right-color);
+    border-right: 1px solid #474747;
+    border-right-color: var(--breadcrumbs-dark-arrow-shadow-right-color);
+}
+
+.d .breadcrumbs > li.active,
+.d .breadcrumbs > li:hover {
+    position: relative;
+    top: 0;
+}
+
+.d .breadcrumbs > li .name,
+.d .breadcrumbs > li .touch-name {
+    display: inline-block;
+    padding-left: 15px;
+    padding-right: 8px;
+    margin-right: 14px;
+}
+
+.d .breadcrumbs > li:hover {
+    padding: 0;
+}
+
+.d .breadcrumbs > li.active .name,
+.d .breadcrumbs > li.active .touch-name,
+.d .breadcrumbs > li:hover .name,
+.d .breadcrumbs > li:hover .touch-name {
+    background: linear-gradient(180deg, #DDDDDD 0%, #FFFFFF 100%);
+    background: var(--breadcrumbs-active-bg-gradient);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    max-width: 320px;
+}
+
+.d .breadcrumbs.breadcrumbs-dark > li.active .name,
+.d .breadcrumbs.breadcrumbs-dark > li.active .touch-name,
+.d .breadcrumbs.breadcrumbs-dark > li:hover .name,
+.d .breadcrumbs.breadcrumbs-dark > li:hover .touch-name {
+    background: linear-gradient(180deg, #222222 0%, #444444 100%);
+    background: var(--breadcrumbs-dark-active-bg-gradient);
+}
+
+.d .breadcrumbs > li .touch-name {
+    display: none;
+}
+
+.d .breadcrumbs > li.active .arrow-l,
+.d .breadcrumbs > li.active .arrow-r,
+.d .breadcrumbs > li:hover .arrow-l,
+.d .breadcrumbs > li:hover .arrow-r {
+    content: '';
+    display: block;
+    position: absolute;
+    top: 0;
+    width: 30px;
+    height: 30px;
+    clip-path: polygon(0% 0%, 50% 0%, 100% 52%, 50% 100%, 0% 100%, 50% 52%);
+    background: linear-gradient(180deg, #DDDDDD 0%, #FFFFFF 100%);
+    background: var(--breadcrumbs-active-bg-gradient);
+}
+
+.d .breadcrumbs.breadcrumbs-dark > li.active .arrow-l,
+.d .breadcrumbs.breadcrumbs-dark > li.active .arrow-r,
+.d .breadcrumbs.breadcrumbs-dark > li:hover .arrow-l,
+.d .breadcrumbs.breadcrumbs-dark > li:hover .arrow-r {
+    background: linear-gradient(180deg, #222222 0%, #444444 100%);
+    background: var(--breadcrumbs-dark-active-bg-gradient);
+}
+
+.d .breadcrumbs > li.active .arrow-l,
+.d .breadcrumbs > li:hover .arrow-l {
+    left: -15px;
+}
+
+.d .breadcrumbs > li.active .arrow-r,
+.d .breadcrumbs > li:hover .arrow-r {
+    right: 0;
+}
+
+.d .breadcrumbs > li:first-child .arrow-l {
+    display: none;
+}
+
+.d .breadcrumbs > li:first-child,
+.d .breadcrumbs > li:first-child .name,
+.d .breadcrumbs > li:first-child .touch-name {
+    border-top-left-radius: 5px;
+}
+
+.d .breadcrumbs > li.subscribe {
+    float: right;
+    padding-right: 10px;
+    background-image: none;
+    cursor: pointer;
+}
+
+.d .breadcrumbs > li.clear,
+.d.without-sidebar .breadcrumbs > li.clear {
+    float: none;
+    display: block;
+    height: 0;
+    line-height: 0;
+    font-size: 0;
+    padding: 0;
+    background: none;
+}
+
+.d .forums-thread-wrap .breadcrumbs + .forums-thread .title {
+    box-shadow: none;
+}
+
+/*Breadcrumbs, bugs and issues*/
+.d .breadcrumbs > li.issue-status {
+    position: relative;
+    float: right;
+    padding: 0;
+    cursor: pointer;
+    color: #666;
+    color: var(--issue-status-color);
+    text-shadow: none;
+    text-shadow: var(--issue-status-text-shadow);
+}
+
+.d .breadcrumbs.breadcrumbs-dark > li.issue-status {
+    color: #FFF;
+    color: var(--issue-status-black-color);
+    text-shadow: 0 0 2px #000000;
+    text-shadow: var(--issue-status-black-text-shadow);
+}
+
+.d .breadcrumbs > li.issue-status .list-desc > li:hover {
+    color: #666;
+    color: var(--issue-status-hover-color);
+}
+
+.d .breadcrumbs.breadcrumbs-dark > li.issue-status .list-desc > li:hover {
+    color: #FFF;
+    color: var(--issue-status-black-hover-color);
+}
+
+.d .breadcrumbs > li.issue-status .list-desc > li:hover:last-child {
+    border-radius: 0 0 5px 5px;
+}
+
+.d .breadcrumbs > li.issue-status .icon-wrap {
+    border-top-right-radius: 5px;
+}
+
+.d .breadcrumbs > li.issue-status.status .icon-wrap {
+    border-top-right-radius: 0;
+}
+
+.d .breadcrumbs > li.issue-status.act .icon-wrap {
+    padding-bottom: 1px;
+    position: relative;
+    z-index: 2;
+    background: linear-gradient(180deg, #DDDDDD 0%, #FFFFFF 100%);
+    background: var(--issue-status-active-linear-gradient);
+}
+
+.d .breadcrumbs.breadcrumbs-dark > li.issue-status.act .icon-wrap {
+    background: linear-gradient(0deg, #666666 0%, #333333 100%);
+    background: var(--issue-status-black-active-linear-gradient);
+}
+
+.d .breadcrumbs > li .issue-status-cont {
+    display: none;
+    position: absolute;
+    top: 31px;
+    right: 0;
+    text-align: right;
+    white-space: nowrap;
+    border-radius: 5px 0 5px 5px;
+    background: #FFFFFF;
+    background: var(--issue-status-bg-color);
+    box-shadow: 0 1px 2px #25252580;
+    box-shadow: var(--issue-status-box-shadow);
+}
+
+.d .breadcrumbs.breadcrumbs-dark > li .issue-status-cont {
+    background: #555555;
+    background: var(--issue-status-black-bg-color);
+    box-shadow: 0 1px 2px #00000080;
+    box-shadow: var(--issue-status-black-box-shadow);
+}
+
+.d .breadcrumbs > li.act .issue-status-cont {
+    display: block;
+    z-index: 2;
+}
+
+.d .breadcrumbs > li .issue-status-cont .title {
+    border-top-left-radius: 5px;
+    border-bottom: 1px solid #DDD;
+    border-bottom: var(--issue-status-title-border-bottom);
+}
+
+.d .breadcrumbs.breadcrumbs-dark > li .issue-status-cont .title {
+    border-bottom: 1px solid #222;
+    border-bottom: var(--issue-status-black-title-border-bottom);
+}
+
+.d .breadcrumbs > li .issue-status-cont .title {
+    cursor: default;
+    text-align: right;
+}
+
+.d .breadcrumbs > li .issue-status-cont .title,
+.d .breadcrumbs > li .issue-status-cont .list-desc > li,
+.d .breadcrumbs > li .issue-status-cont .scrollbar.disable + .viewport .title,
+.d .breadcrumbs > li .issue-status-cont .scrollbar.disable + .viewport .list-desc > li {
+    padding: 0 11px;
+}
+
+.d .issue-status-cont .viewport {
+    max-height: 181px;
+}
+
+.d .breadcrumbs > li .issue-status-cont .scrollbar + .viewport .list-desc > li {
+    padding-right: 23px;
+}
+
+.d .breadcrumbs > li .issue-status-cont .list-desc > li:hover,
+.d .breadcrumbs > li .issue-status-cont .list-desc > li.active {
+    background-color: #0000001A;
+    background-color: var(--issue-status-hover-bg-color);
+}
+
+.d .breadcrumbs.breadcrumbs-dark > li .issue-status-cont .list-desc > li:hover,
+.d .breadcrumbs.breadcrumbs-dark > li .issue-status-cont .list-desc > li.active {
+    background-color: #00000066;
+    background-color: var(--issue-status-black-hover-bg-color);
+}
+
+.d .forums-thread-wrap .selection-breaker {
+    line-height: 0;
+    font-size: 0;
+    width: 0;
+}
+
+@supports not(selector(::-webkit-scrollbar)) {
+    .d .breadcrumbs > li .issue-status-cont .scrollbar-black {
+        scrollbar-color: #fbfbfb #ddd;
+        scrollbar-color: var(--issue-status-scrollbar-color);
+    }
+}
+
+.d .breadcrumbs > li .issue-status-cont .scrollbar-black::-webkit-scrollbar-track {
+    background-color: #ddd;
+    background-color: var(--issue-status-scrollbar-track-bg-color);
+}
+
+.d .breadcrumbs > li .issue-status-cont .scrollbar-black::-webkit-scrollbar-thumb {
+    background-color: #f2f2f2;
+    background-color: var(--issue-status-scrollbar-thumb-bg-color);
+    border-color: #ddd;
+    border-color: var(--issue-status-scrollbar-thumb-border-color);
+    box-shadow: none;
+    box-shadow: var(--issue-status-scrollbar-thumb-box-shadow);
+}
+
+.d .breadcrumbs > li .issue-status-cont .scrollbar-black::-webkit-scrollbar-corner {
+    background-color: #ddd;
+    background-color: var(--issue-status-scrollbar-corner-bg-color);
+}
+
+.d .breadcrumbs > li .issue-status-cont .scrollbar-black:hover::-webkit-scrollbar-thumb {
+    background-color: #fff;
+    background-color: var(--issue-status-hover-scrollbar-thumb-bg-color);
+    box-shadow: none;
+    box-shadow: var(--issue-status-hover-scrollbar-thumb-box-shadow);
+}
+
+@supports not(selector(::-webkit-scrollbar)) {
+    .d .breadcrumbs.breadcrumbs-dark > li .issue-status-cont .scrollbar-black {
+        scrollbar-color: #7792AD rgba(0, 0, 0, .4);
+        scrollbar-color: var(--issue-status-black-scrollbar-color);
+    }
+}
+
+.d .breadcrumbs.breadcrumbs-dark > li .issue-status-cont .scrollbar-black::-webkit-scrollbar-track {
+    background-color: rgba(0, 0, 0, .4);
+    background-color: var(--issue-status-black-scrollbar-track-bg-color);
+}
+
+.d .breadcrumbs.breadcrumbs-dark > li .issue-status-cont .scrollbar-black::-webkit-scrollbar-thumb {
+    box-shadow: inset 0 0 0 8px #7792ad;
+    box-shadow: var(--issue-status-black-scrollbar-thumb-box-shadow);
+    border-color: #0000;
+    border-color: var(--issue-status-black-scrollbar-thumb-border-color);
+    background-color: transparent;
+    background-color: var(--issue-status-black-scrollbar-thumb-bg-color);
+}
+
+.d .breadcrumbs.breadcrumbs-dark > li .issue-status-cont .scrollbar-black::-webkit-scrollbar-corner {
+    background-color: #0006;
+    background-color: var(--issue-status-black-scrollbar-corner-bg-color);
+}
+
+@supports not(selector(::-webkit-scrollbar)) {
+    .d .breadcrumbs.breadcrumbs-dark > li .issue-status-cont .scrollbar-black:hover {
+        scrollbar-color: #A7B9CA rgba(0, 0, 0, .4);
+        scrollbar-color: var(--issue-status-black-hover-scrollbar-color);
+    }
+}
+
+.d .breadcrumbs.breadcrumbs-dark > li .issue-status-cont .scrollbar-black:hover::-webkit-scrollbar-thumb {
+    box-shadow: inset 0 0 0 8px #a7b9ca;
+    box-shadow: var(--issue-status-black-hover-scrollbar-thumb-box-shadow);
+    background-color: transparent;
+    background-color: var(--issue-status-black-hover-scrollbar-thumb-bg-color);
+}
+
+.d .forum-wrap .forum-list .item > li .no-posts,
+.d .forums-committee .threads-list > li .no-posts {
+    color: #999;
+	color: var(--default-gray-9-color);
+    float: left;
+}
+
+.d .breadcrumbs .issue-status-cont .viewport {
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+}
+
+/*Validation error for textarea*/
+.post-wrap .input-wrap textarea {
+    padding: 2px;
+}
+
+.post-wrap .input-wrap.error textarea {
+    padding: 1px;
+    border: 2px solid;
+    border-color: #FFA396;
+    border-color: var(--input-error-border-color);
+}
+
+/* New progress bar */
+
+.d .rating .progressbar-wrap  {
+    width: 192px;
+    margin-top: 12px;
+}
+
+.d .w4 .progressbar-wrap {
+    width: 186px;
+}
+
+.d .w5 .progressbar-wrap,
+.d .w6 .progressbar-wrap {
+    width: 180px;
+}
+
+
+@media screen and (max-width: 784px) {
+    /*  Form - search forum */
+    .r .forums-main-wrap input[type='text'] {
+        padding: 9px 10px;
+        width: 344px;
+    }
+
+    .r .forums-main-wrap .select-wrap .select-forum-type-list {
+        top: 35px;
+    }
+
+    /*Breadcrumbs*/
+    .r .breadcrumbs > li.active .arrow-l,
+    .r .breadcrumbs > li.active .arrow-r,
+    .r .breadcrumbs > li:hover .arrow-l,
+    .r .breadcrumbs > li:hover .arrow-r {
+        height: 34px;
+    }
+
+    .r .breadcrumbs > li.active .arrow-l,
+    .r .breadcrumbs > li:hover .arrow-l {
+        left: -16px;
+    }
+
+    .r .breadcrumbs > li.active .arrow-r,
+    .r .breadcrumbs > li:hover .arrow-r {
+        right: 3px;
+    }
+
+    .r .breadcrumbs > li {
+        height: 34px;
+        line-height: 34px;
+    }
+
+    .r .breadcrumbs > li .name {
+        display: none;
+    }
+
+    .r .breadcrumbs > li .touch-name,
+    .r .breadcrumbs > li:hover .touch-name {
+        display: inline-block;
+        max-width: 85px;
+        margin-right: 16px;
+    }
+
+    .r .breadcrumbs > li .issue-status-cont {
+        top: 35px;
+    }
+
+    .r .issue-status-cont .scrollbar {
+        top: 36px;
+    }
+
+    .r .issue-status-cont .viewport {
+        height: 205px;
+    }
+
+    .r .breadcrumbs > li.issue-status.act .icon-wrap {
+        padding-bottom: 2px;
+    }
+
+    .r .breadcrumbs > li.issue-status + .subscribe .subscribe-name {
+        display: none;
+    }
+
+    .r .forums-main-wrap .rating .progressbar-wrap {
+        width: 320px;
+    }
+
+    .r .forums-main-wrap .rating.w4 .progressbar-wrap {
+        width: 316px;
+    }
+
+    .r .forums-main-wrap .rating.w5 .progressbar-wrap,
+    .r .forums-main-wrap .rating.w6 .progressbar-wrap {
+        width: 308px;
+    }
+
+    .r .breadcrumbs > li.subscribe:hover {
+        text-shadow: none;
+        color: #DDD;
+    }
+
+    .r .breadcrumbs > li.subscribe .subscribe-name {
+        display: none;
+    }
+
+    .r .breadcrumbs > li .name:before,
+    .r .breadcrumbs > li .name:after,
+    .r .breadcrumbs > li .touch-name:before,
+    .r .breadcrumbs > li .touch-name:after {
+        top: 5px;
+    }
+
+    .r .breadcrumbs > li .name:before,
+    .r .breadcrumbs > li .name:after,
+    .r .breadcrumbs > li .touch-name:before,
+    .r .breadcrumbs > li .touch-name:after {
+        width: 23px;
+        height: 23px;
+    }
+}
+
+@media screen and (max-width: 386px) {
+    .r .breadcrumbs > li:first-child,
+    .r .breadcrumbs > li:first-child .touch-name {
+        border-radius: 0;
+    }
+
+    .r .forums-main-wrap .rating .progressbar-wrap {
+        width: 256px;
+    }
+
+    .r .forums-main-wrap .rating.w4 .progressbar-wrap {
+        width: 248px;
+    }
+
+    .r .forums-main-wrap .rating.w5 .progressbar-wrap,
+    .r .forums-main-wrap .rating.w6 .progressbar-wrap {
+        width: 242px;
+    }
+}

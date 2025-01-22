@@ -1,0 +1,34 @@
+function setForumSidebarCookie() {
+	var barStatus = [];
+	$('.forums-main-bar .title').each(function() {
+		barStatus.push($(this).hasClass('activated'));
+	});
+
+	if (!$.cookie('forumBar')) {
+		$.cookie('forumBar', JSON.stringify(barStatus), {expires: 18262});
+	} else {
+		$.cookie('forumBar', JSON.stringify(barStatus));
+	}
+}
+
+function getForumSidebarCookie() {
+	var barStatus;
+	if ($.cookie('forumBar')) {
+		barStatus = $.parseJSON($.cookie('forumBar'));
+
+		$('.forums-main-bar .title').each(function(index) {
+			barStatus[index] ? $(this).addClass('activated') : $(this).removeClass('activated');
+		});
+	}
+}
+
+jQuery(function() {
+
+    getForumSidebarCookie();
+
+    $('.content').on('click', '.forums-main-bar .title', function() {
+        $(this).toggleClass('activated');
+        setForumSidebarCookie();
+    });
+
+});

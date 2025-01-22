@@ -1,0 +1,425 @@
+.d .logged-out .forums-main-wrap .forums-wrap .update-wrap .dashboard.rating,
+.d .logged-out .forums-main-wrap .forums-wrap .update-wrap .dashboard.my-threads,
+.d .logged-out .forums-main-wrap .forums-wrap .update-wrap .dashboard.subs-threads,
+.d .logged-out .forums-main-wrap .forums-wrap .update-wrap .dashboard.feed-threads,
+.d .logged-out .forums-main-wrap .forums-wrap .updates-box hr {
+    display: none;
+}
+
+.d .logged-out .forums-main-wrap .fm-search .title-toggle {
+    border-radius: 5px 0 0 0;
+}
+
+.d .logged-out .forums-main-wrap .forums-wrap .updates-box,
+.d .logged-out .forums-main-wrap .forums-wrap .search-box {
+    width: 310px;
+}
+
+.d .logged-out .forums-main-wrap .forums-wrap .forums-box {
+    width: 100%;
+}
+
+.d .logged-out .forums-main-wrap .forum-wrap .forum-list .item > li.name .desc {
+    width: 403px;
+}
+
+.d .logged-out .forums-main-wrap .forum-wrap .title > li.name {
+    width: 764px;
+}
+
+.d .logged-out .forums-committee .title > li.thread-name {
+    width: 591px;
+}
+
+.d .logged-out .forums-main-wrap .forum-wrap .forum-list .item > li.name {
+    width: 774px;
+}
+
+.d .logged-out .forums-main-wrap .dashboard .title-toggle {
+    cursor: default;
+}
+
+.d .logged-out .forums-main-wrap input[type='text'] {
+    width: 268px;
+}
+
+.d .logged-out .forums-main-wrap .dashboard.search .panel > li {
+    width: 300px;
+}
+
+.d .logged-out .forums-main-wrap .dashboard.pop-threads .panel > li {
+    width: 287px;
+}
+
+.d .logged-out .forums-main-wrap .dashboard.pop-threads .panel > li .post-wrap {
+    width: 248px;
+}
+
+.d .logged-out .forums-main-wrap .dashboard.fm-search .panel > li {
+    width: 290px;
+}
+
+.d .logged-out .forums-main-wrap .dashboard.fm-search .scrollbar.disable + .viewport #forum-type-menu > li,
+.d .logged-out .forums-main-wrap .dashboard.fm-search .select-forum-type-list .scrollbar.disable + .viewport  {
+    width: 196px;
+}
+
+.d .logged-out .search-wrap .small-select-menu-wrap .forum-category {
+    width: 276px;
+}
+
+.d .logged-out .search-wrap .small-select-menu-wrap .forum-type {
+    width: 186px;
+}
+
+.d .logged-out .forums-main-wrap .dashboard.pop-threads .scrollbar.disable + .viewport .panel > li {
+    width: 300px;
+}
+
+.d .logged-out-sidebar .breadcrumbs {
+    margin-top: 0;
+    border-radius: 5px 0 5px 5px;
+}
+
+.d .logged-out-sidebar .forums-committee .title,
+.d .logged-out-sidebar .forums-committee .touch-thread-name {
+    margin-top: 10px;
+    color: #666;
+    color: var(--default-gray-6-color);
+    font-weight: bold;
+    text-shadow: 0 1px 0 #FFF;
+    text-shadow: var(--title-text-shadow);
+    letter-spacing: 0;
+    box-shadow: 0 0 2px rgba(68, 68, 68, 0.5);
+    border-radius: 5px 5px 0 0;
+    border-bottom: 1px solid #CCC;
+	border-bottom-color: var(--default-panel-divider-outer-side-color);
+    background: #ffffff; /* Old browsers */
+    background-color: var(--default-bg-panel-active-color);
+    background: -moz-linear-gradient(top,  #ffffff 0%, #dddddd 100%); /* FF3.6+ */
+    background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#ffffff), color-stop(100%,#dddddd)); /* Chrome,Safari4+ */
+    background: -webkit-linear-gradient(top,  #ffffff 0%,#dddddd 100%); /* Chrome10+,Safari5.1+ */
+    background: -o-linear-gradient(top,  #ffffff 0%,#dddddd 100%); /* Opera 11.10+ */
+    background: -ms-linear-gradient(top,  #ffffff 0%,#dddddd 100%); /* IE10+ */
+    background: linear-gradient(to bottom,  #ffffff 0%,#dddddd 100%); /* W3C */
+    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', endColorstr='#dddddd',GradientType=0 ); /* IE6-9 */
+}
+
+.d .logged-out-sidebar .forums-committee .threads-list > li:first-child {
+    border-top: 1px solid #FFF;
+	border-top-color: var(--default-panel-divider-inner-side-color);
+}
+
+.d .logged-out-sidebar .forums-committee .title,
+.d .logged-out-sidebar .forums-committee .title > li {
+    height: 34px;
+    line-height: 34px;
+}
+
+.d .logged-out-sidebar .forums-committee .title > li.clear {
+    height: 0;
+    line-height: 0;
+}
+
+.d .logged-out-sidebar .forums-committee .title > li.thread-name,
+.d .logged-out-sidebar .forums-committee .title > li.rating,
+.d .logged-out-sidebar .forums-committee .title > li.posts,
+.d .logged-out-sidebar .forums-committee .title > li.starter,
+.d .logged-out-sidebar .forums-committee .title > li.assigned {
+    border-right: 1px solid #CCC;
+	border-right-color: var(--default-panel-divider-outer-side-color);
+}
+
+.d .logged-out-sidebar .forums-committee .title > li.rating,
+.d .logged-out-sidebar .forums-committee .title > li.posts,
+.d .logged-out-sidebar .forums-committee .title > li.starter,
+.d .logged-out-sidebar .forums-committee .title > li.last-post,
+.d .logged-out-sidebar .forums-committee .title > li.assigned {
+    border-left: 1px solid #FFF;
+	border-left-color: var(--default-panel-divider-inner-side-color);
+}
+
+.d .logged-out .forums-main-wrap .rating .pg-bar-wrap {
+    width: 248px;
+}
+
+.d .logged-out .forums-main-wrap .rating.w4 .pg-bar-wrap {
+    width: 240px;
+}
+
+.d .logged-out .forums-main-wrap .rating.w5 .pg-bar-wrap,
+.d .logged-out .forums-main-wrap .rating.w6 .pg-bar-wrap {
+    width: 234px;
+}
+
+.d .logged-out .forums-main-wrap .dashboard.pop-threads .scroll-wrapper .scroll-content .panel > li {
+    width: 300px;
+}
+
+.d .logged-out .forums-main-wrap .dashboard.pop-threads .scroll-wrapper .scroll-content.scroll-scrolly_visible .panel > li {
+    width: 298px;
+}
+
+.d .logged-out-sidebar.logged-out .breadcrumbs {
+    border-radius: 0 0 5px 5px;
+}
+
+.d .logged-out .bug-tracing-wrap .legend-list {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.d .logged-out .bug-tracing-wrap .legend-list > li {
+    width: 100%;
+}
+
+@media screen and (max-width: 784px) {
+    .r .logged-out .pagination {
+        width: 100%;
+    }
+
+    .r .logged-out .forums-committee .threads-list .ui-accordion-header {
+        width: 100%;
+    }
+
+    .r .logged-out .forums-committee .threads-list .thread-name-wrap .title-flex-parent,
+    .r .logged-out .bugs-issues .forums-committee .threads-list .thread-name-wrap .title-flex-parent {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .r .logged-out .bugs-issues .forums-committee .thread > li.assigned,
+    .r .logged-out .bugs-issues .forums-committee .thread > li.posts,
+    .r .logged-out .forums-committee .thread > li.rating,
+    .r .logged-out .forums-committee .thread > li.posts,
+    .r .logged-out .forums-committee .thread > li.starter,
+    .r .logged-out .forums-committee .thread > li.last-post {
+        width: 278px;
+    }
+
+    .r.without-sidebar .logged-out .forums-thread-wrap .thread-list .column-wrap .poster-wrap {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .r.without-sidebar .logged-out .forums-committee .threads-list .thread-pages {
+        width: 100%;
+    }
+
+    .r .logged-out .forums-thread-wrap .poster-wrap .poster {
+        width: 100%;
+        box-sizing: border-box;
+        height: 30px;
+    }
+
+    .r .logged-out .forums-main-wrap .forums-wrap .updates-box,
+    .r .logged-out .forums-main-wrap .forums-wrap .search-box,
+    .r .logged-out .forums-main-wrap .forums-wrap .forums-box {
+        width: 578px;
+    }
+
+    .r .logged-out .forums-main-wrap .dashboard.fm-search .cont-gray {
+        display: inline-block;
+    }
+
+    .r .logged-out .forums-main-wrap input[type='text'] {
+        width: 130px;
+        margin-top: 2px;
+    }
+
+    .r .logged-out .forums-main-wrap .dashboard.fm-search .panel > li {
+        float: left;
+    }
+
+    .r .logged-out .forums-main-wrap .dashboard.fm-search .panel > li:first-child {
+        width: 152px;
+        padding-right: 0;
+    }
+
+    .r .logged-out .forums-main-wrap .dashboard.fm-search .panel > li:nth-child(2) {
+        width: 121px;
+    }
+
+    .r .logged-out .forums-main-wrap .dashboard.fm-search .panel > li.last {
+        padding-left: 0;
+        width: 265px;
+    }
+
+    .r .logged-out .search-wrap .small-select-menu-wrap .forum-category {
+        width: 155px;
+    }
+
+    .r .logged-out .search-wrap .small-select-menu-wrap .forum-type {
+        width: 108px;
+    }
+
+    .r .logged-out .forums-main-wrap .dashboard.fm-search .panel > li.clear {
+        width: 0;
+        height: 0;
+        line-height: 0;
+        float: none;
+        margin: 0;
+        padding: 0;
+        font-size: 0;
+        border: 0;
+    }
+
+    .r .logged-out .forums-main-wrap .forum-wrap .title > li.name {
+        width: 372px;
+    }
+
+    .r .logged-out .forums-main-wrap .forum-wrap .forum-list .item > li.name {
+        width: 382px;
+    }
+
+    .r .logged-out .forums-main-wrap .forum-wrap .forum-list .item > li.name .desc {
+        width: 333px;
+    }
+
+    .r .logged-out .forums-main-wrap .dashboard.pop-threads .panel > li,
+    .r .logged-out .forums-main-wrap .dashboard.search .panel > li {
+        width: 570px;
+    }
+
+    .r .logged-out .forums-main-wrap .dashboard.pop-threads .panel > li .post-wrap {
+        width: calc(100% - 45px);
+    }
+
+    .r .logged-out .breadcrumbs {
+        margin-top: 0;
+    }
+
+    .r .logged-out-sidebar .breadcrumbs {
+        border-radius: 0;
+    }
+
+    .r .logged-out .forums-main-wrap .rating .pg-bar-wrap {
+        width: 514px;
+    }
+
+    .r .logged-out .forums-main-wrap .rating.w4 .pg-bar-wrap {
+        width: 510px;
+    }
+
+    .r .logged-out .forums-main-wrap .rating.w5 .pg-bar-wrap,
+    .r .logged-out .forums-main-wrap .rating.w6 .pg-bar-wrap {
+        width: 502px;
+    }
+
+    .r .content-wrapper.logged-out .forums-main-wrap .d-hide {
+        display: none;
+    }
+
+    .r .logged-out .bug-tracing-wrap .legend-list {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media screen and (min-width: 785px) and (max-width: 1000px) {
+    .r .logged-out .forums-committee .title > li.thread-name {
+        width: 399px;
+    }
+    .r .logged-out .pagination, .r .logged-out .pagination-dark .pagination {
+        width: 784px;
+    }
+    .r .logged-out .forums-main-wrap .forums-wrap .updates-box,
+    .r .logged-out .forums-main-wrap .forums-wrap .search-box,
+    .r .logged-out .forums-main-wrap .forums-wrap .forums-box {
+        width: 784px;
+    }
+
+    .r .logged-out .forums-main-wrap .forum-wrap .title > li.name {
+        width: 570px;
+    }
+
+    .r .logged-out .forums-main-wrap .forum-wrap .forum-list .item > li.name {
+        width: 579px;
+    }
+}
+
+@media screen and (max-width: 600px) {
+    body.r.without-sidebar .content-wrapper .forums-main-wrap .forums-wrap .forums-box,
+    body.r.without-sidebar .content-wrapper .forums-main-wrap .forums-wrap .updates-box,
+    body.r.without-sidebar .content-wrapper .forums-main-wrap .forums-wrap .search-box {
+        width: 386px;
+    }
+
+    body.r.without-sidebar .content-wrapper .forums-main-wrap .forum-wrap .forum-list .item > li.name {
+        width: 262px;
+    }
+
+    body.r.without-sidebar .content-wrapper .forums-main-wrap .forum-wrap .title > li.name {
+        width: 253px;
+    }
+
+    body.r.without-sidebar .content-wrapper .forums-main-wrap .forum-wrap .title > li.threads,
+    body.r.without-sidebar .content-wrapper .forums-main-wrap .forum-wrap .forum-list .item > li.threads {
+        display: none;
+    }
+
+    body.r.without-sidebar .content-wrapper .forums-main-wrap .forum-wrap .forum-list .item > li.name .desc {
+        width: 151px;
+    }
+
+    .r.without-sidebar .forums-main-wrap .forum-wrap .title > li.last-poster,
+    .r.without-sidebar .forums-main-wrap .forum-wrap .forum-list .item > li.last-poster {
+        width: 100px;
+    }
+
+    .r .logged-out .forums-main-wrap .rating .pg-bar-wrap {
+        width: 256px;
+    }
+
+    .r .logged-out .forums-main-wrap .dashboard.fm-search .panel > li:nth-child(2) {
+        width: 300px;
+    }
+
+    .r .logged-out .bugs-issues .forums-committee .thread > li.assigned,
+    .r .logged-out .bugs-issues .forums-committee .thread > li.posts,
+    .r .logged-out .forums-committee .thread > li.rating,
+    .r .logged-out .forums-committee .thread > li.posts,
+    .r .logged-out .forums-committee .thread > li.starter,
+    .r .logged-out .forums-committee .thread > li.last-post {
+        width: 182px;
+    }
+
+    .r .logged-out .forums-main-wrap .rating.w4 .pg-bar-wrap {
+        width: 248px;
+    }
+
+    .r .logged-out .forums-main-wrap .rating.w5 .pg-bar-wrap,
+    .r .logged-out .forums-main-wrap .rating.w6 .pg-bar-wrap {
+        width: 242px;
+    }
+
+    .r .logged-out .bug-tracing-wrap .legend-list {
+        display: grid;
+        grid-template-columns: repeat(1, 1fr);
+    }
+}
+
+@media screen and (max-width: 386px) {
+    .r .logged-out .bugs-issues .forums-committee .thread > li.assigned,
+    .r .logged-out .bugs-issues .forums-committee .thread > li.posts,
+    .r .logged-out .forums-committee .thread > li.rating,
+    .r .logged-out .forums-committee .thread > li.posts,
+    .r .logged-out .forums-committee .thread > li.starter,
+    .r .logged-out .forums-committee .thread > li.last-post {
+        width: 148px;
+    }
+
+    body.r.without-sidebar .content-wrapper .forums-main-wrap .forums-wrap .forums-box,
+    body.r.without-sidebar .content-wrapper .forums-main-wrap .forums-wrap .updates-box,
+    body.r.without-sidebar .content-wrapper .forums-main-wrap .forums-wrap .search-box {
+        width: 320px;
+    }
+
+    body.r.without-sidebar .content-wrapper .forums-main-wrap .forum-wrap .forum-list .item > li.name {
+        width: 198px;
+    }
+
+    body.r.without-sidebar .content-wrapper .forums-main-wrap .forum-wrap .title > li.name {
+        width: 188px;
+    }
+}

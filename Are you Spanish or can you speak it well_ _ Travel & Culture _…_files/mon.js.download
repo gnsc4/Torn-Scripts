@@ -1,0 +1,84 @@
+(function () {
+  Sentry.init({
+    dsn: "https://d371f4cf64e5d467f59089bbd29a455f@air.torn.com/10",
+
+    integrations: [
+      Sentry.browserTracingIntegration(),
+      Sentry.breadcrumbsIntegration({
+        console: false,
+        dom: true,
+        fetch: true,
+        history: true,
+        xhr: true,
+      }),
+    ],
+
+    tracesSampleRate:
+      document.currentScript.getAttribute("environment") === "development" ? 1 : 0.001,
+
+    server_name: document.currentScript.getAttribute("server_name") || "unknown",
+    release: document.currentScript.getAttribute("release") || "unknown",
+    environment: document.currentScript.getAttribute("environment") || "unknown",
+
+    beforeSend(event) {
+      const errorWhitelist = [/builds\/[a-zA-Z0-9-_]+\/app\.[a-f0-9]+\.js$/];
+
+      // List of case-insensitive error messages that should not be sent to Sentry.
+      const errorMessageBlacklist = [
+        "Connection is required.",
+        "missing-sessionToken",
+        "Load failed",
+        "Connection to Indexed Database server lost",
+        "NotAllowedError",
+        "Failed to fetch",
+        "Access Forbiden",
+        "You are attacking now!",
+        "API key is missing in the response",
+        "Connection is closed. Please reconnect.",
+        "Unexpected end of script",
+      ];
+
+      if (event.exception && event.exception.values) {
+        // Check if error is coming from a compiled react-apps build.
+        const whitelistAllow = event.exception.values.some((value) => {
+          return (
+            value.stacktrace &&
+            value.stacktrace.frames.some((frame) => {
+              return (
+                frame.filename && errorWhitelist.some((pattern) => pattern.test(frame.filename))
+              );
+            })
+          );
+        });
+
+        const blacklistReject = event.exception.values.some((value) => {
+          return (
+            value.value &&
+            errorMessageBlacklist.some((text) =>
+              value.value.toLowerCase().includes(text.toLowerCase())
+            )
+          );
+        });
+
+        if (whitelistAllow && !blacklistReject) {
+          return event;
+        }
+      }
+
+      // Allow captured messages in non-production environments.
+      //   if (event.message) {
+      //     return event;
+      //   }
+
+      // By default, do not send to Sentry.
+      return null;
+    },
+  });
+
+  const playerId = document.currentScript.getAttribute("playerId") || 0;
+  const playerName = document.currentScript.getAttribute("playerName") || "";
+
+  if (playerId > 0) {
+    Sentry.setUser({ id: playerId, username: playerName });
+  }
+})();

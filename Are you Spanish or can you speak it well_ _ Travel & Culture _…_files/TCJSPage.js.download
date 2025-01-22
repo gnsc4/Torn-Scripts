@@ -1,0 +1,344 @@
+function TCJSPage(objName) {
+    this.callbacks = Array();
+    this.pageWrap = null;
+    this.pageLink = null;
+    this.xhr = null;
+    this.first_load = true;
+    this.loadOnHashContent = true;
+    this.needClean = true;
+    this.requestAfterSelector = '.content-title';
+    this.displayRequestState = 'display-request-state';
+    this.events = null;
+    this.hash = null;
+    this.hasherActive = true;
+    this.afterLoadFunc = null;
+    this.defAction = null;
+    this.suffix = '';
+    this.events = null;
+    this.beforeLoadContent = null;
+    this.objName = objName;
+    this.init = function (opt) {
+        this.clean();
+        $.extend(this, {
+            pageWrap: opt.pageWrap,
+            pageLink: opt.pageLink,
+            afterLoadFunc: opt.afterLoadFunc,
+            defAction: opt.defAction,
+            suffix: opt.stepSuffix || '',
+            events: opt.events,
+            beforeLoadContent: opt.beforeLoad || function (e, that) {},
+        });
+
+        if (opt.hasherActive !== undefined) {
+            this.hasherActive = opt.hasherActive;
+        }
+
+        function prepareQueryParams(params) {
+            if (opt.shouldIncludeQueryParams) {
+                return Object.assign(queryStringToObj(params), queryStringToObj(location.search));
+            }
+
+            return queryStringToObj(params);
+        }
+
+        var that = this;
+        var loadContent = null;
+        if (this.pageWrap.length !== undefined) {
+            loadContent = function (step, opt) {
+                var data = opt || {};
+                data.step = step + that.suffix;
+                if (that.xhr && that.xhr.readyState !== 4) {
+                    that.xhr.abort();
+                }
+                if (TCJSPage.globalPages[that.pageLink])
+                    data.cross_page_request = location.pathname !== '/' + that.pageLink;
+                that.xhr = getAction({
+                    type: 'post',
+                    action: that.pageLink,
+                    data: data,
+                    success: function (response) {
+                        that.hash = opt;
+                        $('.mce-menu,.mce-panel').remove();
+                        if (response) {
+                            try {
+                                var json = JSON.parse(response);
+                                if (json.error) {
+                                    console.error(json.error);
+                                    return;
+                                }
+                            } catch (e) {}
+
+                            that.pageWrap.html(response);
+                        }
+                        try {
+                            if (typeof that.afterLoadFunc == 'function') {
+                                that.afterLoadFunc.apply(that);
+                            } else {
+                                that.afterLoadFunc[step].apply(that);
+                            }
+                        } catch (e) {
+                            console.error(e);
+                        }
+
+                        for (var i in that.callbacks) {
+                            that.callbacks[i].apply(that);
+                        }
+                        that.callbacks = Array();
+                        $(window).resize();
+                    },
+                    before: function (e) {
+                        that.beforeLoadContent(e, that);
+                    },
+                });
+            };
+
+            this.handleChanges = function (newHash, oldHash) {
+                if (!that.hasherActive) {
+                    return;
+                }
+                if (opt.hashChange === undefined) {
+                    var newParams = prepareQueryParams(newHash);
+
+                    if (oldHash !== newHash || that.first_load) {
+                        if (hasher.loadOnHashContent) {
+                            if (typeof that.afterLoadFunc == 'function') {
+                                loadContent(opt.defAction, newParams);
+                            } else {
+                                if (newParams.p !== undefined && that.afterLoadFunc[newParams.p] !== undefined) {
+                                    loadContent(newParams.p, newParams);
+                                } else {
+                                    var search = queryStringToObj(location.search);
+                                    if (!(search.p && !location.hash)) {
+                                        loadContent(opt.defAction);
+                                    }
+                                }
+                            }
+                            that.first_load = false;
+                        }
+                        hasher.loadOnHashContent = true;
+                    }
+                } else {
+                    opt.hashChange.apply(that, [newHash, oldHash]);
+                }
+            };
+        } else {
+            loadContent = function (step, opt) {
+                var data = opt || {};
+                data.step = step + that.suffix;
+                if (that.xhr && that.xhr.readyState !== 4) {
+                    that.xhr.abort();
+                }
+                that.xhr = getAction({
+                    type: 'post',
+                    action: that.pageLink,
+                    data: data,
+                    success: function (response) {
+                        that.hash = opt;
+                        $('.mce-menu,.mce-panel').remove();
+                        try {
+                            var json = JSON.parse(response);
+                            if (json.error) {
+                                console.error(json.error);
+                                return;
+                            }
+                        } catch (e) {}
+                        that.pageWrap.html(response);
+                        if (typeof that.afterLoadFunc == 'function') {
+                            that.afterLoadFunc.apply(that);
+                        } else {
+                            that.afterLoadFunc[step].apply(that);
+                        }
+
+                        for (var i in that.callbacks) {
+                            that.callbacks[i].apply(that);
+                        }
+                        that.callbacks = Array();
+                        $(window).resize();
+                    },
+                    before: function (e) {
+                        that.beforeLoadContent(e, that);
+                    },
+                });
+            };
+
+            this.handleChanges = function (newHash, oldHash) {
+                if (!that.hasherActive) {
+                    return;
+                }
+                if (opt.hashChange === undefined) {
+                    var newParams = prepareQueryParams(newHash);
+
+                    if (oldHash !== newHash || that.first_load) {
+                        if (hasher.loadOnHashContent) {
+                            if (typeof that.afterLoadFunc == 'function') {
+                                loadContent(opt.defAction, newParams);
+                            } else {
+                                if (newParams.p !== undefined && that.afterLoadFunc[newParams.p] !== undefined) {
+                                    loadContent(newParams.p, newParams);
+                                } else {
+                                    var search = queryStringToObj(location.search);
+
+                                    if (search.p) {
+                                        loadContent(search.p, search);
+                                    } else loadContent(opt.defAction);
+                                }
+                            }
+                            that.first_load = false;
+                        }
+                        hasher.loadOnHashContent = true;
+                    }
+                } else {
+                    opt.hashChange.apply(that, [newHash, oldHash]);
+                }
+            };
+        }
+
+        if (this.events) {
+            for (var stateA in this.events) {
+                for (var stateB in this.events[stateA]) {
+                    if (typeof this.events[stateA][stateB] === 'function') {
+                        this.pageWrap.on(stateA, stateB, this, this.events[stateA][stateB]);
+                    } else {
+                        for (var stateC in this.events[stateA][stateB]) {
+                            if (typeof this.events[stateA][stateB][stateC] === 'function') {
+                                this.pageWrap.on(stateB, stateC, this, this.events[stateA][stateB][stateC]);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (this.hasherActive) {
+            hasher.init();
+            hasher.changed.add(this.handleChanges);
+            this.handleChanges(hasher.getHash(), Math.random().toString());
+        }
+
+        if (opt.onInit !== undefined && typeof opt.onInit == 'function') {
+            opt.onInit.apply(that);
+        }
+
+        $('.content-wrapper')
+            .off('click', 'a')
+            .on('click', 'a', function (event) {
+                if (TCJSPage.globalPages[that.pageLink]) {
+                    var $this = $(this),
+                        href = $this.attr('href');
+                    if (href && href[0] === '?') {
+                        event.preventDefault();
+                        href = href.split('?')[1];
+                        location.hash = '!' + href;
+                        //resetHash(href);
+                        //hasher.resetHash(href);
+                    }
+                }
+            });
+
+        $(window).resize(opt.resize);
+    };
+}
+hasher.loadOnHashContent = true;
+hasher.resetHash = function (hash) {
+    this.loadOnHashContent = false;
+    this.setHash(hash);
+    this.loadOnHashContent = true;
+};
+TCJSPage.globalPages = {
+    'chronicles.php': 1,
+    'comics.php': 1,
+};
+
+TCJSPage.prototype = {
+    resetHash: function (hash) {
+        hasher.resetHash(hash);
+        this.handleChanges(hash, Math.random().toString());
+    },
+    refresh: function () {
+        this.resetHash(hasher.getHash());
+    },
+
+    showChangesLog: function (msg) {
+        msg.text = '<p>' + msg.text + '</p>';
+        if (msg.logs && msg.logs.length) {
+            var lg = '<ul class="t-gray-9 p10 hide log-list">';
+            for (var i in msg.logs) {
+                lg += '<li>' + msg.logs[i] + '</li>';
+            }
+            lg +=
+                '</ul><a href="#" class="show-log">Show log</a><a class="hide-log" href="#" style="display:none">Hide log</a>';
+            msg.text = '<p>' + msg.text + '</p>' + lg;
+        }
+        return msg.text;
+    },
+    displayRequestMsg: function (msg, selector) {
+        var wrapper = null;
+        if (selector !== undefined) {
+            wrapper = selector;
+        } else if (this.requestSelector !== undefined) {
+            wrapper = this.requestSelector;
+        } else {
+            wrapper = this.pageWrap;
+        }
+
+        if (!wrapper.find('#' + this.displayRequestState).length) {
+            wrapper
+                .find(this.requestAfterSelector)
+                .after('<div class="m-top10" id="' + this.displayRequestState + '"></div>');
+        }
+
+        if (msg !== undefined) {
+            informationMessageTemplateIn(
+                wrapper.find('#' + this.displayRequestState).empty(),
+                false,
+                true,
+                msg.success ? 'green' : 'red'
+            );
+            wrapper
+                .find('#' + this.displayRequestState + ' .msg')
+                .empty()
+                .append(this.showChangesLog(msg));
+        } else {
+            informationMessageTemplateIn(wrapper.find('#' + this.displayRequestState).empty(), false, true, '');
+        }
+    },
+    initEvents: function (events) {
+        if (this.events) {
+            for (var stateA in this.events) {
+                for (var stateB in this.events[stateA]) {
+                    if (typeof typeof this.events[stateA][stateB] === 'function') {
+                        this.pageWrap.on(stateA, stateB, this, this.events[stateA][stateB]);
+                    } else {
+                        for (var stateC in this.events[stateA][stateB]) {
+                            if (typeof typeof this.events[stateA][stateB][stateC] === 'function') {
+                                this.pageWrap.on(stateB, stateC, this, this.events[stateB][stateC]);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    clean: function () {
+        return;
+        if (this.needClean) {
+            if (this.events) {
+                for (var stateA in this.events) {
+                    for (var stateB in this.events[stateA]) {
+                        if (typeof this.events[stateA][stateB] === 'function') {
+                            this.pageWrap.off(stateA, stateB);
+                        } else {
+                            for (var stateC in this.events[stateA][stateB]) {
+                                if (typeof this.events[stateA][stateB][stateC] === 'function') {
+                                    this.pageWrap.off(stateB, stateC);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+};
+
+var TCPageObject = new TCJSPage('page');

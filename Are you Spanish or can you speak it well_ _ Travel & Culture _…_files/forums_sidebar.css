@@ -1,0 +1,183 @@
+.d .forums-main-bar .ui-state-active .menu-header-arrow,
+.d .forums-main-bar .activated .menu-header-arrow {
+    display: block;
+    height: 9px;
+    width: 14px;
+    margin: 12px 9px 0 0;
+    background: url(/images/v2/mobile/mobile_side_nav_arrow_down.png) left top no-repeat;
+}
+
+.d .forums-main-bar .menu-header-arrow {
+    height: 14px;
+    width: 19px;
+    margin: 9px 0 0 0;
+    background: url(/images/v2/mobile/mobile_side_nav_arrow_side.png) left top no-repeat;
+}
+
+.d .forums-main-bar {
+    padding-bottom: 30px;
+}
+
+.d .forums-main-bar .title {
+    cursor: pointer;
+}
+
+.d .forums-main-bar .title.top-round {
+    border-radius: 5px;
+}
+
+.d .forums-main-bar .title.activated {
+    border-radius: 5px 5px 0 0;
+}
+
+.d .forums-main-bar .title.right-top-round {
+    border-radius: 0 5px 5px 5px;
+}
+
+.d .forums-main-bar .title.activated.right-top-round {
+    border-radius: 0 5px 0 0;
+}
+
+.d .forums-main-bar .list {
+    display: none;
+}
+
+.d .forums-main-bar .activated + .list {
+    display: block;
+}
+
+.d .forums-main-bar .list > li {
+    display: block;
+    height: 32px;
+    line-height: 32px;
+    width: 100%;
+    border-top: 1px solid #FFF;
+	border-top-color: var(--default-panel-divider-inner-side-color);
+    border-bottom: 1px solid #CCC;
+	border-bottom-color: var(--default-panel-divider-outer-side-color);
+}
+
+.d .forums-main-bar .list > li:hover {
+    background: #FFF none;
+    background-color: var(--default-bg-panel-active-color);
+}
+
+.d .forums-main-bar .list > li.last {
+    border-bottom: none;
+    border-radius: 0 0 5px 5px;
+}
+
+.d .forums-main-bar .list > li a {
+    display: block;
+    padding-left: 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.d .forums-main-bar .list > li:hover a,
+.d .forums-main-bar .list > li.new a {
+    color: #333;
+    color: var(--default-color);
+}
+
+.d .forums-main-bar .list .empty {
+    display: none;
+}
+
+.d .forums-main-bar .list .empty:hover {
+    background-color: transparent;
+}
+
+.d .forums-main-bar .like-box-wrap {
+    display: none;
+}
+
+.d .forums-main-bar + .content-wrapper .join-btn {
+    display: none;
+}
+
+.d .content-wrapper.logged-out-sidebar {
+    margin-left: 0;
+}
+
+.d .content-wrapper.logged-out-sidebar.m-left20 {
+    margin-left: 20px;
+}
+
+.d .forums-main-bar.logged-out {
+    padding-bottom: 0;
+    width: 100%;
+}
+
+
+@media screen and (max-width: 784px) {
+    .r .forums-main-bar .ui-state-active .menu-header-arrow,
+    .r .forums-main-bar .activated .menu-header-arrow {
+        margin-top: 14px;
+    }
+
+    .r .forums-main-bar .menu-header-arrow {
+        margin-top: 11px;
+    }
+}
+
+@media screen and (max-width: 386px) {
+    .r .forums-main-bar {
+        display: none;
+    }
+
+    .r .forums-main-bar.menu {
+        width: 100%;
+    }
+
+    .r .forums-main-bar .list.mob > li {
+        float: left;
+        width: 159px;
+        border-right: 1px solid #CCC;
+	border-right-color: var(--default-panel-divider-outer-side-color);
+    }
+
+    .r .forums-main-bar .list.mob > li:nth-child(even) {
+        border-right: none;
+        border-left: 1px solid #FFF;
+	border-left-color: var(--default-panel-divider-inner-side-color);
+    }
+
+    .r .forums-main-bar .list.mob .empty {
+        display: block;
+    }
+
+    .r .forums-main-bar .list > li.last,
+    .r .forums-main-bar .title.activated,
+    .r .forums-main-bar .title.right-top-round,
+    .r .forums-main-bar .title.activated.right-top-round {
+        border-radius: 0;
+    }
+
+    .r .forums-main-bar .list.mob:after {
+        content: "";
+        display: block;
+        clear: both;
+    }
+
+    .r .forums-main-bar {
+        padding-bottom: 10px;
+    }
+
+    .r .like-box-wrap {
+        display: block;
+    }
+
+    .r .forums-main-bar .like-box-wrap {
+        display: block;
+    }
+
+    .r .forums-main-bar + .content-wrapper .join-btn {
+        display: block;
+    }
+
+    .r .content-wrapper.logged-out-sidebar.m-left20 {
+        margin-left: 0;
+    }
+}
