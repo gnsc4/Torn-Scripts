@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Forum Post Extractor for Discord
 // @namespace    https://www.torn.com/
-// @version      0.73
+// @version      0.75
 // @description  Extracts Torn forum posts and formats them for Discord
 // @author       GNSC4 [268863]
 // @include      https://www.torn.com/forums.php*
@@ -23,7 +23,7 @@
         maxForumsToStore: 10,         // Maximum number of forums to store data for.
         notificationTimeout: 3000,    // Timeout for the notification message (in milliseconds).
         debugMode: true,            // Enable debug logging to the console.
-        retryDelay: 1000,             // Increased delay for debouncing and retries (in milliseconds).
+        retryDelay: 250,             // Delay between retries when waiting for elements to load (in milliseconds).
         maxCopyLength: 2000          // Maximum length of text to copy to clipboard, in characters
     };
 
@@ -42,7 +42,7 @@
     async function extractPosts() {
         logDebug("extractPosts called");
         try {
-            const forumContainer = await waitForElement('.thread-list', 30000);
+            const forumContainer = await waitForElement('.thread-list', 10000);
             if (!forumContainer) {
                 throw new Error("Forum container element (.thread-list) not found.");
             }
@@ -256,35 +256,35 @@
         });
     }
 
-    /**
-     * Waits for the author element to be fully loaded and have a valid username.
-     * @param {HTMLElement} post The post element to search within.
-     * @returns {Promise<HTMLElement>} A promise that resolves with the fully loaded author element.
+   /**
+     * Waits for the author element within a post to be fully loaded and visible.
+     * @param {HTMLElement} post - The post element to search within.
+     * @returns {Promise<HTMLElement>} A promise that resolves with the author element when it's found and visible.
      */
     function waitForAuthorElement(post) {
         logDebug("waitForAuthorElement called with post:", post);
         return new Promise((resolve) => {
-            const observer = new MutationObserver((mutations, obs) => {
-                const authorElement = post.querySelector('.user.left a[href*="profiles.php"]') ||
-                                    post.querySelector('.heading-name a[href*="profiles.php"]') ||
-                                    post.querySelector('.first-post .user-name a[href*="profiles.php"]');
-                if (authorElement) {
-                    const authorName = authorElement.textContent.trim();
-                    if (authorName !== "" && !/^\[\d+\]$/.test(authorName)) {
-                        logDebug("Author element found:", authorElement);
-                        obs.disconnect();
-                        resolve(authorElement);
-                        return;
-                    }
-                }
-            });
+            const startTime = Date.now();
+            const timeout = 10000;
 
-            observer.observe(post, {
-                childList: true,
-                subtree: true,
-                attributes: true,
-                characterData: true
-            });
+            const checkAuthor = () => {
+                const authorElement = post.querySelector('.user.name');
+                if (authorElement && authorElement.offsetParent !== null) {
+                    logDebug("Author element found:", authorElement);
+                    resolve(authorElement);
+                    return;
+                }
+
+                if (Date.now() - startTime > timeout) {
+                    logError("Timeout waiting for author element in post:", post);
+                    resolve(null);
+                    return;
+                }
+
+                setTimeout(checkAuthor, config.retryDelay);
+            };
+
+            checkAuthor();
         });
     }
 
@@ -500,14 +500,6 @@
         // Set up a new MutationObserver with specific target and debounce
         observer = new MutationObserver(async (mutations) => {
             logDebug("Mutation observer triggered.");
-    
-            // Check if the posts-list element exists
-            const postsList = document.querySelector('.posts-list');
-            if (!postsList) {
-                logDebug("posts-list not found, returning.");
-                return; // Do nothing if posts-list is not found
-            }
-    
             try {
                 let shouldExtract = false;
                 for (let mutation of mutations) {
@@ -534,17 +526,13 @@
             }
         });
     
-        // Start observing the posts-list for changes in the childList and subtree
-        const postsList = document.querySelector('.posts-list');
-        if (postsList) {
-            observer.observe(postsList, {
-                childList: true,
-                subtree: true
-            });
-            logDebug("Mutation observer set up.");
-        } else {
-            logDebug("posts-list not found, cannot set up observer.");
-        }
+        // Start observing the body for changes in the childList and subtree
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    
+        logDebug("Mutation observer set up.");
     }
 
     // --- Helper Function ---
@@ -582,7 +570,24 @@
         }
     }
 
-    // --- Initial Setup ---
+    /**
+     * Properly initializes the script, including setting up the observer,
+     * after ensuring the API key is set.
+     */
+    async function initialize() {
+        if (!config.apiKey) {
+            logDebug("API key not set. Prompting for API key.");
+            promptForApiKey();
+        }
+        if (config.apiKey) {
+            logDebug("Initializing extraction process.");
+            await initializeExtraction();
+            logDebug("Setting up mutation observer.");
+            setupObserver();
+        }
+    }
+
+    // --- Check for API Key ---
 
     // Check for stored API key
     let storedApiKey = GM_getValue("tornApiKey");
