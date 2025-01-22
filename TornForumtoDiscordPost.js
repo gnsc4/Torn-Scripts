@@ -32,34 +32,23 @@
     let observer = null; // Global variable for the mutation observer.
     let highlightKeywordsRegex = null; // Global variable for precompiled regex for keyword highlighting.
 
-    /**
-     * Logs a debug message to the console if debug mode is enabled.
-     * @param {...any} args The arguments to log.
-     */
     function logDebug(...args) {
         if (config.debugMode) {
             console.log(...args);
         }
     }
 
-    /**
-     * Logs an error message to the console.
-     * @param {...any} args The arguments to log.
-     */
     function logError(...args) {
         console.error(...args);
     }
 
-    /**
-     * Waits for the author element to be fully loaded and have a valid username.
-     * @param {HTMLElement} post The post element to search within.
-     * @returns {Promise<HTMLElement>} A promise that resolves with the fully loaded author element.
-     */
     async function waitForAuthorElement(post) {
         logDebug("waitForAuthorElement called with post:", post);
         return new Promise((resolve) => {
             const observer = new MutationObserver((mutations, obs) => {
-                const authorElement = post.querySelector('.user.left a[href*="profiles.php"], .heading-name a[href*="profiles.php"], .first-post .user-name a[href*="profiles.php"]');
+                const authorElement = post.closest('.thread-list').querySelector(
+                    '.user.left, .heading-name, .post-container .user-name'
+                );
                 if (authorElement) {
                     const authorName = authorElement.textContent.trim();
                     if (authorName !== "" && !/^\[\d+\]$/.test(authorName)) {
@@ -75,24 +64,17 @@
                 childList: true,
                 subtree: true,
                 attributes: true,
-                characterData: true
+                characterData: true,
             });
 
-            // Fallback timeout if the author element never appears
             setTimeout(() => {
                 observer.disconnect();
-                logError("Timeout waiting for author element in post:", post);
+                logDebug("No author element found. Assigning default value.");
                 resolve(null);
             }, 10000);
         });
     }
 
-    // --- Functions ---
-
-    /**
-     * Extracts posts from the current forum page.
-     * @returns {Promise<Array>} An array of extracted post data (author, content, timestamp).
-     */
     async function extractPosts() {
         logDebug("extractPosts called");
         try {
@@ -113,20 +95,19 @@
                 promises.push((async () => {
                     logDebug("Processing post:", post);
 
-                    // Author Extraction:
                     let author = "Unknown Author";
                     try {
                         const authorElement = await waitForAuthorElement(post);
                         if (authorElement) {
                             const href = authorElement.getAttribute('href');
-                            const match = href.match(/XID=(\d+)/);
+                            const match = href ? href.match(/XID=(\d+)/) : null;
                             let authorName = authorElement.textContent.trim();
 
                             if (match) {
                                 const userID = match[1];
-                                author = (authorName && authorName !== "") ? authorName + "[" + userID + "]" : "Unknown [" + userID + "]";
+                                author = (authorName && authorName !== "") ? `${authorName}[${userID}]` : `Unknown [${userID}]`;
                             } else {
-                                author = (authorName && authorName !== "") ? authorName : author;
+                                author = authorName || author;
                             }
                         } else {
                             logError("Failed to find author element for post:", post);
@@ -135,7 +116,6 @@
                         logError("Error extracting author:", error);
                     }
 
-                    // Content Extraction:
                     let content = "";
                     try {
                         const contentElement = post.querySelector('.post.unreset');
@@ -150,7 +130,6 @@
                         content = "Error extracting content.";
                     }
 
-                    // Timestamp Extraction:
                     const timestampElement = post.querySelector('.post-time');
                     const timestamp = timestampElement ? new Date(timestampElement.getAttribute('data-timestamp') * 1000).toISOString() : "Unknown Timestamp";
 
@@ -170,12 +149,6 @@
         }
     }
 
-    /**
-     * Waits for an element to be present in the DOM using a polling mechanism.
-     * @param {string} selector - The CSS selector of the element to wait for.
-     * @param {number} timeout - The maximum time to wait in milliseconds.
-     * @returns {Promise<HTMLElement>} A promise that resolves with the element when it's found or null if timed out.
-     */
     function waitForElement(selector, timeout = 10000) {
         logDebug("waitForElement called with selector:", selector, "timeout:", timeout);
         return new Promise((resolve) => {
@@ -200,7 +173,6 @@
         });
     }
 
-    // --- Updated Initialization ---
     async function initializeExtraction() {
         logDebug("initializeExtraction called");
         try {
@@ -211,10 +183,8 @@
 
             isExtracting = true;
 
-            // Extract posts from the current forum page
             const newExtractedData = await extractPosts();
 
-            // Format and display the extracted data
             const discordFormattedPosts = await formatForDiscord(newExtractedData);
             addCopyButton(discordFormattedPosts);
 
@@ -226,13 +196,12 @@
         }
     }
 
-    // --- Initial Setup ---
     const storedApiKey = GM_getValue("tornApiKey");
     if (!storedApiKey) {
         promptForApiKey();
     } else {
         config.apiKey = storedApiKey;
-        waitForElement('.thread-list', 30000) // Updated selector
+        waitForElement('.thread-list', 30000)
             .then((forumContainer) => {
                 if (forumContainer) {
                     logDebug("thread-list found, initializing extraction.");
