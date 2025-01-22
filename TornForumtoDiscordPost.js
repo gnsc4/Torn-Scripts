@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name        Torn Forum Post Extractor for Discord
 // @namespace   https://www.torn.com/
-// @version     0.86
+// @version     0.87
 // @description Extracts Torn forum posts and formats them for Discord
 // @author      GNSC4 [268863]
 // @include     https://www.torn.com/forums.php*
 // @grant       GM_getValue
 // @grant       GM_setValue
-// @require     https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.10/dayjs.min.js
+// @require     https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js
 // ==/UserScript==
 
 (function() {
@@ -94,10 +94,11 @@
 
                     // Timestamp Extraction:
                     let timestamp = "Unknown Timestamp";
-                    const timestampElement = post.querySelector('.time-wrap > div'); // Get timestamp from within the post-container
+                    const timestampElement = post.querySelector(".post-time"); // Get timestamp from within the post-container
                     if (timestampElement) {
                       const rawTimestamp = timestampElement.textContent.trim();
-                      const timestampRegex = /Posted on (\d{2}:\d{2}:\d{2}) - (\d{2}\/\d{2}\/\d{2})/;
+                      const timestampRegex =
+                        /Posted on (\d{2}:\d{2}:\d{2}) - (\d{2}\/\d{2}\/\d{2})/;
                       const match = rawTimestamp.match(timestampRegex);
                       if (match) {
                         const time = match[1];
@@ -105,7 +106,10 @@
                         const year = date.substring(6);
                         const month = date.substring(3, 5);
                         const day = date.substring(0, 2);
-                        timestamp = dayjs(`${year}-${month}-${day}T${time}`, 'YY-MM-DDTHH:mm:ss').toISOString();
+                        timestamp = dayjs(
+                          `${year}-${month}-${day}T${time}`,
+                          "YY-MM-DDTHH:mm:ss"
+                        ).toISOString();
                       }
                     }
 
@@ -283,30 +287,25 @@
             const timeout = config.authorElementTimeout;
 
             const checkAuthor = () => {
-                // Find the nearest ancestor with class 'thread-list'
-                const threadList = post.closest('.thread-list');
-                logDebug("threadList:", threadList);
+                // Get the li element that is the parent of the post-container
+                const postLi = post.closest('li');
 
-                if (threadList) {
-                    // Get the sibling element before the thread-list
-                    const authorContainer = threadList.previousElementSibling;
-                    logDebug("authorContainer:", authorContainer);
+                if (postLi) {
+                  // Construct a selector using the index of the li element
+                  const authorSelector = `#forums-page-wrap > div.forums-thread-wrap.view-wrap > div > ul > li:nth-child(${Array.from(postLi.parentElement.children).indexOf(postLi) + 1}) > div.column-wrap > div.poster-wrap.left > div.poster.white-grad > a.user.name`;
 
-                    if (authorContainer) {
-                        // Find the author element within the author container
-                        const authorElement = authorContainer.querySelector('a.user.name');
-                        logDebug("authorElement:", authorElement);
+                  // Find the author element using the dynamic selector
+                  const authorElement = document.querySelector(authorSelector);
 
-                        if(authorElement){
-                          const authorName = authorElement.textContent.trim();
+                  if (authorElement) {
+                    const authorName = authorElement.textContent.trim();
 
-                          if (authorName !== "" && !/^\[\d+\]$/.test(authorName)) {
-                              logDebug("Author element found:", authorElement);
-                              resolve(authorElement);
-                              return;
-                          }
-                        }
+                    if (authorName !== "" && !/^\[\d+\]$/.test(authorName)) {
+                        logDebug("Author element found:", authorElement);
+                        resolve(authorElement);
+                        return;
                     }
+                  }
                 }
 
                 if (Date.now() - startTime > timeout) {
@@ -346,7 +345,7 @@
     }
 
     /**
-     * Processes a post's content, handling nested quotes recursively.
+    * Processes a post's content, handling nested quotes recursively.
      * @param {HTMLElement} element The element to process.
      * @returns {Promise<string>} The processed content.
      */
