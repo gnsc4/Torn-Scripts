@@ -50,6 +50,43 @@
         console.error(...args);
     }
 
+    /**
+     * Waits for the author element to be fully loaded and have a valid username.
+     * @param {HTMLElement} post The post element to search within.
+     * @returns {Promise<HTMLElement>} A promise that resolves with the fully loaded author element.
+     */
+    async function waitForAuthorElement(post) {
+        logDebug("waitForAuthorElement called with post:", post);
+        return new Promise((resolve) => {
+            const observer = new MutationObserver((mutations, obs) => {
+                const authorElement = post.querySelector('.user.left a[href*="profiles.php"], .heading-name a[href*="profiles.php"], .first-post .user-name a[href*="profiles.php"]');
+                if (authorElement) {
+                    const authorName = authorElement.textContent.trim();
+                    if (authorName !== "" && !/^\[\d+\]$/.test(authorName)) {
+                        logDebug("Author element found:", authorElement);
+                        obs.disconnect();
+                        resolve(authorElement);
+                        return;
+                    }
+                }
+            });
+
+            observer.observe(post, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                characterData: true
+            });
+
+            // Fallback timeout if the author element never appears
+            setTimeout(() => {
+                observer.disconnect();
+                logError("Timeout waiting for author element in post:", post);
+                resolve(null);
+            }, 10000);
+        });
+    }
+
     // --- Functions ---
 
     /**
