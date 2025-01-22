@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Forum Post Extractor for Discord
 // @namespace    https://www.torn.com/
-// @version      0.71
+// @version      0.72
 // @description  Extracts Torn forum posts and formats them for Discord
 // @author       GNSC4 [268863]
 // @include      https://www.torn.com/forums.php*
@@ -23,10 +23,8 @@
         maxForumsToStore: 10,         // Maximum number of forums to store data for.
         notificationTimeout: 3000,    // Timeout for the notification message (in milliseconds).
         debugMode: true,            // Enable debug logging to the console.
-        retryDelay: 500,             // Delay between retries when waiting for elements to load (in milliseconds).
-        maxCopyLength: 2000,         // Maximum length of text to copy to clipboard, in characters
-        forumLoadDelay: 2000,        // Initial delay to wait for the forum to load, in milliseconds
-        mutationObserverDelay: 250  // Delay to wait after a mutation is detected, in milliseconds
+        retryDelay: 250,             // Delay between retries when waiting for elements to load (in milliseconds).
+        maxCopyLength: 2000          // Maximum length of text to copy to clipboard, in characters
     };
 
     // --- Global Variables ---
@@ -152,12 +150,13 @@
      * @param {string} formattedPosts The formatted text to copy.
      */
     function addCopyButton(formattedPosts) {
-        logDebug("Adding copy button with formatted posts (summary):", formattedPosts.length, "posts");
+        logDebug("addCopyButton called with formattedPosts (summary):", formattedPosts.length, "posts");
 
         // Remove any existing button
         const existingButton = document.querySelector('#copy-forum-posts-button');
         if (existingButton) {
             existingButton.remove();
+            logDebug("Removed existing copy button.");
         }
 
         const button = document.createElement('button');
@@ -176,11 +175,15 @@
             cursor: pointer;
         `;
 
+        logDebug("Copy button created. Attaching event listener.");
+
         button.addEventListener('click', function() {
+            logDebug("Copy button clicked.");
             copyToClipboard(formattedPosts);
         });
 
         document.body.appendChild(button);
+        logDebug("Copy button added to the page.");
     }
 
     /**
@@ -238,7 +241,7 @@
         logDebug("waitForElement called with selector:", selector, "timeout:", timeout);
         return new Promise((resolve) => {
             const startTime = Date.now();
-    
+
             const checkElement = () => {
                 const element = document.querySelector(selector);
                 if (element) {
@@ -253,7 +256,7 @@
                     }
                 }
             };
-    
+
             checkElement();
         });
     }
@@ -498,17 +501,18 @@
             observer.disconnect();
             logDebug("Existing observer disconnected.");
         }
-
-        // Set up a new MutationObserver with specific target and debounce
-        observer = new MutationObserver(debounce(async (mutations) => {
+    
+        // Set up a new MutationObserver with a more targeted approach
+        observer = new MutationObserver(async (mutations) => {
             logDebug("Mutation observer triggered.");
             try {
                 let shouldExtract = false;
                 for (let mutation of mutations) {
-                    if (mutation.addedNodes) {
+                    if (mutation.addedNodes.length > 0) {
+                        logDebug("Mutation added nodes:", mutation.addedNodes);
                         for (let node of mutation.addedNodes) {
                             if (node.nodeType === Node.ELEMENT_NODE) {
-                                if (node.classList.contains('post-container') || node.querySelector('.post-container')) {
+                                if (node.classList.contains('post-container') || node.classList.contains('thread-list') || node.querySelector('.post-container')) {
                                     shouldExtract = true;
                                     break;
                                 }
@@ -517,7 +521,7 @@
                     }
                     if (shouldExtract) break;
                 }
-
+    
                 if (shouldExtract) {
                     logDebug("Mutation detected, initializing extraction.");
                     await initializeExtraction();
@@ -526,14 +530,14 @@
                 logError("Error in observer callback:", error);
                 displayNotification(`Error in observer: ${error.message}`, true);
             }
-        }, config.retryDelay));
-
+        });
+    
         // Start observing the body for changes in the childList and subtree
         observer.observe(document.body, {
             childList: true,
             subtree: true
         });
-
+    
         logDebug("Mutation observer set up.");
     }
 
@@ -565,7 +569,7 @@
             logDebug("API key entered");
             GM_setValue("tornApiKey", apiKey);
             config.apiKey = apiKey;
-
+            
         } else {
             logError("API key prompt cancelled or empty key entered.");
             displayNotification("API key is required for the script to function.", true);
@@ -573,22 +577,23 @@
     }
 
     /**
-     * Extracts the thread ID from the current forum URL.
-     * @returns {string|null} The thread ID or null if not found.
+     * Properly initializes the script, including setting up the observer,
+     * after ensuring the API key is set.
      */
-    function getCurrentThreadId() {
-        logDebug("getCurrentThreadId called");
-        // This regex should match the thread ID in various Torn forum URL formats
-        const match = window.location.href.match(/threads\.php.*[?&]t=([0-9]+)/);
-        if (match && match[1]) {
-            logDebug("getCurrentThreadId returning:", match[1]);
-            return match[1];
+    async function initialize() {
+        if (!config.apiKey) {
+            logDebug("API key not set. Prompting for API key.");
+            promptForApiKey();
         }
-        logDebug("getCurrentThreadId returning null");
-        return null;
+        if (config.apiKey) {
+            logDebug("Initializing extraction process.");
+            await initializeExtraction();
+            logDebug("Setting up mutation observer.");
+            setupObserver();
+        }
     }
 
-    // --- Initial Setup ---
+    // --- Check for API Key ---
 
     // Check for stored API key
     let storedApiKey = GM_getValue("tornApiKey");
@@ -598,20 +603,14 @@
         config.apiKey = storedApiKey;
         logDebug("Using stored API key.");
 
-        // Initialize extraction on page load after waiting for .thread-list
+        // Initialize extraction on page load after waiting for .posts-list
         waitForElement('.thread-list', 30000)
             .then(forumContainer => {
                 if (forumContainer) {
                     logDebug("thread-list found on page load, initializing extraction.");
-                    initializeExtraction()
-                        .then(() => {
-                            logDebug("Initial extraction completed, setting up observer.");
-                            setupObserver();
-                        })
-                        .catch(error => {
-                            logError("Error during initial extraction:", error);
-                            displayNotification(`Error during initial extraction: ${error.message}`, true);
-                        });
+                    initializeExtraction();
+                    // Set up the MutationObserver after initializeExtraction has run
+                    setupObserver();
                 } else {
                     logError("thread-list not found within the timeout period.");
                     displayNotification("Error: Forum content not detected.", true);
