@@ -47,7 +47,7 @@
         return new Promise((resolve) => {
             const observer = new MutationObserver((mutations, obs) => {
                 const authorElement = post.querySelector(
-                    '.user.left a[href*="profiles.php"], .post-container .user-name a[href*="profiles.php"]'
+                    '.quote .author-quote strong a[href*="profiles.php"], .post-container .user-name a[href*="profiles.php"]'
                 );
                 if (authorElement) {
                     const authorName = authorElement.textContent.trim();
