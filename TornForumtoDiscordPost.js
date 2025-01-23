@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Forum Post Extractor for Discord
 // @namespace    https://www.torn.com/
-// @version      1.0.46
+// @version      1.0.49
 // @description  Extracts Torn forum posts and formats them for Discord
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/forums.php*
@@ -30,6 +30,7 @@
     };
 
     let selectedPosts = [];
+    let copyButton;
 
     GM_addStyle(`
         .select-post-button {
@@ -46,6 +47,26 @@
         }
         .post-selected, .post-selected * {
             color: #000 !important;
+        }
+        .copy-parts-container {
+            position: fixed;
+            top: 50px;
+            right: 10px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .copy-parts-button {
+            padding: 5px 10px;
+            background-color: #66b266;
+            color: #fff;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .copy-parts-button.copied {
+            background-color: #ffcc00;
         }
     `);
 
@@ -82,7 +103,7 @@
         const authorId = authorElement ? authorElement.href.match(/XID=(\d+)/)[1] : "Unknown ID";
         const author = `${authorName} [${authorId}]`;
 
-        const content = contentElement ? extractContentWithImages(contentElement) : "No Content";
+        const content = contentElement ? extractContentWithImages(contentElement, post) : "No Content";
 
         // Create the select button
         const selectButton = document.createElement('button');
@@ -117,7 +138,7 @@
         }
     }
 
-    function extractContentWithImages(contentElement) {
+    function extractContentWithImages(contentElement, post) {
         let content = '';
         const elements = contentElement.childNodes;
 
@@ -130,12 +151,33 @@
                 content += `\n${element.src}\n`;
             } else if (element.tagName === 'BR') {
                 content += '\n';
+            } else if (element.tagName === 'TABLE') {
+                content += extractTableContent(element);
             } else if (element.nodeType === Node.ELEMENT_NODE) {
-                content += extractContentWithImages(element);
+                content += extractContentWithImages(element, post);
             }
         }
 
         return content.trim();
+    }
+
+    function extractTableContent(tableElement) {
+        let tableContent = '\n```\n'; // Start of code block for the table
+
+        // Iterate over each row in the table
+        const rows = tableElement.querySelectorAll('tr');
+        for (const row of rows) {
+            const cells = row.querySelectorAll('td, th');
+            let rowContent = '';
+            for (const cell of cells) {
+                // Append cell content, followed by a tab for alignment
+                rowContent += cell.textContent.trim() + '\t';
+            }
+            tableContent += rowContent.trim() + '\n'; // Trim to remove trailing tab, add newline
+        }
+
+        tableContent += '```\n'; // End of code block for the table
+        return tableContent;
     }
 
     function manualDateParse(dateString) {
@@ -175,8 +217,7 @@
 
     async function formatSelectedPostsForDiscord() {
         console.log("Formatting selected posts for Discord...");
-        let formatted = "";
-        let currentLength = 0;
+        const formattedPosts = [];
 
         // Sort selected posts by their index
         selectedPosts.sort((a, b) => a.index - b.index);
@@ -192,17 +233,17 @@
             const authorLine = config.includeAuthorNames ? `**${authorName} [${authorId}]:**` : "";
             const postText = `${authorLine}\n${timestamp}\n${content}\n`;
 
-            if (currentLength + postText.length > config.maxCopyLength) {
-                console.warn("Post truncated due to character limit.");
-                break;
+            // Split posts if they exceed the character limit
+            if (postText.length > config.maxCopyLength) {
+                const parts = splitPostIntoParts(postText);
+                formattedPosts.push(...parts);
+            } else {
+                formattedPosts.push(postText);
             }
-
-            formatted += postText;
-            currentLength += postText.length;
         }
 
-        console.log("Formatted posts:", formatted);
-        return formatted;
+        console.log("Formatted posts:", formattedPosts);
+        return formattedPosts;
     }
 
     function processContentForDiscord(content) {
@@ -248,9 +289,35 @@
         return result.trim();
     }
 
+    function splitPostIntoParts(postText) {
+        const parts = [];
+        let currentPart = '';
+        const lines = postText.split('\n');
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const partNumber = `[Part ${parts.length + 1}/${Math.ceil(postText.length / config.maxCopyLength)}]`;
+
+            if ((currentPart + line + '\n').length + partNumber.length > config.maxCopyLength) {
+                parts.push(currentPart.trim());
+                currentPart = line + '\n';
+            } else {
+                currentPart += line + '\n';
+            }
+        }
+
+        if (currentPart.trim().length > 0) {
+            parts.push(currentPart.trim());
+        }
+
+        // Add part indicators
+        return parts.map((part, index) => {
+            return `${part} [Part ${index + 1}/${parts.length}]`;
+        });
+    }
+
     function addCopyButton() {
         console.log("Adding copy button...");
-
         const existingButton = document.querySelector('#copy-forum-posts-button');
         if (existingButton) existingButton.remove();
 
@@ -272,12 +339,52 @@
 
         button.addEventListener('click', async () => {
             const formattedPosts = await formatSelectedPostsForDiscord();
-            navigator.clipboard.writeText(formattedPosts)
-                .then(() => console.log("Copied to clipboard."))
-                .catch(err => console.error("Failed to copy:", err));
+            const copyPartsContainer = document.querySelector('.copy-parts-container') || createCopyPartsContainer();
+            document.body.appendChild(copyPartsContainer);
+            copyPartsContainer.innerHTML = '';
+
+            if (formattedPosts.length === 1) {
+                navigator.clipboard.writeText(formattedPosts[0])
+                    .then(() => console.log("Copied to clipboard."))
+                    .catch(err => console.error("Failed to copy:", err));
+            } else if (formattedPosts.length > 1) {
+                formattedPosts.forEach((post, index) => {
+                    const partButton = document.createElement('button');
+                    partButton.classList.add('copy-parts-button');
+                    partButton.textContent = `Copy Part ${index + 1}`;
+                    partButton.title = `Copy part ${index + 1} of ${formattedPosts.length}`;
+                    partButton.addEventListener('click', (event) => {
+                        event.stopPropagation();
+                        copyPartToClipboard(post, partButton);
+                    });
+                    copyPartsContainer.appendChild(partButton);
+                });
+            } else {
+                console.log("No posts selected to copy.");
+            }
         });
 
         document.body.appendChild(button);
+    }
+
+    function createCopyPartsContainer() {
+        const container = document.createElement('div');
+        container.classList.add('copy-parts-container');
+        return container;
+    }
+
+    function copyPartToClipboard(part, button) {
+        navigator.clipboard.writeText(part)
+            .then(() => {
+                console.log(`Copied part to clipboard.`);
+                button.classList.add('copied');
+                button.textContent = 'Copied';
+                setTimeout(() => {
+                    button.classList.remove('copied');
+                    button.textContent = 'Copy Part';
+                }, 1000); // Reset button text after 1 second
+            })
+            .catch(err => console.error(`Failed to copy part:`, err));
     }
 
     function observeDOM() {
