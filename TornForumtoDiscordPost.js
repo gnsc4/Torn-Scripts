@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Forum to Discord Post
 // @namespace    https://github.com/gnsc4
-// @version      1.0.15
+// @version      1.0.16
 // @description  Sends Torn Forum posts to Discord via webhook
 // @author       GNSC4 [2779998]
 // @match        https://www.torn.com/forums.php*
