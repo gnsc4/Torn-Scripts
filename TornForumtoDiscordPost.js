@@ -406,7 +406,7 @@
                 button.textContent = 'Copied';
                 setTimeout(() => {
                     button.classList.remove('copied');
-                    button.textContent = 'Copy Part';
+                    button.textContent = 'Copied Part';
                 }, 1000); // Reset button text after 1 second
             })
             .catch(err => console.error(`Failed to copy part:`, err));
