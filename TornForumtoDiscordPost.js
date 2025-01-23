@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Forum to Discord Post
 // @namespace    https://github.com/gnsc4
-// @version      1.0.5
+// @version      1.0.6
 // @description  Sends Torn Forum posts to Discord via webhook
 // @author       GNSC4 [2779998]
 // @match        https://www.torn.com/forums.php*
@@ -9,6 +9,7 @@
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_deleteValue
+// @grant        GM_addStyle
 // @connect      discord.com
 // @license      MIT
 // ==/UserScript==
@@ -19,7 +20,8 @@
     const settings = {
         torn: {
             api: {
-                key: "", // your torn api key here
+                key: "",
+                keyLevel: ""
             },
             img: {
                 default: {
@@ -33,9 +35,9 @@
         },
         discord: {
             webhook: {
-                url: "", // your discord webhook url here
-                username: "", // your discord webhook username here
-                avatar_url: "", // your discord webhook avatar url here
+                url: "",
+                username: "",
+                avatar_url: ""
             },
             img: {
                 size: 25
@@ -54,6 +56,8 @@
     };
 
     const cache = {};
+
+    // --- Helper Functions ---
 
     const debug = (...args) => {
         if (settings.debug.mode) {
@@ -120,6 +124,8 @@
         });
     };
 
+    // --- API Functions ---
+
     const fetchTornApi = async(endpoint) => {
         const apiKey = settings.torn.api.key;
         const cachedData = getCache(endpoint);
@@ -131,7 +137,7 @@
             const response = await new Promise((resolve, reject) => {
                 GM_xmlhttpRequest({
                     method: "GET",
-                    url: `https://api.torn.com/${endpoint}?key=${apiKey}&comment=TornForumToDiscordScript`,
+                    url: `https://api.torn.com/<span class="math-inline">\{endpoint\}?key\=</span>{apiKey}&comment=TornForumToDiscordScript`,
                     onload: (response) => {
                         if (response.status === 200) {
                             resolve(response);
@@ -167,6 +173,8 @@
         return await fetchTornApi(endpoint);
     };
 
+    // --- Content Parsing ---
+
     const parseContent = async(content) => {
         // Regular expression to match different elements
         const regex = /\[player=(\d+)\]|\[faction=(\d+)\]|\[link=(.*?)\](.*?)\[\/link\]|\[quote=(.*?)(?:&quot;|\u201D|\u201C)(?: timestamp=.*?)?\](.*?)\[\/quote\]|\[img=(.*?)(?:&quot;|\u201D|\u201C)(?: alt=.*?)?\](.*?)\[\/img\]|\[size=(\d+)\](.*?)\[\/size\]|\[color=(.*?)\](.*?)\[\/color\]|\[b\](.*?)\[\/b\]|\[i\](.*?)\[\/i\]|\[u\](.*?)\[\/u\]|\[s\](.*?)\[\/s\]|\[center\](.*?)\[\/center\]|\[right\](.*?)\[\/right\]|\[left\](.*?)\[\/left\]|\[list\](.*?)\[\/list\]|\[\*\](.*?)\[\/\*\]|\[code\](.*?)\[\/code\]/g;
@@ -182,31 +190,31 @@
             if (playerId) {
                 const player = await fetchPlayer(playerId);
                 if (player && player.name) {
-                    parsedContent += `[${player.name}](https://www.torn.com/profiles.php?XID=${playerId})`;
+                    parsedContent += `[<span class="math-inline">\{player\.name\}\]\(https\://www\.torn\.com/profiles\.php?XID\=</span>{playerId})`;
                 } else {
-                    parsedContent += `[Player ${playerId}](https://www.torn.com/profiles.php?XID=${playerId})`;
+                    parsedContent += `[Player <span class="math-inline">\{playerId\}\]\(https\://www\.torn\.com/profiles\.php?XID\=</span>{playerId})`;
                 }
             } else if (factionId) {
                 const faction = await fetchFaction(factionId);
                 if (faction && faction.faction_name) {
-                    parsedContent += `[${faction.faction_name}](https://www.torn.com/factions.php?step=profile&ID=${factionId})`;
+                    parsedContent += `[<span class="math-inline">\{faction\.faction\_name\}\]\(https\://www\.torn\.com/factions\.php?step\=profile&ID\=</span>{factionId})`;
                 } else {
-                    parsedContent += `[Faction ${factionId}](https://www.torn.com/factions.php?step=profile&ID=${factionId})`;
+                    parsedContent += `[Faction <span class="math-inline">\{factionId\}\]\(https\://www\.torn\.com/factions\.php?step\=profile&ID\=</span>{factionId})`;
                 }
             } else if (linkUrl && linkText) {
-                parsedContent += `[${linkText}](${linkUrl})`;
+                parsedContent += `[<span class="math-inline">\{linkText\}\]\(</span>{linkUrl})`;
             } else if (quoteAuthor && quoteContent) {
                 parsedContent += `> **${quoteAuthor}:** ${quoteContent}\n`;
             } else if (imgUrl) {
                 if (imgAlt) {
-                  parsedContent += `\n[${imgAlt}](${imgUrl})\n`;
+                  parsedContent += `\n[<span class="math-inline">\{imgAlt\}\]\(</span>{imgUrl})\n`;
                 } else {
                   parsedContent += `\n${imgUrl}\n`; // Just the link if no alt text
                 }
             } else if (sizeValue && sizeContent) {
-                parsedContent += `<font size="${sizeValue}">${sizeContent}</font>`;
+                parsedContent += `<font size="<span class="math-inline">\{sizeValue\}"\></span>{sizeContent}</font>`;
             } else if (colorValue && colorContent) {
-                parsedContent += `<font color="${colorValue}">${colorContent}</font>`;
+                parsedContent += `<font color="<span class="math-inline">\{colorValue\}"\></span>{colorContent}</font>`;
             } else if (boldContent) {
                 parsedContent += `**${boldContent}**`;
             } else if (italicContent) {
@@ -237,6 +245,8 @@
 
         return parsedContent;
     };
+
+    // --- Discord Functions ---
 
     const postToDiscord = async(content) => {
         const webhookUrl = settings.discord.webhook.url;
@@ -273,6 +283,8 @@
         }
     };
 
+    // --- Post Processing ---
+
     const processPosts = async() => {
         const posts = document.querySelectorAll(".post-container");
         debug(`[Posts] Found ${posts.length} posts`);
@@ -287,6 +299,8 @@
             debug(`[Post] Processed post: ${parsedContent.substring(0, 50)}...`);
         }
     };
+
+    // --- Mutation Observer ---
 
     const observer = new MutationObserver(async(mutations) => {
         for (const mutation of mutations) {
@@ -307,14 +321,194 @@
         }
     });
 
-    const targetNode = document.querySelector("#forums-page-wrap .posts-list");
-    if (targetNode) {
-        observer.observe(targetNode, {
-            childList: true,
-            subtree: true
+    // --- GUI Functions ---
+
+    const createGUI = () => {
+        // Load saved settings
+        loadSettings();
+        // Create a container for the GUI
+        const guiContainer = document.createElement("div");
+        guiContainer.id = "torn-to-discord-gui";
+        document.body.appendChild(guiContainer);
+
+        // Create the API Key section
+        const apiKeySection = document.createElement("div");
+        apiKeySection.innerHTML = `
+            <h3>Torn API Key</h3>
+            <input type="text" id="api-key" placeholder="Enter your Torn API key" value="${settings.torn.api.key}">
+            <select id="api-key-level">
+                <option value="user" ${settings.torn.api.keyLevel === "user" ? "selected" : ""}>User Level</option>
+                <option value="faction" ${settings.torn.api.keyLevel === "faction" ? "selected" : ""}>Faction Level</option>
+            </select>
+        `;
+        guiContainer.appendChild(apiKeySection);
+
+        // Create the Discord Webhook section
+        const discordSection = document.createElement("div");
+        discordSection.innerHTML = `
+            <h3>Discord Webhook</h3>
+            <input type="text" id="webhook-url" placeholder="Enter your Discord webhook URL" value="<span class="math-inline">\{settings\.discord\.webhook\.url\}"\>
+<input type\="text" id\="webhook\-username" placeholder\="Enter a custom username \(optional\)" value\="</span>{settings.discord.webhook.username}">
+            <input type="text" id="webhook-avatar" placeholder="Enter a custom avatar URL (optional)" value="${settings.discord.webhook.avatar_url}">
+        `;
+        guiContainer.appendChild(discordSection);
+
+        // Create the Help section
+        const helpSection = document.createElement("div");
+        helpSection.innerHTML = `
+            <h3>Help</h3>
+            <p><b>Torn API Key:</b> You can find your API key at <a href="https://www.torn.com/preferences.php#tab=api" target="_blank">https://www.torn.com/preferences.php#tab=api</a></p>
+            <p><b>API Key Level:</b> Choose the level of access for your API key based on your needs:</p>
+            <ul>
+                <li><b>Public Key:</b> Required for reading user-related information (e.g., player names from forum posts).</li>
+                <li><b>Limited Key:</b> Required if you want to fetch faction names from faction links in forum posts.</li>
+            </ul>
+            <p><b>Discord Webhook:</b> To create a webhook, go to your Discord server settings -> Integrations -> Webhooks -> New Webhook.</p>
+            <p><b>Webhook URL:</b> Enter the URL of your Discord webhook. This is required for the script to function.</p>
+            <p><b>Custom Username (Optional):</b> You can specify a custom username that will be displayed with each message sent to Discord. Leave this blank to use the default webhook username.</p>
+            <p><b>Custom Avatar URL (Optional):</b> You can specify a custom avatar URL for the messages sent to Discord. Leave this blank to use the default webhook avatar.</p>
+        `;
+        guiContainer.appendChild(helpSection);
+
+        // Create the Save button
+        const saveButton = document.createElement("button");
+        saveButton.textContent = "Save Settings";
+        saveButton.addEventListener("click", saveSettings);
+        guiContainer.appendChild(saveButton);
+        // Create the Close button
+        const closeButton = document.createElement("button");
+        closeButton.textContent = "Close";
+        closeButton.addEventListener("click", () => {
+            guiContainer.style.display = "none";
         });
-        debug(`[Observer] Observing for new posts...`);
-        processPosts();
-    }
+        guiContainer.appendChild(closeButton);
+
+    };
+
+    // --- Settings Functions ---
+
+    const saveSettings = () => {
+        // Torn API Key
+        settings.torn.api.key = document.getElementById("api-key").value;
+        settings.torn.api.keyLevel = document.getElementById("api-key-level").value;
+
+        // Discord Webhook
+        settings.discord.webhook.url = document.getElementById("webhook-url").value;
+        settings.discord.webhook.username = document.getElementById("webhook-username").value;
+        settings.discord.webhook.avatar_url = document.getElementById("webhook-avatar").value;
+
+        // Save settings using GM_setValue
+        GM_setValue("torn_api_key", settings.torn.api.key);
+        GM_setValue("torn_api_key_level", settings.torn.api.keyLevel);
+        GM_setValue("discord_webhook_url", settings.discord.webhook.url);
+        GM_setValue("discord_webhook_username", settings.discord.webhook.username);
+        GM_setValue("discord_webhook_avatar_url", settings.discord.webhook.avatar_url);
+
+        alert("Settings saved!");
+    };
+
+    const loadSettings = () => {
+        // Load settings using GM_getValue
+        settings.torn.api.key = GM_getValue("torn_api_key", "");
+        settings.torn.api.keyLevel = GM_getValue("torn_api_key_level", "user");
+        settings.discord.webhook.url = GM_getValue("discord_webhook_url", "");
+        settings.discord.webhook.username = GM_getValue("discord_webhook_username", "");
+        settings.discord.webhook.avatar_url = GM_getValue("discord_webhook_avatar_url", "");
+
+    };
+
+    // --- CSS Styles ---
+
+    const addStyles = () => {
+        GM_addStyle(`
+            #torn-to-discord-gui {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background-color: #f2f2f2;
+                border: 1px solid #ccc;
+                padding: 20px;
+                z-index: 1000;
+                font-family: Arial, sans-serif;
+            }
+
+            #torn-to-discord-gui h3 {
+                margin-top: 0;
+            }
+
+            #torn-to-discord-gui input[type="text"] {
+                width: 100%;
+                padding: 5px;
+                margin-bottom: 10px;
+                border: 1px solid #ccc;
+            }
+
+            #torn-to-discord-gui select {
+                width: 100%;
+                padding: 5px;
+                margin-bottom: 10px;
+                border: 1px solid #ccc;
+            }
+
+            #torn-to-discord-gui button {
+                padding: 8px 15px;
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                cursor: pointer;
+                margin-right: 5px;
+            }
+
+            #torn-to-discord-gui button:hover {
+                background-color: #3e8e41;
+            }
+
+            #torn-to-discord-gui ul {
+                padding-left: 20px;
+                margin-top: 5px;
+            }
+        `);
+    };
+
+    // --- Script Initialization ---
+
+    const init = () => {
+        addStyles();
+        createGUI();
+        // Display GUI on startup or set it to hidden initially and add a button to open it later.
+        // For now, let's display it on startup:
+        //document.getElementById("torn-to-discord-gui").style.display = "block";
+
+        // Alternatively, hide it on startup:
+        document.getElementById("torn-to-discord-gui").style.display = "none";
+
+        // Add a button to toggle the GUI
+        const toggleButton = document.createElement("button");
+        toggleButton.textContent = "T2D Settings";
+        toggleButton.style.position = "fixed";
+        toggleButton.style.top = "10px";
+        toggleButton.style.right = "10px";
+        toggleButton.style.zIndex = 999;
+        toggleButton.addEventListener("click", () => {
+            const gui = document.getElementById("torn-to-discord-gui");
+            gui.style.display = gui.style.display === "none" ? "block" : "none";
+        });
+        document.body.appendChild(toggleButton);
+
+        const targetNode = document.querySelector("#forums-page-wrap .posts-list");
+        if (targetNode) {
+            observer.observe(targetNode, {
+                childList: true,
+                subtree: true
+            });
+            debug(`[Observer] Observing for new posts...`);
+            processPosts();
+        }
+    };
+
+    // --- Start the script ---
+
+    init();
 
 })();
