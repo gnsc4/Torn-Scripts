@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         Torn Forum Post Extractor for Discord
 // @namespace    https://www.torn.com/
-// @version      1.0.33
+// @version      1.0.46
 // @description  Extracts Torn forum posts and formats them for Discord
 // @author       GNSC4 [268863]
-// @include      https://www.torn.com/forums.php*
+// @match        https://www.torn.com/forums.php*
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_addStyle
@@ -49,7 +49,7 @@
         }
     `);
 
-    function extractPost(post) {
+    function extractPost(post, index) {
         if (post.querySelector('.select-post-button')) return;
         if (!post.querySelector('div.confirm-wrap > ul.action-wrap')) {
             console.warn("Skipping post without 'ul.action-wrap':", post);
@@ -90,7 +90,7 @@
         selectButton.textContent = 'Select Post';
         selectButton.addEventListener('click', (event) => {
             event.stopPropagation();
-            toggleSelectPost({ post, author, timestamp, content, selectButton });
+            toggleSelectPost({ post, author, timestamp, content, selectButton, index });
         });
 
         // Find the 'ul.action-wrap' and prepend the button
@@ -125,9 +125,9 @@
             if (element.nodeType === Node.TEXT_NODE) {
                 content += element.textContent;
             } else if (element.tagName === 'A' && element.classList.contains('full') && element.querySelector('IMG')) {
-                content += element.href;
+                content += `\n${element.href}\n`;
             } else if (element.tagName === 'IMG') {
-                content += element.src;
+                content += `\n${element.src}\n`;
             } else if (element.tagName === 'BR') {
                 content += '\n';
             } else if (element.nodeType === Node.ELEMENT_NODE) {
@@ -178,15 +178,19 @@
         let formatted = "";
         let currentLength = 0;
 
-        for (const selectedPost of selectedPosts) {
-            const author = selectedPost.author;
-            const timestamp = selectedPost.timestamp;
-            const content = selectedPost.content;
+        // Sort selected posts by their index
+        selectedPosts.sort((a, b) => a.index - b.index);
 
-            const authorLine = config.includeAuthorNames ? `**${author}:**` : "";
-            const escapedContent = escapeMarkdown(content);
-            const contentPart = `\n\`\`\`\n${escapedContent}\n\`\`\`\n`;
-            const postText = `${authorLine}\n${timestamp}${contentPart}\n`;
+        for (const selectedPost of selectedPosts) {
+            const authorName = selectedPost.author.split(' [')[0];
+            const authorId = selectedPost.author.match(/\[(\d+)\]/)[1];
+            const timestamp = selectedPost.timestamp;
+            let content = selectedPost.content;
+
+            content = processContentForDiscord(content);
+
+            const authorLine = config.includeAuthorNames ? `**${authorName} [${authorId}]:**` : "";
+            const postText = `${authorLine}\n${timestamp}\n${content}\n`;
 
             if (currentLength + postText.length > config.maxCopyLength) {
                 console.warn("Post truncated due to character limit.");
@@ -199,6 +203,49 @@
 
         console.log("Formatted posts:", formatted);
         return formatted;
+    }
+
+    function processContentForDiscord(content) {
+        let result = '';
+        let inCodeBlock = false;
+        const lines = content.split('\n');
+        let codeBlockStarted = false;
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+
+            if (line.trim().startsWith('```')) {
+                inCodeBlock = !inCodeBlock;
+                result += line + '\n';
+            } else if (!inCodeBlock) {
+                if (line.match(/^(https?:\/\/[^\s]+)$/)) {
+                    // Close any open code block before a URL
+                    if (codeBlockStarted) {
+                        result += '```\n';
+                        codeBlockStarted = false;
+                    }
+                    result += line + '\n'; // Keep URLs on their own line
+                } else {
+                    // Start a new code block if not already started and line is not empty
+                    if (!codeBlockStarted && line.trim() !== '') {
+                        result += '```\n';
+                        codeBlockStarted = true;
+                    }
+                    if (line.trim() !== '') {
+                        result += line + '\n';
+                    }
+                }
+            } else {
+                result += line + '\n';
+            }
+        }
+
+        // Close any open code block at the end
+        if (codeBlockStarted) {
+            result += '```\n';
+        }
+
+        return result.trim();
     }
 
     function addCopyButton() {
@@ -242,7 +289,10 @@
                     if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
                         Array.from(mutation.addedNodes)
                             .filter(node => node.nodeType === Node.ELEMENT_NODE && node.matches('li'))
-                            .forEach(extractPost);
+                            .forEach(post => {
+                                const index = Array.from(targetNode.children).indexOf(post);
+                                extractPost(post, index);
+                            });
                     }
                 }
             };
@@ -256,7 +306,9 @@
     function initialize() {
         waitForElement('#forums-page-wrap > div.forums-thread-wrap.view-wrap > div > ul').then(targetNode => {
             const initialPosts = targetNode.querySelectorAll('li');
-            initialPosts.forEach(extractPost);
+            Array.from(initialPosts).forEach((post, index) => {
+                extractPost(post, index);
+            });
             observeDOM();
             addCopyButton();
         });
