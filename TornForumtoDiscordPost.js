@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name         Torn Forum Post Extractor for Discord
 // @namespace    https://www.torn.com/
-// @version      1.0.13
+// @version      1.0.33
 // @description  Extracts Torn forum posts and formats them for Discord
 // @author       GNSC4 [268863]
 // @include      https://www.torn.com/forums.php*
 // @grant        GM_getValue
 // @grant        GM_setValue
+// @grant        GM_addStyle
 // @require      https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js
 // ==/UserScript==
 
@@ -28,56 +29,92 @@
         authorElementTimeout: 5000
     };
 
-    let extractedData = [];
+    let selectedPosts = [];
 
-    async function extractPosts() {
-        console.log("Extracting posts...");
-        const posts = document.querySelectorAll('#forums-page-wrap > div.forums-thread-wrap.view-wrap > div > ul > li');
-        const extracted = [];
+    GM_addStyle(`
+        .select-post-button {
+            margin: 0;
+            padding: 2px 5px;
+            background-color: #777;
+            color: #fff;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .post-selected {
+            background-color: #e0f0e0;
+        }
+        .post-selected, .post-selected * {
+            color: #000 !important;
+        }
+    `);
 
-        for (const post of posts) {
-            const timestampSelector = 'div.time-wrap > div';
-            const authorSelector = 'div.poster-wrap.left > div.poster.white-grad > a.user.name';
-
-            const timestampElement = post.querySelector(timestampSelector);
-            let rawTimestamp = timestampElement ? timestampElement.getAttribute("data-timestamp") : null;
-            console.log("Initial raw timestamp value:", rawTimestamp);
-
-            if (!rawTimestamp) {
-                const readableTime = timestampElement ? timestampElement.textContent.trim() : null;
-                console.log("Readable time detected:", readableTime);
-                if (readableTime) {
-                    // Remove extra text like "Posted on" or "Thread created on" and anything in parentheses
-                    const cleanedTime = readableTime
-                        .replace(/(Posted on|Thread created on)/i, "") // Remove extra labels
-                        .replace(/\(.*?\)/, "") // Remove text inside parentheses
-                        .replace(/\sago$/, "") //Remove the word "ago" and any whitespace preceding it.
-                        .trim();
-                    console.log("Cleaned time:", cleanedTime);
-
-                    // Manual parsing
-                    rawTimestamp = manualDateParse(cleanedTime);
-                }
-            }
-
-            console.log("Final raw timestamp value:", rawTimestamp);
-
-            const timestamp = rawTimestamp ? `<t:${rawTimestamp}:F>` : "Unknown Timestamp";
-
-            const authorElement = post.querySelector(authorSelector);
-            const authorName = authorElement ? authorElement.textContent.trim() : "Unknown Author";
-            const authorId = authorElement ? authorElement.href.match(/XID=(\d+)/)[1] : "Unknown ID"; // Extract ID from href
-            const author = `${authorName} [${authorId}]`;
-
-            const contentElement = post.querySelector('div.column-wrap > div.post-wrap.left > div.post-container.editor-content.bbcode-content > div.post.unreset');
-            // Get text content and image URLs
-            const content = contentElement ? extractContentWithImages(contentElement) : "No Content";
-
-            extracted.push({ author, timestamp, content });
+    function extractPost(post) {
+        if (post.querySelector('.select-post-button')) return;
+        if (!post.querySelector('div.confirm-wrap > ul.action-wrap')) {
+            console.warn("Skipping post without 'ul.action-wrap':", post);
+            return;
         }
 
-        console.log("Posts extracted:", extracted);
-        return extracted;
+        const timestampSelector = 'div.time-wrap > div';
+        const authorSelector = 'div.poster-wrap.left > div.poster.white-grad > a.user.name';
+        const contentElement = post.querySelector('div.column-wrap > div.post-wrap.left > div.post-container.editor-content.bbcode-content > div.post.unreset');
+
+        const timestampElement = post.querySelector(timestampSelector);
+        let rawTimestamp = timestampElement ? timestampElement.getAttribute("data-timestamp") : null;
+
+        if (!rawTimestamp) {
+            const readableTime = timestampElement ? timestampElement.textContent.trim() : null;
+            if (readableTime) {
+                const cleanedTime = readableTime
+                    .replace(/(Posted on|Thread created on)/i, "")
+                    .replace(/\(.*?\)/, "")
+                    .replace(/\sago$/, "")
+                    .trim();
+                rawTimestamp = manualDateParse(cleanedTime);
+            }
+        }
+
+        const timestamp = rawTimestamp ? `<t:${rawTimestamp}:F>` : "Unknown Timestamp";
+
+        const authorElement = post.querySelector(authorSelector);
+        const authorName = authorElement ? authorElement.textContent.trim() : "Unknown Author";
+        const authorId = authorElement ? authorElement.href.match(/XID=(\d+)/)[1] : "Unknown ID";
+        const author = `${authorName} [${authorId}]`;
+
+        const content = contentElement ? extractContentWithImages(contentElement) : "No Content";
+
+        // Create the select button
+        const selectButton = document.createElement('button');
+        selectButton.classList.add('select-post-button');
+        selectButton.textContent = 'Select Post';
+        selectButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            toggleSelectPost({ post, author, timestamp, content, selectButton });
+        });
+
+        // Find the 'ul.action-wrap' and prepend the button
+        const actionWrap = post.querySelector('div.confirm-wrap > ul.action-wrap');
+        if (actionWrap) {
+            const listItem = document.createElement('li');
+            listItem.appendChild(selectButton);
+            actionWrap.insertBefore(listItem, actionWrap.firstChild);
+        } else {
+            console.error("Could not find 'ul.action-wrap' in post:", post);
+        }
+    }
+
+    function toggleSelectPost(postData) {
+        const index = selectedPosts.findIndex(p => p.post === postData.post);
+        if (index > -1) {
+            selectedPosts.splice(index, 1);
+            postData.post.classList.remove('post-selected');
+            postData.selectButton.textContent = 'Select Post';
+        } else {
+            selectedPosts.push(postData);
+            postData.post.classList.add('post-selected');
+            postData.selectButton.textContent = 'Deselect Post';
+        }
     }
 
     function extractContentWithImages(contentElement) {
@@ -88,13 +125,13 @@
             if (element.nodeType === Node.TEXT_NODE) {
                 content += element.textContent;
             } else if (element.tagName === 'A' && element.classList.contains('full') && element.querySelector('IMG')) {
-                content += element.href; // Add the image URL
+                content += element.href;
             } else if (element.tagName === 'IMG') {
-                content += element.src; // Add the image URL directly if it's just an <img> tag
+                content += element.src;
             } else if (element.tagName === 'BR') {
                 content += '\n';
             } else if (element.nodeType === Node.ELEMENT_NODE) {
-                content += extractContentWithImages(element); // Recursively handle other elements
+                content += extractContentWithImages(element);
             }
         }
 
@@ -120,34 +157,36 @@
         const minutes = parseInt(timeParts[1], 10);
         const seconds = parseInt(timeParts[2], 10);
         const day = parseInt(dateParts[0], 10);
-        const month = parseInt(dateParts[1], 10) - 1; // Month is 0-indexed in JavaScript Date
+        const month = parseInt(dateParts[1], 10) - 1;
         let year = parseInt(dateParts[2], 10);
 
-        // Handle two-digit year (assuming 2000s)
         if (year < 100) {
             year += 2000;
         }
 
-        // Create a UTC date
         const parsedDate = new Date(Date.UTC(year, month, day, hours, minutes, seconds));
 
-        return Math.floor(parsedDate.getTime() / 1000); // Convert to Unix timestamp (seconds)
+        return Math.floor(parsedDate.getTime() / 1000);
     }
 
     function escapeMarkdown(text) {
-        return text.replace(/([_*~`|])/g, '\\$1'); // Escapes *, _, ~, `, and |
+        return text.replace(/([_*~`|])/g, '\\$1');
     }
 
-    async function formatForDiscord(data) {
-        console.log("Formatting posts for Discord...");
+    async function formatSelectedPostsForDiscord() {
+        console.log("Formatting selected posts for Discord...");
         let formatted = "";
         let currentLength = 0;
 
-        for (const post of data) {
-            const authorLine = config.includeAuthorNames ? `**${post.author}:**` : "";
-            const escapedContent = escapeMarkdown(post.content);
-            const content = `\n\`\`\`\n${escapedContent}\n\`\`\`\n`;
-            const postText = `${authorLine}\n${post.timestamp}${content}\n`; // Removed "---" separator
+        for (const selectedPost of selectedPosts) {
+            const author = selectedPost.author;
+            const timestamp = selectedPost.timestamp;
+            const content = selectedPost.content;
+
+            const authorLine = config.includeAuthorNames ? `**${author}:**` : "";
+            const escapedContent = escapeMarkdown(content);
+            const contentPart = `\n\`\`\`\n${escapedContent}\n\`\`\`\n`;
+            const postText = `${authorLine}\n${timestamp}${contentPart}\n`;
 
             if (currentLength + postText.length > config.maxCopyLength) {
                 console.warn("Post truncated due to character limit.");
@@ -162,7 +201,7 @@
         return formatted;
     }
 
-    function addCopyButton(formattedPosts) {
+    function addCopyButton() {
         console.log("Adding copy button...");
 
         const existingButton = document.querySelector('#copy-forum-posts-button');
@@ -170,7 +209,7 @@
 
         const button = document.createElement('button');
         button.id = 'copy-forum-posts-button';
-        button.textContent = 'Copy to Clipboard';
+        button.textContent = 'Copy Selected Posts';
         button.style.cssText = `
             position: fixed;
             top: 10px;
@@ -184,7 +223,8 @@
             cursor: pointer;
         `;
 
-        button.addEventListener('click', () => {
+        button.addEventListener('click', async () => {
+            const formattedPosts = await formatSelectedPostsForDiscord();
             navigator.clipboard.writeText(formattedPosts)
                 .then(() => console.log("Copied to clipboard."))
                 .catch(err => console.error("Failed to copy:", err));
@@ -193,23 +233,46 @@
         document.body.appendChild(button);
     }
 
-    function addTestButton() {
-        const button = document.createElement('button');
-        button.textContent = "Extract Forum Data";
-        button.style.position = "fixed";
-        button.style.top = "50px";
-        button.style.right = "10px";
-        button.style.zIndex = "1000";
+    function observeDOM() {
+        waitForElement('#forums-page-wrap > div.forums-thread-wrap.view-wrap > div > ul').then(targetNode => {
+            const observerConfig = { childList: true, subtree: false };
 
-        button.addEventListener('click', async () => {
-            const data = await extractPosts();
-            const formattedPosts = await formatForDiscord(data);
-            console.log("Formatted posts for Discord:", formattedPosts);
-            addCopyButton(formattedPosts);
+            const callback = (mutationList, observer) => {
+                for (const mutation of mutationList) {
+                    if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                        Array.from(mutation.addedNodes)
+                            .filter(node => node.nodeType === Node.ELEMENT_NODE && node.matches('li'))
+                            .forEach(extractPost);
+                    }
+                }
+            };
+
+            const observer = new MutationObserver(callback);
+            observer.observe(targetNode, observerConfig);
+            console.log("MutationObserver started");
         });
-
-        document.body.appendChild(button);
     }
 
-    addTestButton();
+    function initialize() {
+        waitForElement('#forums-page-wrap > div.forums-thread-wrap.view-wrap > div > ul').then(targetNode => {
+            const initialPosts = targetNode.querySelectorAll('li');
+            initialPosts.forEach(extractPost);
+            observeDOM();
+            addCopyButton();
+        });
+    }
+
+    function waitForElement(selector) {
+        return new Promise(resolve => {
+            const interval = setInterval(() => {
+                const element = document.querySelector(selector);
+                if (element) {
+                    clearInterval(interval);
+                    resolve(element);
+                }
+            }, 100);
+        });
+    }
+
+    initialize();
 })();
