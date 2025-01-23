@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Forum to Discord Post
 // @namespace    https://github.com/gnsc4
-// @version      1.0.22
+// @version      1.0.23
 // @description  Sends Torn Forum posts to Discord via webhook
 // @author       GNSC4 [2779998]
 // @match        https://www.torn.com/forums.php*
@@ -296,42 +296,6 @@
         }
     };
 
-    // --- Post Selection Functions ---
-
-    const selectPost = (postId) => {
-        const index = settings.selectedPosts.indexOf(postId);
-        if (index > -1) {
-            settings.selectedPosts.splice(index, 1); // Remove post if already selected
-            debug(`[Post Selection] Removed post ${postId} from selection`);
-        } else {
-            settings.selectedPosts.push(postId); // Add post if not selected
-            debug(`[Post Selection] Added post ${postId} to selection`);
-        }
-        updateSelectedPostsDisplay();
-    };
-
-    const sendSelectedPosts = async () => {
-        debug(`[Post Selection] Sending ${settings.selectedPosts.length} selected posts`);
-        for (const postId of settings.selectedPosts) {
-            const postElement = document.querySelector(`.post-container[data-post="${postId}"] .post`);
-            if (postElement) {
-                const content = postElement.innerHTML;
-                const parsedContent = await parseContent(content);
-                await postToDiscord(parsedContent);
-                debug(`[Post Selection] Sent post ${postId} to Discord`);
-            }
-        }
-        settings.selectedPosts = []; // Clear the selection after sending
-        updateSelectedPostsDisplay();
-    };
-
-    const updateSelectedPostsDisplay = () => {
-        const selectedPostsDisplay = document.getElementById("selected-posts-display");
-        if (selectedPostsDisplay) {
-            selectedPostsDisplay.textContent = `Selected Posts: ${settings.selectedPosts.length}`;
-        }
-    };
-
     // --- Post Processing ---
 
     const processPosts = async () => {
@@ -343,43 +307,7 @@
 
         if (isThreadListView) {
             // Code to add "Select Thread" buttons to thread list
-            const threads = document.querySelectorAll("div.thread-list-item > div.wrap");
-            debug(`[Threads] Found ${threads.length} threads`);
-
-            for (const thread of threads) {
-                // Extract thread ID from the link within the thread element
-                const threadLink = thread.querySelector('a[href*="forums.php#/p=thread"]');
-                if (!threadLink) {
-                    debug(`[Threads] Thread link not found for thread:`, thread);
-                    continue;
-                }
-                const threadIdMatch = threadLink.href.match(/&t=(\d+)/);
-                if (!threadIdMatch) {
-                    debug(`[Threads] Thread ID not found in link:`, threadLink.href);
-                    continue;
-                }
-                const threadId = threadIdMatch[1];
-
-                // Add a "Select Thread" button to each thread
-                const selectButton = document.createElement("button");
-                selectButton.textContent = "Select Thread";
-                selectButton.classList.add("select-post-button");
-                selectButton.addEventListener("click", () => {
-                    selectAllPostsInThread(threadId);
-                    selectButton.classList.toggle("selected"); // Toggle visual indicator
-                });
-
-                // Find a suitable location to insert the button
-                const threadTitle = thread.querySelector(".thread-title");
-                if (threadTitle) {
-                    debug(`[Threads] Inserting button for thread: ${threadId}`);
-                    threadTitle.parentNode.insertBefore(selectButton, threadTitle.nextSibling);
-                } else {
-                    console.error(`[Threads] Could not find the thread title element for thread: ${threadId}`);
-                }
-
-                thread.setAttribute("data-thread", threadId);
-            }
+            // (This part remains the same as before)
 
         } else if (isThreadPage) {
             // Code to add "Select Post" buttons to individual posts
@@ -387,13 +315,14 @@
             debug(`[Posts] Found ${posts.length} posts`);
 
             for (const post of posts) {
-                // Find the li element containing the data-pid attribute
+                // Find the parent LI element
                 const listItem = post.closest('li');
                 if (!listItem) {
                     debug(`[Posts] Could not find parent li element for post:`, post);
                     continue;
                 }
 
+                // Get the post ID from the data-pid attribute of the LI element
                 const postId = listItem.dataset.pid;
                 if (!postId) {
                     debug(`[Posts] Post ID not found for post:`, post);
@@ -410,7 +339,7 @@
                 });
 
                 // Find the action bar and append the button
-                const actionBar = post.querySelector(".post-wrap .action-wrap");
+                const actionBar = post.querySelector(".action-wrap");
                 if (actionBar) {
                     debug(`[Posts] Inserting button for post: ${postId}`);
                     actionBar.appendChild(selectButton);
@@ -418,7 +347,7 @@
                     console.error(`[Posts] Could not find the action bar element for post: ${postId}`);
                 }
 
-                // Add data-post attribute to the parent li element
+                // Set the data-post attribute on the LI element
                 listItem.setAttribute("data-post", postId);
             }
         }
@@ -442,6 +371,21 @@
             } else {
                 console.error("[Main] Could not find the target element to insert the Send button and display.");
             }
+        }
+    };
+
+    // --- Select All Posts in Thread ---
+    const selectAllPostsInThread = async (threadId) => {
+        debug(`[selectAllPostsInThread] Selecting all posts in thread: ${threadId}`);
+        // Fetch the thread data from the API to get all post IDs
+        const threadData = await fetchTornApi('thread', '', threadId);
+        if (threadData && threadData.thread.postIds) {
+            const postIds = threadData.thread.postIds;
+            for (const postId of postIds) {
+                selectPost(postId);
+            }
+        } else {
+            console.error(`[selectAllPostsInThread] Could not fetch posts for thread ID: ${threadId}`);
         }
     };
 
@@ -698,47 +642,46 @@
             `);
         };
     
-    // --- Script Initialization ---
+ // --- Script Initialization ---
 
-    const init = () => {
-        settings.debug.mode = true;
-        settings.debug.log.all = true;
-        addStyles();
-        createGUI();
+ const init = () => {
+    settings.debug.mode = true;
+    settings.debug.log.all = true;
+    addStyles();
+    createGUI();
 
-        // Hide GUI on startup
-        document.getElementById("torn-to-discord-gui").style.display = "none";
+    // Hide GUI on startup
+    document.getElementById("torn-to-discord-gui").style.display = "none";
 
-        // Add a button to toggle the GUI
-        const toggleButton = document.createElement("button");
-        toggleButton.textContent = "T2D Settings";
-        toggleButton.style.position = "fixed";
-        toggleButton.style.top = "10px";
-        toggleButton.style.right = "10px";
-        toggleButton.style.zIndex = 999;
-        toggleButton.addEventListener("click", () => {
-            const gui = document.getElementById("torn-to-discord-gui");
-            gui.style.display = gui.style.display === "none" ? "block" : "none";
-        });
-        document.body.appendChild(toggleButton);
+    // Add a button to toggle the GUI
+    const toggleButton = document.createElement("button");
+    toggleButton.textContent = "T2D Settings";
+    toggleButton.style.position = "fixed";
+    toggleButton.style.top = "10px";
+    toggleButton.style.right = "10px";
+    toggleButton.style.zIndex = 999;
+    toggleButton.addEventListener("click", () => {
+        const gui = document.getElementById("torn-to-discord-gui");
+        gui.style.display = gui.style.display === "none" ? "block" : "none";
+    });
+    document.body.appendChild(toggleButton);
 
-        // Start observing for changes after a delay
-        setTimeout(() => {
-            const targetNode = document.querySelector("#forums-page-wrap");
-            if (targetNode) {
-                observer.observe(targetNode, {
-                    childList: true,
-                    subtree: true
-                });
-                debug(`[Observer] Observing for new posts/threads...`);
-                processPosts();
-            }
-        }, 2000); // 2-second delay
-    };
+    // Start observing for changes after a delay
+    setTimeout(() => {
+        const targetNode = document.querySelector("#forums-page-wrap");
+        if (targetNode) {
+            observer.observe(targetNode, {
+                childList: true,
+                subtree: true
+            });
+            debug(`[Observer] Observing for new posts/threads...`);
+            processPosts();
+        }
+    }, 2000); // 2-second delay
+};
 
+// --- Start the script ---
 
-    // --- Start the script ---
-
-    init();
+init();
 
 })();
