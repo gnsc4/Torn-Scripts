@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Forum to Discord Post
 // @namespace    https://github.com/gnsc4
-// @version      1.0.18
+// @version      1.0.19
 // @description  Sends Torn Forum posts to Discord via webhook
 // @author       GNSC4 [2779998]
 // @match        https://www.torn.com/forums.php*
@@ -335,66 +335,106 @@
     // --- Post Processing ---
 
     const processPosts = async () => {
-        const threads = document.querySelectorAll("div.thread-list-item");
-        debug(`[Threads] Found ${threads.length} threads`);
+        const isThreadListView = window.location.href.includes("forums.php#/p=threads&f=");
+        const isThreadPage = window.location.href.includes("forums.php#/p=thread");
 
-        for (const thread of threads) {
-            const threadId = thread.getAttribute("data-thread");
-            if (!threadId) continue;
+        if (isThreadListView) {
+            // Code to add "Select Thread" buttons to thread list
+            const threads = document.querySelectorAll("div.thread-list-item");
+            debug(`[Threads] Found ${threads.length} threads`);
 
-            // Add a "Select Thread" button to each thread
-            const selectButton = document.createElement("button");
-            selectButton.textContent = "Select Thread";
-            selectButton.classList.add("select-post-button"); // Use the same class for consistent styling
-            selectButton.addEventListener("click", () => {
-                selectPost(threadId); // We'll need a function to select all posts in a thread
-                selectButton.classList.toggle("selected"); // Toggle visual indicator
-            });
+            for (const thread of threads) {
+                const threadId = thread.getAttribute("data-thread");
+                if (!threadId) continue;
 
-            // Find a suitable location to insert the button (e.g., the thread title)
-            const threadTitle = thread.querySelector(".thread-title");
-            if (threadTitle) {
-                threadTitle.parentNode.insertBefore(selectButton, threadTitle.nextSibling);
-            } else {
-                console.error("Could not find the thread title element.");
+                // Add a "Select Thread" button to each thread
+                const selectButton = document.createElement("button");
+                selectButton.textContent = "Select Thread";
+                selectButton.classList.add("select-post-button");
+                selectButton.addEventListener("click", () => {
+                    selectAllPostsInThread(threadId);
+                    selectButton.classList.toggle("selected"); // Toggle visual indicator
+                });
+
+                // Find a suitable location to insert the button
+                const threadTitle = thread.querySelector(".thread-title");
+                if (threadTitle) {
+                    threadTitle.parentNode.insertBefore(selectButton, threadTitle.nextSibling);
+                } else {
+                    console.error("Could not find the thread title element.");
+                }
+
+                thread.setAttribute("data-thread", threadId);
             }
+        } else if (isThreadPage) {
+            // Code to add "Select Post" buttons to individual posts
+            const posts = document.querySelectorAll(".post-container");
+            debug(`[Posts] Found ${posts.length} posts`);
 
-            // Add data-thread attribute to identify the thread - Corrected Line Below
-            thread.setAttribute("data-thread", threadId);
+            for (const post of posts) {
+                const postId = post.getAttribute("data-post");
+                if (!postId) continue;
+
+                // Add a "Select Post" button to each post
+                const selectButton = document.createElement("button");
+                selectButton.textContent = "Select Post";
+                selectButton.classList.add("select-post-button");
+                selectButton.addEventListener("click", () => {
+                    selectPost(postId);
+                    selectButton.classList.toggle("selected"); // Toggle visual indicator
+                });
+
+                // Find the action bar and append the button
+                const actionBar = post.querySelector(".post-wrap .action-wrap");
+                if (actionBar) {
+                    actionBar.appendChild(selectButton);
+                } else {
+                    console.error("Could not find the action bar element.");
+                }
+
+                post.setAttribute("data-post", postId);
+            }
         }
 
-        // Add a "Send Selected Posts" button
-        const sendButton = document.createElement("button");
-        sendButton.textContent = "Send Selected Posts";
-        sendButton.id = "send-selected-posts-button";
-        sendButton.addEventListener("click", sendSelectedPosts);
+        // Add a "Send Selected Posts" button (only if not already present)
+        if (!document.getElementById("send-selected-posts-button")) {
+            const sendButton = document.createElement("button");
+            sendButton.textContent = "Send Selected Posts";
+            sendButton.id = "send-selected-posts-button";
+            sendButton.addEventListener("click", sendSelectedPosts);
 
-        const selectedPostsDisplay = document.createElement("div");
-        selectedPostsDisplay.id = "selected-posts-display";
-        selectedPostsDisplay.textContent = `Selected Posts: 0`;
+            const selectedPostsDisplay = document.createElement("div");
+            selectedPostsDisplay.id = "selected-posts-display";
+            selectedPostsDisplay.textContent = `Selected Posts: 0`;
 
-        const target = document.querySelector("#forums-page-wrap");
-        if (target) {
-            target.parentNode.insertBefore(sendButton, target);
-            target.parentNode.insertBefore(selectedPostsDisplay, target);
-        } else {
-            console.error("Could not find the target element to insert the Send button and display.");
+            const target = document.querySelector("#forums-page-wrap");
+            if (target) {
+                target.parentNode.insertBefore(sendButton, target);
+                target.parentNode.insertBefore(selectedPostsDisplay, target);
+            } else {
+                console.error("Could not find the target element to insert the Send button and display.");
+            }
         }
     };
 
-     // --- Select All Posts in Thread ---
-     const selectAllPostsInThread = async (threadId) => {
-        // Construct the URL to the thread
-        const threadUrl = `https://www.torn.com/forums.php#/p=threads&f=0&t=${threadId}`;
-
-        // Navigate to the thread
-        window.location.href = threadUrl;
+    // --- Select All Posts in Thread ---
+    const selectAllPostsInThread = async (threadId) => {
+        // Fetch the thread data from the API to get all post IDs
+        const threadData = await fetchTornApi('thread', '', threadId);
+        if (threadData && threadData.thread.postIds) {
+            const postIds = threadData.thread.postIds;
+            for (const postId of postIds) {
+                selectPost(postId);
+            }
+        } else {
+            console.error(`Could not fetch posts for thread ID: ${threadId}`);
+        }
     };
 
     // --- Mutation Observer ---
 
     const observer = new MutationObserver(async (mutations) => {
-        // Re-run processPosts to add buttons to new posts
+        // Re-run processPosts to add buttons to new elements
         processPosts();
     });
     
@@ -643,7 +683,7 @@
             `);
         };
     
-         // --- Script Initialization ---
+    // --- Script Initialization ---
 
     const init = () => {
         addStyles();
@@ -665,7 +705,7 @@
         });
         document.body.appendChild(toggleButton);
 
-        // Introduce a delay to allow Torn to load
+        // Start observing for changes after a delay
         setTimeout(() => {
             const targetNode = document.querySelector("#forums-page-wrap");
             if (targetNode) {
@@ -676,7 +716,7 @@
                 debug(`[Observer] Observing for new posts/threads...`);
                 processPosts();
             }
-        }, 2000); // 2-second delay (adjust as needed)
+        }, 2000); // 2-second delay
     };
 
     // --- Start the script ---
