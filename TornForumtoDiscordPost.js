@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Torn Forum Post Extractor for Discord
 // @namespace   https://www.torn.com/
-// @version     0.91
+// @version     0.99.1
 // @description Extracts Torn forum posts and formats them for Discord
 // @author      GNSC4 [268863]
 // @include     https://www.torn.com/forums.php*
@@ -67,7 +67,7 @@
                     try {
                         const authorElement = await waitForAuthorElement(post);
                         if (authorElement) {
-                            authorContainer = authorElement.parentElement.parentElement.parentElement;
+                            authorContainer = authorElement.closest('.column-wrap').previousElementSibling;
                             const href = authorElement.getAttribute('href');
                             const match = href.match(/XID=(\d+)/);
                             let authorName = authorElement.textContent.trim();
@@ -96,10 +96,8 @@
 
                     // Timestamp Extraction:
                     let timestamp = "Unknown Timestamp";
-                    const postLi = post.closest('li');
-                    if (postLi) {
-                        const timestampSelector = `#forums-page-wrap > div.forums-thread-wrap.view-wrap > div > ul > li:nth-child(${Array.from(postLi.parentElement.children).indexOf(postLi) + 1}) > div.column-wrap > div.post-wrap.left > div.post-container.editor-content.bbcode-content > div.time-wrap > div`;
-                        const timestampElement = document.querySelector(timestampSelector);
+                    if (authorContainer) {
+                        const timestampElement = authorContainer.querySelector('.posted');
                         if (timestampElement) {
                             const rawTimestamp = timestampElement.textContent.trim();
                             logDebug("rawTimestamp:", rawTimestamp);
@@ -281,25 +279,28 @@
             const timeout = config.authorElementTimeout;
 
             const checkAuthor = () => {
-                // Get the li element that is the parent of the post-container
-                const postLi = post.closest('li');
-                logDebug("postLi:", postLi);
+                // Find the nearest ancestor with class 'column-wrap'
+                const columnWrap = post.closest('.column-wrap');
+                logDebug("columnWrap:", columnWrap);
 
-                if (postLi) {
-                    // Construct a selector using the index of the li element
-                    const authorSelector = `#forums-page-wrap > div.forums-thread-wrap.view-wrap > div > ul > li:nth-child(${Array.from(postLi.parentElement.children).indexOf(postLi) + 1}) > div.column-wrap > div.poster-wrap.left > div.poster.white-grad > a.user.name`;
+                if (columnWrap) {
+                    // Get the sibling element before the column-wrap that contains the author information
+                    const authorContainer = columnWrap.previousElementSibling;
+                    logDebug("authorContainer:", authorContainer);
 
-                    // Find the author element using the dynamic selector
-                    const authorElement = document.querySelector(authorSelector);
-                    logDebug("authorElement:", authorElement);
+                    if (authorContainer) {
+                        // Find the author element within the author container
+                        const authorElement = authorContainer.querySelector('a.user.name');
+                        logDebug("authorElement:", authorElement);
 
-                    if (authorElement) {
-                        const authorName = authorElement.textContent.trim();
+                        if(authorElement){
+                          const authorName = authorElement.textContent.trim();
 
-                        if (authorName !== "" && !/^\[\d+\]$/.test(authorName)) {
-                            logDebug("Author element found:", authorElement);
-                            resolve(authorElement);
-                            return;
+                          if (authorName !== "" && !/^\[\d+\]$/.test(authorName)) {
+                              logDebug("Author element found:", authorElement);
+                              resolve(authorElement);
+                              return;
+                          }
                         }
                     }
                 }
