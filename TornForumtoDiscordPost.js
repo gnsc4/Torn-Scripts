@@ -416,8 +416,8 @@
         const discordSection = document.createElement("div");
         discordSection.innerHTML = `
             <h3>Discord Webhook</h3>
-            <input type="text" id="webhook-url" placeholder="Enter your Discord webhook URL" value="<span class="math-inline">\{settings\.discord\.webhook\.url\}"\>
-<input type\="text" id\="webhook\-username" placeholder\="Enter a custom username \(optional\)" value\="</span>{settings.discord.webhook.username}">
+            <input type="text" id="webhook-url" placeholder="Enter your Discord webhook URL" value="${settings.discord.webhook.url}">
+            <input type="text" id="webhook-username" placeholder="Enter a custom username (optional)" value="${settings.discord.webhook.username}">
             <input type="text" id="webhook-avatar" placeholder="Enter a custom avatar URL (optional)" value="${settings.discord.webhook.avatar_url}">
         `;
         guiContainer.appendChild(discordSection);
