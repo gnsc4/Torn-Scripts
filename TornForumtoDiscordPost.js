@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Forum to Discord Post
 // @namespace    https://github.com/gnsc4
-// @version      1.0.13
+// @version      1.0.14
 // @description  Sends Torn Forum posts to Discord via webhook
 // @author       GNSC4 [2779998]
 // @match        https://www.torn.com/forums.php*
@@ -133,7 +133,7 @@
             const response = await new Promise((resolve, reject) => {
                 GM_xmlhttpRequest({
                     method: "GET",
-                    url: `https://api.torn.com/user/?selections=basic&key=${apiKey}&comment=TornForumToDiscordScript-KeyCheck`,
+                    url: `https://api.torn.com/key/?selections=info&key=${apiKey}&comment=TornForumToDiscordScript-KeyCheck`,
                     onload: (response) => {
                         if (response.status === 200) {
                             resolve(response);
@@ -148,27 +148,32 @@
             });
 
             const data = JSON.parse(response.responseText);
+
             if (data.error) {
-                if (data.error.code === 2) { // Code 2: Incorrect Key - Treat as invalid key
-                    debug('[API Key Check] Invalid API Key');
-                    return ''; // Return empty to indicate invalid key
-                } else if (data.error.code === 6) { // Code 6:  Limited access API key (treat as faction level)
-                    debug('[API Key Check] Limited Access API Key (Faction Level)');
-                    return 'faction';
-                } else {
-                    debug('[API Key Check] Public/User API Key');
-                    return 'user'; // Treat other errors as User level
-                }
+                debug('[API Key Check] Key check failed:', data.error);
+                return ''; // Invalid key or other error
             } else {
-                debug('[API Key Check] Full Access API Key');
-                return 'faction'; // If no error, assume highest level (Faction)
+                debug('[API Key Check] Key information:', data);
+                switch (data.access_level) {
+                    case 0:
+                        return ''; // Invalid Key
+                    case 1:
+                        return 'user'; // Public Access
+                    case 2:
+                        return 'user'; // Minimal Access - treating as User level
+                    case 3:
+                        return 'faction'; // Limited Access
+                    case 4:
+                        return 'faction'; // Full Access
+                    default:
+                        return ''; // Unknown
+                }
             }
         } catch (error) {
             console.error(`Error checking API key level: ${error}`);
-            return ''; // Default to empty (invalid key) on error
+            return ''; // Error
         }
     };
-
     const fetchTornApi = async(endpoint) => {
         const apiKey = settings.torn.api.key;
         const cachedData = getCache(endpoint);
