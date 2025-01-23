@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Forum Post Extractor for Discord
 // @namespace    https://www.torn.com/
-// @version      1.0.51
+// @version      1.0.54
 // @description  Extracts Torn forum posts and formats them for Discord
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/forums.php*
@@ -145,18 +145,24 @@
         for (const element of elements) {
             if (element.nodeType === Node.TEXT_NODE) {
                 content += element.textContent;
-            } else if (element.tagName === 'A' && element.classList.contains('full') && element.querySelector('IMG')) {
-                content += `\n${element.href}\n`;
+            }  else if (element.tagName === 'A') {
+                let href = element.getAttribute('href');
+                if (href && href.startsWith('/')) {
+                    href = 'https://www.torn.com' + href;  // Prepend if necessary
+                }
+                const text = element.textContent.trim();
+                content += href ? `[${text}](${href})` : text; // Format as a Discord hyperlink
             } else if (element.tagName === 'IMG') {
-                content += `\n${element.src}\n`;
+                content += `\n![${element.alt || element.src}](${element.src})\n`;
             } else if (element.tagName === 'BR') {
                 content += '\n';
             } else if (element.tagName === 'TABLE') {
                 content += extractTableContent(element);
-            } else if (element.nodeType === Node.ELEMENT_NODE) {
+            }
+            else if (element.nodeType === Node.ELEMENT_NODE && element.tagName !== 'A' && element.tagName !== 'IMG' && element.tagName !== 'BR' && element.tagName !== 'TABLE') {
                 content += extractContentWithImages(element, post);
             }
-        }
+        }        
 
         return content.trim();
     }
@@ -164,11 +170,22 @@
     function extractTableContent(tableElement) {
         let rows = Array.from(tableElement.querySelectorAll('tr'));
         let tableContent = [];
-
+    
         rows.forEach((row, rowIndex) => {
             let cells = Array.from(row.querySelectorAll('td, th'));
-            let cellTexts = cells.map(cell => cell.textContent.trim());
-
+            let cellTexts = cells.map(cell => {
+                let link = cell.querySelector('a');
+                if (link) {
+                    let href = link.getAttribute('href');
+                    if (href && href.startsWith('/')) {
+                        href = 'https://www.torn.com' + href; // Prepend if necessary
+                    }
+                    let text = link.textContent.trim();
+                    return href ? `[${text}](${href})` : text;
+                }
+                return cell.textContent.trim();
+            });
+    
             if (rowIndex === 0) {
                 // Add header row and separator for Markdown tables
                 tableContent.push(cellTexts.join(' | ')); // Header row
@@ -178,10 +195,11 @@
                 tableContent.push(cellTexts.join(' | '));
             }
         });
-
+    
         // Join all rows with newlines and wrap in code block
         return `\n\`\`\`\n${tableContent.join('\n')}\n\`\`\`\n`;
     }
+    
 
     function manualDateParse(dateString) {
         const parts = dateString.split(" - ");
