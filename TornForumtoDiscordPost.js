@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Forum to Discord Post
 // @namespace    https://github.com/gnsc4
-// @version      1.0.16
+// @version      1.0.18
 // @description  Sends Torn Forum posts to Discord via webhook
 // @author       GNSC4 [2779998]
 // @match        https://www.torn.com/forums.php*
@@ -335,32 +335,32 @@
     // --- Post Processing ---
 
     const processPosts = async () => {
-        const posts = document.querySelectorAll(".post-container");
-        debug(`[Posts] Found ${posts.length} posts`);
+        const threads = document.querySelectorAll("div.thread-list-item");
+        debug(`[Threads] Found ${threads.length} threads`);
 
-        for (const post of posts) {
-            const postId = post.getAttribute("data-post");
-            if (!postId) continue;
+        for (const thread of threads) {
+            const threadId = thread.getAttribute("data-thread");
+            if (!threadId) continue;
 
-            // Add a "Select Post" button to each post
+            // Add a "Select Thread" button to each thread
             const selectButton = document.createElement("button");
-            selectButton.textContent = "Select Post";
-            selectButton.classList.add("select-post-button");
+            selectButton.textContent = "Select Thread";
+            selectButton.classList.add("select-post-button"); // Use the same class for consistent styling
             selectButton.addEventListener("click", () => {
-                selectPost(postId);
+                selectPost(threadId); // We'll need a function to select all posts in a thread
                 selectButton.classList.toggle("selected"); // Toggle visual indicator
             });
 
-            // Find the reply button's parent and insert the select button before it
-            const postContent = post.querySelector(".post-wrap .content");
-            if (postContent) {
-                postContent.parentNode.insertBefore(selectButton, postContent);
+            // Find a suitable location to insert the button (e.g., the thread title)
+            const threadTitle = thread.querySelector(".thread-title");
+            if (threadTitle) {
+                threadTitle.parentNode.insertBefore(selectButton, threadTitle.nextSibling);
             } else {
-                console.error("Could not find the post content element.");
+                console.error("Could not find the thread title element.");
             }
 
-            // Add data-post attribute
-            post.setAttribute("data-post", postId);
+            // Add data-thread attribute to identify the thread - Corrected Line Below
+            thread.setAttribute("data-thread", threadId);
         }
 
         // Add a "Send Selected Posts" button
@@ -382,9 +382,19 @@
         }
     };
 
+     // --- Select All Posts in Thread ---
+     const selectAllPostsInThread = async (threadId) => {
+        // Construct the URL to the thread
+        const threadUrl = `https://www.torn.com/forums.php#/p=threads&f=0&t=${threadId}`;
+
+        // Navigate to the thread
+        window.location.href = threadUrl;
+    };
+
     // --- Mutation Observer ---
 
     const observer = new MutationObserver(async (mutations) => {
+        // Re-run processPosts to add buttons to new posts
         processPosts();
     });
     
@@ -633,40 +643,44 @@
             `);
         };
     
-        // --- Script Initialization ---
-    
-        const init = () => {
-            addStyles();
-            createGUI();
-            // Hide it on startup:
-            document.getElementById("torn-to-discord-gui").style.display = "none";
-    
-            // Add a button to toggle the GUI
-            const toggleButton = document.createElement("button");
-            toggleButton.textContent = "T2D Settings";
-            toggleButton.style.position = "fixed";
-            toggleButton.style.top = "10px";
-            toggleButton.style.right = "10px";
-            toggleButton.style.zIndex = 999;
-            toggleButton.addEventListener("click", () => {
-                const gui = document.getElementById("torn-to-discord-gui");
-                gui.style.display = gui.style.display === "none" ? "block" : "none";
-            });
-            document.body.appendChild(toggleButton);
-    
-            const targetNode = document.querySelector("#forums-page-wrap .posts-list");
+         // --- Script Initialization ---
+
+    const init = () => {
+        addStyles();
+        createGUI();
+
+        // Hide GUI on startup
+        document.getElementById("torn-to-discord-gui").style.display = "none";
+
+        // Add a button to toggle the GUI
+        const toggleButton = document.createElement("button");
+        toggleButton.textContent = "T2D Settings";
+        toggleButton.style.position = "fixed";
+        toggleButton.style.top = "10px";
+        toggleButton.style.right = "10px";
+        toggleButton.style.zIndex = 999;
+        toggleButton.addEventListener("click", () => {
+            const gui = document.getElementById("torn-to-discord-gui");
+            gui.style.display = gui.style.display === "none" ? "block" : "none";
+        });
+        document.body.appendChild(toggleButton);
+
+        // Introduce a delay to allow Torn to load
+        setTimeout(() => {
+            const targetNode = document.querySelector("#forums-page-wrap");
             if (targetNode) {
                 observer.observe(targetNode, {
                     childList: true,
                     subtree: true
                 });
-                debug(`[Observer] Observing for new posts...`);
+                debug(`[Observer] Observing for new posts/threads...`);
                 processPosts();
             }
-        };
-    
-        // --- Start the script ---
-    
-        init();
-    
-    })();
+        }, 2000); // 2-second delay (adjust as needed)
+    };
+
+    // --- Start the script ---
+
+    init();
+
+})();
