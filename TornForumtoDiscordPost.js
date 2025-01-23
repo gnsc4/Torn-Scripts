@@ -1,462 +1,320 @@
 // ==UserScript==
-// @name         Torn Forum Post Extractor for Discord
-// @namespace    https://www.torn.com/
-// @version      1.0.54
-// @description  Extracts Torn forum posts and formats them for Discord
-// @author       GNSC4 [268863]
+// @name         Torn Forum to Discord Post
+// @namespace    https://github.com/gnsc4
+// @version      1.0.5
+// @description  Sends Torn Forum posts to Discord via webhook
+// @author       GNSC4 [2779998]
 // @match        https://www.torn.com/forums.php*
-// @grant        GM_getValue
+// @grant        GM_xmlhttpRequest
 // @grant        GM_setValue
-// @grant        GM_addStyle
-// @require      https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js
+// @grant        GM_getValue
+// @grant        GM_deleteValue
+// @connect      discord.com
+// @license      MIT
 // ==/UserScript==
 
 (function() {
     'use strict';
 
-    const config = {
-        targetAuthor: "",
-        highlightKeywords: [],
-        codeBlockKeywords: ["```","[code]"],
-        includeAuthorNames: true,
-        maxPostsToExtract: 100,
-        maxDataAge: 60 * 60 * 1000,
-        maxForumsToStore: 10,
-        notificationTimeout: 3000,
-        debugMode: true,
-        retryDelay: 500,
-        maxCopyLength: 2000,
-        authorElementTimeout: 5000
+    const settings = {
+        torn: {
+            api: {
+                key: "", // your torn api key here
+            },
+            img: {
+                default: {
+                    alt: "torn",
+                    url: "https://cdn4.iconfinder.com/data/icons/various-icons-2/48/v-07-512.png",
+                },
+                show: {
+                    url: false,
+                }
+            }
+        },
+        discord: {
+            webhook: {
+                url: "", // your discord webhook url here
+                username: "", // your discord webhook username here
+                avatar_url: "", // your discord webhook avatar url here
+            },
+            img: {
+                size: 25
+            }
+        },
+        debug: {
+            mode: true,
+            log: {
+                all: false,
+            }
+        },
+        cache: {
+            enabled: true,
+            expiration: 60, // minutes
+        }
     };
 
-    let selectedPosts = [];
-    let copyButton;
+    const cache = {};
 
-    GM_addStyle(`
-        .select-post-button {
-            margin: 0;
-            padding: 2px 5px;
-            background-color: #777;
-            color: #fff;
-            border: none;
-            border-radius: 3px;
-            cursor: pointer;
+    const debug = (...args) => {
+        if (settings.debug.mode) {
+            console.debug(...args);
         }
-        .post-selected {
-            background-color: #e0f0e0;
-        }
-        .post-selected, .post-selected * {
-            color: #000 !important;
-        }
-        .copy-parts-container {
-            position: fixed;
-            top: 50px;
-            right: 10px;
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-        .copy-parts-button {
-            padding: 5px 10px;
-            background-color: #66b266;
-            color: #fff;
-            border: none;
-            border-radius: 3px;
-            cursor: pointer;
-        }
-        .copy-parts-button.copied {
-            background-color: #ffcc00;
-        }
-    `);
+    };
 
-    function extractPost(post, index) {
-        if (post.querySelector('.select-post-button')) return;
-        if (!post.querySelector('div.confirm-wrap > ul.action-wrap')) {
-            console.warn("Skipping post without 'ul.action-wrap':", post);
+    const log = (...args) => {
+        if (settings.debug.log.all) {
+            console.log(...args);
+        }
+    };
+
+    const loadScript = (url, callback) => {
+        const script = document.createElement("script");
+        script.type = "text/javascript";
+        script.src = url;
+        script.onload = callback;
+        document.head.appendChild(script);
+    };
+
+    const cacheKey = (key) => {
+        return `torn_forum_to_discord_${key}`;
+    };
+
+    const setCache = (key, value, expiration) => {
+        if (!settings.cache.enabled) {
             return;
         }
+        const now = new Date();
+        const item = {
+            value,
+            expiry: now.getTime() + (expiration * 60 * 1000),
+        };
+        GM_setValue(cacheKey(key), JSON.stringify(item));
+    };
 
-        const timestampSelector = 'div.time-wrap > div';
-        const authorSelector = 'div.poster-wrap.left > div.poster.white-grad > a.user.name';
-        const contentElement = post.querySelector('div.column-wrap > div.post-wrap.left > div.post-container.editor-content.bbcode-content > div.post.unreset');
-
-        const timestampElement = post.querySelector(timestampSelector);
-        let rawTimestamp = timestampElement ? timestampElement.getAttribute("data-timestamp") : null;
-
-        if (!rawTimestamp) {
-            const readableTime = timestampElement ? timestampElement.textContent.trim() : null;
-            if (readableTime) {
-                const cleanedTime = readableTime
-                    .replace(/(Posted on|Thread created on)/i, "")
-                    .replace(/\(.*?\)/, "")
-                    .replace(/\sago$/, "")
-                    .trim();
-                rawTimestamp = manualDateParse(cleanedTime);
-            }
-        }
-
-        const timestamp = rawTimestamp ? `<t:${rawTimestamp}:F>` : "Unknown Timestamp";
-
-        const authorElement = post.querySelector(authorSelector);
-        const authorName = authorElement ? authorElement.textContent.trim() : "Unknown Author";
-        const authorId = authorElement ? authorElement.href.match(/XID=(\d+)/)[1] : "Unknown ID";
-        const author = `${authorName} [${authorId}]`;
-
-        const content = contentElement ? extractContentWithImages(contentElement, post) : "No Content";
-
-        // Create the select button
-        const selectButton = document.createElement('button');
-        selectButton.classList.add('select-post-button');
-        selectButton.textContent = 'Select Post';
-        selectButton.addEventListener('click', (event) => {
-            event.stopPropagation();
-            toggleSelectPost({ post, author, timestamp, content, selectButton, index });
-        });
-
-        // Find the 'ul.action-wrap' and prepend the button
-        const actionWrap = post.querySelector('div.confirm-wrap > ul.action-wrap');
-        if (actionWrap) {
-            const listItem = document.createElement('li');
-            listItem.appendChild(selectButton);
-            actionWrap.insertBefore(listItem, actionWrap.firstChild);
-        } else {
-            console.error("Could not find 'ul.action-wrap' in post:", post);
-        }
-    }
-
-    function toggleSelectPost(postData) {
-        const index = selectedPosts.findIndex(p => p.post === postData.post);
-        if (index > -1) {
-            selectedPosts.splice(index, 1);
-            postData.post.classList.remove('post-selected');
-            postData.selectButton.textContent = 'Select Post';
-        } else {
-            selectedPosts.push(postData);
-            postData.post.classList.add('post-selected');
-            postData.selectButton.textContent = 'Deselect Post';
-        }
-    }
-
-    function extractContentWithImages(contentElement, post) {
-        let content = '';
-        const elements = contentElement.childNodes;
-
-        for (const element of elements) {
-            if (element.nodeType === Node.TEXT_NODE) {
-                content += element.textContent;
-            }  else if (element.tagName === 'A') {
-                let href = element.getAttribute('href');
-                if (href && href.startsWith('/')) {
-                    href = 'https://www.torn.com' + href;  // Prepend if necessary
-                }
-                const text = element.textContent.trim();
-                content += href ? `[${text}](${href})` : text; // Format as a Discord hyperlink
-            } else if (element.tagName === 'IMG') {
-                content += `\n![${element.alt || element.src}](${element.src})\n`;
-            } else if (element.tagName === 'BR') {
-                content += '\n';
-            } else if (element.tagName === 'TABLE') {
-                content += extractTableContent(element);
-            }
-            else if (element.nodeType === Node.ELEMENT_NODE && element.tagName !== 'A' && element.tagName !== 'IMG' && element.tagName !== 'BR' && element.tagName !== 'TABLE') {
-                content += extractContentWithImages(element, post);
-            }
-        }        
-
-        return content.trim();
-    }
-
-    function extractTableContent(tableElement) {
-        let rows = Array.from(tableElement.querySelectorAll('tr'));
-        let tableContent = [];
-    
-        rows.forEach((row, rowIndex) => {
-            let cells = Array.from(row.querySelectorAll('td, th'));
-            let cellTexts = cells.map(cell => {
-                let link = cell.querySelector('a');
-                if (link) {
-                    let href = link.getAttribute('href');
-                    if (href && href.startsWith('/')) {
-                        href = 'https://www.torn.com' + href; // Prepend if necessary
-                    }
-                    let text = link.textContent.trim();
-                    return href ? `[${text}](${href})` : text;
-                }
-                return cell.textContent.trim();
-            });
-    
-            if (rowIndex === 0) {
-                // Add header row and separator for Markdown tables
-                tableContent.push(cellTexts.join(' | ')); // Header row
-                tableContent.push(cellTexts.map(() => '---').join(' | ')); // Separator row
-            } else {
-                // Add normal rows
-                tableContent.push(cellTexts.join(' | '));
-            }
-        });
-    
-        // Join all rows with newlines and wrap in code block
-        return `\n\`\`\`\n${tableContent.join('\n')}\n\`\`\`\n`;
-    }
-    
-
-    function manualDateParse(dateString) {
-        const parts = dateString.split(" - ");
-        if (parts.length !== 2) {
-            console.error("Failed to parse timestamp: Invalid format", dateString);
+    const getCache = (key) => {
+        if (!settings.cache.enabled) {
             return null;
         }
-
-        const timeParts = parts[0].split(":");
-        const dateParts = parts[1].split("/");
-
-        if (timeParts.length !== 3 || dateParts.length !== 3) {
-            console.error("Failed to parse timestamp: Invalid format", dateString);
+        const itemStr = GM_getValue(cacheKey(key));
+        if (!itemStr) {
             return null;
         }
-
-        const hours = parseInt(timeParts[0], 10);
-        const minutes = parseInt(timeParts[1], 10);
-        const seconds = parseInt(timeParts[2], 10);
-        const day = parseInt(dateParts[0], 10);
-        const month = parseInt(dateParts[1], 10) - 1;
-        let year = parseInt(dateParts[2], 10);
-
-        if (year < 100) {
-            year += 2000;
+        const item = JSON.parse(itemStr);
+        const now = new Date();
+        if (now.getTime() > item.expiry) {
+            GM_deleteValue(cacheKey(key));
+            return null;
         }
+        return item.value;
+    };
 
-        const parsedDate = new Date(Date.UTC(year, month, day, hours, minutes, seconds));
-
-        return Math.floor(parsedDate.getTime() / 1000);
-    }
-
-    function escapeMarkdown(text) {
-        return text.replace(/([_*~`|])/g, '\\$1');
-    }
-
-    async function formatSelectedPostsForDiscord() {
-        console.log("Formatting selected posts for Discord...");
-        let combinedOutput = "";
-
-        // Sort selected posts by their index
-        selectedPosts.sort((a, b) => a.index - b.index);
-
-        for (const selectedPost of selectedPosts) {
-            const authorName = selectedPost.author.split(' [')[0];
-            const authorId = selectedPost.author.match(/\[(\d+)\]/)[1];
-            const timestamp = selectedPost.timestamp;
-            let content = selectedPost.content;
-
-            content = processContentForDiscord(content);
-
-            const authorLine = config.includeAuthorNames ? `**${authorName} [${authorId}]:**` : "";
-            const postText = `${authorLine}\n${timestamp}\n${content}\n`;
-
-            combinedOutput += postText + "\n";
+    const clearCache = () => {
+        if (!settings.cache.enabled) {
+            return;
         }
-
-        const formattedPosts = [];
-
-        // Split combined output if it exceeds character limit
-        if (combinedOutput.length > config.maxCopyLength) {
-            const parts = splitPostIntoParts(combinedOutput);
-            formattedPosts.push(...parts);
-        } else {
-            formattedPosts.push(combinedOutput.trim());
-        }
-
-        console.log("Formatted posts:", formattedPosts);
-        return formattedPosts;
-    }
-
-    function processContentForDiscord(content) {
-        let result = '';
-        let inCodeBlock = false;
-        const lines = content.split('\n');
-        let codeBlockStarted = false;
-
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
-
-            if (line.trim().startsWith('```')) {
-                inCodeBlock = !inCodeBlock;
-                result += line + '\n';
-            } else if (!inCodeBlock) {
-                if (line.match(/^(https?:\/\/[^\s]+)$/)) {
-                    // Close any open code block before a URL
-                    if (codeBlockStarted) {
-                        result += '```\n';
-                        codeBlockStarted = false;
-                    }
-                    result += line + '\n'; // Keep URLs on their own line
-                } else {
-                    // Start a new code block if not already started and line is not empty
-                    if (!codeBlockStarted && line.trim() !== '') {
-                        result += '```\n';
-                        codeBlockStarted = true;
-                    }
-                    if (line.trim() !== '') {
-                        result += line + '\n';
-                    }
-                }
-            } else {
-                result += line + '\n';
+        const keys = GM_listValues();
+        keys.forEach((key) => {
+            if (key.startsWith("torn_forum_to_discord_")) {
+                GM_deleteValue(key);
             }
-        }
-
-        // Close any open code block at the end
-        if (codeBlockStarted) {
-            result += '```\n';
-        }
-
-        return result.trim();
-    }
-
-    function splitPostIntoParts(postText) {
-        const parts = [];
-        let currentPart = '';
-        const lines = postText.split('\n');
-
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
-            const partNumber = `[Part ${parts.length + 1}/${Math.ceil(postText.length / config.maxCopyLength)}]`;
-
-            if ((currentPart + line + '\n').length + partNumber.length > config.maxCopyLength) {
-                parts.push(currentPart.trim());
-                currentPart = line + '\n';
-            } else {
-                currentPart += line + '\n';
-            }
-        }
-
-        if (currentPart.trim().length > 0) {
-            parts.push(currentPart.trim());
-        }
-
-        // Add part indicators
-        return parts.map((part, index) => {
-            return `${part} [Part ${index + 1}/${parts.length}]`;
         });
-    }
+    };
 
-    function addCopyButton() {
-        console.log("Adding copy button...");
-        const existingButton = document.querySelector('#copy-forum-posts-button');
-        if (existingButton) existingButton.remove();
-
-        const button = document.createElement('button');
-        button.id = 'copy-forum-posts-button';
-        button.textContent = 'Copy Selected Posts';
-        button.style.cssText = `
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            z-index: 1000;
-            padding: 5px 10px;
-            background-color: #777;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        `;
-
-        button.addEventListener('click', async () => {
-            const formattedPosts = await formatSelectedPostsForDiscord();
-            const copyPartsContainer = document.querySelector('.copy-parts-container') || createCopyPartsContainer();
-            document.body.appendChild(copyPartsContainer);
-            copyPartsContainer.innerHTML = '';
-
-            if (formattedPosts.length === 1) {
-                navigator.clipboard.writeText(formattedPosts[0])
-                    .then(() => console.log("Copied to clipboard."))
-                    .catch(err => console.error("Failed to copy:", err));
-            } else if (formattedPosts.length > 1) {
-                formattedPosts.forEach((post, index) => {
-                    const partButton = document.createElement('button');
-                    partButton.classList.add('copy-parts-button');
-                    partButton.textContent = `Copy Part ${index + 1}`;
-                    partButton.title = `Copy part ${index + 1} of ${formattedPosts.length}`;
-                    partButton.addEventListener('click', (event) => {
-                        event.stopPropagation();
-                        copyPartToClipboard(post, partButton);
-                    });
-                    copyPartsContainer.appendChild(partButton);
+    const fetchTornApi = async(endpoint) => {
+        const apiKey = settings.torn.api.key;
+        const cachedData = getCache(endpoint);
+        if (cachedData) {
+            debug(`[Cache] Fetched data from cache for ${endpoint}`);
+            return cachedData;
+        }
+        try {
+            const response = await new Promise((resolve, reject) => {
+                GM_xmlhttpRequest({
+                    method: "GET",
+                    url: `https://api.torn.com/${endpoint}?key=${apiKey}&comment=TornForumToDiscordScript`,
+                    onload: (response) => {
+                        if (response.status === 200) {
+                            resolve(response);
+                        } else {
+                            reject(response);
+                        }
+                    },
+                    onerror: (error) => {
+                        reject(error);
+                    }
                 });
-            } else {
-                console.log("No posts selected to copy.");
+            });
+            if (!response.responseText) {
+                throw new Error('Empty response received from Torn API');
             }
-        });
+            const data = JSON.parse(response.responseText);
+            setCache(endpoint, data, settings.cache.expiration);
+            debug(`[API] Fetched data from API for ${endpoint}`);
+            return data;
+        } catch (error) {
+            console.error(`Error fetching Torn API data: ${error}`);
+            return null;
+        }
+    };
 
-        document.body.appendChild(button);
-    }
+    const fetchPlayer = async(playerId) => {
+        const endpoint = `user/${playerId}`;
+        return await fetchTornApi(endpoint);
+    };
 
-    function createCopyPartsContainer() {
-        const container = document.createElement('div');
-        container.classList.add('copy-parts-container');
-        return container;
-    }
+    const fetchFaction = async(factionId) => {
+        const endpoint = `faction/${factionId}`;
+        return await fetchTornApi(endpoint);
+    };
 
-    function copyPartToClipboard(part, button) {
-        navigator.clipboard.writeText(part)
-            .then(() => {
-                console.log(`Copied part to clipboard.`);
-                button.classList.add('copied');
-                button.textContent = 'Copied';
-                setTimeout(() => {
-                    button.classList.remove('copied');
-                    button.textContent = 'Copied Part';
-                }, 1000); // Reset button text after 1 second
-            })
-            .catch(err => console.error(`Failed to copy part:`, err));
-    }
+    const parseContent = async(content) => {
+        // Regular expression to match different elements
+        const regex = /\[player=(\d+)\]|\[faction=(\d+)\]|\[link=(.*?)\](.*?)\[\/link\]|\[quote=(.*?)(?:&quot;|\u201D|\u201C)(?: timestamp=.*?)?\](.*?)\[\/quote\]|\[img=(.*?)(?:&quot;|\u201D|\u201C)(?: alt=.*?)?\](.*?)\[\/img\]|\[size=(\d+)\](.*?)\[\/size\]|\[color=(.*?)\](.*?)\[\/color\]|\[b\](.*?)\[\/b\]|\[i\](.*?)\[\/i\]|\[u\](.*?)\[\/u\]|\[s\](.*?)\[\/s\]|\[center\](.*?)\[\/center\]|\[right\](.*?)\[\/right\]|\[left\](.*?)\[\/left\]|\[list\](.*?)\[\/list\]|\[\*\](.*?)\[\/\*\]|\[code\](.*?)\[\/code\]/g;
 
-    function observeDOM() {
-        waitForElement('#forums-page-wrap > div.forums-thread-wrap.view-wrap > div > ul').then(targetNode => {
-            const observerConfig = { childList: true, subtree: false };
+        let parsedContent = "";
+        let match;
 
-            const callback = (mutationList, observer) => {
-                for (const mutation of mutationList) {
-                    if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-                        Array.from(mutation.addedNodes)
-                            .filter(node => node.nodeType === Node.ELEMENT_NODE && node.matches('li'))
-                            .forEach(post => {
-                                const index = Array.from(targetNode.children).indexOf(post);
-                                extractPost(post, index);
-                            });
+        while ((match = regex.exec(content)) !== null) {
+            const [fullMatch, playerId, factionId, linkUrl, linkText, quoteAuthor, quoteContent, imgUrl, imgAlt, sizeValue, sizeContent, colorValue, colorContent, boldContent, italicContent, underlineContent, strikethroughContent, centerContent, rightContent, leftContent, listContent, listItemContent, codeContent] = match;
+
+            log(`[Match] ${fullMatch}`);
+
+            if (playerId) {
+                const player = await fetchPlayer(playerId);
+                if (player && player.name) {
+                    parsedContent += `[${player.name}](https://www.torn.com/profiles.php?XID=${playerId})`;
+                } else {
+                    parsedContent += `[Player ${playerId}](https://www.torn.com/profiles.php?XID=${playerId})`;
+                }
+            } else if (factionId) {
+                const faction = await fetchFaction(factionId);
+                if (faction && faction.faction_name) {
+                    parsedContent += `[${faction.faction_name}](https://www.torn.com/factions.php?step=profile&ID=${factionId})`;
+                } else {
+                    parsedContent += `[Faction ${factionId}](https://www.torn.com/factions.php?step=profile&ID=${factionId})`;
+                }
+            } else if (linkUrl && linkText) {
+                parsedContent += `[${linkText}](${linkUrl})`;
+            } else if (quoteAuthor && quoteContent) {
+                parsedContent += `> **${quoteAuthor}:** ${quoteContent}\n`;
+            } else if (imgUrl) {
+                if (imgAlt) {
+                  parsedContent += `\n[${imgAlt}](${imgUrl})\n`;
+                } else {
+                  parsedContent += `\n${imgUrl}\n`; // Just the link if no alt text
+                }
+            } else if (sizeValue && sizeContent) {
+                parsedContent += `<font size="${sizeValue}">${sizeContent}</font>`;
+            } else if (colorValue && colorContent) {
+                parsedContent += `<font color="${colorValue}">${colorContent}</font>`;
+            } else if (boldContent) {
+                parsedContent += `**${boldContent}**`;
+            } else if (italicContent) {
+                parsedContent += `*${italicContent}*`;
+            } else if (underlineContent) {
+                parsedContent += `<u>${underlineContent}</u>`;
+            } else if (strikethroughContent) {
+                parsedContent += `~~${strikethroughContent}~~`;
+            } else if (centerContent) {
+                parsedContent += `<center>${centerContent}</center>`;
+            } else if (rightContent) {
+                parsedContent += `<div align="right">${rightContent}</div>`;
+            } else if (leftContent) {
+                parsedContent += `<div align="left">${leftContent}</div>`;
+            } else if (listContent) {
+                parsedContent += `${listContent}`;
+            } else if (listItemContent) {
+                parsedContent += `* ${listItemContent}\n`;
+            } else if (codeContent) {
+                parsedContent += `\`\`\`\n${codeContent}\n\`\`\``;
+            } else {
+                parsedContent += fullMatch;
+            }
+        }
+
+        // Replace line breaks with markdown equivalent
+        parsedContent = parsedContent.replace(/\n/g, "  \n");
+
+        return parsedContent;
+    };
+
+    const postToDiscord = async(content) => {
+        const webhookUrl = settings.discord.webhook.url;
+        const username = settings.discord.webhook.username;
+        const avatarUrl = settings.discord.webhook.avatar_url;
+        try {
+            const response = await new Promise((resolve, reject) => {
+                GM_xmlhttpRequest({
+                    method: "POST",
+                    url: webhookUrl,
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    data: JSON.stringify({
+                        username: username,
+                        avatar_url: avatarUrl,
+                        content: content,
+                    }),
+                    onload: (response) => {
+                        if (response.status === 204) {
+                            resolve(response);
+                        } else {
+                            reject(response);
+                        }
+                    },
+                    onerror: (error) => {
+                        reject(error);
+                    }
+                });
+            });
+            debug("[Discord] Post successful");
+        } catch (error) {
+            console.error(`Error posting to Discord:`, error);
+        }
+    };
+
+    const processPosts = async() => {
+        const posts = document.querySelectorAll(".post-container");
+        debug(`[Posts] Found ${posts.length} posts`);
+
+        for (const post of posts) {
+            const contentElement = post.querySelector(".post");
+            if (!contentElement) continue;
+
+            const content = contentElement.innerHTML;
+            const parsedContent = await parseContent(content);
+            await postToDiscord(parsedContent);
+            debug(`[Post] Processed post: ${parsedContent.substring(0, 50)}...`);
+        }
+    };
+
+    const observer = new MutationObserver(async(mutations) => {
+        for (const mutation of mutations) {
+            if (mutation.type === "childList" && mutation.addedNodes.length > 0) {
+                for (const node of mutation.addedNodes) {
+                    if (node.classList && node.classList.contains("post-container")) {
+                        debug(`[Mutation] New post detected`);
+                        const contentElement = node.querySelector(".post");
+                        if (contentElement) {
+                            const content = contentElement.innerHTML;
+                            const parsedContent = await parseContent(content);
+                            await postToDiscord(parsedContent);
+                            debug(`[Mutation] Processed new post: ${parsedContent.substring(0, 50)}...`);
+                        }
                     }
                 }
-            };
+            }
+        }
+    });
 
-            const observer = new MutationObserver(callback);
-            observer.observe(targetNode, observerConfig);
-            console.log("MutationObserver started");
+    const targetNode = document.querySelector("#forums-page-wrap .posts-list");
+    if (targetNode) {
+        observer.observe(targetNode, {
+            childList: true,
+            subtree: true
         });
+        debug(`[Observer] Observing for new posts...`);
+        processPosts();
     }
 
-    function initialize() {
-        waitForElement('#forums-page-wrap > div.forums-thread-wrap.view-wrap > div > ul').then(targetNode => {
-            const initialPosts = targetNode.querySelectorAll('li');
-            Array.from(initialPosts).forEach((post, index) => {
-                extractPost(post, index);
-            });
-            observeDOM();
-            addCopyButton();
-        });
-    }
-
-    function waitForElement(selector) {
-        return new Promise(resolve => {
-            const interval = setInterval(() => {
-                const element = document.querySelector(selector);
-                if (element) {
-                    clearInterval(interval);
-                    resolve(element);
-                }
-            }, 100);
-        });
-    }
-
-    initialize();
 })();
