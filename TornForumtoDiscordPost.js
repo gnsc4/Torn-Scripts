@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Forum to Discord Post
 // @namespace    https://github.com/gnsc4
-// @version      1.0.21
+// @version      1.0.22
 // @description  Sends Torn Forum posts to Discord via webhook
 // @author       GNSC4 [2779998]
 // @match        https://www.torn.com/forums.php*
@@ -335,9 +335,8 @@
     // --- Post Processing ---
 
     const processPosts = async () => {
-        const currentUrl = window.location.href;
-        const isThreadListView = currentUrl.includes("forums.php#/p=threads&f=") && !currentUrl.includes("forums.php#/p=thread");
-        const isThreadPage = currentUrl.includes("forums.php#/p=thread");
+        const isThreadListView = window.location.href.includes("forums.php#/p=threads&f=") && !window.location.href.includes("forums.php#/p=thread");
+        const isThreadPage = window.location.href.includes("forums.php#/p=thread");
 
         debug(`[processPosts] isThreadListView: ${isThreadListView}`);
         debug(`[processPosts] isThreadPage: ${isThreadPage}`);
@@ -388,7 +387,14 @@
             debug(`[Posts] Found ${posts.length} posts`);
 
             for (const post of posts) {
-                const postId = post.getAttribute("data-post");
+                // Find the li element containing the data-pid attribute
+                const listItem = post.closest('li');
+                if (!listItem) {
+                    debug(`[Posts] Could not find parent li element for post:`, post);
+                    continue;
+                }
+
+                const postId = listItem.dataset.pid;
                 if (!postId) {
                     debug(`[Posts] Post ID not found for post:`, post);
                     continue;
@@ -412,7 +418,8 @@
                     console.error(`[Posts] Could not find the action bar element for post: ${postId}`);
                 }
 
-                post.setAttribute("data-post", postId);
+                // Add data-post attribute to the parent li element
+                listItem.setAttribute("data-post", postId);
             }
         }
 
@@ -435,21 +442,6 @@
             } else {
                 console.error("[Main] Could not find the target element to insert the Send button and display.");
             }
-        }
-    };
-
-    // --- Select All Posts in Thread ---
-    const selectAllPostsInThread = async (threadId) => {
-        debug(`[selectAllPostsInThread] Selecting all posts in thread: ${threadId}`);
-        // Fetch the thread data from the API to get all post IDs
-        const threadData = await fetchTornApi('thread', '', threadId);
-        if (threadData && threadData.thread.postIds) {
-            const postIds = threadData.thread.postIds;
-            for (const postId of postIds) {
-                selectPost(postId);
-            }
-        } else {
-            console.error(`[selectAllPostsInThread] Could not fetch posts for thread ID: ${threadId}`);
         }
     };
 
