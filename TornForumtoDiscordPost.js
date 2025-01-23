@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Forum to Discord Post
 // @namespace    https://github.com/gnsc4
-// @version      1.0.7
+// @version      1.0.8
 // @description  Sends Torn Forum posts to Discord via webhook
 // @author       GNSC4 [2779998]
 // @match        https://www.torn.com/forums.php*
@@ -495,22 +495,26 @@
                 top: 50%;
                 left: 50%;
                 transform: translate(-50%, -50%);
-                background-color: #f2f2f2;
+                background-color: #36393f; /* Dark gray background */
                 border: 1px solid #ccc;
                 padding: 20px;
                 z-index: 1000;
                 font-family: Arial, sans-serif;
+                color: white; /* White text color */
             }
 
             #torn-to-discord-gui h3 {
                 margin-top: 0;
+                color: white; /* White text for headings */
             }
 
             #torn-to-discord-gui input[type="text"] {
-                width: 100%;
+                width: calc(100% - 12px); /* Adjust width to fix formatting */
                 padding: 5px;
                 margin-bottom: 10px;
                 border: 1px solid #ccc;
+                background-color: #40444b; /* Slightly darker background for inputs */
+                color: white; /* White text for inputs */
             }
 
             #torn-to-discord-gui select {
@@ -518,6 +522,8 @@
                 padding: 5px;
                 margin-bottom: 10px;
                 border: 1px solid #ccc;
+                background-color: #40444b; /* Slightly darker background for select */
+                color: white; /* White text for select */
             }
 
             #torn-to-discord-gui button {
@@ -536,6 +542,19 @@
             #torn-to-discord-gui ul {
                 padding-left: 20px;
                 margin-top: 5px;
+            }
+
+            #torn-to-discord-gui a { /* Style for links */
+                color: #1b87e5; /* Light blue link color */
+                text-decoration: none;
+            }
+
+            #torn-to-discord-gui a:hover {
+                text-decoration: underline;
+            }
+
+            #torn-to-discord-gui .help-text { /* Class for help text - slightly less bright */
+                color: #ccc;
             }
             .select-post-button {
                 padding: 5px 10px;
