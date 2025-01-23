@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Forum to Discord Post
 // @namespace    https://github.com/gnsc4
-// @version      1.0.19
+// @version      1.0.20
 // @description  Sends Torn Forum posts to Discord via webhook
 // @author       GNSC4 [2779998]
 // @match        https://www.torn.com/forums.php*
@@ -338,6 +338,9 @@
         const isThreadListView = window.location.href.includes("forums.php#/p=threads&f=");
         const isThreadPage = window.location.href.includes("forums.php#/p=thread");
 
+        debug(`[processPosts] isThreadListView: ${isThreadListView}`);
+        debug(`[processPosts] isThreadPage: ${isThreadPage}`);
+
         if (isThreadListView) {
             // Code to add "Select Thread" buttons to thread list
             const threads = document.querySelectorAll("div.thread-list-item");
@@ -345,7 +348,10 @@
 
             for (const thread of threads) {
                 const threadId = thread.getAttribute("data-thread");
-                if (!threadId) continue;
+                if (!threadId) {
+                    debug(`[Threads] Thread ID not found for thread:`, thread);
+                    continue;
+                }
 
                 // Add a "Select Thread" button to each thread
                 const selectButton = document.createElement("button");
@@ -359,9 +365,10 @@
                 // Find a suitable location to insert the button
                 const threadTitle = thread.querySelector(".thread-title");
                 if (threadTitle) {
+                    debug(`[Threads] Inserting button for thread: ${threadId}`);
                     threadTitle.parentNode.insertBefore(selectButton, threadTitle.nextSibling);
                 } else {
-                    console.error("Could not find the thread title element.");
+                    console.error(`[Threads] Could not find the thread title element for thread: ${threadId}`);
                 }
 
                 thread.setAttribute("data-thread", threadId);
@@ -373,7 +380,10 @@
 
             for (const post of posts) {
                 const postId = post.getAttribute("data-post");
-                if (!postId) continue;
+                if (!postId) {
+                    debug(`[Posts] Post ID not found for post:`, post);
+                    continue;
+                }
 
                 // Add a "Select Post" button to each post
                 const selectButton = document.createElement("button");
@@ -387,9 +397,10 @@
                 // Find the action bar and append the button
                 const actionBar = post.querySelector(".post-wrap .action-wrap");
                 if (actionBar) {
+                    debug(`[Posts] Inserting button for post: ${postId}`);
                     actionBar.appendChild(selectButton);
                 } else {
-                    console.error("Could not find the action bar element.");
+                    console.error(`[Posts] Could not find the action bar element for post: ${postId}`);
                 }
 
                 post.setAttribute("data-post", postId);
@@ -409,16 +420,18 @@
 
             const target = document.querySelector("#forums-page-wrap");
             if (target) {
+                debug(`[Main] Inserting "Send Selected Posts" button`);
                 target.parentNode.insertBefore(sendButton, target);
                 target.parentNode.insertBefore(selectedPostsDisplay, target);
             } else {
-                console.error("Could not find the target element to insert the Send button and display.");
+                console.error("[Main] Could not find the target element to insert the Send button and display.");
             }
         }
     };
 
     // --- Select All Posts in Thread ---
     const selectAllPostsInThread = async (threadId) => {
+        debug(`[selectAllPostsInThread] Selecting all posts in thread: ${threadId}`);
         // Fetch the thread data from the API to get all post IDs
         const threadData = await fetchTornApi('thread', '', threadId);
         if (threadData && threadData.thread.postIds) {
@@ -427,13 +440,14 @@
                 selectPost(postId);
             }
         } else {
-            console.error(`Could not fetch posts for thread ID: ${threadId}`);
+            console.error(`[selectAllPostsInThread] Could not fetch posts for thread ID: ${threadId}`);
         }
     };
 
     // --- Mutation Observer ---
 
     const observer = new MutationObserver(async (mutations) => {
+        debug('[MutationObserver] Mutations detected:', mutations);
         // Re-run processPosts to add buttons to new elements
         processPosts();
     });
@@ -686,6 +700,8 @@
     // --- Script Initialization ---
 
     const init = () => {
+        settings.debug.mode = true;
+        settings.debug.log.all = true;
         addStyles();
         createGUI();
 
