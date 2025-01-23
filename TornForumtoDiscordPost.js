@@ -129,42 +129,45 @@
 
     // Function to check API key level
     const checkApiKeyLevel = async (apiKey) => {
-      try {
-          const response = await new Promise((resolve, reject) => {
-              GM_xmlhttpRequest({
-                  method: "GET",
-                  url: `https://api.torn.com/user/?selections=basic&key=${apiKey}&comment=TornForumToDiscordScript-KeyCheck`,
-                  onload: (response) => {
-                      if (response.status === 200) {
-                          resolve(response);
-                      } else {
-                          reject(response);
-                      }
-                  },
-                  onerror: (error) => {
-                      reject(error);
-                  }
-              });
-          });
+        try {
+            const response = await new Promise((resolve, reject) => {
+                GM_xmlhttpRequest({
+                    method: "GET",
+                    url: `https://api.torn.com/user/?selections=basic&key=${apiKey}&comment=TornForumToDiscordScript-KeyCheck`,
+                    onload: (response) => {
+                        if (response.status === 200) {
+                            resolve(response);
+                        } else {
+                            reject(response);
+                        }
+                    },
+                    onerror: (error) => {
+                        reject(error);
+                    }
+                });
+            });
 
-          const data = JSON.parse(response.responseText);
-          if (data.error) {
-              if (data.error.code === 6) { // Code 6 indicates Limited API access (Faction level)
-                  debug('[API Key Check] Limited Access API Key (Faction Level)');
-                  return 'faction';
-              } else {
-                  debug('[API Key Check] Public/User API Key');
-                  return 'user'; // Treat other errors as User level
-              }
-          } else {
-              debug('[API Key Check] Full Access API Key');
-              return 'faction'; // If no error, assume highest level (Faction)
-          }
-      } catch (error) {
-          console.error(`Error checking API key level: ${error}`);
-          return 'user'; // Default to user level on error
-      }
-  };
+            const data = JSON.parse(response.responseText);
+            if (data.error) {
+                if (data.error.code === 2) { // Code 2: Incorrect Key - Treat as invalid key
+                    debug('[API Key Check] Invalid API Key');
+                    return ''; // Return empty to indicate invalid key
+                } else if (data.error.code === 6) { // Code 6:  Limited access API key (treat as faction level)
+                    debug('[API Key Check] Limited Access API Key (Faction Level)');
+                    return 'faction';
+                } else {
+                    debug('[API Key Check] Public/User API Key');
+                    return 'user'; // Treat other errors as User level
+                }
+            } else {
+                debug('[API Key Check] Full Access API Key');
+                return 'faction'; // If no error, assume highest level (Faction)
+            }
+        } catch (error) {
+            console.error(`Error checking API key level: ${error}`);
+            return ''; // Default to empty (invalid key) on error
+        }
+    };
 
     const fetchTornApi = async(endpoint) => {
         const apiKey = settings.torn.api.key;
@@ -455,10 +458,16 @@
         apiKeySection.innerHTML = `
             <h3>Torn API Key</h3>
             <input type="text" id="api-key" placeholder="Enter your Torn API key" value="${settings.torn.api.key}">
-            <p class="help-text api-key-level-text">Key Level: ${settings.torn.api.keyLevel === "faction" ? "Faction (or higher)" : "User"}</p>
+            <p class="help-text api-key-level-text"></p>
         `;
         guiContainer.appendChild(apiKeySection);
 
+        // Set the initial API key level text based on saved settings
+        const apiKeyLevelText = guiContainer.querySelector(".api-key-level-text");
+        if (apiKeyLevelText) {
+            apiKeyLevelText.textContent = settings.torn.api.keyLevel ? `Key Level: ${settings.torn.api.keyLevel === "faction" ? "Faction (or higher)" : "User"}` : '';
+        }
+        
         // Create the Discord Webhook section
         const discordSection = document.createElement("div");
         discordSection.innerHTML = `
@@ -511,7 +520,7 @@
       // Update the API key level display in the GUI
       const apiKeyLevelText = document.querySelector(".api-key-level-text");
       if (apiKeyLevelText) {
-          apiKeyLevelText.textContent = `Key Level: ${settings.torn.api.keyLevel === "faction" ? "Faction (or higher)" : "User"}`;
+          apiKeyLevelText.textContent = settings.torn.api.keyLevel ? `Key Level: ${settings.torn.api.keyLevel === "faction" ? "Faction (or higher)" : "User"}` : '';
       }
 
       // Discord Webhook
@@ -532,7 +541,7 @@
     const loadSettings = () => {
         // Load settings using GM_getValue
         settings.torn.api.key = GM_getValue("torn_api_key", "");
-        settings.torn.api.keyLevel = GM_getValue("torn_api_key_level", "user");
+        settings.torn.api.keyLevel = GM_getValue("torn_api_key_level", ""); // Load empty string if not set
         settings.discord.webhook.url = GM_getValue("discord_webhook_url", "");
         settings.discord.webhook.username = GM_getValue("discord_webhook_username", "");
         settings.discord.webhook.avatar_url = GM_getValue("discord_webhook_avatar_url", "");
