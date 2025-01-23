@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Forum to Discord Post
 // @namespace    https://github.com/gnsc4
-// @version      1.0.8
+// @version      1.0.11
 // @description  Sends Torn Forum posts to Discord via webhook
 // @author       GNSC4 [2779998]
 // @match        https://www.torn.com/forums.php*
@@ -21,7 +21,7 @@
         torn: {
             api: {
                 key: "",
-                keyLevel: ""
+                keyLevel: "" // This will be automatically determined
             },
             img: {
                 default: {
@@ -127,6 +127,45 @@
 
     // --- API Functions ---
 
+    // Function to check API key level
+    const checkApiKeyLevel = async (apiKey) => {
+      try {
+          const response = await new Promise((resolve, reject) => {
+              GM_xmlhttpRequest({
+                  method: "GET",
+                  url: `https://api.torn.com/user/?selections=basic&key=${apiKey}&comment=TornForumToDiscordScript-KeyCheck`,
+                  onload: (response) => {
+                      if (response.status === 200) {
+                          resolve(response);
+                      } else {
+                          reject(response);
+                      }
+                  },
+                  onerror: (error) => {
+                      reject(error);
+                  }
+              });
+          });
+
+          const data = JSON.parse(response.responseText);
+          if (data.error) {
+              if (data.error.code === 6) { // Code 6 indicates Limited API access (Faction level)
+                  debug('[API Key Check] Limited Access API Key (Faction Level)');
+                  return 'faction';
+              } else {
+                  debug('[API Key Check] Public/User API Key');
+                  return 'user'; // Treat other errors as User level
+              }
+          } else {
+              debug('[API Key Check] Full Access API Key');
+              return 'faction'; // If no error, assume highest level (Faction)
+          }
+      } catch (error) {
+          console.error(`Error checking API key level: ${error}`);
+          return 'user'; // Default to user level on error
+      }
+  };
+
     const fetchTornApi = async(endpoint) => {
         const apiKey = settings.torn.api.key;
         const cachedData = getCache(endpoint);
@@ -165,13 +204,24 @@
     };
 
     const fetchPlayer = async(playerId) => {
-        const endpoint = `user/${playerId}`;
-        return await fetchTornApi(endpoint);
+      if (settings.torn.api.keyLevel === 'user') {
+          const endpoint = `user/${playerId}`;
+          return await fetchTornApi(endpoint);
+      } else {
+          const endpoint = `user/${playerId}?selections=profile`;
+          return await fetchTornApi(endpoint);
+      }
     };
 
     const fetchFaction = async(factionId) => {
-        const endpoint = `faction/${factionId}`;
-        return await fetchTornApi(endpoint);
+        if (settings.torn.api.keyLevel === 'faction') {
+          const endpoint = `faction/${factionId}?selections=basic`;
+          return await fetchTornApi(endpoint);
+        } else {
+          debug('[API] Faction data not fetched due to insufficient API key level');
+          return null; // Don't fetch if API key is not Faction level
+        }
+
     };
 
     // --- Content Parsing ---
@@ -405,10 +455,7 @@
         apiKeySection.innerHTML = `
             <h3>Torn API Key</h3>
             <input type="text" id="api-key" placeholder="Enter your Torn API key" value="${settings.torn.api.key}">
-            <select id="api-key-level">
-                <option value="user" ${settings.torn.api.keyLevel === "user" ? "selected" : ""}>User Level</option>
-                <option value="faction" ${settings.torn.api.keyLevel === "faction" ? "selected" : ""}>Faction Level</option>
-            </select>
+            <p class="help-text api-key-level-text">Key Level: ${settings.torn.api.keyLevel === "faction" ? "Faction (or higher)" : "User"}</p>
         `;
         guiContainer.appendChild(apiKeySection);
 
@@ -426,16 +473,16 @@
         const helpSection = document.createElement("div");
         helpSection.innerHTML = `
             <h3>Help</h3>
-            <p><b>Torn API Key:</b> You can find your API key at <a href="https://www.torn.com/preferences.php#tab=api" target="_blank">https://www.torn.com/preferences.php#tab=api</a></p>
-            <p><b>API Key Level:</b> Choose the level of access for your API key based on your needs:</p>
-            <ul>
+            <p class="help-text"><b>Torn API Key:</b> You can find your API key at <a href="https://www.torn.com/preferences.php#tab=api" target="_blank">https://www.torn.com/preferences.php#tab=api</a></p>
+            <p class="help-text"><b>API Key Level:</b></p>
+            <ul class="help-text">
                 <li><b>Public Key:</b> Required for reading user-related information (e.g., player names from forum posts).</li>
                 <li><b>Limited Key:</b> Required if you want to fetch faction names from faction links in forum posts.</li>
             </ul>
-            <p><b>Discord Webhook:</b> To create a webhook, go to your Discord server settings -> Integrations -> Webhooks -> New Webhook.</p>
-            <p><b>Webhook URL:</b> Enter the URL of your Discord webhook. This is required for the script to function.</p>
-            <p><b>Custom Username (Optional):</b> You can specify a custom username that will be displayed with each message sent to Discord. Leave this blank to use the default webhook username.</p>
-            <p><b>Custom Avatar URL (Optional):</b> You can specify a custom avatar URL for the messages sent to Discord. Leave this blank to use the default webhook avatar.</p>
+            <p class="help-text"><b>Discord Webhook:</b> To create a webhook, go to your Discord server settings -> Integrations -> Webhooks -> New Webhook.</p>
+            <p class="help-text"><b>Webhook URL:</b> Enter the URL of your Discord webhook. This is required for the script to function.</p>
+            <p class="help-text"><b>Custom Username (Optional):</b> You can specify a custom username that will be displayed with each message sent to Discord. Leave this blank to use the default webhook username.</p>
+            <p class="help-text"><b>Custom Avatar URL (Optional):</b> You can specify a custom avatar URL for the messages sent to Discord. Leave this blank to use the default webhook avatar.</p>
         `;
         guiContainer.appendChild(helpSection);
 
@@ -456,25 +503,31 @@
 
     // --- Settings Functions ---
 
-    const saveSettings = () => {
-        // Torn API Key
-        settings.torn.api.key = document.getElementById("api-key").value;
-        settings.torn.api.keyLevel = document.getElementById("api-key-level").value;
+    const saveSettings = async () => {
+      // Torn API Key
+      settings.torn.api.key = document.getElementById("api-key").value;
+      settings.torn.api.keyLevel = await checkApiKeyLevel(settings.torn.api.key);
 
-        // Discord Webhook
-        settings.discord.webhook.url = document.getElementById("webhook-url").value;
-        settings.discord.webhook.username = document.getElementById("webhook-username").value;
-        settings.discord.webhook.avatar_url = document.getElementById("webhook-avatar").value;
+      // Update the API key level display in the GUI
+      const apiKeyLevelText = document.querySelector(".api-key-level-text");
+      if (apiKeyLevelText) {
+          apiKeyLevelText.textContent = `Key Level: ${settings.torn.api.keyLevel === "faction" ? "Faction (or higher)" : "User"}`;
+      }
 
-        // Save settings using GM_setValue
-        GM_setValue("torn_api_key", settings.torn.api.key);
-        GM_setValue("torn_api_key_level", settings.torn.api.keyLevel);
-        GM_setValue("discord_webhook_url", settings.discord.webhook.url);
-        GM_setValue("discord_webhook_username", settings.discord.webhook.username);
-        GM_setValue("discord_webhook_avatar_url", settings.discord.webhook.avatar_url);
+      // Discord Webhook
+      settings.discord.webhook.url = document.getElementById("webhook-url").value;
+      settings.discord.webhook.username = document.getElementById("webhook-username").value;
+      settings.discord.webhook.avatar_url = document.getElementById("webhook-avatar").value;
 
-        alert("Settings saved!");
-    };
+      // Save settings using GM_setValue
+      GM_setValue("torn_api_key", settings.torn.api.key);
+      GM_setValue("torn_api_key_level", settings.torn.api.keyLevel);
+      GM_setValue("discord_webhook_url", settings.discord.webhook.url);
+      GM_setValue("discord_webhook_username", settings.discord.webhook.username);
+      GM_setValue("discord_webhook_avatar_url", settings.discord.webhook.avatar_url);
+
+      alert("Settings saved!");
+  };
 
     const loadSettings = () => {
         // Load settings using GM_getValue
@@ -509,7 +562,7 @@
             }
 
             #torn-to-discord-gui input[type="text"] {
-                width: calc(100% - 12px); /* Adjust width to fix formatting */
+                width: calc(100% - 22px); /* Adjust width to fix formatting */
                 padding: 5px;
                 margin-bottom: 10px;
                 border: 1px solid #ccc;
@@ -551,6 +604,11 @@
 
             #torn-to-discord-gui a:hover {
                 text-decoration: underline;
+            }
+
+            .api-key-level-text {
+                margin-top: -5px;
+                margin-bottom: 10px;
             }
 
             #torn-to-discord-gui .help-text { /* Class for help text - slightly less bright */
