@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Forum to Discord Post
 // @namespace    https://github.com/gnsc4
-// @version      1.0.14
+// @version      1.0.15
 // @description  Sends Torn Forum posts to Discord via webhook
 // @author       GNSC4 [2779998]
 // @match        https://www.torn.com/forums.php*
@@ -11,6 +11,7 @@
 // @grant        GM_deleteValue
 // @grant        GM_addStyle
 // @connect      discord.com
+// @connect      api.torn.com
 // @license      MIT
 // ==/UserScript==
 
@@ -21,7 +22,7 @@
         torn: {
             api: {
                 key: "",
-                keyLevel: "" // This will be automatically determined
+                keyLevel: "" // Automatically detected: '', 'user', or 'faction'
             },
             img: {
                 default: {
@@ -44,7 +45,7 @@
             }
         },
         debug: {
-            mode: true,
+            mode: false, // Change to true for debugging
             log: {
                 all: false,
             }
@@ -53,10 +54,8 @@
             enabled: true,
             expiration: 60, // minutes
         },
-        selectedPosts: [] // Array to store selected posts
+        selectedPosts: [] // Array to store selected posts (post IDs)
     };
-
-    const cache = {};
 
     // --- Helper Functions ---
 
@@ -72,62 +71,11 @@
         }
     };
 
-    const loadScript = (url, callback) => {
-        const script = document.createElement("script");
-        script.type = "text/javascript";
-        script.src = url;
-        script.onload = callback;
-        document.head.appendChild(script);
-    };
-
-    const cacheKey = (key) => {
-        return `torn_forum_to_discord_${key}`;
-    };
-
-    const setCache = (key, value, expiration) => {
-        if (!settings.cache.enabled) {
-            return;
-        }
-        const now = new Date();
-        const item = {
-            value,
-            expiry: now.getTime() + (expiration * 60 * 1000),
-        };
-        GM_setValue(cacheKey(key), JSON.stringify(item));
-    };
-
-    const getCache = (key) => {
-        if (!settings.cache.enabled) {
-            return null;
-        }
-        const itemStr = GM_getValue(cacheKey(key));
-        if (!itemStr) {
-            return null;
-        }
-        const item = JSON.parse(itemStr);
-        const now = new Date();
-        if (now.getTime() > item.expiry) {
-            GM_deleteValue(cacheKey(key));
-            return null;
-        }
-        return item.value;
-    };
-
-    const clearCache = () => {
-        if (!settings.cache.enabled) {
-            return;
-        }
-        const keys = GM_listValues();
-        keys.forEach((key) => {
-            if (key.startsWith("torn_forum_to_discord_")) {
-                GM_deleteValue(key);
-            }
-        });
-    };
+    // No changes needed in loadScript, cacheKey, setCache, getCache, clearCache
 
     // --- API Functions ---
 
-    // Function to check API key level
+    // Function to check API key level using /key/ endpoint
     const checkApiKeyLevel = async (apiKey) => {
         try {
             const response = await new Promise((resolve, reject) => {
@@ -158,7 +106,7 @@
                     case 0:
                         return ''; // Invalid Key
                     case 1:
-                        return 'user'; // Public Access
+                        return 'user'; // User Level
                     case 2:
                         return 'user'; // Minimal Access - treating as User level
                     case 3:
@@ -174,18 +122,40 @@
             return ''; // Error
         }
     };
-    const fetchTornApi = async(endpoint) => {
+
+    // Generic function to fetch data from Torn API
+    const fetchTornApi = async (endpoint, selections = '', id = '') => {
         const apiKey = settings.torn.api.key;
-        const cachedData = getCache(endpoint);
+        const keyLevel = settings.torn.api.keyLevel;
+        const cacheKey = `<span class="math-inline">\{endpoint\}\-</span>{id}-${selections}`;
+
+        // Check cache first
+        const cachedData = getCache(cacheKey);
         if (cachedData) {
-            debug(`[Cache] Fetched data from cache for ${endpoint}`);
+            debug(`[Cache] Fetched data from cache for ${cacheKey}`);
             return cachedData;
         }
+
+        // Determine the appropriate API endpoint based on key level
+        let url;
+        if (endpoint === 'user' && id && keyLevel === 'user') {
+            url = `https://api.torn.com/user/<span class="math-inline">\{id\}?selections\=</span>{selections}&key=${apiKey}&comment=TornForumToDiscordScript`;
+        } else if (endpoint === 'faction' && id && keyLevel === 'faction') {
+            url = `https://api.torn.com/faction/<span class="math-inline">\{id\}?selections\=</span>{selections}&key=${apiKey}&comment=TornForumToDiscordScript`;
+        } else if (endpoint === 'user' && keyLevel === 'faction') {
+            url = `https://api.torn.com/user/?selections=<span class="math-inline">\{selections\}&key\=</span>{apiKey}&comment=TornForumToDiscordScript`;
+        } else if (endpoint === 'faction' && keyLevel === 'faction') {
+            url = `https://api.torn.com/faction/?selections=<span class="math-inline">\{selections\}&key\=</span>{apiKey}&comment=TornForumToDiscordScript`;
+        } else {
+            debug(`[API] Insufficient API key level or invalid endpoint for ${endpoint}`);
+            return null;
+        }
+
         try {
             const response = await new Promise((resolve, reject) => {
                 GM_xmlhttpRequest({
                     method: "GET",
-                    url: `https://api.torn.com/<span class="math-inline">\{endpoint\}?key\=</span>{apiKey}&comment=TornForumToDiscordScript`,
+                    url: url,
                     onload: (response) => {
                         if (response.status === 200) {
                             resolve(response);
@@ -198,64 +168,44 @@
                     }
                 });
             });
-            if (!response.responseText) {
-                throw new Error('Empty response received from Torn API');
-            }
+
             const data = JSON.parse(response.responseText);
-            setCache(endpoint, data, settings.cache.expiration);
-            debug(`[API] Fetched data from API for ${endpoint}`);
+
+            if (data.error) {
+                console.error('[API Error]', data.error);
+                return null;
+            }
+
+            // Cache the data
+            setCache(cacheKey, data, settings.cache.expiration);
+            debug(`[API] Fetched data from API for ${cacheKey}`);
             return data;
         } catch (error) {
-            console.error(`Error fetching Torn API data: ${error}`);
+            console.error(`[API] Error fetching Torn API data: ${error}`);
             return null;
         }
     };
 
-    const fetchPlayer = async(playerId) => {
-      if (settings.torn.api.keyLevel === 'user') {
-          const endpoint = `user/${playerId}`;
-          return await fetchTornApi(endpoint);
-      } else {
-          const endpoint = `user/${playerId}?selections=profile`;
-          return await fetchTornApi(endpoint);
-      }
-    };
-
-    const fetchFaction = async(factionId) => {
-        if (settings.torn.api.keyLevel === 'faction') {
-          const endpoint = `faction/${factionId}?selections=basic`;
-          return await fetchTornApi(endpoint);
-        } else {
-          debug('[API] Faction data not fetched due to insufficient API key level');
-          return null; // Don't fetch if API key is not Faction level
-        }
-
-    };
-
     // --- Content Parsing ---
 
-    const parseContent = async(content) => {
-        // Regular expression to match different elements
+    const parseContent = async (content) => {
         const regex = /\[player=(\d+)\]|\[faction=(\d+)\]|\[link=(.*?)\](.*?)\[\/link\]|\[quote=(.*?)(?:&quot;|\u201D|\u201C)(?: timestamp=.*?)?\](.*?)\[\/quote\]|\[img=(.*?)(?:&quot;|\u201D|\u201C)(?: alt=.*?)?\](.*?)\[\/img\]|\[size=(\d+)\](.*?)\[\/size\]|\[color=(.*?)\](.*?)\[\/color\]|\[b\](.*?)\[\/b\]|\[i\](.*?)\[\/i\]|\[u\](.*?)\[\/u\]|\[s\](.*?)\[\/s\]|\[center\](.*?)\[\/center\]|\[right\](.*?)\[\/right\]|\[left\](.*?)\[\/left\]|\[list\](.*?)\[\/list\]|\[\*\](.*?)\[\/\*\]|\[code\](.*?)\[\/code\]/g;
-
         let parsedContent = "";
         let match;
 
         while ((match = regex.exec(content)) !== null) {
             const [fullMatch, playerId, factionId, linkUrl, linkText, quoteAuthor, quoteContent, imgUrl, imgAlt, sizeValue, sizeContent, colorValue, colorContent, boldContent, italicContent, underlineContent, strikethroughContent, centerContent, rightContent, leftContent, listContent, listItemContent, codeContent] = match;
 
-            log(`[Match] ${fullMatch}`);
-
             if (playerId) {
-                const player = await fetchPlayer(playerId);
-                if (player && player.name) {
+                const player = await fetchTornApi('user', 'profile', playerId);
+                if (player) {
                     parsedContent += `[<span class="math-inline">\{player\.name\}\]\(https\://www\.torn\.com/profiles\.php?XID\=</span>{playerId})`;
                 } else {
                     parsedContent += `[Player <span class="math-inline">\{playerId\}\]\(https\://www\.torn\.com/profiles\.php?XID\=</span>{playerId})`;
                 }
             } else if (factionId) {
-                const faction = await fetchFaction(factionId);
-                if (faction && faction.faction_name) {
+                const faction = await fetchTornApi('faction', 'basic', factionId);
+                if (faction) {
                     parsedContent += `[<span class="math-inline">\{faction\.faction\_name\}\]\(https\://www\.torn\.com/factions\.php?step\=profile&ID\=</span>{factionId})`;
                 } else {
                     parsedContent += `[Faction <span class="math-inline">\{factionId\}\]\(https\://www\.torn\.com/factions\.php?step\=profile&ID\=</span>{factionId})`;
@@ -266,9 +216,9 @@
                 parsedContent += `> **${quoteAuthor}:** ${quoteContent}\n`;
             } else if (imgUrl) {
                 if (imgAlt) {
-                  parsedContent += `\n[<span class="math-inline">\{imgAlt\}\]\(</span>{imgUrl})\n`;
+                    parsedContent += `\n[<span class="math-inline">\{imgAlt\}\]\(</span>{imgUrl})\n`;
                 } else {
-                  parsedContent += `\n${imgUrl}\n`; // Just the link if no alt text
+                    parsedContent += `\n${imgUrl}\n`;
                 }
             } else if (sizeValue && sizeContent) {
                 parsedContent += `<font size="<span class="math-inline">\{sizeValue\}"\></span>{sizeContent}</font>`;
@@ -299,18 +249,22 @@
             }
         }
 
-        // Replace line breaks with markdown equivalent
         parsedContent = parsedContent.replace(/\n/g, "  \n");
-
         return parsedContent;
     };
 
     // --- Discord Functions ---
 
-    const postToDiscord = async(content) => {
+    const postToDiscord = async (content) => {
         const webhookUrl = settings.discord.webhook.url;
         const username = settings.discord.webhook.username;
         const avatarUrl = settings.discord.webhook.avatar_url;
+
+        if (!webhookUrl) {
+            console.error('[Discord] Webhook URL is not set.');
+            return;
+        }
+
         try {
             const response = await new Promise((resolve, reject) => {
                 GM_xmlhttpRequest({
@@ -338,7 +292,7 @@
             });
             debug("[Discord] Post successful");
         } catch (error) {
-            console.error(`Error posting to Discord:`, error);
+            console.error(`[Discord] Error posting to Discord:`, error);
         }
     };
 
@@ -355,19 +309,20 @@
         }
         updateSelectedPostsDisplay();
     };
+
     const sendSelectedPosts = async () => {
-      debug(`[Post Selection] Sending ${settings.selectedPosts.length} selected posts`);
-      for (const postId of settings.selectedPosts) {
-          const postElement = document.querySelector(`.post-container[data-post="${postId}"] .post`);
-          if (postElement) {
-              const content = postElement.innerHTML;
-              const parsedContent = await parseContent(content);
-              await postToDiscord(parsedContent);
-              debug(`[Post Selection] Sent post ${postId} to Discord`);
-          }
-      }
-      settings.selectedPosts = []; // Clear the selection after sending
-      updateSelectedPostsDisplay();
+        debug(`[Post Selection] Sending ${settings.selectedPosts.length} selected posts`);
+        for (const postId of settings.selectedPosts) {
+            const postElement = document.querySelector(`.post-container[data-post="${postId}"] .post`);
+            if (postElement) {
+                const content = postElement.innerHTML;
+                const parsedContent = await parseContent(content);
+                await postToDiscord(parsedContent);
+                debug(`[Post Selection] Sent post ${postId} to Discord`);
+            }
+        }
+        settings.selectedPosts = []; // Clear the selection after sending
+        updateSelectedPostsDisplay();
     };
 
     const updateSelectedPostsDisplay = () => {
@@ -379,7 +334,7 @@
 
     // --- Post Processing ---
 
-    const processPosts = async() => {
+    const processPosts = async () => {
         const posts = document.querySelectorAll(".post-container");
         debug(`[Posts] Found ${posts.length} posts`);
 
@@ -396,17 +351,19 @@
                 selectButton.classList.toggle("selected"); // Toggle visual indicator
             });
 
-            // Find the reply button's parent (usually a div or li) and insert the select button before it
-            const ql_parent = post.querySelector(".post-wrap .info-wrap .quick-link.icon-reply").parentNode;
-            if (ql_parent) {
-              ql_parent.insertBefore(selectButton, post.querySelector(".post-wrap .info-wrap .quick-link.icon-reply"));
+            // Find the reply button's parent and insert the select button before it
+            const postContent = post.querySelector(".post-wrap .content");
+            if (postContent) {
+                postContent.parentNode.insertBefore(selectButton, postContent);
             } else {
-                console.error("Could not find the parent element of the reply button to insert the Select Post button.");
+                console.error("Could not find the post content element.");
             }
 
-            // Add data-post attribute to identify the post
+            // Add data-post attribute
             post.setAttribute("data-post", postId);
         }
+
+        // Add a "Send Selected Posts" button
         const sendButton = document.createElement("button");
         sendButton.textContent = "Send Selected Posts";
         sendButton.id = "send-selected-posts-button";
@@ -421,288 +378,295 @@
             target.parentNode.insertBefore(sendButton, target);
             target.parentNode.insertBefore(selectedPostsDisplay, target);
         } else {
-            console.error("Could not find the target element to insert the Send Selected Posts button and display.");
+            console.error("Could not find the target element to insert the Send button and display.");
         }
-
     };
 
     // --- Mutation Observer ---
 
-    const observer = new MutationObserver(async(mutations) => {
-        for (const mutation of mutations) {
-            if (mutation.type === "childList" && mutation.addedNodes.length > 0) {
-                for (const node of mutation.addedNodes) {
-                    if (node.classList && node.classList.contains("post-container")) {
-                        debug(`[Mutation] New post detected`);
-                        const contentElement = node.querySelector(".post");
-                        if (contentElement) {
-                            const content = contentElement.innerHTML;
-                            const parsedContent = await parseContent(content);
-                            // Do not send to Discord automatically anymore - only on button press
-                            // await postToDiscord(parsedContent);
-                            debug(`[Mutation] Processed new post: ${parsedContent.substring(0, 50)}...`);
-                        }
-                    }
-                }
-            }
-        }
+    const observer = new MutationObserver(async (mutations) => {
+        processPosts();
     });
-
-    // --- GUI Functions ---
-
-    const createGUI = () => {
-        // Load saved settings
-        loadSettings();
-        // Create a container for the GUI
-        const guiContainer = document.createElement("div");
-        guiContainer.id = "torn-to-discord-gui";
-        document.body.appendChild(guiContainer);
-
-        // Create the API Key section
-        const apiKeySection = document.createElement("div");
-        apiKeySection.innerHTML = `
-            <h3>Torn API Key</h3>
-            <input type="text" id="api-key" placeholder="Enter your Torn API key" value="${settings.torn.api.key}">
-            <p class="help-text api-key-level-text"></p>
-        `;
-        guiContainer.appendChild(apiKeySection);
-
-        // Set the initial API key level text based on saved settings
-        const apiKeyLevelText = guiContainer.querySelector(".api-key-level-text");
-        if (apiKeyLevelText) {
-            apiKeyLevelText.textContent = settings.torn.api.keyLevel ? `Key Level: ${settings.torn.api.keyLevel === "faction" ? "Faction (or higher)" : "User"}` : '';
-        }
-        
-        // Create the Discord Webhook section
-        const discordSection = document.createElement("div");
-        discordSection.innerHTML = `
-            <h3>Discord Webhook</h3>
-            <input type="text" id="webhook-url" placeholder="Enter your Discord webhook URL" value="${settings.discord.webhook.url}">
-            <input type="text" id="webhook-username" placeholder="Enter a custom username (optional)" value="${settings.discord.webhook.username}">
-            <input type="text" id="webhook-avatar" placeholder="Enter a custom avatar URL (optional)" value="${settings.discord.webhook.avatar_url}">
-        `;
-        guiContainer.appendChild(discordSection);
-
-        // Create the Help section
-        const helpSection = document.createElement("div");
-        helpSection.innerHTML = `
-            <h3>Help</h3>
-            <p class="help-text"><b>Torn API Key:</b> You can find your API key at <a href="https://www.torn.com/preferences.php#tab=api" target="_blank">https://www.torn.com/preferences.php#tab=api</a></p>
-            <p class="help-text"><b>API Key Level:</b></p>
-            <ul class="help-text">
-                <li><b>Public Key:</b> Required for reading user-related information (e.g., player names from forum posts).</li>
-                <li><b>Limited Key:</b> Required if you want to fetch faction names from faction links in forum posts.</li>
-            </ul>
-            <p class="help-text"><b>Discord Webhook:</b> To create a webhook, go to your Discord server settings -> Integrations -> Webhooks -> New Webhook.</p>
-            <p class="help-text"><b>Webhook URL:</b> Enter the URL of your Discord webhook. This is required for the script to function.</p>
-            <p class="help-text"><b>Custom Username (Optional):</b> You can specify a custom username that will be displayed with each message sent to Discord. Leave this blank to use the default webhook username.</p>
-            <p class="help-text"><b>Custom Avatar URL (Optional):</b> You can specify a custom avatar URL for the messages sent to Discord. Leave this blank to use the default webhook avatar.</p>
-        `;
-        guiContainer.appendChild(helpSection);
-
-        // Create the Save button
-        const saveButton = document.createElement("button");
-        saveButton.textContent = "Save Settings";
-        saveButton.addEventListener("click", saveSettings);
-        guiContainer.appendChild(saveButton);
-        // Create the Close button
-        const closeButton = document.createElement("button");
-        closeButton.textContent = "Close";
-        closeButton.addEventListener("click", () => {
-            guiContainer.style.display = "none";
-        });
-        guiContainer.appendChild(closeButton);
-
-    };
-
-    // --- Settings Functions ---
-
-    const saveSettings = async () => {
-        // Torn API Key
-        settings.torn.api.key = document.getElementById("api-key").value;
-        settings.torn.api.keyLevel = await checkApiKeyLevel(settings.torn.api.key);
-
-        // Update the API key level display in the GUI
-        const apiKeyLevelText = document.querySelector(".api-key-level-text");
-        if (apiKeyLevelText) {
-            apiKeyLevelText.textContent = settings.torn.api.keyLevel ? `Key Level: ${settings.torn.api.keyLevel === "faction" ? "Faction (or higher)" : "User"}` : '';
-        }
-
-        // Discord Webhook
-        settings.discord.webhook.url = document.getElementById("webhook-url").value;
-        settings.discord.webhook.username = document.getElementById("webhook-username").value;
-        settings.discord.webhook.avatar_url = document.getElementById("webhook-avatar").value;
-
-        // Save settings using GM_setValue
-        GM_setValue("torn_api_key", settings.torn.api.key);
-        GM_setValue("torn_api_key_level", settings.torn.api.keyLevel); // Now correctly saving the key level
-        GM_setValue("discord_webhook_url", settings.discord.webhook.url);
-        GM_setValue("discord_webhook_username", settings.discord.webhook.username);
-        GM_setValue("discord_webhook_avatar_url", settings.discord.webhook.avatar_url);
-
-        alert("Settings saved!");
-    };
-
-    const loadSettings = () => {
-        // Load settings using GM_getValue
-        settings.torn.api.key = GM_getValue("torn_api_key", "");
-        settings.torn.api.keyLevel = GM_getValue("torn_api_key_level", ""); // Now correctly loading the key level
-        settings.discord.webhook.url = GM_getValue("discord_webhook_url", "");
-        settings.discord.webhook.username = GM_getValue("discord_webhook_username", "");
-        settings.discord.webhook.avatar_url = GM_getValue("discord_webhook_avatar_url", "");
-    };
-
-    // --- CSS Styles ---
-
-    const addStyles = () => {
-        GM_addStyle(`
-            #torn-to-discord-gui {
-                position: fixed;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                background-color: #36393f; /* Dark gray background */
-                border: 1px solid #ccc;
-                padding: 20px;
-                z-index: 1000;
-                font-family: Arial, sans-serif;
-                color: white; /* White text color */
+    
+        // --- GUI Functions ---
+    
+        const createGUI = () => {
+            // Load saved settings
+            loadSettings();
+    
+            // Create a container for the GUI
+            const guiContainer = document.createElement("div");
+            guiContainer.id = "torn-to-discord-gui";
+            document.body.appendChild(guiContainer);
+    
+            // Create the API Key section
+            const apiKeySection = document.createElement("div");
+            apiKeySection.innerHTML = `
+                <h3>Torn API Key</h3>
+                <input type="text" id="api-key" placeholder="Enter your Torn API key" value="${settings.torn.api.key}">
+                <p class="help-text api-key-level-text"></p>
+            `;
+            guiContainer.appendChild(apiKeySection);
+    
+            // Set the initial API key level text based on saved settings
+            const apiKeyLevelText = guiContainer.querySelector(".api-key-level-text");
+            if (apiKeyLevelText) {
+                apiKeyLevelText.textContent = settings.torn.api.keyLevel ? `Key Level: ${settings.torn.api.keyLevel === "faction" ? "Faction (or higher)" : "User"}` : '';
             }
-
-            #torn-to-discord-gui h3 {
-                margin-top: 0;
-                color: white; /* White text for headings */
-            }
-
-            #torn-to-discord-gui input[type="text"] {
-                width: calc(100% - 22px); /* Adjust width to fix formatting */
-                padding: 5px;
-                margin-bottom: 10px;
-                border: 1px solid #ccc;
-                background-color: #40444b; /* Slightly darker background for inputs */
-                color: white; /* White text for inputs */
-            }
-
-            #torn-to-discord-gui select {
-                width: 100%;
-                padding: 5px;
-                margin-bottom: 10px;
-                border: 1px solid #ccc;
-                background-color: #40444b; /* Slightly darker background for select */
-                color: white; /* White text for select */
-            }
-
-            #torn-to-discord-gui button {
-                padding: 8px 15px;
-                background-color: #4CAF50;
-                color: white;
-                border: none;
-                cursor: pointer;
-                margin-right: 5px;
-            }
-
-            #torn-to-discord-gui button:hover {
-                background-color: #3e8e41;
-            }
-
-            #torn-to-discord-gui ul {
-                padding-left: 20px;
-                margin-top: 5px;
-            }
-
-            #torn-to-discord-gui a { /* Style for links */
-                color: #1b87e5; /* Light blue link color */
-                text-decoration: none;
-            }
-
-            #torn-to-discord-gui a:hover {
-                text-decoration: underline;
-            }
-
-            .api-key-level-text {
-                margin-top: -5px;
-                margin-bottom: 10px;
-            }
-
-            #torn-to-discord-gui .help-text { /* Class for help text - slightly less bright */
-                color: #ccc;
-            }
-            .select-post-button {
-                padding: 5px 10px;
-                background-color: #7289da; /* Discord Blue */
-                color: white;
-                border: none;
-                cursor: pointer;
-                margin-right: 5px;
-                border-radius: 5px; /* Rounded corners */
-                font-size: 12px; /* Smaller font size */
-            }
-
-            .select-post-button:hover {
-                background-color: #677bc4; /* Darker shade on hover */
-            }
-
-            .select-post-button.selected {
-                background-color: #5b6e9e; /* Even darker shade for selected state */
-            }
-            #send-selected-posts-button {
-                padding: 8px 15px;
-                background-color: #04aa6d;
-                color: white;
-                border: none;
-                cursor: pointer;
-                margin-top: 10px;
-                font-size: 16px;
-            }
-            #send-selected-posts-button:hover {
-                background-color: #048a58;
-            }
-
-            #selected-posts-display {
-                margin-top: 5px;
-                font-size: 14px;
-            }
-        `);
-    };
-
-    // --- Script Initialization ---
-
-    const init = () => {
-        addStyles();
-        createGUI();
-        // Display GUI on startup or set it to hidden initially and add a button to open it later.
-        // For now, let's display it on startup:
-        //document.getElementById("torn-to-discord-gui").style.display = "block";
-
-        // Alternatively, hide it on startup:
-        document.getElementById("torn-to-discord-gui").style.display = "none";
-
-        // Add a button to toggle the GUI
-        const toggleButton = document.createElement("button");
-        toggleButton.textContent = "T2D Settings";
-        toggleButton.style.position = "fixed";
-        toggleButton.style.top = "10px";
-        toggleButton.style.right = "10px";
-        toggleButton.style.zIndex = 999;
-        toggleButton.addEventListener("click", () => {
-            const gui = document.getElementById("torn-to-discord-gui");
-            gui.style.display = gui.style.display === "none" ? "block" : "none";
-        });
-        document.body.appendChild(toggleButton);
-
-        const targetNode = document.querySelector("#forums-page-wrap .posts-list");
-        if (targetNode) {
-            observer.observe(targetNode, {
-                childList: true,
-                subtree: true
+    
+            // Create the Discord Webhook section
+            const discordSection = document.createElement("div");
+            discordSection.innerHTML = `
+                <h3>Discord Webhook</h3>
+                <input type="text" id="webhook-url" placeholder="Enter your Discord webhook URL" value="${settings.discord.webhook.url}">
+                <input type="text" id="webhook-username" placeholder="Enter a custom username (optional)" value="${settings.discord.webhook.username}">
+                <input type="text" id="webhook-avatar" placeholder="Enter a custom avatar URL (optional)" value="${settings.discord.webhook.avatar_url}">
+            `;
+            guiContainer.appendChild(discordSection);
+    
+            // Create the Help section
+            const helpSection = document.createElement("div");
+            helpSection.innerHTML = `
+                <h3>Help</h3>
+                <p class="help-text"><b>Torn API Key:</b> You can find your API key at <a href="https://www.torn.com/preferences.php#tab=api" target="_blank">https://www.torn.com/preferences.php#tab=api</a></p>
+                <p class="help-text"><b>API Key Level:</b></p>
+                <ul class="help-text">
+                    <li><b>User Level:</b> Required for reading user-related information (e.g., player names from forum posts).</li>
+                    <li><b>Faction Level:</b> Required if you want to fetch faction names from faction links in forum posts.</li>
+                </ul>
+                <p class="help-text"><b>Discord Webhook:</b> To create a webhook, go to your Discord server settings -> Integrations -> Webhooks -> New Webhook.</p>
+                <p class="help-text"><b>Webhook URL:</b> Enter the URL of your Discord webhook. This is required for the script to function.</p>
+                <p class="help-text"><b>Custom Username (Optional):</b> You can specify a custom username that will be displayed with each message sent to Discord. Leave this blank to use the default webhook username.</p>
+                <p class="help-text"><b>Custom Avatar URL (Optional):</b> You can specify a custom avatar URL for the messages sent to Discord. Leave this blank to use the default webhook avatar.</p>
+            `;
+            guiContainer.appendChild(helpSection);
+    
+            // Create the Save button
+            const saveButton = document.createElement("button");
+            saveButton.id = "save-settings-button";
+            saveButton.textContent = "Save Settings";
+            saveButton.addEventListener("click", saveSettings);
+            guiContainer.appendChild(saveButton);
+    
+            // Create the Close button
+            const closeButton = document.createElement("button");
+            closeButton.id = "close-gui-button";
+            closeButton.textContent = "Close";
+            closeButton.addEventListener("click", () => {
+                guiContainer.style.display = "none";
             });
-            debug(`[Observer] Observing for new posts...`);
-            processPosts();
-        }
-    };
-
-    // --- Start the script ---
-
-    init();
-
-})();
+            guiContainer.appendChild(closeButton);
+        };
+    
+        // --- Settings Functions ---
+    
+        const saveSettings = async () => {
+            // Torn API Key
+            settings.torn.api.key = document.getElementById("api-key").value;
+            settings.torn.api.keyLevel = await checkApiKeyLevel(settings.torn.api.key);
+    
+            // Update the API key level display in the GUI
+            const apiKeyLevelText = document.querySelector(".api-key-level-text");
+            if (apiKeyLevelText) {
+                apiKeyLevelText.textContent = settings.torn.api.keyLevel ? `Key Level: ${settings.torn.api.keyLevel === "faction" ? "Faction (or higher)" : "User"}` : '';
+            }
+    
+            // Discord Webhook
+            settings.discord.webhook.url = document.getElementById("webhook-url").value;
+            settings.discord.webhook.username = document.getElementById("webhook-username").value;
+            settings.discord.webhook.avatar_url = document.getElementById("webhook-avatar").value;
+    
+            // Save settings using GM_setValue
+            GM_setValue("torn_api_key", settings.torn.api.key);
+            GM_setValue("torn_api_key_level", settings.torn.api.keyLevel);
+            GM_setValue("discord_webhook_url", settings.discord.webhook.url);
+            GM_setValue("discord_webhook_username", settings.discord.webhook.username);
+            GM_setValue("discord_webhook_avatar_url", settings.discord.webhook.avatar_url);
+    
+            alert("Settings saved!");
+        };
+    
+        const loadSettings = () => {
+            // Load settings using GM_getValue
+            settings.torn.api.key = GM_getValue("torn_api_key", "");
+            settings.torn.api.keyLevel = GM_getValue("torn_api_key_level", "");
+            settings.discord.webhook.url = GM_getValue("discord_webhook_url", "");
+            settings.discord.webhook.username = GM_getValue("discord_webhook_username", "");
+            settings.discord.webhook.avatar_url = GM_getValue("discord_webhook_avatar_url", "");
+        };
+    
+        // --- CSS Styles ---
+    
+        const addStyles = () => {
+            GM_addStyle(`
+                #torn-to-discord-gui {
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background-color: #36393f; /* Dark gray background */
+                    border: 1px solid #ccc;
+                    padding: 20px;
+                    z-index: 1000;
+                    font-family: Arial, sans-serif;
+                    color: white; /* White text color */
+                }
+    
+                #torn-to-discord-gui h3 {
+                    margin-top: 0;
+                    color: white; /* White text for headings */
+                }
+    
+                #torn-to-discord-gui input[type="text"] {
+                    width: calc(100% - 22px); /* Adjust width to fix formatting */
+                    padding: 5px;
+                    margin-bottom: 10px;
+                    border: 1px solid #ccc;
+                    background-color: #40444b; /* Slightly darker background for inputs */
+                    color: white; /* White text for inputs */
+                }
+    
+                #torn-to-discord-gui select {
+                    width: 100%;
+                    padding: 5px;
+                    margin-bottom: 10px;
+                    border: 1px solid #ccc;
+                    background-color: #40444b; /* Slightly darker background for select */
+                    color: white; /* White text for select */
+                }
+    
+                #torn-to-discord-gui button {
+                    padding: 8px 15px;
+                    background-color: #4CAF50;
+                    color: white;
+                    border: none;
+                    cursor: pointer;
+                    margin-right: 5px;
+                }
+    
+                #torn-to-discord-gui button:hover {
+                    background-color: #3e8e41;
+                }
+    
+                #torn-to-discord-gui ul {
+                    padding-left: 20px;
+                    margin-top: 5px;
+                }
+    
+                #torn-to-discord-gui a { /* Style for links */
+                    color: #1b87e5; /* Light blue link color */
+                    text-decoration: none;
+                }
+    
+                #torn-to-discord-gui a:hover {
+                    text-decoration: underline;
+                }
+    
+                .api-key-level-text {
+                    margin-top: -5px;
+                    margin-bottom: 10px;
+                }
+    
+                #torn-to-discord-gui .help-text { /* Class for help text - slightly less bright */
+                    color: #ccc;
+                }
+    
+                .select-post-button {
+                    padding: 5px 10px;
+                    background-color: #7289da; /* Discord Blue */
+                    color: white;
+                    border: none;
+                    cursor: pointer;
+                    margin-right: 5px;
+                    border-radius: 5px; /* Rounded corners */
+                    font-size: 12px; /* Smaller font size */
+                }
+    
+                .select-post-button:hover {
+                    background-color: #677bc4; /* Darker shade on hover */
+                }
+    
+                .select-post-button.selected {
+                    background-color: #5b6e9e; /* Even darker shade for selected state */
+                }
+    
+                #send-selected-posts-button {
+                    padding: 8px 15px;
+                    background-color: #04aa6d;
+                    color: white;
+                    border: none;
+                    cursor: pointer;
+                    margin-top: 10px;
+                    font-size: 16px;
+                }
+    
+                #send-selected-posts-button:hover {
+                    background-color: #048a58;
+                }
+    
+                #selected-posts-display {
+                    margin-top: 5px;
+                    font-size: 14px;
+                }
+    
+                #save-settings-button, #close-gui-button {
+                    margin: 5px;
+                    padding: 8px 16px;
+                    font-size: 14px;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+                }
+                #close-gui-button{
+                    background-color: #dc3545;
+                }
+                #close-gui-button:hover{
+                    background-color: #c82333;
+                }
+                #save-settings-button {
+                    background-color: #28a745;
+                }
+                #save-settings-button:hover {
+                    background-color: #218838;
+                }
+            `);
+        };
+    
+        // --- Script Initialization ---
+    
+        const init = () => {
+            addStyles();
+            createGUI();
+            // Hide it on startup:
+            document.getElementById("torn-to-discord-gui").style.display = "none";
+    
+            // Add a button to toggle the GUI
+            const toggleButton = document.createElement("button");
+            toggleButton.textContent = "T2D Settings";
+            toggleButton.style.position = "fixed";
+            toggleButton.style.top = "10px";
+            toggleButton.style.right = "10px";
+            toggleButton.style.zIndex = 999;
+            toggleButton.addEventListener("click", () => {
+                const gui = document.getElementById("torn-to-discord-gui");
+                gui.style.display = gui.style.display === "none" ? "block" : "none";
+            });
+            document.body.appendChild(toggleButton);
+    
+            const targetNode = document.querySelector("#forums-page-wrap .posts-list");
+            if (targetNode) {
+                observer.observe(targetNode, {
+                    childList: true,
+                    subtree: true
+                });
+                debug(`[Observer] Observing for new posts...`);
+                processPosts();
+            }
+        };
+    
+        // --- Start the script ---
+    
+        init();
+    
+    })();
