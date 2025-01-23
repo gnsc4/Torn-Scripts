@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Forum to Discord Post
 // @namespace    https://github.com/gnsc4
-// @version      1.0.6
+// @version      1.0.7
 // @description  Sends Torn Forum posts to Discord via webhook
 // @author       GNSC4 [2779998]
 // @match        https://www.torn.com/forums.php*
@@ -52,7 +52,8 @@
         cache: {
             enabled: true,
             expiration: 60, // minutes
-        }
+        },
+        selectedPosts: [] // Array to store selected posts
     };
 
     const cache = {};
@@ -283,6 +284,41 @@
         }
     };
 
+    // --- Post Selection Functions ---
+
+    const selectPost = (postId) => {
+        const index = settings.selectedPosts.indexOf(postId);
+        if (index > -1) {
+            settings.selectedPosts.splice(index, 1); // Remove post if already selected
+            debug(`[Post Selection] Removed post ${postId} from selection`);
+        } else {
+            settings.selectedPosts.push(postId); // Add post if not selected
+            debug(`[Post Selection] Added post ${postId} to selection`);
+        }
+        updateSelectedPostsDisplay();
+    };
+    const sendSelectedPosts = async () => {
+      debug(`[Post Selection] Sending ${settings.selectedPosts.length} selected posts`);
+      for (const postId of settings.selectedPosts) {
+          const postElement = document.querySelector(`.post-container[data-post="${postId}"] .post`);
+          if (postElement) {
+              const content = postElement.innerHTML;
+              const parsedContent = await parseContent(content);
+              await postToDiscord(parsedContent);
+              debug(`[Post Selection] Sent post ${postId} to Discord`);
+          }
+      }
+      settings.selectedPosts = []; // Clear the selection after sending
+      updateSelectedPostsDisplay();
+    };
+
+    const updateSelectedPostsDisplay = () => {
+        const selectedPostsDisplay = document.getElementById("selected-posts-display");
+        if (selectedPostsDisplay) {
+            selectedPostsDisplay.textContent = `Selected Posts: ${settings.selectedPosts.length}`;
+        }
+    };
+
     // --- Post Processing ---
 
     const processPosts = async() => {
@@ -290,14 +326,46 @@
         debug(`[Posts] Found ${posts.length} posts`);
 
         for (const post of posts) {
-            const contentElement = post.querySelector(".post");
-            if (!contentElement) continue;
+            const postId = post.getAttribute("data-post");
+            if (!postId) continue;
 
-            const content = contentElement.innerHTML;
-            const parsedContent = await parseContent(content);
-            await postToDiscord(parsedContent);
-            debug(`[Post] Processed post: ${parsedContent.substring(0, 50)}...`);
+            // Add a "Select Post" button to each post
+            const selectButton = document.createElement("button");
+            selectButton.textContent = "Select Post";
+            selectButton.classList.add("select-post-button");
+            selectButton.addEventListener("click", () => {
+                selectPost(postId);
+                selectButton.classList.toggle("selected"); // Toggle visual indicator
+            });
+
+            // Find the reply button's parent (usually a div or li) and insert the select button before it
+            const ql_parent = post.querySelector(".post-wrap .info-wrap .quick-link.icon-reply").parentNode;
+            if (ql_parent) {
+              ql_parent.insertBefore(selectButton, post.querySelector(".post-wrap .info-wrap .quick-link.icon-reply"));
+            } else {
+                console.error("Could not find the parent element of the reply button to insert the Select Post button.");
+            }
+
+            // Add data-post attribute to identify the post
+            post.setAttribute("data-post", postId);
         }
+        const sendButton = document.createElement("button");
+        sendButton.textContent = "Send Selected Posts";
+        sendButton.id = "send-selected-posts-button";
+        sendButton.addEventListener("click", sendSelectedPosts);
+
+        const selectedPostsDisplay = document.createElement("div");
+        selectedPostsDisplay.id = "selected-posts-display";
+        selectedPostsDisplay.textContent = `Selected Posts: 0`;
+
+        const target = document.querySelector("#forums-page-wrap");
+        if (target) {
+            target.parentNode.insertBefore(sendButton, target);
+            target.parentNode.insertBefore(selectedPostsDisplay, target);
+        } else {
+            console.error("Could not find the target element to insert the Send Selected Posts button and display.");
+        }
+
     };
 
     // --- Mutation Observer ---
@@ -312,7 +380,8 @@
                         if (contentElement) {
                             const content = contentElement.innerHTML;
                             const parsedContent = await parseContent(content);
-                            await postToDiscord(parsedContent);
+                            // Do not send to Discord automatically anymore - only on button press
+                            // await postToDiscord(parsedContent);
                             debug(`[Mutation] Processed new post: ${parsedContent.substring(0, 50)}...`);
                         }
                     }
@@ -467,6 +536,41 @@
             #torn-to-discord-gui ul {
                 padding-left: 20px;
                 margin-top: 5px;
+            }
+            .select-post-button {
+                padding: 5px 10px;
+                background-color: #7289da; /* Discord Blue */
+                color: white;
+                border: none;
+                cursor: pointer;
+                margin-right: 5px;
+                border-radius: 5px; /* Rounded corners */
+                font-size: 12px; /* Smaller font size */
+            }
+
+            .select-post-button:hover {
+                background-color: #677bc4; /* Darker shade on hover */
+            }
+
+            .select-post-button.selected {
+                background-color: #5b6e9e; /* Even darker shade for selected state */
+            }
+            #send-selected-posts-button {
+                padding: 8px 15px;
+                background-color: #04aa6d;
+                color: white;
+                border: none;
+                cursor: pointer;
+                margin-top: 10px;
+                font-size: 16px;
+            }
+            #send-selected-posts-button:hover {
+                background-color: #048a58;
+            }
+
+            #selected-posts-display {
+                margin-top: 5px;
+                font-size: 14px;
             }
         `);
     };
