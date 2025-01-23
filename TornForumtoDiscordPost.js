@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Forum to Discord Post
 // @namespace    https://github.com/gnsc4
-// @version      1.0.11
+// @version      1.0.13
 // @description  Sends Torn Forum posts to Discord via webhook
 // @author       GNSC4 [2779998]
 // @match        https://www.torn.com/forums.php*
@@ -513,39 +513,38 @@
     // --- Settings Functions ---
 
     const saveSettings = async () => {
-      // Torn API Key
-      settings.torn.api.key = document.getElementById("api-key").value;
-      settings.torn.api.keyLevel = await checkApiKeyLevel(settings.torn.api.key);
+        // Torn API Key
+        settings.torn.api.key = document.getElementById("api-key").value;
+        settings.torn.api.keyLevel = await checkApiKeyLevel(settings.torn.api.key);
 
-      // Update the API key level display in the GUI
-      const apiKeyLevelText = document.querySelector(".api-key-level-text");
-      if (apiKeyLevelText) {
-          apiKeyLevelText.textContent = settings.torn.api.keyLevel ? `Key Level: ${settings.torn.api.keyLevel === "faction" ? "Faction (or higher)" : "User"}` : '';
-      }
+        // Update the API key level display in the GUI
+        const apiKeyLevelText = document.querySelector(".api-key-level-text");
+        if (apiKeyLevelText) {
+            apiKeyLevelText.textContent = settings.torn.api.keyLevel ? `Key Level: ${settings.torn.api.keyLevel === "faction" ? "Faction (or higher)" : "User"}` : '';
+        }
 
-      // Discord Webhook
-      settings.discord.webhook.url = document.getElementById("webhook-url").value;
-      settings.discord.webhook.username = document.getElementById("webhook-username").value;
-      settings.discord.webhook.avatar_url = document.getElementById("webhook-avatar").value;
+        // Discord Webhook
+        settings.discord.webhook.url = document.getElementById("webhook-url").value;
+        settings.discord.webhook.username = document.getElementById("webhook-username").value;
+        settings.discord.webhook.avatar_url = document.getElementById("webhook-avatar").value;
 
-      // Save settings using GM_setValue
-      GM_setValue("torn_api_key", settings.torn.api.key);
-      GM_setValue("torn_api_key_level", settings.torn.api.keyLevel);
-      GM_setValue("discord_webhook_url", settings.discord.webhook.url);
-      GM_setValue("discord_webhook_username", settings.discord.webhook.username);
-      GM_setValue("discord_webhook_avatar_url", settings.discord.webhook.avatar_url);
+        // Save settings using GM_setValue
+        GM_setValue("torn_api_key", settings.torn.api.key);
+        GM_setValue("torn_api_key_level", settings.torn.api.keyLevel); // Now correctly saving the key level
+        GM_setValue("discord_webhook_url", settings.discord.webhook.url);
+        GM_setValue("discord_webhook_username", settings.discord.webhook.username);
+        GM_setValue("discord_webhook_avatar_url", settings.discord.webhook.avatar_url);
 
-      alert("Settings saved!");
-  };
+        alert("Settings saved!");
+    };
 
     const loadSettings = () => {
         // Load settings using GM_getValue
         settings.torn.api.key = GM_getValue("torn_api_key", "");
-        settings.torn.api.keyLevel = GM_getValue("torn_api_key_level", ""); // Load empty string if not set
+        settings.torn.api.keyLevel = GM_getValue("torn_api_key_level", ""); // Now correctly loading the key level
         settings.discord.webhook.url = GM_getValue("discord_webhook_url", "");
         settings.discord.webhook.username = GM_getValue("discord_webhook_username", "");
         settings.discord.webhook.avatar_url = GM_getValue("discord_webhook_avatar_url", "");
-
     };
 
     // --- CSS Styles ---
