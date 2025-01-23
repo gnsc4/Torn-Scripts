@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Forum Post Extractor for Discord
 // @namespace    https://www.torn.com/
-// @version      1.0.49
+// @version      1.0.51
 // @description  Extracts Torn forum posts and formats them for Discord
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/forums.php*
@@ -162,22 +162,25 @@
     }
 
     function extractTableContent(tableElement) {
-        let tableContent = '\n```\n'; // Start of code block for the table
+        let rows = Array.from(tableElement.querySelectorAll('tr'));
+        let tableContent = [];
 
-        // Iterate over each row in the table
-        const rows = tableElement.querySelectorAll('tr');
-        for (const row of rows) {
-            const cells = row.querySelectorAll('td, th');
-            let rowContent = '';
-            for (const cell of cells) {
-                // Append cell content, followed by a tab for alignment
-                rowContent += cell.textContent.trim() + '\t';
+        rows.forEach((row, rowIndex) => {
+            let cells = Array.from(row.querySelectorAll('td, th'));
+            let cellTexts = cells.map(cell => cell.textContent.trim());
+
+            if (rowIndex === 0) {
+                // Add header row and separator for Markdown tables
+                tableContent.push(cellTexts.join(' | ')); // Header row
+                tableContent.push(cellTexts.map(() => '---').join(' | ')); // Separator row
+            } else {
+                // Add normal rows
+                tableContent.push(cellTexts.join(' | '));
             }
-            tableContent += rowContent.trim() + '\n'; // Trim to remove trailing tab, add newline
-        }
+        });
 
-        tableContent += '```\n'; // End of code block for the table
-        return tableContent;
+        // Join all rows with newlines and wrap in code block
+        return `\n\`\`\`\n${tableContent.join('\n')}\n\`\`\`\n`;
     }
 
     function manualDateParse(dateString) {
@@ -217,7 +220,7 @@
 
     async function formatSelectedPostsForDiscord() {
         console.log("Formatting selected posts for Discord...");
-        const formattedPosts = [];
+        let combinedOutput = "";
 
         // Sort selected posts by their index
         selectedPosts.sort((a, b) => a.index - b.index);
@@ -233,13 +236,17 @@
             const authorLine = config.includeAuthorNames ? `**${authorName} [${authorId}]:**` : "";
             const postText = `${authorLine}\n${timestamp}\n${content}\n`;
 
-            // Split posts if they exceed the character limit
-            if (postText.length > config.maxCopyLength) {
-                const parts = splitPostIntoParts(postText);
-                formattedPosts.push(...parts);
-            } else {
-                formattedPosts.push(postText);
-            }
+            combinedOutput += postText + "\n";
+        }
+
+        const formattedPosts = [];
+
+        // Split combined output if it exceeds character limit
+        if (combinedOutput.length > config.maxCopyLength) {
+            const parts = splitPostIntoParts(combinedOutput);
+            formattedPosts.push(...parts);
+        } else {
+            formattedPosts.push(combinedOutput.trim());
         }
 
         console.log("Formatted posts:", formattedPosts);
