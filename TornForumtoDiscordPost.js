@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Forum to Discord Post
 // @namespace    https://github.com/gnsc4
-// @version      1.0.20
+// @version      1.0.21
 // @description  Sends Torn Forum posts to Discord via webhook
 // @author       GNSC4 [2779998]
 // @match        https://www.torn.com/forums.php*
@@ -335,23 +335,31 @@
     // --- Post Processing ---
 
     const processPosts = async () => {
-        const isThreadListView = window.location.href.includes("forums.php#/p=threads&f=");
-        const isThreadPage = window.location.href.includes("forums.php#/p=thread");
+        const currentUrl = window.location.href;
+        const isThreadListView = currentUrl.includes("forums.php#/p=threads&f=") && !currentUrl.includes("forums.php#/p=thread");
+        const isThreadPage = currentUrl.includes("forums.php#/p=thread");
 
         debug(`[processPosts] isThreadListView: ${isThreadListView}`);
         debug(`[processPosts] isThreadPage: ${isThreadPage}`);
 
         if (isThreadListView) {
             // Code to add "Select Thread" buttons to thread list
-            const threads = document.querySelectorAll("div.thread-list-item");
+            const threads = document.querySelectorAll("div.thread-list-item > div.wrap");
             debug(`[Threads] Found ${threads.length} threads`);
 
             for (const thread of threads) {
-                const threadId = thread.getAttribute("data-thread");
-                if (!threadId) {
-                    debug(`[Threads] Thread ID not found for thread:`, thread);
+                // Extract thread ID from the link within the thread element
+                const threadLink = thread.querySelector('a[href*="forums.php#/p=thread"]');
+                if (!threadLink) {
+                    debug(`[Threads] Thread link not found for thread:`, thread);
                     continue;
                 }
+                const threadIdMatch = threadLink.href.match(/&t=(\d+)/);
+                if (!threadIdMatch) {
+                    debug(`[Threads] Thread ID not found in link:`, threadLink.href);
+                    continue;
+                }
+                const threadId = threadIdMatch[1];
 
                 // Add a "Select Thread" button to each thread
                 const selectButton = document.createElement("button");
@@ -373,6 +381,7 @@
 
                 thread.setAttribute("data-thread", threadId);
             }
+
         } else if (isThreadPage) {
             // Code to add "Select Post" buttons to individual posts
             const posts = document.querySelectorAll(".post-container");
@@ -734,6 +743,7 @@
             }
         }, 2000); // 2-second delay
     };
+
 
     // --- Start the script ---
 
