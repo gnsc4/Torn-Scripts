@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Forum Post Extractor for Discord
 // @namespace    https://www.torn.com/
-// @version      1.0.11
+// @version      1.0.13
 // @description  Extracts Torn forum posts and formats them for Discord
 // @author       GNSC4 [268863]
 // @include      https://www.torn.com/forums.php*
@@ -65,16 +65,40 @@
             const timestamp = rawTimestamp ? `<t:${rawTimestamp}:F>` : "Unknown Timestamp";
 
             const authorElement = post.querySelector(authorSelector);
-            const author = authorElement ? authorElement.textContent.trim() : "Unknown Author";
+            const authorName = authorElement ? authorElement.textContent.trim() : "Unknown Author";
+            const authorId = authorElement ? authorElement.href.match(/XID=(\d+)/)[1] : "Unknown ID"; // Extract ID from href
+            const author = `${authorName} [${authorId}]`;
 
             const contentElement = post.querySelector('div.column-wrap > div.post-wrap.left > div.post-container.editor-content.bbcode-content > div.post.unreset');
-            const content = contentElement ? contentElement.innerText.trim() : "No Content";
+            // Get text content and image URLs
+            const content = contentElement ? extractContentWithImages(contentElement) : "No Content";
 
             extracted.push({ author, timestamp, content });
         }
 
         console.log("Posts extracted:", extracted);
         return extracted;
+    }
+
+    function extractContentWithImages(contentElement) {
+        let content = '';
+        const elements = contentElement.childNodes;
+
+        for (const element of elements) {
+            if (element.nodeType === Node.TEXT_NODE) {
+                content += element.textContent;
+            } else if (element.tagName === 'A' && element.classList.contains('full') && element.querySelector('IMG')) {
+                content += element.href; // Add the image URL
+            } else if (element.tagName === 'IMG') {
+                content += element.src; // Add the image URL directly if it's just an <img> tag
+            } else if (element.tagName === 'BR') {
+                content += '\n';
+            } else if (element.nodeType === Node.ELEMENT_NODE) {
+                content += extractContentWithImages(element); // Recursively handle other elements
+            }
+        }
+
+        return content.trim();
     }
 
     function manualDateParse(dateString) {
@@ -123,7 +147,7 @@
             const authorLine = config.includeAuthorNames ? `**${post.author}:**` : "";
             const escapedContent = escapeMarkdown(post.content);
             const content = `\n\`\`\`\n${escapedContent}\n\`\`\`\n`;
-            const postText = `${authorLine}\n${post.timestamp}${content}---\n\n`;
+            const postText = `${authorLine}\n${post.timestamp}${content}\n`; // Removed "---" separator
 
             if (currentLength + postText.length > config.maxCopyLength) {
                 console.warn("Post truncated due to character limit.");
