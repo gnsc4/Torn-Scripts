@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Forum to Discord Post
 // @namespace    https://github.com/gnsc4
-// @version      1.0.42
+// @version      1.0.48
 // @description  Sends Torn Forum posts to Discord via webhook
 // @author       GNSC4 [2779998]
 // @match        https://www.torn.com/forums.php*
@@ -408,183 +408,142 @@
         }
     };
 
-    // --- Post Processing ---
-    const processPosts = async () => {
-        try {
-            const isThreadListView = window.location.href.includes("forums.php#/p=threads&f=") && !window.location.href.includes("forums.php#/p=thread");
-            const isThreadPage = window.location.href.includes("forums.php#/p=thread");
+// --- Post Processing ---
 
-            debug(`[processPosts] isThreadListView: ${isThreadListView}`);
-            debug(`[processPosts] isThreadPage: ${isThreadPage}`);
+const processPosts = async () => {
+    try {
+        const currentUrl = window.location.href;
+        const isForumSectionPage = currentUrl.includes("forums.php#/p=forums&f=");
+        const isThreadPage = currentUrl.includes("forums.php#/p=thread");
 
-            if (isThreadListView) {
-                // Code to add "Select Thread" buttons to thread list
-                debug(`[processPosts] Processing thread list view`);
-                const threads = document.querySelectorAll("div.thread-list-item > div.wrap");
-                debug(`[processPosts] Found ${threads.length} threads`);
+        debug(`[processPosts] isForumSectionPage: ${isForumSectionPage}`);
+        debug(`[processPosts] isThreadPage: ${isThreadPage}`);
 
-                for (const thread of threads) {
+        if (isForumSectionPage) {
+            // Forum section page - no buttons needed
+            debug(`[processPosts] No buttons needed for forum section pages.`);
+        } else if (isThreadPage) {
+            // Code to add "Select Post" buttons to individual posts
+            debug(`[processPosts] Processing thread page`);
+            waitForPosts().then(posts => {
+                if (!posts) {
+                    console.error(`[processPosts] waitForPosts resolved with null or undefined`);
+                    return;
+                }
+                debug(`[processPosts] Found ${posts.length} posts with data-id`);
+                for (const post of posts) {
                     try {
-                        // Extract thread ID from the link within the thread element
-                        const threadLink = thread.querySelector('a[href*="forums.php#/p=thread"]');
-                        if (!threadLink) {
-                            debug(`[processPosts] Thread link not found for thread:`, thread);
+                        const postId = post.dataset.id;
+                        if (!postId) {
+                            debug(`[processPosts] Post ID not found for post:`, post);
                             continue;
                         }
-                        const threadIdMatch = threadLink.href.match(/&t=(\d+)/);
-                        if (!threadIdMatch) {
-                            debug(`[processPosts] Thread ID not found in link:`, threadLink.href);
-                            continue;
-                        }
-                        const threadId = threadIdMatch[1];
+                        debug(`[processPosts] Processing post with ID: ${postId}`);
 
-                        // Add a "Select Thread" button to each thread
                         const selectButton = document.createElement("button");
-                        selectButton.textContent = "Select Thread";
+                        selectButton.textContent = "Select Post";
                         selectButton.classList.add("select-post-button");
+                        selectButton.style.order = '-1';
                         selectButton.addEventListener("click", () => {
-                            selectAllPostsInThread(threadId);
-                            selectButton.classList.toggle("selected"); // Toggle visual indicator
+                            selectPost(postId);
+                            selectButton.classList.toggle("selected");
                         });
 
-                        // Find the thread info wrap element to insert the button
-                        const threadInfoWrap = thread.querySelector(".thread-info-wrap");
-                        if (threadInfoWrap) {
-                            debug(`[processPosts] Inserting button for thread: ${threadId}`);
-                            threadInfoWrap.appendChild(selectButton);
+                        const actionBar = post.querySelector(".post-wrap .action-wrap");
+                        if (actionBar) {
+                            debug(`[processPosts] Inserting button for post: ${postId}`);
+                            actionBar.insertBefore(selectButton, actionBar.firstChild);
                         } else {
-                            console.error(`[processPosts] Could not find the thread info wrap for thread: ${threadId}`);
+                            console.error(`[processPosts] Could not find the action bar element for post: ${postId}`);
                         }
 
-                        thread.setAttribute("data-thread", threadId);
+                        post.setAttribute("data-post", postId);
                     } catch (error) {
-                        console.error(`[processPosts] Error processing thread: ${error}`);
+                        console.error(`[processPosts] Error processing post:`, post, error);
                     }
                 }
-            } else if (isThreadPage) {
-                // Code to add "Select Post" buttons to individual posts
-                debug(`[processPosts] Processing thread page`);
-
-                // Use waitForPosts to ensure posts are loaded
-                waitForPosts().then(posts => {
-                    debug(`[processPosts] Found ${posts.length} posts with data-pid`);
-
-                    for (const post of posts) {
-                        try {
-                            const postId = post.dataset.pid;
-                            if (!postId) {
-                                debug(`[processPosts] Post ID not found for post:`, post);
-                                continue;
-                            }
-                            debug(`[processPosts] Processing post with ID: ${postId}`);
-
-                            // Add a "Select Post" button to each post
-                            const selectButton = document.createElement("button");
-                            selectButton.textContent = "Select Post";
-                            selectButton.classList.add("select-post-button");
-                            selectButton.style.order = '-1';
-                            selectButton.addEventListener("click", () => {
-                                selectPost(postId);
-                                selectButton.classList.toggle("selected");
-                            });
-
-                            // Find the action bar and append the button
-                            const postContainer = post.querySelector(".post-container");
-                            const actionBar = postContainer.querySelector(".post-wrap .action-wrap");
-                            if (actionBar) {
-                                debug(`[processPosts] Inserting button for post: ${postId}`);
-                                actionBar.insertBefore(selectButton, actionBar.firstChild);
-                            } else {
-                                console.error(`[processPosts] Could not find the action bar element for post: ${postId}`);
-                            }
-
-                            // Set data-post attribute on the LI element
-                            post.setAttribute("data-post", postId);
-                        } catch (error) {
-                            console.error(`[processPosts] Error processing post: ${error}`);
-                        }
-                    }
-                });
-            }
-
-            // Add a "Send Selected Posts" button (only if not already present)
-            if (!document.getElementById("send-selected-posts-button")) {
-                debug(`[processPosts] Adding "Send Selected Posts" button`);
-                const sendButton = document.createElement("button");
-                sendButton.textContent = "Send Selected Posts";
-                sendButton.id = "send-selected-posts-button";
-                sendButton.addEventListener("click", sendSelectedPosts);
-
-                const selectedPostsDisplay = document.createElement("div");
-                selectedPostsDisplay.id = "selected-posts-display";
-                selectedPostsDisplay.textContent = `Selected Posts: 0`;
-
-                const target = document.querySelector("#forums-page-wrap");
-                if (target) {
-                    debug(`[processPosts] Inserting "Send Selected Posts" button`);
-                    target.parentNode.insertBefore(sendButton, target);
-                    target.parentNode.insertBefore(selectedPostsDisplay, target);
-                } else {
-                    console.error("[processPosts] Could not find the target element to insert the Send button and display.");
-                }
-            }
-        } catch (error) {
-            console.error(`[processPosts] Error in processPosts: ${error}`);
-        }
-    };
-
-    // --- Helper Function to Wait for Posts ---
-    const waitForPosts = () => {
-        debug(`[waitForPosts] Waiting for posts to load`);
-        return new Promise(resolve => {
-            const targetNode = document.querySelector("#forums-page-wrap");
-
-            if (!targetNode) {
-                console.error("[waitForPosts] Target element #forums-page-wrap not found.");
-                resolve([]);
-                return;
-            }
-
-            const observer = new MutationObserver(mutations => {
-                debug(`[waitForPosts] Mutation detected`);
-                const posts = document.querySelectorAll("li[data-pid]");
-                if (posts.length > 0) {
-                    debug(`[waitForPosts] Found ${posts.length} posts after mutation`);
-                    observer.disconnect();
-                    resolve(posts);
-                }
+            }).catch(error => {
+                console.error(`[processPosts] Error waiting for posts:`, error);
             });
+        }
 
+        // Add a "Send Selected Posts" button (only if not already present)
+        if (!document.getElementById("send-selected-posts-button")) {
+            debug(`[processPosts] Adding "Send Selected Posts" button`);
+            const sendButton = document.createElement("button");
+            sendButton.textContent = "Send Selected Posts";
+            sendButton.id = "send-selected-posts-button";
+            sendButton.addEventListener("click", sendSelectedPosts);
+
+            const selectedPostsDisplay = document.createElement("div");
+            selectedPostsDisplay.id = "selected-posts-display";
+            selectedPostsDisplay.textContent = `Selected Posts: 0`;
+
+            const target = document.querySelector("#forums-page-wrap");
+            if (target) {
+                debug(`[processPosts] Inserting "Send Selected Posts" button`);
+                target.parentNode.insertBefore(sendButton, target);
+                target.parentNode.insertBefore(selectedPostsDisplay, target);
+            } else {
+                console.error("[processPosts] Could not find the target element to insert the Send button and display.");
+            }
+        }
+    } catch (error) {
+        console.error(`[processPosts] Error in processPosts: ${error}`);
+    }
+};
+
+// --- Helper Function to Wait for Posts ---
+const waitForPosts = () => {
+    debug(`[waitForPosts] Waiting for posts to load`);
+    return new Promise((resolve, reject) => {
+        const targetNode = document.querySelector("#forums-page-wrap");
+
+        if (!targetNode) {
+            console.error("[waitForPosts] Target element #forums-page-wrap not found.");
+            resolve([]);
+            return;
+        }
+
+        const observer = new MutationObserver(mutations => {
+            debug(`[waitForPosts] Mutation detected`);
+            const posts = document.querySelectorAll("li[data-id]");
+            if (posts.length > 0) {
+                debug(`[waitForPosts] Found ${posts.length} posts after mutation`);
+                observer.disconnect();
+                resolve(posts);
+            }
+        });
+
+        // Observe only if posts are not initially found
+        const initialPosts = document.querySelectorAll("li[data-id]");
+        if (initialPosts.length > 0) {
+            debug(`[waitForPosts] Found ${initialPosts.length} posts initially`);
+            resolve(initialPosts);
+        } else {
             observer.observe(targetNode, {
                 childList: true,
                 subtree: true
             });
-
-            // Check if posts are already present
-            const initialPosts = document.querySelectorAll("li[data-pid]");
-            if (initialPosts.length > 0) {
-                debug(`[waitForPosts] Found ${initialPosts.length} posts initially`);
-                observer.disconnect();
-                resolve(initialPosts);
-            }
-        });
-    };
-
-    // --- Mutation Observer ---
-    const observer = new MutationObserver(async (mutations) => {
-        debug('[MutationObserver] Mutations detected:', mutations);
-        // Check if the mutations are related to posts loading
-        const postsLoaded = mutations.some(mutation => {
-            return Array.from(mutation.addedNodes).some(node => node.nodeType === 1 && node.matches('li[data-pid]'));
-        });
-
-        if (postsLoaded) {
-            debug('[MutationObserver] Posts might have been dynamically loaded, re-running processPosts');
-            processPosts();
-        } else {
-            debug('[MutationObserver] Mutations are not related to post loading, skipping processPosts');
         }
     });
+};
+
+// --- Mutation Observer ---
+const observer = new MutationObserver(async (mutations) => {
+    debug('[MutationObserver] Mutations detected:', mutations);
+    // Check if the mutations are related to posts loading
+    const postsLoaded = mutations.some(mutation => {
+        return Array.from(mutation.addedNodes).some(node => node.nodeType === 1 && node.matches('li[data-pid]'));
+    });
+
+    if (postsLoaded) {
+        debug('[MutationObserver] Posts might have been dynamically loaded, re-running processPosts');
+        processPosts();
+    } else {
+        debug('[MutationObserver] Mutations are not related to post loading, skipping processPosts');
+    }
+});
 
     // --- GUI Functions ---
 
@@ -616,8 +575,8 @@
         const discordSection = document.createElement("div");
         discordSection.innerHTML = `
             <h3>Discord Webhook</h3>
-            <input type="text" id="webhook-url" placeholder="Enter your Discord webhook URL" value="<span class="math-inline">\{settings\.discord\.webhook\.url\}"\>
-<input type\="text" id\="webhook\-username" placeholder\="Enter a custom username \(optional\)" value\="</span>{settings.discord.webhook.username}">
+            <input type="text" id="webhook-url" placeholder="Enter your Discord webhook URL" value="${settings.discord.webhook.url}">
+            <input type="text" id="webhook-username" placeholder="Enter a custom username (optional)" value="${settings.discord.webhook.username}">
             <input type="text" id="webhook-avatar" placeholder="Enter a custom avatar URL (optional)" value="${settings.discord.webhook.avatar_url}">
         `;
         guiContainer.appendChild(discordSection);
@@ -834,8 +793,6 @@
     // --- Script Initialization ---
 
     const init = () => {
-        settings.debug.mode = true; // Enable debug mode here
-        settings.debug.log.all = true; // Enable verbose logging here
         addStyles();
         createGUI();
 
