@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Forum to Discord Post
 // @namespace    https://github.com/gnsc4
-// @version      1.0.23
+// @version      1.0.41
 // @description  Sends Torn Forum posts to Discord via webhook
 // @author       GNSC4 [2779998]
 // @match        https://www.torn.com/forums.php*
@@ -45,9 +45,9 @@
             }
         },
         debug: {
-            mode: false, // Change to true for debugging
+            mode: true, // Enable debug mode here
             log: {
-                all: false,
+                all: true, // Enable verbose logging here
             }
         },
         cache: {
@@ -70,8 +70,6 @@
             console.log(...args);
         }
     };
-
-    // No changes needed in loadScript, cacheKey, setCache, getCache, clearCache
 
     // --- API Functions ---
 
@@ -146,7 +144,11 @@
             url = `https://api.torn.com/user/?selections=<span class="math-inline">\{selections\}&key\=</span>{apiKey}&comment=TornForumToDiscordScript`;
         } else if (endpoint === 'faction' && keyLevel === 'faction') {
             url = `https://api.torn.com/faction/?selections=<span class="math-inline">\{selections\}&key\=</span>{apiKey}&comment=TornForumToDiscordScript`;
-        } else {
+        } else if (endpoint === 'thread' && id && keyLevel === 'faction') { // Added clause for 'thread' endpoint
+            url = `https://api.torn.com/torn/<span class="math-inline">\{id\}?selections\=</span>{selections}&key=${apiKey}&comment=TornForumToDiscordScript`;
+        }
+
+        else {
             debug(`[API] Insufficient API key level or invalid endpoint for ${endpoint}`);
             return null;
         }
@@ -296,82 +298,18 @@
         }
     };
 
-    // --- Post Processing ---
+    // --- Post Selection Functions ---
 
-    const processPosts = async () => {
-        const isThreadListView = window.location.href.includes("forums.php#/p=threads&f=") && !window.location.href.includes("forums.php#/p=thread");
-        const isThreadPage = window.location.href.includes("forums.php#/p=thread");
-
-        debug(`[processPosts] isThreadListView: ${isThreadListView}`);
-        debug(`[processPosts] isThreadPage: ${isThreadPage}`);
-
-        if (isThreadListView) {
-            // Code to add "Select Thread" buttons to thread list
-            // (This part remains the same as before)
-
-        } else if (isThreadPage) {
-            // Code to add "Select Post" buttons to individual posts
-            const posts = document.querySelectorAll(".post-container");
-            debug(`[Posts] Found ${posts.length} posts`);
-
-            for (const post of posts) {
-                // Find the parent LI element
-                const listItem = post.closest('li');
-                if (!listItem) {
-                    debug(`[Posts] Could not find parent li element for post:`, post);
-                    continue;
-                }
-
-                // Get the post ID from the data-pid attribute of the LI element
-                const postId = listItem.dataset.pid;
-                if (!postId) {
-                    debug(`[Posts] Post ID not found for post:`, post);
-                    continue;
-                }
-
-                // Add a "Select Post" button to each post
-                const selectButton = document.createElement("button");
-                selectButton.textContent = "Select Post";
-                selectButton.classList.add("select-post-button");
-                selectButton.addEventListener("click", () => {
-                    selectPost(postId);
-                    selectButton.classList.toggle("selected"); // Toggle visual indicator
-                });
-
-                // Find the action bar and append the button
-                const actionBar = post.querySelector(".action-wrap");
-                if (actionBar) {
-                    debug(`[Posts] Inserting button for post: ${postId}`);
-                    actionBar.appendChild(selectButton);
-                } else {
-                    console.error(`[Posts] Could not find the action bar element for post: ${postId}`);
-                }
-
-                // Set the data-post attribute on the LI element
-                listItem.setAttribute("data-post", postId);
-            }
+    const selectPost = (postId) => {
+        const index = settings.selectedPosts.indexOf(postId);
+        if (index > -1) {
+            settings.selectedPosts.splice(index, 1); // Remove post if already selected
+            debug(`[Post Selection] Removed post ${postId} from selection`);
+        } else {
+            settings.selectedPosts.push(postId); // Add post if not selected
+            debug(`[Post Selection] Added post ${postId} to selection`);
         }
-
-        // Add a "Send Selected Posts" button (only if not already present)
-        if (!document.getElementById("send-selected-posts-button")) {
-            const sendButton = document.createElement("button");
-            sendButton.textContent = "Send Selected Posts";
-            sendButton.id = "send-selected-posts-button";
-            sendButton.addEventListener("click", sendSelectedPosts);
-
-            const selectedPostsDisplay = document.createElement("div");
-            selectedPostsDisplay.id = "selected-posts-display";
-            selectedPostsDisplay.textContent = `Selected Posts: 0`;
-
-            const target = document.querySelector("#forums-page-wrap");
-            if (target) {
-                debug(`[Main] Inserting "Send Selected Posts" button`);
-                target.parentNode.insertBefore(sendButton, target);
-                target.parentNode.insertBefore(selectedPostsDisplay, target);
-            } else {
-                console.error("[Main] Could not find the target element to insert the Send button and display.");
-            }
-        }
+        updateSelectedPostsDisplay();
     };
 
     // --- Select All Posts in Thread ---
@@ -389,299 +327,492 @@
         }
     };
 
-    // --- Mutation Observer ---
-
-    const observer = new MutationObserver(async (mutations) => {
-        debug('[MutationObserver] Mutations detected:', mutations);
-        // Re-run processPosts to add buttons to new elements
-        processPosts();
-    });
-    
-        // --- GUI Functions ---
-    
-        const createGUI = () => {
-            // Load saved settings
-            loadSettings();
-    
-            // Create a container for the GUI
-            const guiContainer = document.createElement("div");
-            guiContainer.id = "torn-to-discord-gui";
-            document.body.appendChild(guiContainer);
-    
-            // Create the API Key section
-            const apiKeySection = document.createElement("div");
-            apiKeySection.innerHTML = `
-                <h3>Torn API Key</h3>
-                <input type="text" id="api-key" placeholder="Enter your Torn API key" value="${settings.torn.api.key}">
-                <p class="help-text api-key-level-text"></p>
-            `;
-            guiContainer.appendChild(apiKeySection);
-    
-            // Set the initial API key level text based on saved settings
-            const apiKeyLevelText = guiContainer.querySelector(".api-key-level-text");
-            if (apiKeyLevelText) {
-                apiKeyLevelText.textContent = settings.torn.api.keyLevel ? `Key Level: ${settings.torn.api.keyLevel === "faction" ? "Faction (or higher)" : "User"}` : '';
+    // --- Send Selected Posts ---
+    const sendSelectedPosts = async () => {
+        debug(`[Post Selection] Sending ${settings.selectedPosts.length} selected posts`);
+        for (const postId of settings.selectedPosts) {
+            const postElement = document.querySelector(`.post-container[data-post="${postId}"] .post`);
+            if (postElement) {
+                const content = postElement.innerHTML;
+                const parsedContent = await parseContent(content);
+                await postToDiscord(parsedContent);
+                debug(`[Post Selection] Sent post ${postId} to Discord`);
             }
-    
-            // Create the Discord Webhook section
-            const discordSection = document.createElement("div");
-            discordSection.innerHTML = `
-                <h3>Discord Webhook</h3>
-                <input type="text" id="webhook-url" placeholder="Enter your Discord webhook URL" value="${settings.discord.webhook.url}">
-                <input type="text" id="webhook-username" placeholder="Enter a custom username (optional)" value="${settings.discord.webhook.username}">
-                <input type="text" id="webhook-avatar" placeholder="Enter a custom avatar URL (optional)" value="${settings.discord.webhook.avatar_url}">
-            `;
-            guiContainer.appendChild(discordSection);
-    
-            // Create the Help section
-            const helpSection = document.createElement("div");
-            helpSection.innerHTML = `
-                <h3>Help</h3>
-                <p class="help-text"><b>Torn API Key:</b> You can find your API key at <a href="https://www.torn.com/preferences.php#tab=api" target="_blank">https://www.torn.com/preferences.php#tab=api</a></p>
-                <p class="help-text"><b>API Key Level:</b></p>
-                <ul class="help-text">
-                    <li><b>User Level:</b> Required for reading user-related information (e.g., player names from forum posts).</li>
-                    <li><b>Faction Level:</b> Required if you want to fetch faction names from faction links in forum posts.</li>
-                </ul>
-                <p class="help-text"><b>Discord Webhook:</b> To create a webhook, go to your Discord server settings -> Integrations -> Webhooks -> New Webhook.</p>
-                <p class="help-text"><b>Webhook URL:</b> Enter the URL of your Discord webhook. This is required for the script to function.</p>
-                <p class="help-text"><b>Custom Username (Optional):</b> You can specify a custom username that will be displayed with each message sent to Discord. Leave this blank to use the default webhook username.</p>
-                <p class="help-text"><b>Custom Avatar URL (Optional):</b> You can specify a custom avatar URL for the messages sent to Discord. Leave this blank to use the default webhook avatar.</p>
-            `;
-            guiContainer.appendChild(helpSection);
-    
-            // Create the Save button
-            const saveButton = document.createElement("button");
-            saveButton.id = "save-settings-button";
-            saveButton.textContent = "Save Settings";
-            saveButton.addEventListener("click", saveSettings);
-            guiContainer.appendChild(saveButton);
-    
-            // Create the Close button
-            const closeButton = document.createElement("button");
-            closeButton.id = "close-gui-button";
-            closeButton.textContent = "Close";
-            closeButton.addEventListener("click", () => {
-                guiContainer.style.display = "none";
-            });
-            guiContainer.appendChild(closeButton);
-        };
-    
-        // --- Settings Functions ---
-    
-        const saveSettings = async () => {
-            // Torn API Key
-            settings.torn.api.key = document.getElementById("api-key").value;
-            settings.torn.api.keyLevel = await checkApiKeyLevel(settings.torn.api.key);
-    
-            // Update the API key level display in the GUI
-            const apiKeyLevelText = document.querySelector(".api-key-level-text");
-            if (apiKeyLevelText) {
-                apiKeyLevelText.textContent = settings.torn.api.keyLevel ? `Key Level: ${settings.torn.api.keyLevel === "faction" ? "Faction (or higher)" : "User"}` : '';
-            }
-    
-            // Discord Webhook
-            settings.discord.webhook.url = document.getElementById("webhook-url").value;
-            settings.discord.webhook.username = document.getElementById("webhook-username").value;
-            settings.discord.webhook.avatar_url = document.getElementById("webhook-avatar").value;
-    
-            // Save settings using GM_setValue
-            GM_setValue("torn_api_key", settings.torn.api.key);
-            GM_setValue("torn_api_key_level", settings.torn.api.keyLevel);
-            GM_setValue("discord_webhook_url", settings.discord.webhook.url);
-            GM_setValue("discord_webhook_username", settings.discord.webhook.username);
-            GM_setValue("discord_webhook_avatar_url", settings.discord.webhook.avatar_url);
-    
-            alert("Settings saved!");
-        };
-    
-        const loadSettings = () => {
-            // Load settings using GM_getValue
-            settings.torn.api.key = GM_getValue("torn_api_key", "");
-            settings.torn.api.keyLevel = GM_getValue("torn_api_key_level", "");
-            settings.discord.webhook.url = GM_getValue("discord_webhook_url", "");
-            settings.discord.webhook.username = GM_getValue("discord_webhook_username", "");
-            settings.discord.webhook.avatar_url = GM_getValue("discord_webhook_avatar_url", "");
-        };
-    
-        // --- CSS Styles ---
-    
-        const addStyles = () => {
-            GM_addStyle(`
-                #torn-to-discord-gui {
-                    position: fixed;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    background-color: #36393f; /* Dark gray background */
-                    border: 1px solid #ccc;
-                    padding: 20px;
-                    z-index: 1000;
-                    font-family: Arial, sans-serif;
-                    color: white; /* White text color */
-                }
-    
-                #torn-to-discord-gui h3 {
-                    margin-top: 0;
-                    color: white; /* White text for headings */
-                }
-    
-                #torn-to-discord-gui input[type="text"] {
-                    width: calc(100% - 22px); /* Adjust width to fix formatting */
-                    padding: 5px;
-                    margin-bottom: 10px;
-                    border: 1px solid #ccc;
-                    background-color: #40444b; /* Slightly darker background for inputs */
-                    color: white; /* White text for inputs */
-                }
-    
-                #torn-to-discord-gui select {
-                    width: 100%;
-                    padding: 5px;
-                    margin-bottom: 10px;
-                    border: 1px solid #ccc;
-                    background-color: #40444b; /* Slightly darker background for select */
-                    color: white; /* White text for select */
-                }
-    
-                #torn-to-discord-gui button {
-                    padding: 8px 15px;
-                    background-color: #4CAF50;
-                    color: white;
-                    border: none;
-                    cursor: pointer;
-                    margin-right: 5px;
-                }
-    
-                #torn-to-discord-gui button:hover {
-                    background-color: #3e8e41;
-                }
-    
-                #torn-to-discord-gui ul {
-                    padding-left: 20px;
-                    margin-top: 5px;
-                }
-    
-                #torn-to-discord-gui a { /* Style for links */
-                    color: #1b87e5; /* Light blue link color */
-                    text-decoration: none;
-                }
-    
-                #torn-to-discord-gui a:hover {
-                    text-decoration: underline;
-                }
-    
-                .api-key-level-text {
-                    margin-top: -5px;
-                    margin-bottom: 10px;
-                }
-    
-                #torn-to-discord-gui .help-text { /* Class for help text - slightly less bright */
-                    color: #ccc;
-                }
-    
-                .select-post-button {
-                    padding: 5px 10px;
-                    background-color: #7289da; /* Discord Blue */
-                    color: white;
-                    border: none;
-                    cursor: pointer;
-                    margin-right: 5px;
-                    border-radius: 5px; /* Rounded corners */
-                    font-size: 12px; /* Smaller font size */
-                }
-    
-                .select-post-button:hover {
-                    background-color: #677bc4; /* Darker shade on hover */
-                }
-    
-                .select-post-button.selected {
-                    background-color: #5b6e9e; /* Even darker shade for selected state */
-                }
-    
-                #send-selected-posts-button {
-                    padding: 8px 15px;
-                    background-color: #04aa6d;
-                    color: white;
-                    border: none;
-                    cursor: pointer;
-                    margin-top: 10px;
-                    font-size: 16px;
-                }
-    
-                #send-selected-posts-button:hover {
-                    background-color: #048a58;
-                }
-    
-                #selected-posts-display {
-                    margin-top: 5px;
-                    font-size: 14px;
-                }
-    
-                #save-settings-button, #close-gui-button {
-                    margin: 5px;
-                    padding: 8px 16px;
-                    font-size: 14px;
-                    border: none;
-                    border-radius: 4px;
-                    cursor: pointer;
-                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-                }
-                #close-gui-button{
-                    background-color: #dc3545;
-                }
-                #close-gui-button:hover{
-                    background-color: #c82333;
-                }
-                #save-settings-button {
-                    background-color: #28a745;
-                }
-                #save-settings-button:hover {
-                    background-color: #218838;
-                }
-            `);
-        };
-    
- // --- Script Initialization ---
-
- const init = () => {
-    settings.debug.mode = true;
-    settings.debug.log.all = true;
-    addStyles();
-    createGUI();
-
-    // Hide GUI on startup
-    document.getElementById("torn-to-discord-gui").style.display = "none";
-
-    // Add a button to toggle the GUI
-    const toggleButton = document.createElement("button");
-    toggleButton.textContent = "T2D Settings";
-    toggleButton.style.position = "fixed";
-    toggleButton.style.top = "10px";
-    toggleButton.style.right = "10px";
-    toggleButton.style.zIndex = 999;
-    toggleButton.addEventListener("click", () => {
-        const gui = document.getElementById("torn-to-discord-gui");
-        gui.style.display = gui.style.display === "none" ? "block" : "none";
-    });
-    document.body.appendChild(toggleButton);
-
-    // Start observing for changes after a delay
-    setTimeout(() => {
-        const targetNode = document.querySelector("#forums-page-wrap");
-        if (targetNode) {
-            observer.observe(targetNode, {
-                childList: true,
-                subtree: true
-            });
-            debug(`[Observer] Observing for new posts/threads...`);
-            processPosts();
         }
-    }, 2000); // 2-second delay
+        settings.selectedPosts = []; // Clear the selection after sending
+        updateSelectedPostsDisplay();
+    };
+
+    const updateSelectedPostsDisplay = () => {
+        const selectedPostsDisplay = document.getElementById("selected-posts-display");
+        if (selectedPostsDisplay) {
+            selectedPostsDisplay.textContent = `Selected Posts: ${settings.selectedPosts.length}`;
+        }
+    };
+
+   // --- Post Processing ---
+   const processPosts = async () => {
+    const isThreadListView = window.location.href.includes("forums.php#/p=threads&f=") && !window.location.href.includes("forums.php#/p=thread");
+    const isThreadPage = window.location.href.includes("forums.php#/p=thread");
+
+    debug(`[processPosts] isThreadListView: ${isThreadListView}`);
+    debug(`[processPosts] isThreadPage: ${isThreadPage}`);
+
+    if (isThreadListView) {
+        // Code to add "Select Thread" buttons to thread list
+        const threads = document.querySelectorAll("div.thread-list-item > div.wrap");
+        debug(`[Threads] Found ${threads.length} threads`);
+
+        for (const thread of threads) {
+            // Extract thread ID from the link within the thread element
+            const threadLink = thread.querySelector('a[href*="forums.php#/p=thread"]');
+            if (!threadLink) {
+                debug(`[Threads] Thread link not found for thread:`, thread);
+                continue;
+            }
+            const threadIdMatch = threadLink.href.match(/&t=(\d+)/);
+            if (!threadIdMatch) {
+                debug(`[Threads] Thread ID not found in link:`, threadLink.href);
+                continue;
+            }
+            const threadId = threadIdMatch[1];
+
+            // Add a "Select Thread" button to each thread
+            const selectButton = document.createElement("button");
+            selectButton.textContent = "Select Thread";
+            selectButton.classList.add("select-post-button");
+            selectButton.addEventListener("click", () => {
+                selectAllPostsInThread(threadId);
+                selectButton.classList.toggle("selected"); // Toggle visual indicator
+            });
+
+            // Find the thread info wrap element to insert the button
+            const threadInfoWrap = thread.querySelector(".thread-info-wrap");
+            if (threadInfoWrap) {
+                debug(`[Threads] Inserting button for thread: ${threadId}`);
+                threadInfoWrap.appendChild(selectButton);
+            } else {
+                console.error(`[Threads] Could not find the thread info wrap for thread: ${threadId}`);
+            }
+
+            thread.setAttribute("data-thread", threadId);
+        }
+    } else if (isThreadPage) {
+        // Use waitForPosts to ensure posts are loaded
+        waitForPosts().then(posts => {
+            debug(`[Posts] Found ${posts.length} posts with data-pid`);
+
+            for (const post of posts) {
+                const postId = post.dataset.pid;
+                if (!postId) {
+                    debug(`[Posts] Post ID not found for post:`, post);
+                    continue;
+                }
+                debug(`[Posts] Processing post with ID: ${postId}`);
+
+                // Add a "Select Post" button to each post
+                const selectButton = document.createElement("button");
+                selectButton.textContent = "Select Post";
+                selectButton.classList.add("select-post-button");
+                selectButton.style.order = '-1';
+                selectButton.addEventListener("click", () => {
+                    selectPost(postId);
+                    selectButton.classList.toggle("selected");
+                });
+
+                // Find the action bar and append the button
+                const postContainer = post.querySelector(".post-container");
+                const actionBar = postContainer.querySelector(".post-wrap .action-wrap");
+                if (actionBar) {
+                    debug(`[Posts] Inserting button for post: ${postId}`);
+                    actionBar.insertBefore(selectButton, actionBar.firstChild);
+                } else {
+                    console.error(`[Posts] Could not find the action bar element for post: ${postId}`);
+                }
+
+                // Set data-post attribute on the LI element
+                post.setAttribute("data-post", postId);
+            }
+        });
+    }
+
+    // Add a "Send Selected Posts" button (only if not already present)
+    if (!document.getElementById("send-selected-posts-button")) {
+        const sendButton = document.createElement("button");
+        sendButton.textContent = "Send Selected Posts";
+        sendButton.id = "send-selected-posts-button";
+        sendButton.addEventListener("click", sendSelectedPosts);
+
+        const selectedPostsDisplay = document.createElement("div");
+        selectedPostsDisplay.id = "selected-posts-display";
+        selectedPostsDisplay.textContent = `Selected Posts: 0`;
+
+        const target = document.querySelector("#forums-page-wrap");
+        if (target) {
+            debug(`[Main] Inserting "Send Selected Posts" button`);
+            target.parentNode.insertBefore(sendButton, target);
+            target.parentNode.insertBefore(selectedPostsDisplay, target);
+        } else {
+            console.error("[Main] Could not find the target element to insert the Send button and display.");
+        }
+    }
+};
+// --- Helper Function to Wait for Posts ---
+const waitForPosts = () => {
+    return new Promise(resolve => {
+        const targetNode = document.querySelector("#forums-page-wrap"); // Changed to observe a more specific element
+
+        if (!targetNode) {
+            console.error("[waitForPosts] Target element #forums-page-wrap not found.");
+            resolve([]);
+            return;
+        }
+
+        const observer = new MutationObserver(mutations => {
+            const posts = document.querySelectorAll("li[data-pid]");
+            if (posts.length > 0) {
+                debug(`[waitForPosts] Found ${posts.length} posts after mutation`);
+                observer.disconnect();
+                resolve(posts);
+            }
+        });
+
+        observer.observe(targetNode, {
+            childList: true,
+            subtree: true
+        });
+
+        // Check if posts are already present
+        const initialPosts = document.querySelectorAll("li[data-pid]");
+        if (initialPosts.length > 0) {
+            debug(`[waitForPosts] Found ${initialPosts.length} posts initially`);
+            observer.disconnect();
+            resolve(initialPosts);
+        }
+    });
 };
 
-// --- Start the script ---
 
-init();
+    function addButtonToPost(post, postId) {
+        // Add a "Select Post" button to the post
+        const selectButton = document.createElement("button");
+        selectButton.textContent = "Select Post";
+        selectButton.classList.add("select-post-button");
+        selectButton.style.order = '-1';
+        selectButton.addEventListener("click", () => {
+            selectPost(postId);
+            selectButton.classList.toggle("selected");
+        });
+    
+        // Find the action bar and append the button
+        const actionBar = post.querySelector(".post-wrap .action-wrap");
+        if (actionBar) {
+            debug(`[Posts] Inserting button for post: ${postId}`);
+            actionBar.insertBefore(selectButton, actionBar.firstChild);
+        } else {
+            console.error(`[Posts] Could not find the action bar element for post: ${postId}`);
+        }
+    }
+
+// --- Mutation Observer ---
+const observer = new MutationObserver(async (mutations) => {
+    debug('[MutationObserver] Mutations detected:', mutations);
+    // Check if the mutations are related to posts loading
+    const postsLoaded = mutations.some(mutation => {
+        return Array.from(mutation.addedNodes).some(node => node.nodeType === 1 && node.matches('li[data-pid]'));
+    });
+
+    if (postsLoaded) {
+        debug('[MutationObserver] Posts were dynamically loaded, re-running processPosts');
+        processPosts();
+    }
+});
+
+    // --- GUI Functions ---
+
+    const createGUI = () => {
+        // Load saved settings
+        loadSettings();
+
+        // Create a container for the GUI
+        const guiContainer = document.createElement("div");
+        guiContainer.id = "torn-to-discord-gui";
+        document.body.appendChild(guiContainer);
+
+        // Create the API Key section
+        const apiKeySection = document.createElement("div");
+        apiKeySection.innerHTML = `
+            <h3>Torn API Key</h3>
+            <input type="text" id="api-key" placeholder="Enter your Torn API key" value="${settings.torn.api.key}">
+            <p class="help-text api-key-level-text"></p>
+        `;
+        guiContainer.appendChild(apiKeySection);
+
+        // Set the initial API key level text based on saved settings
+        const apiKeyLevelText = guiContainer.querySelector(".api-key-level-text");
+        if (apiKeyLevelText) {
+            apiKeyLevelText.textContent = settings.torn.api.keyLevel ? `Key Level: ${settings.torn.api.keyLevel === "faction" ? "Faction (or higher)" : "User"}` : '';
+        }
+
+        // Create the Discord Webhook section
+        const discordSection = document.createElement("div");
+        discordSection.innerHTML = `
+            <h3>Discord Webhook</h3>
+            <input type="text" id="webhook-url" placeholder="Enter your Discord webhook URL" value="${settings.discord.webhook.url}">
+            <input type="text" id="webhook-username" placeholder="Enter a custom username (optional)" value="${settings.discord.webhook.username}">
+            <input type="text" id="webhook-avatar" placeholder="Enter a custom avatar URL (optional)" value="${settings.discord.webhook.avatar_url}">
+        `;
+        guiContainer.appendChild(discordSection);
+
+        // Create the Help section
+        const helpSection = document.createElement("div");
+        helpSection.innerHTML = `
+            <h3>Help</h3>
+            <p class="help-text"><b>Torn API Key:</b> You can find your API key at <a href="https://www.torn.com/preferences.php#tab=api" target="_blank">https://www.torn.com/preferences.php#tab=api</a></p>
+            <p class="help-text"><b>API Key Level:</b></p>
+            <ul class="help-text">
+                <li><b>User Level:</b> Required for reading user-related information (e.g., player names from forum posts).</li>
+                <li><b>Faction Level:</b> Required if you want to fetch faction names from faction links in forum posts.</li>
+            </ul>
+            <p class="help-text"><b>Discord Webhook:</b> To create a webhook, go to your Discord server settings -> Integrations -> Webhooks -> New Webhook.</p>
+            <p class="help-text"><b>Webhook URL:</b> Enter the URL of your Discord webhook. This is required for the script to function.</p>
+            <p class="help-text"><b>Custom Username (Optional):</b> You can specify a custom username that will be displayed with each message sent to Discord. Leave this blank to use the default webhook username.</p>
+            <p class="help-text"><b>Custom Avatar URL (Optional):</b> You can specify a custom avatar URL for the messages sent to Discord. Leave this blank to use the default webhook avatar.</p>
+        `;
+        guiContainer.appendChild(helpSection);
+
+        // Create the Save button
+        const saveButton = document.createElement("button");
+        saveButton.id = "save-settings-button";
+        saveButton.textContent = "Save Settings";
+        saveButton.addEventListener("click", saveSettings);
+        guiContainer.appendChild(saveButton);
+
+        // Create the Close button
+        const closeButton = document.createElement("button");
+        closeButton.id = "close-gui-button";
+        closeButton.textContent = "Close";
+        closeButton.addEventListener("click", () => {
+            guiContainer.style.display = "none";
+        });
+        guiContainer.appendChild(closeButton);
+    };
+
+    // --- Settings Functions ---
+
+    const saveSettings = async () => {
+        // Torn API Key
+        settings.torn.api.key = document.getElementById("api-key").value;
+        settings.torn.api.keyLevel = await checkApiKeyLevel(settings.torn.api.key);
+
+        // Update the API key level display in the GUI
+        const apiKeyLevelText = document.querySelector(".api-key-level-text");
+        if (apiKeyLevelText) {
+            apiKeyLevelText.textContent = settings.torn.api.keyLevel ? `Key Level: ${settings.torn.api.keyLevel === "faction" ? "Faction (or higher)" : "User"}` : '';
+        }
+
+        // Discord Webhook
+        settings.discord.webhook.url = document.getElementById("webhook-url").value;
+        settings.discord.webhook.username = document.getElementById("webhook-username").value;
+        settings.discord.webhook.avatar_url = document.getElementById("webhook-avatar").value;
+
+        // Save settings using GM_setValue
+        GM_setValue("torn_api_key", settings.torn.api.key);
+        GM_setValue("torn_api_key_level", settings.torn.api.keyLevel);
+        GM_setValue("discord_webhook_url", settings.discord.webhook.url);
+        GM_setValue("discord_webhook_username", settings.discord.webhook.username);
+        GM_setValue("discord_webhook_avatar_url", settings.discord.webhook.avatar_url);
+
+        alert("Settings saved!");
+    };
+
+    const loadSettings = () => {
+        // Load settings using GM_getValue
+        settings.torn.api.key = GM_getValue("torn_api_key", "");
+        settings.torn.api.keyLevel = GM_getValue("torn_api_key_level", "");
+        settings.discord.webhook.url = GM_getValue("discord_webhook_url", "");
+        settings.discord.webhook.username = GM_getValue("discord_webhook_username", "");
+        settings.discord.webhook.avatar_url = GM_getValue("discord_webhook_avatar_url", "");
+    };
+
+    // --- CSS Styles ---
+
+    const addStyles = () => {
+        GM_addStyle(`
+            #torn-to-discord-gui {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background-color: #36393f; /* Dark gray background */
+                border: 1px solid #ccc;
+                padding: 20px;
+                z-index: 1000;
+                font-family: Arial, sans-serif;
+                color: white; /* White text color */
+            }
+
+            #torn-to-discord-gui h3 {
+                margin-top: 0;
+                color: white; /* White text for headings */
+            }
+
+            #torn-to-discord-gui input[type="text"] {
+                width: calc(100% - 22px); /* Adjust width to fix formatting */
+                padding: 5px;
+                margin-bottom: 10px;
+                border: 1px solid #ccc;
+                background-color: #40444b; /* Slightly darker background for inputs */
+                color: white; /* White text for inputs */
+            }
+
+            #torn-to-discord-gui select {
+                width: 100%;
+                padding: 5px;
+                margin-bottom: 10px;
+                border: 1px solid #ccc;
+                background-color: #40444b; /* Slightly darker background for select */
+                color: white; /* White text for select */
+            }
+
+            #torn-to-discord-gui button {
+                padding: 8px 15px;
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                cursor: pointer;
+                margin-right: 5px;
+            }
+
+            #torn-to-discord-gui button:hover {
+                background-color: #3e8e41;
+            }
+
+            #torn-to-discord-gui ul {
+                padding-left: 20px;
+                margin-top: 5px;
+            }
+
+            #torn-to-discord-gui a { /* Style for links */
+                color: #1b87e5; /* Light blue link color */
+                text-decoration: none;
+            }
+
+            #torn-to-discord-gui a:hover {
+                text-decoration: underline;
+            }
+
+            .api-key-level-text {
+                margin-top: -5px;
+                margin-bottom: 10px;
+            }
+
+            #torn-to-discord-gui .help-text { /* Class for help text - slightly less bright */
+                color: #ccc;
+            }
+
+            .select-post-button {
+                padding: 5px 10px;
+                background-color: #7289da; /* Discord Blue */
+                color: white;
+                border: none;
+                cursor: pointer;
+                margin-right: 5px;
+                border-radius: 5px; /* Rounded corners */
+                font-size: 12px; /* Smaller font size */
+            }
+
+            .select-post-button:hover {
+                background-color: #677bc4; /* Darker shade on hover */
+            }
+
+            .select-post-button.selected {
+                background-color: #5b6e9e; /* Even darker shade for selected state */
+            }
+
+            #send-selected-posts-button {
+                padding: 8px 15px;
+                background-color: #04aa6d;
+                color: white;
+                border: none;
+                cursor: pointer;
+                margin-top: 10px;
+                font-size: 16px;
+            }
+
+            #send-selected-posts-button:hover {
+                background-color: #048a58;
+            }
+
+            #selected-posts-display {
+                margin-top: 5px;
+                font-size: 14px;
+            }
+
+            #save-settings-button, #close-gui-button {
+                margin: 5px;
+                padding: 8px 16px;
+                font-size: 14px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            }
+            #close-gui-button{
+                background-color: #dc3545;
+            }
+            #close-gui-button:hover{
+                background-color: #c82333;
+            }
+            #save-settings-button {
+                background-color: #28a745;
+            }
+            #save-settings-button:hover {
+                background-color: #218838;
+            }
+        `);
+    };
+
+    // --- Script Initialization ---
+
+    const init = () => {
+        settings.debug.mode = true; // Enable debug mode here
+        settings.debug.log.all = true; // Enable verbose logging here
+        addStyles();
+        createGUI();
+
+        // Hide GUI on startup
+        document.getElementById("torn-to-discord-gui").style.display = "none";
+
+        // Add a button to toggle the GUI
+        const toggleButton = document.createElement("button");
+        toggleButton.textContent = "T2D Settings";
+        toggleButton.style.position = "fixed";
+        toggleButton.style.top = "10px";
+        toggleButton.style.right = "10px";
+        toggleButton.style.zIndex = 999;
+        toggleButton.addEventListener("click", () => {
+            const gui = document.getElementById("torn-to-discord-gui");
+            gui.style.display = gui.style.display === "none" ? "block" : "none";
+        });
+        document.body.appendChild(toggleButton);
+
+        // Start observing for changes after a delay
+        setTimeout(() => {
+            const targetNode = document.querySelector("#forums-page-wrap");
+            if (targetNode) {
+                observer.observe(targetNode, {
+                    childList: true,
+                    subtree: true
+                });
+                debug(`[Observer] Observing for new posts/threads...`);
+                processPosts();
+            }
+        }, 2000); // 2-second delay
+    };
+
+    // --- Start the script ---
+
+    init();
 
 })();
