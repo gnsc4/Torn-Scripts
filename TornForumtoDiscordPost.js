@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Forum to Discord Post
 // @namespace    https://github.com/gnsc4
-// @version      1.0.41
+// @version      1.0.42
 // @description  Sends Torn Forum posts to Discord via webhook
 // @author       GNSC4 [2779998]
 // @match        https://www.torn.com/forums.php*
@@ -61,13 +61,13 @@
 
     const debug = (...args) => {
         if (settings.debug.mode) {
-            console.debug(...args);
+            console.debug('[T2D]', ...args);
         }
     };
 
     const log = (...args) => {
         if (settings.debug.log.all) {
-            console.log(...args);
+            console.log('[T2D]', ...args);
         }
     };
 
@@ -75,6 +75,7 @@
 
     // Function to check API key level using /key/ endpoint
     const checkApiKeyLevel = async (apiKey) => {
+        debug(`[checkApiKeyLevel] Checking API key level for key: ${apiKey}`);
         try {
             const response = await new Promise((resolve, reject) => {
                 GM_xmlhttpRequest({
@@ -84,10 +85,12 @@
                         if (response.status === 200) {
                             resolve(response);
                         } else {
+                            debug(`[checkApiKeyLevel] API request failed with status: ${response.status}`);
                             reject(response);
                         }
                     },
                     onerror: (error) => {
+                        debug(`[checkApiKeyLevel] API request error:`, error);
                         reject(error);
                     }
                 });
@@ -96,27 +99,36 @@
             const data = JSON.parse(response.responseText);
 
             if (data.error) {
-                debug('[API Key Check] Key check failed:', data.error);
+                debug('[checkApiKeyLevel] Key check failed:', data.error);
                 return ''; // Invalid key or other error
             } else {
-                debug('[API Key Check] Key information:', data);
+                debug('[checkApiKeyLevel] Key information:', data);
+                let keyLevel = '';
                 switch (data.access_level) {
                     case 0:
-                        return ''; // Invalid Key
+                        keyLevel = ''; // Invalid Key
+                        break;
                     case 1:
-                        return 'user'; // User Level
+                        keyLevel = 'user'; // User Level
+                        break;
                     case 2:
-                        return 'user'; // Minimal Access - treating as User level
+                        keyLevel = 'user'; // Minimal Access - treating as User level
+                        break;
                     case 3:
-                        return 'faction'; // Limited Access
+                        keyLevel = 'faction'; // Limited Access
+                        break;
                     case 4:
-                        return 'faction'; // Full Access
+                        keyLevel = 'faction'; // Full Access
+                        break;
                     default:
-                        return ''; // Unknown
+                        keyLevel = ''; // Unknown
+                        break;
                 }
+                debug(`[checkApiKeyLevel] Detected key level: ${keyLevel}`);
+                return keyLevel;
             }
         } catch (error) {
-            console.error(`Error checking API key level: ${error}`);
+            console.error(`[checkApiKeyLevel] Error checking API key level: ${error}`);
             return ''; // Error
         }
     };
@@ -127,10 +139,12 @@
         const keyLevel = settings.torn.api.keyLevel;
         const cacheKey = `<span class="math-inline">\{endpoint\}\-</span>{id}-${selections}`;
 
+        debug(`[fetchTornApi] Fetching ${endpoint} data with ID ${id} and selections ${selections}`);
+
         // Check cache first
         const cachedData = getCache(cacheKey);
         if (cachedData) {
-            debug(`[Cache] Fetched data from cache for ${cacheKey}`);
+            debug(`[fetchTornApi] Fetched data from cache for ${cacheKey}`);
             return cachedData;
         }
 
@@ -144,12 +158,10 @@
             url = `https://api.torn.com/user/?selections=<span class="math-inline">\{selections\}&key\=</span>{apiKey}&comment=TornForumToDiscordScript`;
         } else if (endpoint === 'faction' && keyLevel === 'faction') {
             url = `https://api.torn.com/faction/?selections=<span class="math-inline">\{selections\}&key\=</span>{apiKey}&comment=TornForumToDiscordScript`;
-        } else if (endpoint === 'thread' && id && keyLevel === 'faction') { // Added clause for 'thread' endpoint
+        } else if (endpoint === 'thread' && id && keyLevel === 'faction') {
             url = `https://api.torn.com/torn/<span class="math-inline">\{id\}?selections\=</span>{selections}&key=${apiKey}&comment=TornForumToDiscordScript`;
-        }
-
-        else {
-            debug(`[API] Insufficient API key level or invalid endpoint for ${endpoint}`);
+        } else {
+            debug(`[fetchTornApi] Insufficient API key level or invalid endpoint for ${endpoint}`);
             return null;
         }
 
@@ -160,12 +172,15 @@
                     url: url,
                     onload: (response) => {
                         if (response.status === 200) {
+                            debug(`[fetchTornApi] API request successful: ${response.status}`);
                             resolve(response);
                         } else {
+                            debug(`[fetchTornApi] API request failed with status: ${response.status}`);
                             reject(response);
                         }
                     },
                     onerror: (error) => {
+                        debug(`[fetchTornApi] API request error:`, error);
                         reject(error);
                     }
                 });
@@ -174,16 +189,16 @@
             const data = JSON.parse(response.responseText);
 
             if (data.error) {
-                console.error('[API Error]', data.error);
+                console.error('[fetchTornApi] API Error:', data.error);
                 return null;
             }
 
             // Cache the data
             setCache(cacheKey, data, settings.cache.expiration);
-            debug(`[API] Fetched data from API for ${cacheKey}`);
+            debug(`[fetchTornApi] Fetched data from API for ${cacheKey}`);
             return data;
         } catch (error) {
-            console.error(`[API] Error fetching Torn API data: ${error}`);
+            console.error(`[fetchTornApi] Error fetching Torn API data: ${error}`);
             return null;
         }
     };
@@ -191,6 +206,7 @@
     // --- Content Parsing ---
 
     const parseContent = async (content) => {
+        debug('[parseContent] Parsing content:', content);
         const regex = /\[player=(\d+)\]|\[faction=(\d+)\]|\[link=(.*?)\](.*?)\[\/link\]|\[quote=(.*?)(?:&quot;|\u201D|\u201C)(?: timestamp=.*?)?\](.*?)\[\/quote\]|\[img=(.*?)(?:&quot;|\u201D|\u201C)(?: alt=.*?)?\](.*?)\[\/img\]|\[size=(\d+)\](.*?)\[\/size\]|\[color=(.*?)\](.*?)\[\/color\]|\[b\](.*?)\[\/b\]|\[i\](.*?)\[\/i\]|\[u\](.*?)\[\/u\]|\[s\](.*?)\[\/s\]|\[center\](.*?)\[\/center\]|\[right\](.*?)\[\/right\]|\[left\](.*?)\[\/left\]|\[list\](.*?)\[\/list\]|\[\*\](.*?)\[\/\*\]|\[code\](.*?)\[\/code\]/g;
         let parsedContent = "";
         let match;
@@ -198,60 +214,84 @@
         while ((match = regex.exec(content)) !== null) {
             const [fullMatch, playerId, factionId, linkUrl, linkText, quoteAuthor, quoteContent, imgUrl, imgAlt, sizeValue, sizeContent, colorValue, colorContent, boldContent, italicContent, underlineContent, strikethroughContent, centerContent, rightContent, leftContent, listContent, listItemContent, codeContent] = match;
 
-            if (playerId) {
-                const player = await fetchTornApi('user', 'profile', playerId);
-                if (player) {
-                    parsedContent += `[<span class="math-inline">\{player\.name\}\]\(https\://www\.torn\.com/profiles\.php?XID\=</span>{playerId})`;
+            try {
+                if (playerId) {
+                    debug(`[parseContent] Parsing player ID: ${playerId}`);
+                    const player = await fetchTornApi('user', 'profile', playerId);
+                    if (player) {
+                        parsedContent += `[<span class="math-inline">\{player\.name\}\]\(https\://www\.torn\.com/profiles\.php?XID\=</span>{playerId})`;
+                    } else {
+                        parsedContent += `[Player <span class="math-inline">\{playerId\}\]\(https\://www\.torn\.com/profiles\.php?XID\=</span>{playerId})`;
+                    }
+                } else if (factionId) {
+                    debug(`[parseContent] Parsing faction ID: ${factionId}`);
+                    const faction = await fetchTornApi('faction', 'basic', factionId);
+                    if (faction) {
+                        parsedContent += `[<span class="math-inline">\{faction\.faction\_name\}\]\(https\://www\.torn\.com/factions\.php?step\=profile&ID\=</span>{factionId})`;
+                    } else {
+                        parsedContent += `[Faction <span class="math-inline">\{factionId\}\]\(https\://www\.torn\.com/factions\.php?step\=profile&ID\=</span>{factionId})`;
+                    }
+                } else if (linkUrl && linkText) {
+                    debug(`[parseContent] Parsing link: ${linkText}`);
+                    parsedContent += `[<span class="math-inline">\{linkText\}\]\(</span>{linkUrl})`;
+                } else if (quoteAuthor && quoteContent) {
+                    debug(`[parseContent] Parsing quote by: ${quoteAuthor}`);
+                    parsedContent += `> **${quoteAuthor}:** ${quoteContent}\n`;
+                } else if (imgUrl) {
+                    debug(`[parseContent] Parsing image URL: ${imgUrl}`);
+                    if (imgAlt) {
+                        parsedContent += `\n[<span class="math-inline">\{imgAlt\}\]\(</span>{imgUrl})\n`;
+                    } else {
+                        parsedContent += `\n${imgUrl}\n`;
+                    }
+                } else if (sizeValue && sizeContent) {
+                    debug(`[parseContent] Parsing size: ${sizeValue}`);
+                    parsedContent += `<font size="<span class="math-inline">\{sizeValue\}"\></span>{sizeContent}</font>`;
+                } else if (colorValue && colorContent) {
+                    debug(`[parseContent] Parsing color: ${colorValue}`);
+                    parsedContent += `<font color="<span class="math-inline">\{colorValue\}"\></span>{colorContent}</font>`;
+                } else if (boldContent) {
+                    debug(`[parseContent] Parsing bold text`);
+                    parsedContent += `**${boldContent}**`;
+                } else if (italicContent) {
+                    debug(`[parseContent] Parsing italic text`);
+                    parsedContent += `*${italicContent}*`;
+                } else if (underlineContent) {
+                    debug(`[parseContent] Parsing underlined text`);
+                    parsedContent += `<u>${underlineContent}</u>`;
+                } else if (strikethroughContent) {
+                    debug(`[parseContent] Parsing strikethrough text`);
+                    parsedContent += `~~${strikethroughContent}~~`;
+                } else if (centerContent) {
+                    debug(`[parseContent] Parsing centered text`);
+                    parsedContent += `<center>${centerContent}</center>`;
+                } else if (rightContent) {
+                    debug(`[parseContent] Parsing right-aligned text`);
+                    parsedContent += `<div align="right">${rightContent}</div>`;
+                } else if (leftContent) {
+                    debug(`[parseContent] Parsing left-aligned text`);
+                    parsedContent += `<div align="left">${leftContent}</div>`;
+                } else if (listContent) {
+                    debug(`[parseContent] Parsing list`);
+                    parsedContent += `${listContent}`;
+                } else if (listItemContent) {
+                    debug(`[parseContent] Parsing list item`);
+                    parsedContent += `* ${listItemContent}\n`;
+                } else if (codeContent) {
+                    debug(`[parseContent] Parsing code block`);
+                    parsedContent += `\`\`\`\n${codeContent}\n\`\`\``;
                 } else {
-                    parsedContent += `[Player <span class="math-inline">\{playerId\}\]\(https\://www\.torn\.com/profiles\.php?XID\=</span>{playerId})`;
+                    debug(`[parseContent] Parsing unknown content: ${fullMatch}`);
+                    parsedContent += fullMatch;
                 }
-            } else if (factionId) {
-                const faction = await fetchTornApi('faction', 'basic', factionId);
-                if (faction) {
-                    parsedContent += `[<span class="math-inline">\{faction\.faction\_name\}\]\(https\://www\.torn\.com/factions\.php?step\=profile&ID\=</span>{factionId})`;
-                } else {
-                    parsedContent += `[Faction <span class="math-inline">\{factionId\}\]\(https\://www\.torn\.com/factions\.php?step\=profile&ID\=</span>{factionId})`;
-                }
-            } else if (linkUrl && linkText) {
-                parsedContent += `[<span class="math-inline">\{linkText\}\]\(</span>{linkUrl})`;
-            } else if (quoteAuthor && quoteContent) {
-                parsedContent += `> **${quoteAuthor}:** ${quoteContent}\n`;
-            } else if (imgUrl) {
-                if (imgAlt) {
-                    parsedContent += `\n[<span class="math-inline">\{imgAlt\}\]\(</span>{imgUrl})\n`;
-                } else {
-                    parsedContent += `\n${imgUrl}\n`;
-                }
-            } else if (sizeValue && sizeContent) {
-                parsedContent += `<font size="<span class="math-inline">\{sizeValue\}"\></span>{sizeContent}</font>`;
-            } else if (colorValue && colorContent) {
-                parsedContent += `<font color="<span class="math-inline">\{colorValue\}"\></span>{colorContent}</font>`;
-            } else if (boldContent) {
-                parsedContent += `**${boldContent}**`;
-            } else if (italicContent) {
-                parsedContent += `*${italicContent}*`;
-            } else if (underlineContent) {
-                parsedContent += `<u>${underlineContent}</u>`;
-            } else if (strikethroughContent) {
-                parsedContent += `~~${strikethroughContent}~~`;
-            } else if (centerContent) {
-                parsedContent += `<center>${centerContent}</center>`;
-            } else if (rightContent) {
-                parsedContent += `<div align="right">${rightContent}</div>`;
-            } else if (leftContent) {
-                parsedContent += `<div align="left">${leftContent}</div>`;
-            } else if (listContent) {
-                parsedContent += `${listContent}`;
-            } else if (listItemContent) {
-                parsedContent += `* ${listItemContent}\n`;
-            } else if (codeContent) {
-                parsedContent += `\`\`\`\n${codeContent}\n\`\`\``;
-            } else {
-                parsedContent += fullMatch;
+            } catch (error) {
+                console.error(`[parseContent] Error parsing content: ${error}`);
+                parsedContent += fullMatch; // Fallback to original content
             }
         }
 
         parsedContent = parsedContent.replace(/\n/g, "  \n");
+        debug('[parseContent] Parsed content:', parsedContent);
         return parsedContent;
     };
 
@@ -262,8 +302,10 @@
         const username = settings.discord.webhook.username;
         const avatarUrl = settings.discord.webhook.avatar_url;
 
+        debug(`[postToDiscord] Posting to Discord webhook: ${webhookUrl}`);
+
         if (!webhookUrl) {
-            console.error('[Discord] Webhook URL is not set.');
+            console.error('[postToDiscord] Webhook URL is not set.');
             return;
         }
 
@@ -282,32 +324,35 @@
                     }),
                     onload: (response) => {
                         if (response.status === 204) {
+                            debug("[postToDiscord] Post successful");
                             resolve(response);
                         } else {
+                            debug(`[postToDiscord] Post failed with status: ${response.status}`);
                             reject(response);
                         }
                     },
                     onerror: (error) => {
+                        debug(`[postToDiscord] Post error:`, error);
                         reject(error);
                     }
                 });
             });
-            debug("[Discord] Post successful");
         } catch (error) {
-            console.error(`[Discord] Error posting to Discord:`, error);
+            console.error(`[postToDiscord] Error posting to Discord:`, error);
         }
     };
 
     // --- Post Selection Functions ---
 
     const selectPost = (postId) => {
+        debug(`[selectPost] Selecting post with ID: ${postId}`);
         const index = settings.selectedPosts.indexOf(postId);
         if (index > -1) {
             settings.selectedPosts.splice(index, 1); // Remove post if already selected
-            debug(`[Post Selection] Removed post ${postId} from selection`);
+            debug(`[selectPost] Removed post ${postId} from selection`);
         } else {
             settings.selectedPosts.push(postId); // Add post if not selected
-            debug(`[Post Selection] Added post ${postId} to selection`);
+            debug(`[selectPost] Added post ${postId} to selection`);
         }
         updateSelectedPostsDisplay();
     };
@@ -315,28 +360,38 @@
     // --- Select All Posts in Thread ---
     const selectAllPostsInThread = async (threadId) => {
         debug(`[selectAllPostsInThread] Selecting all posts in thread: ${threadId}`);
-        // Fetch the thread data from the API to get all post IDs
-        const threadData = await fetchTornApi('thread', '', threadId);
-        if (threadData && threadData.thread.postIds) {
-            const postIds = threadData.thread.postIds;
-            for (const postId of postIds) {
-                selectPost(postId);
+        try {
+            const threadData = await fetchTornApi('thread', '', threadId);
+            if (threadData && threadData.thread.postIds) {
+                const postIds = threadData.thread.postIds;
+                debug(`[selectAllPostsInThread] Found post IDs: ${postIds.join(', ')}`);
+                for (const postId of postIds) {
+                    selectPost(postId);
+                }
+            } else {
+                console.error(`[selectAllPostsInThread] Could not fetch posts for thread ID: ${threadId}`);
             }
-        } else {
-            console.error(`[selectAllPostsInThread] Could not fetch posts for thread ID: ${threadId}`);
+        } catch (error) {
+            console.error(`[selectAllPostsInThread] Error selecting all posts in thread: ${error}`);
         }
     };
 
     // --- Send Selected Posts ---
     const sendSelectedPosts = async () => {
-        debug(`[Post Selection] Sending ${settings.selectedPosts.length} selected posts`);
+        debug(`[sendSelectedPosts] Sending ${settings.selectedPosts.length} selected posts`);
         for (const postId of settings.selectedPosts) {
-            const postElement = document.querySelector(`.post-container[data-post="${postId}"] .post`);
-            if (postElement) {
-                const content = postElement.innerHTML;
-                const parsedContent = await parseContent(content);
-                await postToDiscord(parsedContent);
-                debug(`[Post Selection] Sent post ${postId} to Discord`);
+            try {
+                const postElement = document.querySelector(`.post-container[data-post="${postId}"] .post`);
+                if (postElement) {
+                    const content = postElement.innerHTML;
+                    const parsedContent = await parseContent(content);
+                    await postToDiscord(parsedContent);
+                    debug(`[sendSelectedPosts] Sent post ${postId} to Discord`);
+                } else {
+                    debug(`[sendSelectedPosts] Could not find post element for post ID: ${postId}`);
+                }
+            } catch (error) {
+                console.error(`[sendSelectedPosts] Error sending post ${postId}: ${error}`);
             }
         }
         settings.selectedPosts = []; // Clear the selection after sending
@@ -344,189 +399,192 @@
     };
 
     const updateSelectedPostsDisplay = () => {
+        debug(`[updateSelectedPostsDisplay] Updating selected posts display`);
         const selectedPostsDisplay = document.getElementById("selected-posts-display");
         if (selectedPostsDisplay) {
             selectedPostsDisplay.textContent = `Selected Posts: ${settings.selectedPosts.length}`;
+        } else {
+            debug(`[updateSelectedPostsDisplay] Could not find selected posts display element`);
         }
     };
 
-   // --- Post Processing ---
-   const processPosts = async () => {
-    const isThreadListView = window.location.href.includes("forums.php#/p=threads&f=") && !window.location.href.includes("forums.php#/p=thread");
-    const isThreadPage = window.location.href.includes("forums.php#/p=thread");
+    // --- Post Processing ---
+    const processPosts = async () => {
+        try {
+            const isThreadListView = window.location.href.includes("forums.php#/p=threads&f=") && !window.location.href.includes("forums.php#/p=thread");
+            const isThreadPage = window.location.href.includes("forums.php#/p=thread");
 
-    debug(`[processPosts] isThreadListView: ${isThreadListView}`);
-    debug(`[processPosts] isThreadPage: ${isThreadPage}`);
+            debug(`[processPosts] isThreadListView: ${isThreadListView}`);
+            debug(`[processPosts] isThreadPage: ${isThreadPage}`);
 
-    if (isThreadListView) {
-        // Code to add "Select Thread" buttons to thread list
-        const threads = document.querySelectorAll("div.thread-list-item > div.wrap");
-        debug(`[Threads] Found ${threads.length} threads`);
+            if (isThreadListView) {
+                // Code to add "Select Thread" buttons to thread list
+                debug(`[processPosts] Processing thread list view`);
+                const threads = document.querySelectorAll("div.thread-list-item > div.wrap");
+                debug(`[processPosts] Found ${threads.length} threads`);
 
-        for (const thread of threads) {
-            // Extract thread ID from the link within the thread element
-            const threadLink = thread.querySelector('a[href*="forums.php#/p=thread"]');
-            if (!threadLink) {
-                debug(`[Threads] Thread link not found for thread:`, thread);
-                continue;
+                for (const thread of threads) {
+                    try {
+                        // Extract thread ID from the link within the thread element
+                        const threadLink = thread.querySelector('a[href*="forums.php#/p=thread"]');
+                        if (!threadLink) {
+                            debug(`[processPosts] Thread link not found for thread:`, thread);
+                            continue;
+                        }
+                        const threadIdMatch = threadLink.href.match(/&t=(\d+)/);
+                        if (!threadIdMatch) {
+                            debug(`[processPosts] Thread ID not found in link:`, threadLink.href);
+                            continue;
+                        }
+                        const threadId = threadIdMatch[1];
+
+                        // Add a "Select Thread" button to each thread
+                        const selectButton = document.createElement("button");
+                        selectButton.textContent = "Select Thread";
+                        selectButton.classList.add("select-post-button");
+                        selectButton.addEventListener("click", () => {
+                            selectAllPostsInThread(threadId);
+                            selectButton.classList.toggle("selected"); // Toggle visual indicator
+                        });
+
+                        // Find the thread info wrap element to insert the button
+                        const threadInfoWrap = thread.querySelector(".thread-info-wrap");
+                        if (threadInfoWrap) {
+                            debug(`[processPosts] Inserting button for thread: ${threadId}`);
+                            threadInfoWrap.appendChild(selectButton);
+                        } else {
+                            console.error(`[processPosts] Could not find the thread info wrap for thread: ${threadId}`);
+                        }
+
+                        thread.setAttribute("data-thread", threadId);
+                    } catch (error) {
+                        console.error(`[processPosts] Error processing thread: ${error}`);
+                    }
+                }
+            } else if (isThreadPage) {
+                // Code to add "Select Post" buttons to individual posts
+                debug(`[processPosts] Processing thread page`);
+
+                // Use waitForPosts to ensure posts are loaded
+                waitForPosts().then(posts => {
+                    debug(`[processPosts] Found ${posts.length} posts with data-pid`);
+
+                    for (const post of posts) {
+                        try {
+                            const postId = post.dataset.pid;
+                            if (!postId) {
+                                debug(`[processPosts] Post ID not found for post:`, post);
+                                continue;
+                            }
+                            debug(`[processPosts] Processing post with ID: ${postId}`);
+
+                            // Add a "Select Post" button to each post
+                            const selectButton = document.createElement("button");
+                            selectButton.textContent = "Select Post";
+                            selectButton.classList.add("select-post-button");
+                            selectButton.style.order = '-1';
+                            selectButton.addEventListener("click", () => {
+                                selectPost(postId);
+                                selectButton.classList.toggle("selected");
+                            });
+
+                            // Find the action bar and append the button
+                            const postContainer = post.querySelector(".post-container");
+                            const actionBar = postContainer.querySelector(".post-wrap .action-wrap");
+                            if (actionBar) {
+                                debug(`[processPosts] Inserting button for post: ${postId}`);
+                                actionBar.insertBefore(selectButton, actionBar.firstChild);
+                            } else {
+                                console.error(`[processPosts] Could not find the action bar element for post: ${postId}`);
+                            }
+
+                            // Set data-post attribute on the LI element
+                            post.setAttribute("data-post", postId);
+                        } catch (error) {
+                            console.error(`[processPosts] Error processing post: ${error}`);
+                        }
+                    }
+                });
             }
-            const threadIdMatch = threadLink.href.match(/&t=(\d+)/);
-            if (!threadIdMatch) {
-                debug(`[Threads] Thread ID not found in link:`, threadLink.href);
-                continue;
-            }
-            const threadId = threadIdMatch[1];
 
-            // Add a "Select Thread" button to each thread
-            const selectButton = document.createElement("button");
-            selectButton.textContent = "Select Thread";
-            selectButton.classList.add("select-post-button");
-            selectButton.addEventListener("click", () => {
-                selectAllPostsInThread(threadId);
-                selectButton.classList.toggle("selected"); // Toggle visual indicator
+            // Add a "Send Selected Posts" button (only if not already present)
+            if (!document.getElementById("send-selected-posts-button")) {
+                debug(`[processPosts] Adding "Send Selected Posts" button`);
+                const sendButton = document.createElement("button");
+                sendButton.textContent = "Send Selected Posts";
+                sendButton.id = "send-selected-posts-button";
+                sendButton.addEventListener("click", sendSelectedPosts);
+
+                const selectedPostsDisplay = document.createElement("div");
+                selectedPostsDisplay.id = "selected-posts-display";
+                selectedPostsDisplay.textContent = `Selected Posts: 0`;
+
+                const target = document.querySelector("#forums-page-wrap");
+                if (target) {
+                    debug(`[processPosts] Inserting "Send Selected Posts" button`);
+                    target.parentNode.insertBefore(sendButton, target);
+                    target.parentNode.insertBefore(selectedPostsDisplay, target);
+                } else {
+                    console.error("[processPosts] Could not find the target element to insert the Send button and display.");
+                }
+            }
+        } catch (error) {
+            console.error(`[processPosts] Error in processPosts: ${error}`);
+        }
+    };
+
+    // --- Helper Function to Wait for Posts ---
+    const waitForPosts = () => {
+        debug(`[waitForPosts] Waiting for posts to load`);
+        return new Promise(resolve => {
+            const targetNode = document.querySelector("#forums-page-wrap");
+
+            if (!targetNode) {
+                console.error("[waitForPosts] Target element #forums-page-wrap not found.");
+                resolve([]);
+                return;
+            }
+
+            const observer = new MutationObserver(mutations => {
+                debug(`[waitForPosts] Mutation detected`);
+                const posts = document.querySelectorAll("li[data-pid]");
+                if (posts.length > 0) {
+                    debug(`[waitForPosts] Found ${posts.length} posts after mutation`);
+                    observer.disconnect();
+                    resolve(posts);
+                }
             });
 
-            // Find the thread info wrap element to insert the button
-            const threadInfoWrap = thread.querySelector(".thread-info-wrap");
-            if (threadInfoWrap) {
-                debug(`[Threads] Inserting button for thread: ${threadId}`);
-                threadInfoWrap.appendChild(selectButton);
-            } else {
-                console.error(`[Threads] Could not find the thread info wrap for thread: ${threadId}`);
-            }
+            observer.observe(targetNode, {
+                childList: true,
+                subtree: true
+            });
 
-            thread.setAttribute("data-thread", threadId);
-        }
-    } else if (isThreadPage) {
-        // Use waitForPosts to ensure posts are loaded
-        waitForPosts().then(posts => {
-            debug(`[Posts] Found ${posts.length} posts with data-pid`);
-
-            for (const post of posts) {
-                const postId = post.dataset.pid;
-                if (!postId) {
-                    debug(`[Posts] Post ID not found for post:`, post);
-                    continue;
-                }
-                debug(`[Posts] Processing post with ID: ${postId}`);
-
-                // Add a "Select Post" button to each post
-                const selectButton = document.createElement("button");
-                selectButton.textContent = "Select Post";
-                selectButton.classList.add("select-post-button");
-                selectButton.style.order = '-1';
-                selectButton.addEventListener("click", () => {
-                    selectPost(postId);
-                    selectButton.classList.toggle("selected");
-                });
-
-                // Find the action bar and append the button
-                const postContainer = post.querySelector(".post-container");
-                const actionBar = postContainer.querySelector(".post-wrap .action-wrap");
-                if (actionBar) {
-                    debug(`[Posts] Inserting button for post: ${postId}`);
-                    actionBar.insertBefore(selectButton, actionBar.firstChild);
-                } else {
-                    console.error(`[Posts] Could not find the action bar element for post: ${postId}`);
-                }
-
-                // Set data-post attribute on the LI element
-                post.setAttribute("data-post", postId);
-            }
-        });
-    }
-
-    // Add a "Send Selected Posts" button (only if not already present)
-    if (!document.getElementById("send-selected-posts-button")) {
-        const sendButton = document.createElement("button");
-        sendButton.textContent = "Send Selected Posts";
-        sendButton.id = "send-selected-posts-button";
-        sendButton.addEventListener("click", sendSelectedPosts);
-
-        const selectedPostsDisplay = document.createElement("div");
-        selectedPostsDisplay.id = "selected-posts-display";
-        selectedPostsDisplay.textContent = `Selected Posts: 0`;
-
-        const target = document.querySelector("#forums-page-wrap");
-        if (target) {
-            debug(`[Main] Inserting "Send Selected Posts" button`);
-            target.parentNode.insertBefore(sendButton, target);
-            target.parentNode.insertBefore(selectedPostsDisplay, target);
-        } else {
-            console.error("[Main] Could not find the target element to insert the Send button and display.");
-        }
-    }
-};
-// --- Helper Function to Wait for Posts ---
-const waitForPosts = () => {
-    return new Promise(resolve => {
-        const targetNode = document.querySelector("#forums-page-wrap"); // Changed to observe a more specific element
-
-        if (!targetNode) {
-            console.error("[waitForPosts] Target element #forums-page-wrap not found.");
-            resolve([]);
-            return;
-        }
-
-        const observer = new MutationObserver(mutations => {
-            const posts = document.querySelectorAll("li[data-pid]");
-            if (posts.length > 0) {
-                debug(`[waitForPosts] Found ${posts.length} posts after mutation`);
+            // Check if posts are already present
+            const initialPosts = document.querySelectorAll("li[data-pid]");
+            if (initialPosts.length > 0) {
+                debug(`[waitForPosts] Found ${initialPosts.length} posts initially`);
                 observer.disconnect();
-                resolve(posts);
+                resolve(initialPosts);
             }
         });
+    };
 
-        observer.observe(targetNode, {
-            childList: true,
-            subtree: true
+    // --- Mutation Observer ---
+    const observer = new MutationObserver(async (mutations) => {
+        debug('[MutationObserver] Mutations detected:', mutations);
+        // Check if the mutations are related to posts loading
+        const postsLoaded = mutations.some(mutation => {
+            return Array.from(mutation.addedNodes).some(node => node.nodeType === 1 && node.matches('li[data-pid]'));
         });
 
-        // Check if posts are already present
-        const initialPosts = document.querySelectorAll("li[data-pid]");
-        if (initialPosts.length > 0) {
-            debug(`[waitForPosts] Found ${initialPosts.length} posts initially`);
-            observer.disconnect();
-            resolve(initialPosts);
-        }
-    });
-};
-
-
-    function addButtonToPost(post, postId) {
-        // Add a "Select Post" button to the post
-        const selectButton = document.createElement("button");
-        selectButton.textContent = "Select Post";
-        selectButton.classList.add("select-post-button");
-        selectButton.style.order = '-1';
-        selectButton.addEventListener("click", () => {
-            selectPost(postId);
-            selectButton.classList.toggle("selected");
-        });
-    
-        // Find the action bar and append the button
-        const actionBar = post.querySelector(".post-wrap .action-wrap");
-        if (actionBar) {
-            debug(`[Posts] Inserting button for post: ${postId}`);
-            actionBar.insertBefore(selectButton, actionBar.firstChild);
+        if (postsLoaded) {
+            debug('[MutationObserver] Posts might have been dynamically loaded, re-running processPosts');
+            processPosts();
         } else {
-            console.error(`[Posts] Could not find the action bar element for post: ${postId}`);
+            debug('[MutationObserver] Mutations are not related to post loading, skipping processPosts');
         }
-    }
-
-// --- Mutation Observer ---
-const observer = new MutationObserver(async (mutations) => {
-    debug('[MutationObserver] Mutations detected:', mutations);
-    // Check if the mutations are related to posts loading
-    const postsLoaded = mutations.some(mutation => {
-        return Array.from(mutation.addedNodes).some(node => node.nodeType === 1 && node.matches('li[data-pid]'));
     });
-
-    if (postsLoaded) {
-        debug('[MutationObserver] Posts were dynamically loaded, re-running processPosts');
-        processPosts();
-    }
-});
 
     // --- GUI Functions ---
 
@@ -558,8 +616,8 @@ const observer = new MutationObserver(async (mutations) => {
         const discordSection = document.createElement("div");
         discordSection.innerHTML = `
             <h3>Discord Webhook</h3>
-            <input type="text" id="webhook-url" placeholder="Enter your Discord webhook URL" value="${settings.discord.webhook.url}">
-            <input type="text" id="webhook-username" placeholder="Enter a custom username (optional)" value="${settings.discord.webhook.username}">
+            <input type="text" id="webhook-url" placeholder="Enter your Discord webhook URL" value="<span class="math-inline">\{settings\.discord\.webhook\.url\}"\>
+<input type\="text" id\="webhook\-username" placeholder\="Enter a custom username \(optional\)" value\="</span>{settings.discord.webhook.username}">
             <input type="text" id="webhook-avatar" placeholder="Enter a custom avatar URL (optional)" value="${settings.discord.webhook.avatar_url}">
         `;
         guiContainer.appendChild(discordSection);
