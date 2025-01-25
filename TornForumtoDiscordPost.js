@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Forum to Discord Post
 // @namespace    https://github.com/gnsc4
-// @version      1.0.62
+// @version      1.0.65
 // @description  Sends Torn Forum posts to Discord via webhook
 // @author       GNSC4 [2779998]
 // @match        https://www.torn.com/forums.php*
@@ -10,8 +10,12 @@
 // @grant        GM_getValue
 // @grant        GM_deleteValue
 // @grant        GM_addStyle
+// @grant        GM_getResouceText
+// @grant        GM_getResourceURL
 // @connect      discord.com
 // @connect      api.torn.com
+// @resource     turndown https://unpkg.com/turndown/dist/turndown.js
+// @require      https://unpkg.com/turndown/dist/turndown.js
 // @license      MIT
 // ==/UserScript==
 
@@ -206,92 +210,61 @@
     // --- Content Parsing ---
     const parseContent = async (content) => {
         debug('[parseContent] Started parsing content');
-        const regex = /\[player=(\d+)\]|\[faction=(\d+)\]|\[link=(.*?)\](.*?)\[\/link\]|\[quote=(.*?)(?:&quot;|\u201D|\u201C)(?: timestamp=.*?)?\](.*?)\[\/quote\]|\[img=(.*?)(?:&quot;|\u201D|\u201C)(?: alt=.*?)?\](.*?)\[\/img\]|\[size=(\d+)\](.*?)\[\/size\]|\[color=(.*?)\](.*?)\[\/color\]|\[b\](.*?)\[\/b\]|\[i\](.*?)\[\/i\]|\[u\](.*?)\[\/u\]|\[s\](.*?)\[\/s\]|\[center\](.*?)\[\/center\]|\[right\](.*?)\[\/right\]|\[left\](.*?)\[\/left\]|\[list\](.*?)\[\/list\]|\[\*\](.*?)\[\/\*\]|\[code\](.*?)\[\/code\]/g;
-        let parsedContent = '';
-        let match;
         debug('[parseContent] Content before parsing:', content);
-        while ((match = regex.exec(content)) !== null) {
-            const [fullMatch, playerId, factionId, linkUrl, linkText, quoteAuthor, quoteContent, imgUrl, imgAlt, sizeValue, sizeContent, colorValue, colorContent, boldContent, italicContent, underlineContent, strikethroughContent, centerContent, rightContent, leftContent, listContent, listItemContent, codeContent] = match;
     
-            try {
-                if (playerId) {
+        try {
+            // Initialize Turndown service with desired options
+            const turndownService = new TurndownService({
+                headingStyle: 'atx', // Use '#' for headings
+                codeBlockStyle: 'fenced', // Use fenced code blocks (```)
+            });
+    
+            // Add a custom rule for Torn's [player] tags
+            turndownService.addRule('playerTag', {
+                filter: function (node, options) {
+                    return (
+                        node.nodeName === 'A' &&
+                        node.href &&
+                        node.href.includes('profiles.php?XID=')
+                    );
+                },
+                replacement: function (content, node, options) {
+                    const playerId = node.href.split('=')[1];
                     debug(`[parseContent] Parsing player ID: ${playerId}`);
-                    const player = await fetchTornApi('user', 'profile', playerId);
-                    if (player) {
-                        parsedContent += `[<span class="math-inline">\{player\.name\}\]\(https\://www\.torn\.com/profiles\.php?XID\=</span>{playerId})`;
-                    } else {
-                        parsedContent += `[Player <span class="math-inline">\{playerId\}\]\(https\://www\.torn\.com/profiles\.php?XID\=</span>{playerId})`;
-                    }
-                } else if (factionId) {
-                    debug(`[parseContent] Parsing faction ID: ${factionId}`);
-                    const faction = await fetchTornApi('faction', 'basic', factionId);
-                    if (faction) {
-                        parsedContent += `[<span class="math-inline">\{faction\.faction\_name\}\]\(https\://www\.torn\.com/factions\.php?step\=profile&ID\=</span>{factionId})`;
-                    } else {
-                        parsedContent += `[Faction <span class="math-inline">\{factionId\}\]\(https\://www\.torn\.com/factions\.php?step\=profile&ID\=</span>{factionId})`;
-                    }
-                } else if (linkUrl && linkText) {
-                    debug(`[parseContent] Parsing link: ${linkText}`);
-                    parsedContent += `[<span class="math-inline">\{linkText\}\]\(</span>{linkUrl})`;
-                } else if (quoteAuthor && quoteContent) {
-                    debug(`[parseContent] Parsing quote by: ${quoteAuthor}`);
-                    parsedContent += `> **${quoteAuthor}:** ${quoteContent}\n`;
-                } else if (imgUrl) {
-                    debug(`[parseContent] Parsing image URL: ${imgUrl}`);
-                    parsedContent += `\n${imgUrl}\n`; // Ensure image URL is included
-                } else if (sizeValue && sizeContent) {
-                    debug(`[parseContent] Parsing size: ${sizeValue}`);
-                    parsedContent += `<font size="<span class="math-inline">\{sizeValue\}"\></span>{sizeContent}</font>`;
-                } else if (colorValue && colorContent) {
-                    debug(`[parseContent] Parsing color: ${colorValue}`);
-                    parsedContent += `<font color="<span class="math-inline">\{colorValue\}"\></span>{colorContent}</font>`;
-                } else if (boldContent) {
-                    debug(`[parseContent] Parsing bold text`);
-                    parsedContent += `**${boldContent}**`;
-                } else if (italicContent) {
-                    debug(`[parseContent] Parsing italic text`);
-                    parsedContent += `*${italicContent}*`;
-                } else if (underlineContent) {
-                    debug(`[parseContent] Parsing underlined text`);
-                    parsedContent += `<u>${underlineContent}</u>`;
-                } else if (strikethroughContent) {
-                    debug(`[parseContent] Parsing strikethrough text`);
-                    parsedContent += `~~${strikethroughContent}~~`;
-                } else if (centerContent) {
-                    debug(`[parseContent] Parsing centered text`);
-                    parsedContent += `<center>${centerContent}</center>`;
-                } else if (rightContent) {
-                    debug(`[parseContent] Parsing right-aligned text`);
-                    parsedContent += `<div align="right">${rightContent}</div>`;
-                } else if (leftContent) {
-                    debug(`[parseContent] Parsing left-aligned text`);
-                    parsedContent += `<div align="left">${leftContent}</div>`;
-                } else if (listContent) {
-                    debug(`[parseContent] Parsing list`);
-                    parsedContent += `${listContent}`;
-                } else if (listItemContent) {
-                    debug(`[parseContent] Parsing list item`);
-                    parsedContent += `* ${listItemContent}\n`;
-                } else if (codeContent) {
-                    debug(`[parseContent] Parsing code block`);
-                    parsedContent += `\`\`\`\n${codeContent}\n\`\`\``;
-                } else {
-                    debug(`[parseContent] Parsing unknown content: ${fullMatch}`);
-                    parsedContent += fullMatch;
+                    // No need to await here, just return the formatted string
+                    return `[${content}](https://www.torn.com/profiles.php?XID=${playerId})`;
                 }
-            } catch (error) {
-                console.error(`[parseContent] Error parsing content: ${error}`);
-                parsedContent += fullMatch; // Fallback to original content
-            }
-        }
+            });
+            
+            // Add a custom rule for Torn's [faction] tags
+            turndownService.addRule('factionTag', {
+                filter: function (node, options) {
+                    return (
+                        node.nodeName === 'A' &&
+                        node.href &&
+                        node.href.includes('factions.php?step=profile&ID=')
+                    );
+                },
+                replacement: function (content, node, options) {
+                    const factionId = node.href.split('=')[2];
+                    debug(`[parseContent] Parsing faction ID: ${factionId}`);
+                    // No need to await here, just return the formatted string
+                    return `[${content}](https://www.torn.com/factions.php?step=profile&ID=${factionId})`;
+                }
+            });
     
-        parsedContent = parsedContent.replace(/\n/g, "  \n");
-        debug('[parseContent] Parsed content:', parsedContent);
-        return parsedContent;
+            // Convert the content using Turndown
+            let parsedContent = turndownService.turndown(content);
+    
+            debug('[parseContent] Parsed content:', parsedContent);
+            return parsedContent;
+        } catch (error) {
+            console.error(`[parseContent] Error parsing content: ${error}`);
+            return content; // Fallback to original content in case of error
+        }
     };
 
     // --- Discord Functions ---
-
     const postToDiscord = async (content) => {
         const webhookUrl = settings.discord.webhook.url;
         const username = settings.discord.webhook.username;
@@ -305,27 +278,47 @@
         }
 
         try {
-            const response = await fetch(webhookUrl, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    username: username,
-                    avatar_url: avatarUrl,
-                    content: content,
-                }),
+            const response = await new Promise((resolve, reject) => {
+                GM_xmlhttpRequest({
+                    method: "POST",
+                    url: webhookUrl,
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    data: JSON.stringify({
+                        username: username,
+                        avatar_url: avatarUrl,
+                        content: content,
+                    }),
+                    onload: (response) => {
+                        debug("[postToDiscord] Post response:", response);
+                        if (response.status === 204 || response.status === 200) {
+                            debug("[postToDiscord] Post successful");
+                            resolve(response);
+                        } else {
+                            debug(`[postToDiscord] Post failed with status: ${response.status}`);
+                            reject(response);
+                        }
+                    },
+                    onerror: (error) => {
+                        debug(`[postToDiscord] Post error:`, error);
+                        reject(error);
+                    }
+                });
             });
 
-            if (response.ok) {
-                debug("[postToDiscord] Post successful");
-            } else {
-                debug(`[postToDiscord] Post failed with status: ${response.status}`);
-                const errorBody = await response.json().catch(() => ({})); // Try to parse response as JSON, or default to an empty object
-                console.error(`[postToDiscord] Discord API Error:`, errorBody);
-            }
+            // Handle response or error if needed
         } catch (error) {
             console.error(`[postToDiscord] Error posting to Discord:`, error);
+
+            if (error.status) {
+                try {
+                    const errorBody = JSON.parse(error.responseText);
+                    console.error(`[postToDiscord] Discord API Error:`, errorBody);
+                } catch (e) {
+                    console.error(`[postToDiscord] Error parsing Discord API response:`, e);
+                }
+            }
         }
     };
 
@@ -366,24 +359,39 @@
     // --- Send Selected Posts ---
     const sendSelectedPosts = async () => {
         debug(`[sendSelectedPosts] Sending ${settings.selectedPosts.length} selected posts`);
+        let sendError = false;
         for (const postId of settings.selectedPosts) {
             try {
                 const postElement = document.querySelector(`li[data-id="${postId}"] .post-container .post`);
                 if (postElement) {
                     const content = postElement.innerHTML;
+                    debug(`[sendSelectedPosts] Content for post ${postId}: ${content}`);
                     const parsedContent = await parseContent(content);
-                    await postToDiscord(parsedContent);
-                    debug(`[sendSelectedPosts] Sent post ${postId} to Discord`);
+                    debug(`[sendSelectedPosts] Parsed content for post ${postId}: ${parsedContent}`);
+                    if (parsedContent) {
+                        await postToDiscord(parsedContent);
+                        debug(`[sendSelectedPosts] Sent post ${postId} to Discord`);
+                    } else {
+                        console.error(`[sendSelectedPosts] Parsed content is empty for post ${postId}`);
+                        sendError = true; // Set error flag
+                    }
                 } else {
                     debug(`[sendSelectedPosts] Could not find post element for post ID: ${postId}`);
                 }
-            }
-            catch (error) {
+            } catch (error) {
                 console.error(`[sendSelectedPosts] Error sending post ${postId}: ${error}`);
+                sendError = true; // Set error flag
             }
         }
-        settings.selectedPosts = []; // Clear the selection after sending
-        updateSelectedPostsDisplay();
+    
+        // Clear the selection only if no error occurred
+        if (!sendError) {
+            settings.selectedPosts = [];
+            updateSelectedPostsDisplay();
+            debug('[sendSelectedPosts] Selected posts cleared');
+        } else {
+            debug('[sendSelectedPosts] Some posts were not sent due to errors. Selected posts not cleared.');
+        }
     };
 
     const updateSelectedPostsDisplay = () => {
@@ -397,7 +405,9 @@
     };
 
     // --- Post Processing ---
+
     let processingPosts = false; // Flag to prevent processPosts from running concurrently
+
 
     const processPosts = async () => {
         // Check if processPosts is already running
@@ -565,7 +575,7 @@
 
     // --- Mutation Observer ---
     let observer = new MutationObserver(async (mutations) => {
-        debug('[MutationObserver] A change was detected in the DOM');
+        debug('[MutationObserver] A change was detected in the DOM, re-running processPosts');
         processPosts();
     });
 
@@ -823,14 +833,28 @@
     };
 
     // --- Script Initialization ---
-
     const init = () => {
+        debug('[init] Initializing script');
+        settings.debug.mode = true;
+        settings.debug.log.all = true;
+    
+        // Load and add CSS styles
         addStyles();
+        debug('[init] Styles added');
+    
+        // Create the settings GUI
         createGUI();
-
+        debug('[init] GUI created');
+    
         // Hide GUI on startup
-        document.getElementById("torn-to-discord-gui").style.display = "none";
-
+        const gui = document.getElementById("torn-to-discord-gui");
+        if (gui) {
+            gui.style.display = "none";
+            debug('[init] GUI hidden on startup');
+        } else {
+            debug('[init] GUI element not found');
+        }
+    
         // Add a button to toggle the GUI
         const toggleButton = document.createElement("button");
         toggleButton.textContent = "T2D Settings";
@@ -840,30 +864,39 @@
         toggleButton.style.zIndex = 999;
         toggleButton.addEventListener("click", () => {
             const gui = document.getElementById("torn-to-discord-gui");
-            gui.style.display = gui.style.display === "none" ? "block" : "none";
+            if (gui) {
+                gui.style.display = gui.style.display === "none" ? "block" : "none";
+            } else {
+                debug('[init] GUI element not found when toggling');
+            }
         });
         document.body.appendChild(toggleButton);
-
+        debug('[init] GUI toggle button added');
+    
         // Get the target node for the observer
         const targetNode = document.querySelector('#forums-page-wrap');
-
+    
         // Start observing for changes after a delay
         if (targetNode) {
+            // Set up the observer
             observer.observe(targetNode, {
                 childList: true,
                 subtree: true
             });
-            debug('[Observer] Observer set up to watch for new posts within #forums-page-wrap');
-
+            debug('[init] Observer set up to watch for new posts within #forums-page-wrap');
+    
             // Initial processing of posts after a delay
-            setTimeout(processPosts, 2000);
+            setTimeout(() => {
+                debug('[init] Processing initial posts after delay');
+                processPosts();
+            }, 2000);
         } else {
-            console.error('[MutationObserver] Target node #forums-page-wrap not found.');
+            console.error('[init] Target node #forums-page-wrap not found.');
         }
     };
-
+    
     // --- Start the script ---
-
+    
     init();
-
-})();
+    
+    })();
