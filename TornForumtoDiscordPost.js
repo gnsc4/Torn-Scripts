@@ -360,7 +360,6 @@
     // --- Send Selected Posts ---
     const sendSelectedPosts = async () => {
         debug(`[sendSelectedPosts] Sending ${settings.selectedPosts.length} selected posts`);
-        let sendError = false;
         for (const postId of settings.selectedPosts) {
             try {
                 const postElement = document.querySelector(`li[data-id="${postId}"] .post-container .post`);
@@ -369,30 +368,18 @@
                     debug(`[sendSelectedPosts] Content for post ${postId}: ${content}`);
                     const parsedContent = await parseContent(content);
                     debug(`[sendSelectedPosts] Parsed content for post ${postId}: ${parsedContent}`);
-                    if (parsedContent) {
-                        await postToDiscord(parsedContent);
-                        debug(`[sendSelectedPosts] Sent post ${postId} to Discord`);
-                    } else {
-                        console.error(`[sendSelectedPosts] Parsed content is empty for post ${postId}`);
-                        sendError = true; // Set error flag
-                    }
+                    await postToDiscord(parsedContent);
+                    debug(`[sendSelectedPosts] Sent post ${postId} to Discord`);
                 } else {
-                    debug(`[sendSelectedPosts] Could not find post element for post ID: ${postId}`);
+                    console.error(`[sendSelectedPosts] Could not find post element for post ID: ${postId}`);
                 }
             } catch (error) {
                 console.error(`[sendSelectedPosts] Error sending post ${postId}: ${error}`);
-                sendError = true; // Set error flag
             }
+            await new Promise(resolve => setTimeout(resolve, 1200));
         }
-    
-        // Clear the selection only if no error occurred
-        if (!sendError) {
-            settings.selectedPosts = [];
-            updateSelectedPostsDisplay();
-            debug('[sendSelectedPosts] Selected posts cleared');
-        } else {
-            debug('[sendSelectedPosts] Some posts were not sent due to errors. Selected posts not cleared.');
-        }
+        settings.selectedPosts = []; // Clear the selection after sending
+        updateSelectedPostsDisplay();
     };
 
     const updateSelectedPostsDisplay = () => {
