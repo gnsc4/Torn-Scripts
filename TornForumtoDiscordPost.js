@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Forum to Discord Post
 // @namespace    https://github.com/gnsc4
-// @version      1.0.60
+// @version      1.0.61
 // @description  Sends Torn Forum posts to Discord via webhook
 // @author       GNSC4 [2779998]
 // @match        https://www.torn.com/forums.php*
@@ -205,14 +205,14 @@
 
     // --- Content Parsing ---
     const parseContent = async (content) => {
-        debug('[parseContent] Parsing content:', content);
+        debug('[parseContent] Started parsing content');
         const regex = /\[player=(\d+)\]|\[faction=(\d+)\]|\[link=(.*?)\](.*?)\[\/link\]|\[quote=(.*?)(?:&quot;|\u201D|\u201C)(?: timestamp=.*?)?\](.*?)\[\/quote\]|\[img=(.*?)(?:&quot;|\u201D|\u201C)(?: alt=.*?)?\](.*?)\[\/img\]|\[size=(\d+)\](.*?)\[\/size\]|\[color=(.*?)\](.*?)\[\/color\]|\[b\](.*?)\[\/b\]|\[i\](.*?)\[\/i\]|\[u\](.*?)\[\/u\]|\[s\](.*?)\[\/s\]|\[center\](.*?)\[\/center\]|\[right\](.*?)\[\/right\]|\[left\](.*?)\[\/left\]|\[list\](.*?)\[\/list\]|\[\*\](.*?)\[\/\*\]|\[code\](.*?)\[\/code\]/g;
-        let parsedContent = "";
+        let parsedContent = '';
         let match;
-
+        debug('[parseContent] Content before parsing:', content);
         while ((match = regex.exec(content)) !== null) {
             const [fullMatch, playerId, factionId, linkUrl, linkText, quoteAuthor, quoteContent, imgUrl, imgAlt, sizeValue, sizeContent, colorValue, colorContent, boldContent, italicContent, underlineContent, strikethroughContent, centerContent, rightContent, leftContent, listContent, listItemContent, codeContent] = match;
-
+    
             try {
                 if (playerId) {
                     debug(`[parseContent] Parsing player ID: ${playerId}`);
@@ -238,11 +238,7 @@
                     parsedContent += `> **${quoteAuthor}:** ${quoteContent}\n`;
                 } else if (imgUrl) {
                     debug(`[parseContent] Parsing image URL: ${imgUrl}`);
-                    if (imgAlt) {
-                        parsedContent += `\n[<span class="math-inline">\{imgAlt\}\]\(</span>{imgUrl})\n`;
-                    } else {
-                        parsedContent += `\n${imgUrl}\n`;
-                    }
+                    parsedContent += `\n${imgUrl}\n`; // Ensure image URL is included
                 } else if (sizeValue && sizeContent) {
                     debug(`[parseContent] Parsing size: ${sizeValue}`);
                     parsedContent += `<font size="<span class="math-inline">\{sizeValue\}"\></span>{sizeContent}</font>`;
@@ -288,11 +284,12 @@
                 parsedContent += fullMatch; // Fallback to original content
             }
         }
-
+    
         parsedContent = parsedContent.replace(/\n/g, "  \n");
         debug('[parseContent] Parsed content:', parsedContent);
         return parsedContent;
     };
+    
 
     // --- Discord Functions ---
 
@@ -300,39 +297,46 @@
         const webhookUrl = settings.discord.webhook.url;
         const username = settings.discord.webhook.username;
         const avatarUrl = settings.discord.webhook.avatar_url;
-    
+
         debug(`[postToDiscord] Posting to Discord webhook: ${webhookUrl}`);
-    
+
         if (!webhookUrl) {
             console.error('[postToDiscord] Webhook URL is not set.');
             return;
         }
-    
+
         try {
-            const response = await fetch(webhookUrl, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    username: username,
-                    avatar_url: avatarUrl,
-                    content: content,
-                }),
+            const response = await new Promise((resolve, reject) => {
+                GM_xmlhttpRequest({
+                    method: "POST",
+                    url: webhookUrl,
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    data: JSON.stringify({
+                        username: username,
+                        avatar_url: avatarUrl,
+                        content: content,
+                    }),
+                    onload: (response) => {
+                        if (response.status === 204) {
+                            debug("[postToDiscord] Post successful");
+                            resolve(response);
+                        } else {
+                            debug(`[postToDiscord] Post failed with status: ${response.status}`);
+                            reject(response);
+                        }
+                    },
+                    onerror: (error) => {
+                        debug(`[postToDiscord] Post error:`,error);
+                        reject(error);
+                    }
+                });
             });
-    
-            if (response.ok) {
-                debug("[postToDiscord] Post successful");
-            } else {
-                debug(`[postToDiscord] Post failed with status: ${response.status}`);
-                const errorBody = await response.json().catch(() => ({})); // Try to parse response as JSON, or default to an empty object
-                console.error(`[postToDiscord] Discord API Error:`, errorBody);
-            }
         } catch (error) {
             console.error(`[postToDiscord] Error posting to Discord:`, error);
         }
     };
-    
 
     // --- Post Selection Functions ---
 
@@ -373,14 +377,17 @@
         debug(`[sendSelectedPosts] Sending ${settings.selectedPosts.length} selected posts`);
         for (const postId of settings.selectedPosts) {
             try {
+                debug(`[sendSelectedPosts] Attempting to send post with ID: ${postId}`);
                 const postElement = document.querySelector(`li[data-id="${postId}"] .post-container .post`);
                 if (postElement) {
                     const content = postElement.innerHTML;
+                    debug(`[sendSelectedPosts] Content for post ${postId}: ${content}`);
                     const parsedContent = await parseContent(content);
+                    debug(`[sendSelectedPosts] Parsed content for post ${postId}: ${parsedContent}`);
                     await postToDiscord(parsedContent);
                     debug(`[sendSelectedPosts] Sent post ${postId} to Discord`);
                 } else {
-                    debug(`[sendSelectedPosts] Could not find post element for post ID: ${postId}`);
+                    console.error(`[sendSelectedPosts] Could not find post element for post ID: ${postId}`);
                 }
             } catch (error) {
                 console.error(`[sendSelectedPosts] Error sending post ${postId}: ${error}`);
@@ -389,6 +396,7 @@
         settings.selectedPosts = []; // Clear the selection after sending
         updateSelectedPostsDisplay();
     };
+    
 
     const updateSelectedPostsDisplay = () => {
         debug(`[updateSelectedPostsDisplay] Updating selected posts display`);
@@ -402,123 +410,91 @@
 
     // --- Post Processing ---
     const processPosts = async () => {
-        const isThreadListView = window.location.href.includes("forums.php#/p=threads&f=") && !window.location.href.includes("forums.php#/p=thread");
-        const isThreadPage = window.location.href.includes("forums.php#/p=thread");
+        try {
+            const currentUrl = window.location.href;
+            const isForumSectionPage = currentUrl.includes("forums.php#/p=forums&f=");
+            const isThreadPage = currentUrl.includes("forums.php#/p=thread");
 
-        debug(`[processPosts] isThreadListView: ${isThreadListView}`);
-        debug(`[processPosts] isThreadPage: ${isThreadPage}`);
+            debug(`[processPosts] isForumSectionPage: ${isForumSectionPage}`);
+            debug(`[processPosts] isThreadPage: ${isThreadPage}`);
 
-        if (isThreadListView) {
-            // Code to add "Select Thread" buttons to thread list
-            const threads = document.querySelectorAll("div.thread-list-item > div.wrap");
-            debug(`[Threads] Found ${threads.length} threads`);
-
-            for (const thread of threads) {
-                // Extract thread ID from the link within the thread element
-                const threadLink = thread.querySelector('a[href*="forums.php#/p=thread"]');
-                if (!threadLink) {
-                    debug(`[Threads] Thread link not found for thread:`, thread);
-                    continue;
-                }
-                const threadIdMatch = threadLink.href.match(/&t=(\d+)/);
-                if (!threadIdMatch) {
-                    debug(`[Threads] Thread ID not found in link:`, threadLink.href);
-                    continue;
-                }
-                const threadId = threadIdMatch[1];
-
-                // Check if thread already processed
-                if (!thread.dataset.threadId) {
-                    // Add a "Select Thread" button to each thread
-                    const selectButton = document.createElement("button");
-                    selectButton.textContent = "Select Thread";
-                    selectButton.classList.add("select-post-button");
-                    selectButton.addEventListener("click", () => {
-                        selectAllPostsInThread(threadId);
-                        selectButton.classList.toggle("selected"); // Toggle visual indicator
-                    });
-
-                    // Find the thread info wrap element to insert the button
-                    const threadInfoWrap = thread.querySelector(".thread-info-wrap");
-                    if (threadInfoWrap) {
-                        debug(`[Threads] Inserting button for thread: ${threadId}`);
-                        threadInfoWrap.appendChild(selectButton);
-                    } else {
-                        console.error(`[Threads] Could not find the thread info wrap for thread: ${threadId}`);
+            if (isForumSectionPage) {
+                // Forum section page - no buttons needed
+                debug(`[processPosts] No buttons needed for forum section pages.`);
+            } else if (isThreadPage) {
+                // Code to add "Select Post" buttons to individual posts
+                debug(`[processPosts] Processing thread page`);
+                waitForPosts().then(posts => {
+                    if (!posts) {
+                        console.error(`[processPosts] waitForPosts resolved with null or undefined`);
+                        return;
                     }
+                    debug(`[processPosts] Found ${posts.length} posts with data-id`);
+                    const processedPostIds = new Set();
 
-                    // Set data-thread attribute to mark as processed
-                    thread.setAttribute("data-thread", threadId);
-                }
-            }
-        } else if (isThreadPage) {
-            // Code to add "Select Post" buttons to individual posts
-            debug(`[processPosts] Processing thread page`);
+                    for (const post of posts) {
+                        const postId = post.dataset.id;
+                        if (!postId) {
+                            debug(`[processPosts] Post ID not found for post:`, post);
+                            continue;
+                        }
 
-            // Use waitForPosts to ensure posts are loaded
-            const posts = await waitForPosts();
-            debug(`[processPosts] Found ${posts.length} posts with data-id`);
+                        if (processedPostIds.has(postId)) {
+                            debug(`[processPosts] Post with ID ${postId} already processed. Skipping.`);
+                            continue;
+                        }
 
-            for (const post of posts) {
-                const postId = post.dataset.id;
-                if (!postId) {
-                    debug(`[processPosts] Post ID not found for post:`, post);
-                    continue;
-                }
+                        debug(`[processPosts] Processing post with ID: ${postId}`);
 
-                // Check if the post has already been processed
-                if (post.dataset.postId === postId) {
-                    debug(`[processPosts] Post with ID ${postId} already processed. Skipping.`);
-                    continue;
-                }
+                        // Add a "Select Post" button to each post
+                        const selectButton = document.createElement("button");
+                        selectButton.textContent = "Select Post";
+                        selectButton.classList.add("select-post-button");
+                        selectButton.style.order = '-1';
+                        selectButton.addEventListener("click", () => {
+                            selectPost(postId);
+                            selectButton.classList.toggle("selected");
+                        });
 
-                debug(`[processPosts] Processing post with ID: ${postId}`);
+                        // Find the action bar and append the button
+                        const actionBar = post.querySelector(".action-wrap");
+                        if (actionBar) {
+                            debug(`[processPosts] Inserting button for post: ${postId}`);
+                            actionBar.insertBefore(selectButton, actionBar.firstChild);
+                        } else {
+                            console.error(`[processPosts] Could not find the action bar element for post: ${postId}`);
+                        }
 
-                // Add a "Select Post" button to each post
-                const selectButton = document.createElement("button");
-                selectButton.textContent = "Select Post";
-                selectButton.classList.add("select-post-button");
-                selectButton.style.order = '-1';
-                selectButton.addEventListener("click", () => {
-                    selectPost(postId);
-                    selectButton.classList.toggle("selected");
+                        // Set data-post attribute and mark as processed
+                        post.setAttribute("data-post", postId);
+                        processedPostIds.add(postId);
+                    }
                 });
+            }
 
-                // Find the action bar and append the button
-                const actionBar = post.querySelector(".action-wrap");
-                if (actionBar) {
-                    debug(`[processPosts] Inserting button for post: ${postId}`);
-                    actionBar.insertBefore(selectButton, actionBar.firstChild);
+            // Add a "Send Selected Posts" button (only if not already present)
+            if (!document.getElementById("send-selected-posts-button")) {
+                debug(`[processPosts] Adding "Send Selected Posts" button`);
+                const sendButton = document.createElement("button");
+                sendButton.textContent = "Send Selected Posts";
+                sendButton.id = "send-selected-posts-button";
+                sendButton.addEventListener("click", sendSelectedPosts);
+
+                const selectedPostsDisplay = document.createElement("div");
+                selectedPostsDisplay.id = "selected-posts-display";
+                selectedPostsDisplay.textContent = `Selected Posts: 0`;
+
+                const target = document.querySelector("#forums-page-wrap");
+                if (target) {
+                    debug(`[processPosts] Inserting "Send Selected Posts" button`);
+                    target.parentNode.insertBefore(sendButton, target);
+                    target.parentNode.insertBefore(selectedPostsDisplay, target);
                 } else {
-                    console.error(`[processPosts] Could not find the action bar element for post: ${postId}`);
+                    console.error("[processPosts] Could not find the target element to insert the Send button and display.");
                 }
-
-                // Set data-post attribute and mark as processed using postId
-                post.setAttribute("data-post", postId);
-                post.dataset.postId = postId;
             }
-        }
-
-        // Add a "Send Selected Posts" button (only if not already present)
-        if (!document.getElementById("send-selected-posts-button")) {
-            debug(`[processPosts] Adding "Send Selected Posts" button`);
-            const sendButton = document.createElement("button");
-            sendButton.textContent = "Send Selected Posts";
-            sendButton.id = "send-selected-posts-button";
-            sendButton.addEventListener("click", sendSelectedPosts);
-
-            const selectedPostsDisplay = document.createElement("div");
-            selectedPostsDisplay.id = "selected-posts-display";
-            selectedPostsDisplay.textContent = `Selected Posts: 0`;
-
-            const target = document.querySelector("#forums-page-wrap");
-            if (target) {
-                debug(`[processPosts] Inserting "Send Selected Posts" button`);
-                target.parentNode.insertBefore(sendButton, target);
-                target.parentNode.insertBefore(selectedPostsDisplay, target);
-            } else {
-                console.error("[processPosts] Could not find the target element to insert the Send button and display.");
-            }
+        } catch (error) {
+            console.error(`[processPosts] Error in processPosts: ${error}`);
         }
     };
 
@@ -552,7 +528,7 @@
     };
 
     // --- Mutation Observer ---
-    let observer = new MutationObserver(async (mutations) => {
+    const observer = new MutationObserver(() => {
         debug('[MutationObserver] A change was detected in the DOM, re-running processPosts');
         processPosts();
     });
@@ -560,6 +536,7 @@
     // --- GUI Functions ---
 
     const createGUI = () => {
+        debug('[createGUI] Creating settings GUI');
         // Load saved settings
         loadSettings();
 
@@ -587,8 +564,8 @@
         const discordSection = document.createElement("div");
         discordSection.innerHTML = `
             <h3>Discord Webhook</h3>
-            <input type="text" id="webhook-url" placeholder="Enter your Discord webhook URL" value="${settings.discord.webhook.url}">
-            <input type="text" id="webhook-username" placeholder="Enter a custom username (optional)" value="${settings.discord.webhook.username}">
+            <input type="text" id="webhook-url" placeholder="Enter your Discord webhook URL" value="<span class="math-inline">\{settings\.discord\.webhook\.url\}"\>
+<input type\="text" id\="webhook\-username" placeholder\="Enter a custom username \(optional\)" value\="</span>{settings.discord.webhook.username}">
             <input type="text" id="webhook-avatar" placeholder="Enter a custom avatar URL (optional)" value="${settings.discord.webhook.avatar_url}">
         `;
         guiContainer.appendChild(discordSection);
@@ -625,43 +602,51 @@
             guiContainer.style.display = "none";
         });
         guiContainer.appendChild(closeButton);
+
     };
 
     // --- Settings Functions ---
 
     const saveSettings = async () => {
-        // Torn API Key
-        settings.torn.api.key = document.getElementById("api-key").value;
-        settings.torn.api.keyLevel = await checkApiKeyLevel(settings.torn.api.key);
+        try {
+            debug('[saveSettings] Saving settings');
+            // Torn API Key
+            settings.torn.api.key = document.getElementById("api-key").value;
+            settings.torn.api.keyLevel = await checkApiKeyLevel(settings.torn.api.key);
 
-        // Update the API key level display in the GUI
-        const apiKeyLevelText = document.querySelector(".api-key-level-text");
-        if (apiKeyLevelText) {
-            apiKeyLevelText.textContent = settings.torn.api.keyLevel ? `Key Level: ${settings.torn.api.keyLevel === "faction" ? "Faction (or higher)" : "User"}` : '';
+            // Update the API key level display in the GUI
+            const apiKeyLevelText = document.querySelector(".api-key-level-text");
+            if (apiKeyLevelText) {
+                apiKeyLevelText.textContent = settings.torn.api.keyLevel ? `Key Level: ${settings.torn.api.keyLevel === "faction" ? "Faction (or higher)" : "User"}` : '';
+            }
+
+            // Discord Webhook
+            settings.discord.webhook.url = document.getElementById("webhook-url").value;
+            settings.discord.webhook.username = document.getElementById("webhook-username").value;
+            settings.discord.webhook.avatar_url = document.getElementById("webhook-avatar").value;
+
+            // Save settings using GM_setValue
+            GM_setValue("torn_api_key", settings.torn.api.key);
+            GM_setValue("torn_api_key_level", settings.torn.api.keyLevel);
+            GM_setValue("discord_webhook_url", settings.discord.webhook.url);
+            GM_setValue("discord_webhook_username", settings.discord.webhook.username);
+            GM_setValue("discord_webhook_avatar_url", settings.discord.webhook.avatar_url);
+
+            alert("Settings saved!");
+        } catch (error) {
+            console.error(`[saveSettings] Error saving settings: ${error}`);
         }
-
-        // Discord Webhook
-        settings.discord.webhook.url = document.getElementById("webhook-url").value;
-        settings.discord.webhook.username = document.getElementById("webhook-username").value;
-        settings.discord.webhook.avatar_url = document.getElementById("webhook-avatar").value;
-
-        // Save settings using GM_setValue
-        GM_setValue("torn_api_key", settings.torn.api.key);
-        GM_setValue("torn_api_key_level", settings.torn.api.keyLevel);
-        GM_setValue("discord_webhook_url", settings.discord.webhook.url);
-        GM_setValue("discord_webhook_username", settings.discord.webhook.username);
-        GM_setValue("discord_webhook_avatar_url", settings.discord.webhook.avatar_url);
-
-        alert("Settings saved!");
     };
 
     const loadSettings = () => {
         // Load settings using GM_getValue
+        debug('[loadSettings] Loading settings');
         settings.torn.api.key = GM_getValue("torn_api_key", "");
         settings.torn.api.keyLevel = GM_getValue("torn_api_key_level", "");
         settings.discord.webhook.url = GM_getValue("discord_webhook_url", "");
         settings.discord.webhook.username = GM_getValue("discord_webhook_username", "");
         settings.discord.webhook.avatar_url = GM_getValue("discord_webhook_avatar_url", "");
+        debug('[loadSettings] Loaded settings:', settings);
     };
 
     // --- CSS Styles ---
@@ -835,7 +820,7 @@
                 childList: true,
                 subtree: true
             });
-            debug('[MutationObserver] Observer set up to watch for new posts within #forums-page-wrap');
+            debug('[Observer] Observer set up to watch for new posts within #forums-page-wrap');
 
             // Initial processing of posts after a delay
             setTimeout(processPosts, 2000);
