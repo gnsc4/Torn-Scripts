@@ -211,14 +211,14 @@
     const parseContent = async (content) => {
         debug('[parseContent] Started parsing content');
         debug('[parseContent] Content before parsing:', content);
-    
+
         try {
             // Initialize Turndown service with desired options
             const turndownService = new TurndownService({
                 headingStyle: 'atx', // Use '#' for headings
                 codeBlockStyle: 'fenced', // Use fenced code blocks (```)
             });
-    
+
             // Add a custom rule for Torn's [player] tags
             turndownService.addRule('playerTag', {
                 filter: function (node, options) {
@@ -231,7 +231,6 @@
                 replacement: function (content, node, options) {
                     const playerId = node.href.split('=')[1];
                     debug(`[parseContent] Parsing player ID: ${playerId}`);
-                    // No need to await here, just return the formatted string
                     return `[${content}](https://www.torn.com/profiles.php?XID=${playerId})`;
                 }
             });
@@ -248,14 +247,13 @@
                 replacement: function (content, node, options) {
                     const factionId = node.href.split('=')[2];
                     debug(`[parseContent] Parsing faction ID: ${factionId}`);
-                    // No need to await here, just return the formatted string
                     return `[${content}](https://www.torn.com/factions.php?step=profile&ID=${factionId})`;
                 }
             });
     
             // Convert the content using Turndown
             let parsedContent = turndownService.turndown(content);
-    
+
             debug('[parseContent] Parsed content:', parsedContent);
             return parsedContent;
         } catch (error) {
@@ -277,6 +275,14 @@
             return;
         }
 
+        const payload = {
+            username: username,
+            avatar_url: avatarUrl,
+            content: content,
+        };
+
+        debug('[postToDiscord] Payload:', payload);
+
         try {
             const response = await new Promise((resolve, reject) => {
                 GM_xmlhttpRequest({
@@ -285,11 +291,7 @@
                     headers: {
                         "Content-Type": "application/json",
                     },
-                    data: JSON.stringify({
-                        username: username,
-                        avatar_url: avatarUrl,
-                        content: content,
-                    }),
+                    data: JSON.stringify(payload),
                     onload: (response) => {
                         debug("[postToDiscord] Post response:", response);
                         if (response.status === 204 || response.status === 200) {
@@ -310,7 +312,6 @@
             // Handle response or error if needed
         } catch (error) {
             console.error(`[postToDiscord] Error posting to Discord:`, error);
-
             if (error.status) {
                 try {
                     const errorBody = JSON.parse(error.responseText);
