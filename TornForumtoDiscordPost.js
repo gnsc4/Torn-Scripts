@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Forum to Discord Post
 // @namespace    https://github.com/gnsc4
-// @version      1.0.65
+// @version      1.0.89
 // @description  Sends Torn Forum posts to Discord via webhook
 // @author       GNSC4 [2779998]
 // @match        https://www.torn.com/forums.php*
@@ -10,11 +10,8 @@
 // @grant        GM_getValue
 // @grant        GM_deleteValue
 // @grant        GM_addStyle
-// @grant        GM_getResouceText
-// @grant        GM_getResourceURL
 // @connect      discord.com
 // @connect      api.torn.com
-// @resource     turndown https://unpkg.com/turndown/dist/turndown.js
 // @require      https://unpkg.com/turndown/dist/turndown.js
 // @license      MIT
 // ==/UserScript==
@@ -73,6 +70,51 @@
         if (settings.debug.log.all) {
             console.log('[T2D]', ...args);
         }
+    };
+
+    const cacheKey = (key) => {
+        return `torn_forum_to_discord_${key}`;
+    };
+
+    const setCache = (key, value, expiration) => {
+        if (!settings.cache.enabled) {
+            return;
+        }
+        const now = new Date();
+        const item = {
+            value,
+            expiry: now.getTime() + expiration * 60 * 1000,
+        };
+        GM_setValue(cacheKey(key), JSON.stringify(item));
+    };
+
+    const getCache = (key) => {
+        if (!settings.cache.enabled) {
+            return null;
+        }
+        const itemStr = GM_getValue(cacheKey(key));
+        if (!itemStr) {
+            return null;
+        }
+        const item = JSON.parse(itemStr);
+        const now = new Date();
+        if (now.getTime() > item.expiry) {
+            GM_deleteValue(cacheKey(key));
+            return null;
+        }
+        return item.value;
+    };
+
+    const clearCache = () => {
+        if (!settings.cache.enabled) {
+            return;
+        }
+        const keys = GM_listValues();
+        keys.forEach((key) => {
+            if (key.startsWith("torn_forum_to_discord_")) {
+                GM_deleteValue(key);
+            }
+        });
     };
 
     // --- API Functions ---
@@ -138,10 +180,10 @@
     };
 
     // Generic function to fetch data from Torn API
-    const fetchTornApi = async (endpoint, selections = '', id = '') => {
+    const fetchTornApi = async (endpoint, selections = '', id = '', limit = 0, from = 0) => {
         const apiKey = settings.torn.api.key;
         const keyLevel = settings.torn.api.keyLevel;
-        const cacheKey = `<span class="math-inline">\{endpoint\}\-</span>{id}-${selections}`;
+        const cacheKey = `<span class="math-inline">\{endpoint\}\-</span>{id}-<span class="math-inline">\{selections\}\-</span>{limit}-${from}`;
 
         debug(`[fetchTornApi] Fetching ${endpoint} data with ID ${id} and selections ${selections}`);
 
@@ -152,29 +194,48 @@
             return cachedData;
         }
 
-        // Determine the appropriate API endpoint based on key level
+        // Determine the appropriate API endpoint based on key level and requested data
         let url;
+        let headers = {};
         if (endpoint === 'user' && id && keyLevel === 'user') {
-            url = `https://api.torn.com/user/<span class="math-inline">\{id\}?selections\=</span>{selections}&key=${apiKey}&comment=TornForumToDiscordScript`;
+            url = `https://api.torn.com/user/<span class="math-inline">\{id\}?selections\=</span>{selections}&comment=TornForumToDiscordScript`;
+            headers = { 'Authorization': `Bearer ${apiKey}` };
         } else if (endpoint === 'faction' && id && keyLevel === 'faction') {
-            url = `https://api.torn.com/faction/<span class="math-inline">\{id\}?selections\=</span>{selections}&key=${apiKey}&comment=TornForumToDiscordScript`;
+            url = `https://api.torn.com/faction/<span class="math-inline">\{id\}?selections\=</span>{selections}&comment=TornForumToDiscordScript`;
+            headers = { 'Authorization': `Bearer ${apiKey}` };
         } else if (endpoint === 'user' && keyLevel === 'faction') {
-            url = `https://api.torn.com/user/?selections=<span class="math-inline">\{selections\}&key\=</span>{apiKey}&comment=TornForumToDiscordScript`;
+            url = `https://api.torn.com/user/?selections=${selections}&comment=TornForumToDiscordScript`;
+            headers = { 'Authorization': `Bearer ${apiKey}` };
         } else if (endpoint === 'faction' && keyLevel === 'faction') {
-            url = `https://api.torn.com/faction/?selections=<span class="math-inline">\{selections\}&key\=</span>{apiKey}&comment=TornForumToDiscordScript`;
-        } else if (endpoint === 'thread' && id && keyLevel === 'faction') {
-            url = `https://api.torn.com/torn/<span class="math-inline">\{id\}?selections\=</span>{selections}&key=${apiKey}&comment=TornForumToDiscordScript`;
+            url = `https://api.torn.com/faction/?selections=${selections}&comment=TornForumToDiscordScript`;
+            headers = { 'Authorization': `Bearer ${apiKey}` };
+        } else if (endpoint === 'forum' && id && keyLevel === 'faction') {
+            url = `https://api.torn.com/v2/<span class="math-inline">\{apiKey\}/forum/</span>{id}`;
+            headers = { 'Accept': 'application/json' };
+            if (selections) {
+                url += `?selections=${selections}`;
+                if (limit > 0) {
+                    url += `&limit=${limit}`;
+                }
+                if (from > 0) {
+                    url += `&from=${from}`;
+                }
+            }
         } else {
             debug(`[fetchTornApi] Insufficient API key level or invalid endpoint for ${endpoint}`);
             return null;
         }
+
+        debug(`[fetchTornApi] API URL: ${url}`);
 
         try {
             const response = await new Promise((resolve, reject) => {
                 GM_xmlhttpRequest({
                     method: "GET",
                     url: url,
+                    headers: headers,
                     onload: (response) => {
+                        debug("[fetchTornApi] API Response:", response);
                         if (response.status === 200) {
                             debug(`[fetchTornApi] API request successful: ${response.status}`);
                             resolve(response);
@@ -190,7 +251,8 @@
                 });
             });
 
-            const data = JSON.parse(response.responseText);
+            // Ensure response.responseText is a string before parsing
+            const data = typeof response.responseText === 'string' ? JSON.parse(response.responseText) : response.responseText;
 
             if (data.error) {
                 console.error('[fetchTornApi] API Error:', data.error);
@@ -199,7 +261,7 @@
 
             // Cache the data
             setCache(cacheKey, data, settings.cache.expiration);
-            debug(`[fetchTornApi] Fetched data from API for ${cacheKey}`);
+            debug(`[fetchTornApi] Fetched data from API for ${cacheKey}`, data);
             return data;
         } catch (error) {
             console.error(`[fetchTornApi] Error fetching Torn API data: ${error}`);
@@ -250,7 +312,7 @@
                     return `[${content}](https://www.torn.com/factions.php?step=profile&ID=${factionId})`;
                 }
             });
-    
+
             // Convert the content using Turndown
             let parsedContent = turndownService.turndown(content);
 
@@ -263,7 +325,8 @@
     };
 
     // --- Discord Functions ---
-    const postToDiscord = async (content) => {
+
+    const postToDiscord = async (embed) => {
         const webhookUrl = settings.discord.webhook.url;
         const username = settings.discord.webhook.username;
         const avatarUrl = settings.discord.webhook.avatar_url;
@@ -278,7 +341,7 @@
         const payload = {
             username: username,
             avatar_url: avatarUrl,
-            content: content,
+            embeds: [embed]
         };
 
         debug('[postToDiscord] Payload:', payload);
@@ -308,8 +371,6 @@
                     }
                 });
             });
-
-            // Handle response or error if needed
         } catch (error) {
             console.error(`[postToDiscord] Error posting to Discord:`, error);
             if (error.status) {
@@ -342,9 +403,9 @@
     const selectAllPostsInThread = async (threadId) => {
         debug(`[selectAllPostsInThread] Selecting all posts in thread: ${threadId}`);
         try {
-            const threadData = await fetchTornApi('thread', '', threadId);
-            if (threadData && threadData.thread.postIds) {
-                const postIds = threadData.thread.postIds;
+            const threadData = await fetchTornApi('forum', 'posts', threadId, 100);
+            if (threadData && threadData.posts) {
+                const postIds = Object.keys(threadData.posts);
                 debug(`[selectAllPostsInThread] Found post IDs: ${postIds.join(', ')}`);
                 for (const postId of postIds) {
                     selectPost(postId);
@@ -360,26 +421,82 @@
     // --- Send Selected Posts ---
     const sendSelectedPosts = async () => {
         debug(`[sendSelectedPosts] Sending ${settings.selectedPosts.length} selected posts`);
+        let sendError = false;
+        
         for (const postId of settings.selectedPosts) {
             try {
-                const postElement = document.querySelector(`li[data-id="${postId}"] .post-container .post`);
-                if (postElement) {
-                    const content = postElement.innerHTML;
-                    debug(`[sendSelectedPosts] Content for post ${postId}: ${content}`);
-                    const parsedContent = await parseContent(content);
+                // Fetch the post data using the Torn API
+                const postData = await fetchTornApi('post', '', postId);
+                if (postData && postData.posts && postData.posts[postId]) {
+                    const post = postData.posts[postId];
+                    debug(`[sendSelectedPosts] Fetched post data for post ID: ${postId}`, post);
+    
+                    // Extract necessary information from the API response
+                    const userName = post.author.name;
+                    const userId = post.author.user_id;
+                    const postContent = post.text; // Use 'text' for post content from API
+                    const postLink = `https://www.torn.com/forums.php#/p=post&q=${postId}`;
+    
+                    // Convert the Unix timestamp to a JavaScript Date object
+                    const postDate = new Date(post.timestamp * 1000);
+                    const postDateTime = postDate.toUTCString(); // Format as UTC string
+    
+                    // Parse the post content for additional formatting if necessary
+                    const parsedContent = await parseContent(postContent);
                     debug(`[sendSelectedPosts] Parsed content for post ${postId}: ${parsedContent}`);
-                    await postToDiscord(parsedContent);
+    
+                    // Construct the embed object
+                    const embed = {title: `Post by ${userName}`,
+                        url: postLink,
+                        description: parsedContent,
+                        color: 0x007BFF,
+                        author: {
+                            name: userName,
+                            url: `https://www.torn.com/profiles.php?XID=${userId}`
+                        },
+                        footer: {
+                            text: `Posted on: ${postDateTime} UTC - 0`
+                        }
+                    };
+    
+                    // Check for images in post content and add to embed
+                    const postElement = document.querySelector(`li[data-id="${postId}"]`);
+                    if (postElement) {
+                        const imageElement = postElement.querySelector('.post-container .post img');
+                        if (imageElement) {
+                            const imageUrl = imageElement.getAttribute('src');
+                            if (imageUrl) {
+                                embed.image = { url: imageUrl };
+                                debug(`[sendSelectedPosts] Added image to embed for post: ${postId}`);
+                            } else {
+                                debug(`[sendSelectedPosts] Image found for post ${postId} but no src attribute present.`);
+                            }
+                        } else {
+                            debug(`[sendSelectedPosts] No image found for post: ${postId}`);
+                        }
+                    }
+    
+                    await postToDiscord(embed);
                     debug(`[sendSelectedPosts] Sent post ${postId} to Discord`);
                 } else {
-                    console.error(`[sendSelectedPosts] Could not find post element for post ID: ${postId}`);
+                    console.error(`[sendSelectedPosts] Could not fetch post data for post ID: ${postId}`);
+                    sendError = true;
                 }
             } catch (error) {
                 console.error(`[sendSelectedPosts] Error sending post ${postId}: ${error}`);
+                sendError = true;
             }
             await new Promise(resolve => setTimeout(resolve, 1200));
         }
-        settings.selectedPosts = []; // Clear the selection after sending
-        updateSelectedPostsDisplay();
+    
+        // Clear the selection only if no error occurred
+        if (!sendError) {
+            settings.selectedPosts = [];
+            updateSelectedPostsDisplay();
+            debug('[sendSelectedPosts] Selected posts cleared');
+        } else {
+            debug('[sendSelectedPosts] Some posts were not sent due to errors. Selected posts not cleared.');
+        }
     };
 
     const updateSelectedPostsDisplay = () => {
@@ -392,78 +509,38 @@
         }
     };
 
-    // --- Post Processing ---
+     // --- Post Processing ---
+     let processingPosts = false; // Flag to prevent processPosts from running concurrently
 
-    let processingPosts = false; // Flag to prevent processPosts from running concurrently
-
-
-    const processPosts = async () => {
-        // Check if processPosts is already running
-        if (processingPosts) {
-            debug(`[processPosts] processPosts is already running, skipping this run.`);
-            return;
-        }
-
-        processingPosts = true; // Set the flag to indicate that processing is in progress
-        debug(`[processPosts] Starting processPosts`);
-
-        try {
-            const isThreadListView = window.location.href.includes("forums.php#/p=threads&f=") && !window.location.href.includes("forums.php#/p=thread");
-            const isThreadPage = window.location.href.includes("forums.php#/p=thread");
-
-            debug(`[processPosts] isThreadListView: ${isThreadListView}`);
-            debug(`[processPosts] isThreadPage: ${isThreadPage}`);
-
-            if (isThreadListView) {
-                // Code to add "Select Thread" buttons to thread list
-                const threads = document.querySelectorAll("div.thread-list-item > div.wrap");
-                debug(`[Threads] Found ${threads.length} threads`);
-
-                for (const thread of threads) {
-                    // Extract thread ID from the link within the thread element
-                    const threadLink = thread.querySelector('a[href*="forums.php#/p=thread"]');
-                    if (!threadLink) {
-                        debug(`[Threads] Thread link not found for thread:`, thread);
-                        continue;
-                    }
-                    const threadIdMatch = threadLink.href.match(/&t=(\d+)/);
-                    if (!threadIdMatch) {
-                        debug(`[Threads] Thread ID not found in link:`, threadLink.href);
-                        continue;
-                    }
-                    const threadId = threadIdMatch[1];
-
-                    // Check if thread already processed
-                    if (!thread.dataset.threadId) {
-                        // Add a "Select Thread" button to each thread
-                        const selectButton = document.createElement("button");
-                        selectButton.textContent = "Select Thread";
-                        selectButton.classList.add("select-post-button");
-                        selectButton.addEventListener("click", () => {
-                            selectAllPostsInThread(threadId);
-                            selectButton.classList.toggle("selected"); // Toggle visual indicator
-                        });
-
-                        // Find the thread info wrap element to insert the button
-                        const threadInfoWrap = thread.querySelector(".thread-info-wrap");
-                        if (threadInfoWrap) {
-                            debug(`[Threads] Inserting button for thread: ${threadId}`);
-                            threadInfoWrap.appendChild(selectButton);
-                        } else {
-                            console.error(`[Threads] Could not find the thread info wrap for thread: ${threadId}`);
-                        }
-
-                        // Set data-thread attribute to mark as processed
-                        thread.setAttribute("data-thread", threadId);
-                    }
-                }
-            } else if (isThreadPage) {
+     const processPosts = async () => {
+         // Check if processPosts is already running
+         if (processingPosts) {
+             debug(`[processPosts] processPosts is already running, skipping this run.`);
+             return;
+         }
+ 
+         processingPosts = true; // Set the flag to indicate that processing is in progress
+         debug(`[processPosts] Starting processPosts`);
+ 
+         try {
+             const currentUrl = window.location.href;
+             const isForumSectionPage = currentUrl.includes("forums.php#/p=forums&f=");
+             const isThreadPage = currentUrl.includes("forums.php#/p=thread");
+ 
+             debug(`[processPosts] isForumSectionPage: ${isForumSectionPage}`);
+             debug(`[processPosts] isThreadPage: ${isThreadPage}`);
+ 
+             if (isForumSectionPage) {
+                 // Forum section page - no buttons needed
+                 debug(`[processPosts] No buttons needed for forum section pages.`);
+             } else if (isThreadPage) {
                 // Code to add "Select Post" buttons to individual posts
                 debug(`[processPosts] Processing thread page`);
 
                 // Use waitForPosts to ensure posts are loaded
                 const posts = await waitForPosts();
                 debug(`[processPosts] Found ${posts.length} posts with data-id`);
+                const processedPostIds = new Set();
 
                 for (const post of posts) {
                     const postId = post.dataset.id;
@@ -473,34 +550,35 @@
                     }
 
                     // Check if the post has already been processed
-                    if (!post.dataset.processed) {
-                        debug(`[processPosts] Processing post with ID: ${postId}`);
-
-                        // Add a "Select Post" button to each post
-                        const selectButton = document.createElement("button");
-                        selectButton.textContent = "Select Post";
-                        selectButton.classList.add("select-post-button");
-                        selectButton.style.order = '-1';
-                        selectButton.addEventListener("click", () => {
-                            selectPost(postId);
-                            selectButton.classList.toggle("selected");
-                        });
-
-                        // Find the action bar and append the button
-                        const actionBar = post.querySelector(".action-wrap");
-                        if (actionBar) {
-                            debug(`[processPosts] Inserting button for post: ${postId}`);
-                            actionBar.insertBefore(selectButton, actionBar.firstChild);
-                        } else {
-                            console.error(`[processPosts] Could not find the action bar element for post: ${postId}`);
-                        }
-
-                        // Set data-post attribute and mark as processed
-                        post.setAttribute("data-post", postId);
-                        post.dataset.processed = "true";
-                    } else {
+                    if (processedPostIds.has(postId)) {
                         debug(`[processPosts] Post with ID ${postId} already processed. Skipping.`);
+                        continue;
                     }
+
+                    debug(`[processPosts] Processing post with ID: ${postId}`);
+
+                    // Add a "Select Post" button to each post
+                    const selectButton = document.createElement("button");
+                    selectButton.textContent = "Select Post";
+                    selectButton.classList.add("select-post-button");
+                    selectButton.style.order = '-1';
+                    selectButton.addEventListener("click", () => {
+                        selectPost(postId);
+                        selectButton.classList.toggle("selected");
+                    });
+
+                    // Find the action bar and append the button
+                    const actionBar = post.querySelector(".action-wrap");
+                    if (actionBar) {
+                        debug(`[processPosts] Inserting button for post: ${postId}`);
+                        actionBar.insertBefore(selectButton, actionBar.firstChild);
+                    } else {
+                        console.error(`[processPosts] Could not find the action bar element for post: ${postId}`);
+                    }
+
+                    // Set data-post attribute and mark as processed
+                    post.setAttribute("data-post", postId);
+                    processedPostIds.add(postId);
                 }
             }
 
@@ -561,15 +639,16 @@
         });
     };
 
-    // --- Mutation Observer ---
-    let observer = new MutationObserver(async (mutations) => {
-        debug('[MutationObserver] A change was detected in the DOM, re-running processPosts');
-        processPosts();
+   // --- Mutation Observer ---
+   const observer = new MutationObserver(() => {
+    debug('[MutationObserver] A change was detected in the DOM');
+    processPosts(); // Call processPosts directly when a change is detected
     });
 
     // --- GUI Functions ---
 
     const createGUI = () => {
+        debug('[createGUI] Creating settings GUI');
         // Load saved settings
         loadSettings();
 
@@ -771,7 +850,7 @@
 
             .select-post-button:hover {
                 background-color: #677bc4; /* Darker shade on hover */
-                }
+            }
 
             .select-post-button.selected {
                 background-color: #5b6e9e; /* Even darker shade for selected state */
@@ -821,28 +900,14 @@
     };
 
     // --- Script Initialization ---
+
     const init = () => {
-        debug('[init] Initializing script');
-        settings.debug.mode = true;
-        settings.debug.log.all = true;
-    
-        // Load and add CSS styles
         addStyles();
-        debug('[init] Styles added');
-    
-        // Create the settings GUI
         createGUI();
-        debug('[init] GUI created');
-    
+
         // Hide GUI on startup
-        const gui = document.getElementById("torn-to-discord-gui");
-        if (gui) {
-            gui.style.display = "none";
-            debug('[init] GUI hidden on startup');
-        } else {
-            debug('[init] GUI element not found');
-        }
-    
+        document.getElementById("torn-to-discord-gui").style.display = "none";
+
         // Add a button to toggle the GUI
         const toggleButton = document.createElement("button");
         toggleButton.textContent = "T2D Settings";
@@ -852,39 +917,30 @@
         toggleButton.style.zIndex = 999;
         toggleButton.addEventListener("click", () => {
             const gui = document.getElementById("torn-to-discord-gui");
-            if (gui) {
-                gui.style.display = gui.style.display === "none" ? "block" : "none";
-            } else {
-                debug('[init] GUI element not found when toggling');
-            }
+            gui.style.display = gui.style.display === "none" ? "block" : "none";
         });
         document.body.appendChild(toggleButton);
-        debug('[init] GUI toggle button added');
-    
+
         // Get the target node for the observer
         const targetNode = document.querySelector('#forums-page-wrap');
-    
+
         // Start observing for changes after a delay
         if (targetNode) {
-            // Set up the observer
             observer.observe(targetNode, {
                 childList: true,
                 subtree: true
             });
-            debug('[init] Observer set up to watch for new posts within #forums-page-wrap');
-    
+            debug('[Observer] Observer set up to watch for new posts within #forums-page-wrap');
+
             // Initial processing of posts after a delay
-            setTimeout(() => {
-                debug('[init] Processing initial posts after delay');
-                processPosts();
-            }, 2000);
+            setTimeout(processPosts, 2000);
         } else {
-            console.error('[init] Target node #forums-page-wrap not found.');
+            console.error('[MutationObserver] Target node #forums-page-wrap not found.');
         }
     };
-    
+
     // --- Start the script ---
-    
+
     init();
-    
-    })();
+
+})();
