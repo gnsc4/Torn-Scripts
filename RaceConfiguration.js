@@ -13,7 +13,7 @@
 // @require      https://code.jquery.com/jquery-3.7.1.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.min.js
 // @license      MIT
-// @require      https://github.com/Kwack-Kwack/GMforPDA/raw/refs/heads/main/GMforPDA.raw.user.js  <-- Moved @require to header, always include GMforPDA
+// @require      https://github.com/Kwack-Kwack/GMforPDA/raw/refs/heads/main/GMforPDA.raw.user.js
 // ==/UserScript==
 
 (function() {
