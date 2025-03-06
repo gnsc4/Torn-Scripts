@@ -2,7 +2,7 @@
 // @name         Torn Race Config GUI
 // @namespace    torn.raceconfiggui
 // @description  GUI to configure Torn racing parameters, schedule races, set passwords, save presets, create races easily, betting feature, styled toggle button, release storage key, hover button color change, final polish, with Torn PDA support, update URL.
-// @version      2.44
+// @version      2.45
 // @updateURL    https://raw.githubusercontent.com/gnsc4/Torn-Scripts/refs/heads/master/RaceConfiguration.js
 // @downloadURL  https://raw.githubusercontent.com/gnsc4/Torn-Scripts/refs/heads/master/RaceConfiguration.js
 // @author       GNSC4 [268863] (Based on Shlefter's script, GMforPDA by Kwack)
@@ -13,12 +13,8 @@
 // @require      https://code.jquery.com/jquery-3.7.1.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.min.js
 // @license      MIT
+// @require      https://github.com/Kwack-Kwack/GMforPDA/raw/refs/heads/main/GMforPDA.raw.user.js  <-- Moved @require to header, always include GMforPDA
 // ==/UserScript==
-
-// --- Conditional @require for GMforPDA ---
-if (typeof GM_info === 'undefined') { // Check if GM_info is NOT defined (likely PDA)
-    @require https://github.com/Kwack-Kwack/GMforPDA/raw/refs/heads/main/GMforPDA.raw.user.js
-}
 
 (function() {
     'use strict';
@@ -116,7 +112,7 @@ if (typeof GM_info === 'undefined') { // Check if GM_info is NOT defined (likely
                 </div>
             </div>
             <button id="closeGUIButton" class="close-button" style="position: absolute; top: 5px; right: 5px; cursor: pointer; color: #ddd; background: #555; border: none; border-radius: 3px;">[X]</button>
-            <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">v2.43</span>  </div>
+            <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">v2.45</span>  </div>
     `;
     $('body').append(guiHTML);
 
