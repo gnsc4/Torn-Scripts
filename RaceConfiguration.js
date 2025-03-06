@@ -1,18 +1,24 @@
 // ==UserScript==
 // @name         Torn Race Config GUI
 // @namespace    torn.raceconfiggui
-// @description  GUI to configure Torn racing parameters and save presets - Customizable Racers - Improved CSS Buttons & Position
-// @version      1.3
-// @author       GPT-Assistant (Based on Shlefter's script)
+// @description  GUI to configure Torn racing parameters and save presets - Customizable Racers - Improved CSS Buttons & Position - Logo Overlap & Event Listener Fix - v2.6 Focus Blur Capture
+// @version      2.6
+// @author       GNSC4 (Based on GPT-Assistant & Shlefter's script)
 // @match        https://www.torn.com/loader.php?sid=racing*
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_deleteValue
-// @require      https://code.jquery.com/jquery-3.6.0.min.js
+// @require      https://code.jquery.com/jquery-3.7.1.min.js
 // ==/UserScript==
 
 (function() {
     'use strict';
+
+    // --- DEBUG STORAGE KEY ---
+    const STORAGE_API_KEY = 'raceConfigAPIKey_v2_6_debug'; // <--- NEW STORAGE KEY
+
+    // --- STORED API KEY VARIABLE ---
+    let capturedApiKey = ""; // <--- VARIABLE TO STORE API KEY
 
     // Track data
     const tracks = {
@@ -37,7 +43,7 @@
                 <div style="margin-bottom: 10px;">
                     <label for="apiKey">API Key:</label>
                     <input type="text" id="apiKey" placeholder="Enter your API Key" style="margin-left: 5px; color: black;">
-                    <button id="saveApiKey" style="margin-left: 5px; color: #ddd; background-color: #555; border: 1px solid #777; border-radius: 3px; padding: 5px 10px; cursor: pointer;">Save API Key</button>
+                    <button id="saveApiKeyCustom" style="margin-left: 5px; color: #ddd; background-color: #555; border: 1px solid #777; border-radius: 3px; padding: 5px 10px; cursor: pointer;">Save API Key</button>
                 </div>
                 <div style="margin-bottom: 10px;">
                     <label for="trackID">Track:</label>
@@ -79,47 +85,65 @@
                     </div>
                 </div>
                 <button id="closeGUIButton" style="position: absolute; top: 5px; right: 5px; cursor: pointer; color: #ddd; background: #555; border: none; border-radius: 3px;">[X]</button>
+                <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">v2.6</span>
             </div>
         `;
         $('body').append(guiHTML);
 
+        // --- CSS for Logo Overlap Fix ---
+        const style = document.createElement('style');
+        style.textContent = `#tcLogo { pointer-events: none; }`; // Make logo ignore pointer events
+        document.head.appendChild(style);
+
         loadSavedApiKey();
         loadCars();
         loadPresets();
-        setupEventListeners();
+        setupEventListeners(); // Call setupEventListeners AFTER GUI is created and appended
         applyPresetFromURL(); // Check for preset in URL on GUI creation
     }
 
     // --- Load and Save API Key ---
     function loadSavedApiKey() {
-        const apiKey = GM_getValue('tornApiKey', '');
+        const apiKey = GM_getValue(STORAGE_API_KEY, ''); // <--- NEW STORAGE KEY
         $('#apiKey').val(apiKey);
     }
 
     function saveApiKey() {
-        const apiKey = $('#apiKey').val();
-        console.log("Saving API Key:", apiKey); // Added console log before saving
-        GM_setValue('tornApiKey', apiKey);
+        console.log("saveApiKey() function called - v2.6"); // <--- Added log
+
+        console.log("--- saveApiKey() Using CAPTURED API KEY ---"); // Log captured API key section start
+        let apiKeyToSave = capturedApiKey.trim(); // Use the captured value
+        console.log("Saving API Key VALUE (after trim - from captured value):", apiKeyToSave);
+
+        GM_setValue(STORAGE_API_KEY, apiKeyToSave); // <--- NEW STORAGE KEY
+
+        // --- IMMEDIATE READ BACK AND LOG ---
+        const apiKeyReadBack = GM_getValue(STORAGE_API_KEY); // <--- NEW STORAGE KEY
+        console.log("API Key Read Back IMMEDIATELY after saving (from captured value):", apiKeyReadBack);
+
         alert('API Key Saved (It is stored locally in your browser storage).');
-        console.log("Calling loadCars() after saving API Key"); // Added console log before calling loadCars
-        loadCars();
+
+        setTimeout(function() { // <--- DELAY BEFORE LOAD CARS
+            console.log("Calling loadCars() AFTER 50ms delay");
+            loadCars();
+        }, 50);
     }
 
 
     // --- Car Data Fetching ---
     function loadCars() {
-        console.log("loadCars() function called"); // Added console log at the start of loadCars
-        const apiKey = GM_getValue('tornApiKey');
+        console.log("loadCars() function called");
+        const apiKey = GM_getValue(STORAGE_API_KEY); // <--- NEW STORAGE KEY
         const carSelect = $('#carID');
-    
+
         if (!apiKey) {
-            console.log("No API key found in GM_getValue"); // Added console log if no API key
+            console.log("No API key found in GM_getValue");
             carSelect.html('<option value="">Enter API Key First</option>');
             return;
         }
-    
-        console.log("API Key retrieved from GM_getValue:", apiKey); // Added console log to show retrieved API key
-        carSelect.html('<option value="">Loading Cars...</option>'); // Reset and show loading
+
+        console.log("API Key retrieved from GM_getValue:", apiKey);
+        carSelect.html('<option value="">Loading Cars...</option>');
 
         $.ajax({
             url: `https://api.torn.com/v2/user/?selections=enlistedcars&key=${apiKey}`,
@@ -261,12 +285,22 @@
 
     // --- Event Listeners ---
     function setupEventListeners() {
-        console.log("setupEventListeners() called"); // ADD THIS LINE
-        $('#saveApiKey').on('click', saveApiKey);
+        console.log("setupEventListeners() called (v2.6)");
+
+        // --- API KEY INPUT BLUR EVENT ---
+        $('#apiKey').on('blur', function() { // <--- BLUR EVENT LISTENER
+            capturedApiKey = $(this).val();
+            console.log("--- API Key Input BLUR Event ---"); // Log blur event
+            console.log("capturedApiKey on blur:", capturedApiKey); // Log captured value on blur
+        });
+
+
+        // --- SAVE API KEY BUTTON CLICK EVENT ---
+        $('#saveApiKeyCustom').on('click', saveApiKey);
+
         $('#createRaceButton').on('click', createRace);
         $('#savePresetButton').on('click', savePreset);
         $('#closeGUIButton').on('click', function() { $('#raceConfigGUI').hide(); });
-    
         $('#presetButtons').on('click', '.remove-preset', function() {
             const presetName = $(this).prev('.preset-button').text();
             removePreset(presetName, this);
