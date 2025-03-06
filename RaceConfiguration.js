@@ -1,9 +1,11 @@
-// ==UserScript==
+// // ==UserScript==
 // @name         Torn Race Config GUI
 // @namespace    torn.raceconfiggui
-// @description  GUI to configure Torn racing parameters, schedule races, set passwords, save presets, and create custom races easily.
-// @version      2.30
-// @author       GNSC4 (Based on Shlefter's script)
+// @description  GUI to configure Torn racing parameters, schedule races, set passwords, save presets, create races easily.
+// @version      2.31
+// @updateURL    https://raw.githubusercontent.com/gnsc4/Torn-Scripts/main/RaceConfiguration.js
+// @downloadURL  https://raw.githubusercontent.com/gnsc4/Torn-Scripts/main/RaceConfiguration.js
+// @author       GNSC4 [268863] (Based on Shlefter's script)
 // @match        https://www.torn.com/loader.php?sid=racing*
 // @grant        GM_setValue
 // @grant        GM_getValue
