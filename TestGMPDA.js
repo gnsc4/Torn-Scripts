@@ -2,6 +2,7 @@
 // @name         Minimal Test Script - DOM Test (PDA)
 // @match        https://www.torn.com/loader.php?sid=racing*
 // @require      https://code.jquery.com/jquery-3.7.1.min.js
+// @version      1.0
 // ==/UserScript==
 
 (function() {
