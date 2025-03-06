@@ -1,10 +1,10 @@
 // ==UserScript==
-// @name         Torn Race Config GUI - PDA & Desktop (GMfPDA Direct Assign) - DEBUG v2.54
+// @name         Torn Race Config GUI - PDA & Desktop (GMfPDA Direct Assign) - v2.55
 // @namespace    torn.raceconfiggui.pdadesktop
-// @description  GUI to configure Torn racing, schedule races, set passwords, presets. Works on PDA & Desktop with GMforPDA (Direct Assign) - DEBUGGING VERSION WITH CONSOLE LOGS
-// @version      2.54
-// @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
-// @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
+// @description  GUI to configure Torn racing, schedule races, set passwords, presets. Works on PDA & Desktop with GMforPDA (Direct Assign) - v2.55 with namespaced storage keys
+// @version      2.55-PDA-Desktop-GMfPDA-DirectAssign
+// @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_Desktop_GMfPDA_DirectAssign.user.js  // <-- IMPORTANT: Use REAL URL
+// @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_Desktop_GMfPDA_DirectAssign.user.js // <-- IMPORTANT: Use REAL URL
 // @author       GNSC4 [268863] (Based on Shlefter's script, GMforPDA by Kwack, Direct Assign Mod for Desktop)
 // @match        https://www.torn.com/loader.php?sid=racing*
 // @grant        GM_setValue
@@ -200,7 +200,7 @@
     })(window, Object, DOMException, AbortController, Promise, localStorage);
     // --- End GMforPDA Inlined Code ---
 
-    const STORAGE_API_KEY = 'raceConfigAPIKey_release';
+    const STORAGE_API_KEY = 'torn.raceconfiggui.pdadesktop_raceConfigAPIKey_release'; // <-- NAMESPACED KEY
 
     // --- Global Styles ---
     const style = document.createElement('style');
@@ -293,7 +293,7 @@
                 </div>
             </div>
             <button id="closeGUIButton" class="close-button" style="position: absolute; top: 5px; right: 5px; cursor: pointer; color: #ddd; background: #555; border: none; border-radius: 3px;">[X]</button>
-            <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">v2.54</span>    </div>
+            <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">v2.55</span>    </div>
     `;
     $('body').append(guiHTML);
 
@@ -305,15 +305,17 @@
 
     // --- Load and Save API Key ---
     function loadSavedApiKey() {
-        let apiKey = GM_getValue(STORAGE_API_KEY, '');
+        // Old: let apiKey = GM_getValue(STORAGE_API_KEY, '');
+        // New:
+        let apiKey = GM_getValue('torn.raceconfiggui.pdadesktop_raceConfigAPIKey_release', '');
         $('#raceConfigApiKey').val(apiKey);
     }
 
     function saveApiKey() {
-        console.log("saveApiKey() function START"); // <-- ADDED LOG
+        console.log("saveApiKey() function START");
         let apiKeyToSave = $('#raceConfigApiKey').val().trim();
-        console.log("saveApiKey() - API Key to save:", apiKeyToSave); // <-- ADDED LOG
-        GM_setValue(STORAGE_API_KEY, apiKeyToSave);
+        console.log("saveApiKey() - API Key to save:", apiKeyToSave);
+        GM_setValue('torn.raceconfiggui.pdadesktop_raceConfigAPIKey_release', apiKeyToSave); // <-- NAMESPACED KEY
         alert('API Key Saved (It is stored locally in your browser storage).');
         setTimeout(loadCars, 50);
     }
@@ -321,7 +323,9 @@
 
     // --- Car Data Fetching ---
     function loadCars() {
-        const apiKey = GM_getValue(STORAGE_API_KEY);
+        // Old: const apiKey = GM_getValue(STORAGE_API_KEY);
+        // New:
+        const apiKey = GM_getValue('torn.raceconfiggui.pdadesktop_raceConfigAPIKey_release'); // <-- NAMESPACED KEY
         const carSelect = $('#carID');
 
         if (!apiKey) {
@@ -402,108 +406,112 @@
 
     // --- Preset Functions ---
     function loadPresets() {
-        console.log("loadPresets() function START"); // --- ADD THIS LINE ---
-        const presets = GM_getValue('racePresets', {});
-        console.log("loadPresets() - After GM_getValue, presets:", presets); // --- ADD THIS LINE ---
+        console.log("loadPresets() function START");
+        const presets = GM_getValue('torn.raceconfiggui.pdadesktop_racePresets', {}); // <-- NAMESPACED KEY
+        console.log("loadPresets() - After GM_getValue, presets:", presets);
         const presetButtonsDiv = $('#presetButtons');
-        console.log("loadPresets() - Before presetButtonsDiv.empty()"); // --- ADD THIS LINE ---
+        console.log("loadPresets() - Before presetButtonsDiv.empty()");
         presetButtonsDiv.empty();
-        console.log("loadPresets() - After presetButtonsDiv.empty()"); // --- ADD THIS LINE ---
+        console.log("loadPresets() - After presetButtonsDiv.empty()");
 
-        console.log("loadPresets() - Starting $.each loop for presets"); // --- ADD THIS LINE ---
+        console.log("loadPresets() - Starting $.each loop for presets");
         $.each(presets, function(presetName, presetConfig) {
-            console.log("loadPresets() - Inside $.each loop, presetName:", presetName, "presetConfig:", presetConfig); // --- ADD THIS LINE ---
+            console.log("loadPresets() - Inside $.each loop, presetName:", presetName, "presetConfig:", presetConfig);
             presetButtonsDiv.append(createPresetButton(presetName, presetConfig));
-            console.log("loadPresets() - After append createPresetButton for:", presetName); // --- ADD THIS LINE ---
+            console.log("loadPresets() - After append createPresetButton for:", presetName);
         });
-        console.log("loadPresets() - Finished $.each loop for presets"); // --- ADD THIS LINE ---
-        console.log("loadPresets() function END"); // --- ADD THIS LINE ---
+        console.log("loadPresets() - Finished $.each loop for presets");
+        console.log("loadPresets() function END");
     }
 
     function savePreset() {
-        console.log("savePreset() function START"); // --- ADD THIS LINE ---
+        console.log("savePreset() function START");
         const presetName = prompt("Enter a name for this preset:");
-        console.log("savePreset() - After prompt, presetName:", presetName); // --- ADD THIS LINE ---
+        console.log("savePreset() - After prompt, presetName:", presetName);
         if (!presetName) {
-            console.log("savePreset() - presetName was cancelled or empty, returning"); // --- ADD THIS LINE ---
+            console.log("savePreset() - presetName was cancelled or empty, returning");
             return;
         }
 
-        const presets = GM_getValue('racePresets', {});
-        console.log("savePreset() - After GM_getValue, current presets:", presets); // --- ADD THIS LINE ---
+        // Old: const presets = GM_getValue('racePresets', {});
+        // New:
+        const presets = GM_getValue('torn.raceconfiggui.pdadesktop_racePresets', {}); // <-- NAMESPACED KEY
+        console.log("savePreset() - After GM_getValue, current presets:", presets);
         const currentConfig = getCurrentConfig();
-        console.log("savePreset() - getCurrentConfig:", currentConfig); // --- ADD THIS LINE ---
+        console.log("savePreset() - getCurrentConfig:", currentConfig);
         presets[presetName] = currentConfig;
-        console.log("savePreset() - Before GM_setValue, updated presets:", presets); // --- ADD THIS LINE ---
-        GM_setValue('racePresets', presets);
-        console.log("savePreset() - After GM_setValue, presetName:", presetName); // --- ADD THIS LINE ---
+        console.log("savePreset() - Before GM_setValue, updated presets:", presets);
+        GM_setValue('torn.raceconfiggui.pdadesktop_racePresets', presets); // <-- NAMESPACED KEY
+        console.log("savePreset() - After GM_setValue, presetName:", presetName);
         loadPresets();
-        console.log("savePreset() - After loadPresets() call"); // --- ADD THIS LINE ---
-        console.log("savePreset() function END"); // --- ADD THIS LINE ---
+        console.log("savePreset() - After loadPresets() call");
+        console.log("savePreset() function END");
     }
 
     function removePreset(presetName, buttonElement) {
-        console.log("removePreset() function START, presetName:", presetName); // --- ADD THIS LINE ---
+        console.log("removePreset() function START, presetName:", presetName);
         if (confirm(`Are you sure you want to delete the preset "${presetName}"?`)) {
-            console.log("removePreset() - User confirmed deletion of preset:", presetName); // --- ADD THIS LINE ---
-            const presets = GM_getValue('racePresets', {});
-            console.log("removePreset() - After GM_getValue, current presets:", presets); // --- ADD THIS LINE ---
+            console.log("removePreset() - User confirmed deletion of preset:", presetName);
+            // Old: const presets = GM_getValue('racePresets', {});
+            // New:
+            const presets = GM_getValue('torn.raceconfiggui.pdadesktop_racePresets', {}); // <-- NAMESPACED KEY
+            console.log("removePreset() - After GM_getValue, current presets:", presets);
             delete presets[presetName];
-            console.log("removePreset() - After delete presets[presetName], updated presets:", presets); // --- ADD THIS LINE ---
-            GM_setValue('racePresets', presets);
-            console.log("removePreset() - After GM_setValue, presetName:", presetName); // --- ADD THIS LINE ---
+            console.log("removePreset() - After delete presets[presetName], updated presets:", presets);
+            GM_setValue('torn.raceconfiggui.pdadesktop_racePresets', presets); // <-- NAMESPACED KEY
+            console.log("removePreset() - After GM_setValue, presetName:", presetName);
             $(buttonElement).closest('.preset-button-container').remove();
-            console.log("removePreset() - After remove button from GUI"); // --- ADD THIS LINE ---
+            console.log("removePreset() - After remove button from GUI");
         } else {
-            console.log("removePreset() - User cancelled deletion of preset:", presetName); // --- ADD THIS LINE ---
+            console.log("removePreset() - User cancelled deletion of preset:", presetName);
         }
-        console.log("removePreset() function END, presetName:", presetName); // --- ADD THIS LINE ---
+        console.log("removePreset() function END, presetName:", presetName);
     }
 
     function applyPreset(presetConfig) {
-        console.log("applyPreset() function START, presetConfig:", presetConfig); // --- ADD THIS LINE ---
-        console.log("applyPreset() - Setting trackID to:", presetConfig.trackID); // --- ADD THIS LINE ---
+        console.log("applyPreset() function START, presetConfig:", presetConfig);
+        console.log("applyPreset() - Setting trackID to:", presetConfig.trackID);
         $('#trackID').val(presetConfig.trackID);
-        console.log("applyPreset() - Setting raceName to:", presetConfig.raceName); // --- ADD THIS LINE ---
+        console.log("applyPreset() - Setting raceName to:", presetConfig.raceName);
         $('#raceName').val(presetConfig.raceName);
-        console.log("applyPreset() - Setting laps to:", presetConfig.laps); // --- ADD THIS LINE ---
+        console.log("applyPreset() - Setting laps to:", presetConfig.laps);
         $('#laps').val(presetConfig.laps);
-        console.log("applyPreset() - Setting carID to:", presetConfig.carID); // --- ADD THIS LINE ---
+        console.log("applyPreset() - Setting carID to:", presetConfig.carID);
         $('#carID').val(presetConfig.carID);
-        console.log("applyPreset() - Setting minDrivers to:", presetConfig.minDrivers); // --- ADD THIS LINE ---
+        console.log("applyPreset() - Setting minDrivers to:", presetConfig.minDrivers);
         $('#minDrivers').val(presetConfig.minDrivers);
-        console.log("applyPreset() - Setting maxDrivers to:", presetConfig.maxDrivers); // --- ADD THIS LINE ---
+        console.log("applyPreset() - Setting maxDrivers to:", presetConfig.maxDrivers);
         $('#maxDrivers').val(presetConfig.maxDrivers);
-        console.log("applyPreset() - Setting racePassword to:", presetConfig.racePassword); // --- ADD THIS LINE ---
+        console.log("applyPreset() - Setting racePassword to:", presetConfig.racePassword);
         $('#racePassword').val(presetConfig.racePassword || '');
         //$('#raceStartTime').val(presetConfig.raceStartTime || '');  // <--- COMMENTED OUT
-        console.log("applyPreset() - Setting betAmount to:", presetConfig.betAmount); // --- ADD THIS LINE ---
+        console.log("applyPreset() - Setting betAmount to:", presetConfig.betAmount);
         $('#betAmount').val(presetConfig.betAmount || '0');
-        console.log("applyPreset() function END, presetConfig:", presetConfig); // --- ADD THIS LINE ---
+        console.log("applyPreset() function END, presetConfig:", presetConfig);
     }
 
     function createPresetButton(presetName, presetConfig) {
-        console.log("createPresetButton() function START, presetName:", presetName, "presetConfig:", presetConfig); // --- ADD THIS LINE ---
+        console.log("createPresetButton() function START, presetName:", presetName, "presetConfig:", presetConfig);
         const container = $('<div class="preset-button-container" style="display: inline-block; margin-right: 5px; margin-bottom: 5px;"></div>');
         const button = $(`<button class="preset-button" style="cursor: pointer; margin-right: 2px; color: #ddd; background-color: #555; border: 1px solid #777; border-radius: 3px; padding: 8px 15px;">${presetName}</button>`);
         const removeButton = $(`<button class="remove-preset" style="cursor: pointer; font-size: 0.8em; color: #ddd; background: #555; border: none; border-radius: 3px;">x</button>`);
 
-        console.log("createPresetButton() - Attaching click handler to preset button:", presetName); // --- ADD THIS LINE ---
+        console.log("createPresetButton() - Attaching click handler to preset button:", presetName);
         button.on('click', function() {
-            console.log("Preset button clicked, presetName:", presetName); // --- ADD THIS LINE ---
+            console.log("Preset button clicked, presetName:", presetName);
             applyPreset(presetConfig);
-            console.log("After applyPreset() call from button click, presetName:", presetName); // --- ADD THIS LINE ---
+            console.log("After applyPreset() call from button click, presetName:", presetName);
         });
-        console.log("createPresetButton() - Attaching click handler to remove button:", presetName); // --- ADD THIS LINE ---
+        console.log("createPresetButton() - Attaching click handler to remove button:", presetName);
         removeButton.on('click', function() {
-            console.log("Remove preset button clicked, presetName:", presetName); // --- ADD THIS LINE ---
+            console.log("Remove preset button clicked, presetName:", presetName);
             removePreset(presetName, removeButton);
-            console.log("After removePreset() call from remove button click, presetName:", presetName); // --- ADD THIS LINE ---
+            console.log("After removePreset() call from remove button click, presetName:", presetName);
         });
 
         container.append(button);
         container.append(removeButton);
-        console.log("createPresetButton() function END, presetName:", presetName); // --- ADD THIS LINE ---
+        console.log("createPresetButton() function END, presetName:", presetName);
         return container;
     }
 
