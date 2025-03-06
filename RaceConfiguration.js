@@ -2,7 +2,7 @@
 // @name         Torn Race Config GUI
 // @namespace    torn.raceconfiggui
 // @description  GUI to configure Torn racing parameters, schedule races, set passwords, save presets, create races easily.
-// @version      2.33
+// @version      2.34
 // @updateURL    https://raw.githubusercontent.com/gnsc4/Torn-Scripts/refs/heads/master/RaceConfiguration.js
 // @downloadURL  https://raw.githubusercontent.com/gnsc4/Torn-Scripts/refs/heads/master/RaceConfiguration.js
 // @author       GNSC4 [268863] (Based on Shlefter's script)
@@ -12,6 +12,7 @@
 // @grant        GM_deleteValue
 // @require      https://code.jquery.com/jquery-3.7.1.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.min.js
+// @license      MIT
 // ==/UserScript==
 
 (function() {
@@ -91,7 +92,7 @@
                     </div>
                 </div>
                 <button id="closeGUIButton" style="position: absolute; top: 5px; right: 5px; cursor: pointer; color: #ddd; background: #555; border: none; border-radius: 3px;">[X]</button>
-                <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">v2.33</span>  </div>
+                <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">v2.34</span>  </div>
         `;
         $('body').append(guiHTML);
 
