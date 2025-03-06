@@ -1,24 +1,21 @@
 // ==UserScript==
 // @name         Torn Race Config GUI
 // @namespace    torn.raceconfiggui
-// @description  GUI to configure Torn racing parameters and save presets - Customizable Racers - Improved CSS Buttons & Position - Logo Overlap & Event Listener Fix - v2.25 RFC Fix Attempt 1
-// @version      2.25
-// @author       GNSC4 (Based on GPT-Assistant & Shlefter's script)
+// @description  GUI to configure Torn racing parameters, schedule races, set passwords, save presets, and create custom races easily.
+// @version      2.30
+// @author       GNSC4 (Based on Shlefter's script)
 // @match        https://www.torn.com/loader.php?sid=racing*
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_deleteValue
 // @require      https://code.jquery.com/jquery-3.7.1.min.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.min.js  // <--- jQuery Cookie Plugin
+// @require      https://cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.min.js
 // ==/UserScript==
 
 (function() {
     'use strict';
 
-    // --- DEBUG STORAGE KEY ---
-    const STORAGE_API_KEY = 'raceConfigAPIKey_v2_15_debug'; // <--- NEW STORAGE KEY
-    const STORAGE_API_KEY_OLD = 'raceConfigAPIKey_v2_13_debug'; // <--- OLD STORAGE KEY (v2.13)
-
+    const STORAGE_API_KEY = 'raceConfigAPIKey_v2_15_debug';
 
     // Track data
     const tracks = {
@@ -32,7 +29,6 @@
 
     // --- GUI Elements ---
     function createGUI() {
-        // Check if GUI already exists to prevent duplicates
         if ($('#raceConfigGUI').length) {
             return;
         }
@@ -56,8 +52,12 @@
                     <input type="text" id="raceName" style="margin-left: 5px; color: black;">
                 </div>
                 <div style="margin-bottom: 10px;">
-                    <label for="racePassword">Password (optional):</label> <!-  --- NEW: Password Input ---->
-                    <input type="text" id="racePassword" placeholder="Race Password" style="margin-left: 5px; color: black;"> <!-  --- NEW: Password Input ---->
+                    <label for="racePassword">Password (optional):</label>
+                    <input type="text" id="racePassword" placeholder="Race Password" style="margin-left: 5px; color: black;">
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <label for="raceStartTime">Race Start Time (GMT):</label> <span style="font-size: 0.8em; color: #ccc;">(Optional, 15 min intervals)</span>
+                    <input type="datetime-local" id="raceStartTime" style="margin-left: 5px; color: black; width: 170px;">
                 </div>
                 <div style="margin-bottom: 10px;">
                     <label for="laps">Laps:</label>
@@ -89,75 +89,45 @@
                     </div>
                 </div>
                 <button id="closeGUIButton" style="position: absolute; top: 5px; right: 5px; cursor: pointer; color: #ddd; background: #555; border: none; border-radius: 3px;">[X]</button>
-                <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">v2.25</span>  </div>
+                <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">v2.30</span>  </div>
         `;
         $('body').append(guiHTML);
 
-        // --- CSS for Logo Overlap Fix ---
         const style = document.createElement('style');
-        style.textContent = `#tcLogo { pointer-events: none; }`; // Make logo ignore pointer events
+        style.textContent = `#tcLogo { pointer-events: none; }`;
         document.head.appendChild(style);
 
         loadSavedApiKey();
         loadCars();
         loadPresets();
-        setupEventListeners(); // Call setupEventListeners AFTER GUI is created and appended
-        applyPresetFromURL(); // Check for preset in URL on GUI creation
+        setupEventListeners();
+        applyPresetFromURL();
     }
 
     // --- Load and Save API Key ---
     function loadSavedApiKey() {
-        // --- Prioritize NEW storage key, fallback to OLD if needed ---
-        let apiKey = GM_getValue(STORAGE_API_KEY, ''); // <--- NEW STORAGE KEY (v2.15)
-        if (!apiKey) { // Fallback to old key if new one is empty
-            apiKey = GM_getValue(STORAGE_API_KEY_OLD, ''); // <--- OLD STORAGE KEY (v2.13)
-            if (apiKey) {
-                GM_setValue(STORAGE_API_KEY, apiKey); // Migrate from old to new key
-                GM_deleteValue(STORAGE_API_KEY_OLD); // Remove old key
-                console.log("API Key migrated from old storage key to new key.");
-            }
-        }
-        $('#raceConfigApiKey').val(apiKey); // <--- UNIQUE ID
+        let apiKey = GM_getValue(STORAGE_API_KEY, '');
+        $('#raceConfigApiKey').val(apiKey);
     }
 
     function saveApiKey() {
-        console.log("saveApiKey() function called - v2.25"); // <--- Added log
-
-        console.log("--- saveApiKey() DIRECT INPUT READ ---"); // Log direct input read section start
-
-        let apiKeyInputValue_jQuery = $('#raceConfigApiKey').val(); // Get value directly from input on button click  <--- UNIQUE ID
-        let apiKeyToSave = apiKeyInputValue_jQuery.trim(); // Trim the value
-
-        console.log("Reading API Key VALUE directly from input (jQuery):", apiKeyToSave); // Log value being saved
-
-        GM_setValue(STORAGE_API_KEY, apiKeyToSave); // <--- NEW STORAGE KEY
-
-        // --- IMMEDIATE READ BACK AND LOG ---
-        const apiKeyReadBack = GM_getValue(STORAGE_API_KEY); // <--- NEW STORAGE KEY
-        console.log("API Key Read Back IMMEDIATELY after saving (direct input read):", apiKeyReadBack);
-
+        let apiKeyToSave = $('#raceConfigApiKey').val().trim();
+        GM_setValue(STORAGE_API_KEY, apiKeyToSave);
         alert('API Key Saved (It is stored locally in your browser storage).');
-
-        setTimeout(function() { // <--- DELAY BEFORE LOAD CARS
-            console.log("Calling loadCars() AFTER 50ms delay");
-            loadCars();
-        }, 50);
+        setTimeout(loadCars, 50);
     }
 
 
     // --- Car Data Fetching ---
     function loadCars() {
-        console.log("loadCars() function called");
-        const apiKey = GM_getValue(STORAGE_API_KEY); // <--- NEW STORAGE KEY
+        const apiKey = GM_getValue(STORAGE_API_KEY);
         const carSelect = $('#carID');
 
         if (!apiKey) {
-            console.log("No API key found in GM_getValue");
             carSelect.html('<option value="">Enter API Key First</option>');
             return;
         }
 
-        console.log("API Key retrieved from GM_getValue:", apiKey);
         carSelect.html('<option value="">Loading Cars...</option>');
 
         $.ajax({
@@ -169,22 +139,15 @@
                     console.error("API Error:", data.error.error);
                     carSelect.html(`<option value="">API Error: ${data.error.error} </option>`);
                 } else {
-                    carSelect.empty(); // Clear "Loading..." option
+                    carSelect.empty();
                     const cars = data.enlistedcars || {};
                     if (Object.keys(cars).length === 0) {
                         carSelect.html('<option value="">No cars enlisted</option>');
                     } else {
-                        $.each(cars, function(carId, carDetails) { // <--- carId is the KEY, carDetails is the VALUE (object)
-                            // --- DEBUG LOGGING INSIDE LOOP ---
-                            console.log("Car ID (from loop key):", carId); // Log the key from the loop (should not be used as car ID)
-                            console.log("Car Details Object:", carDetails); // Log the entire carDetails object to inspect its properties
-
-                            // --- Use carDetails.item_name if carDetails.name is null --- <---- CAR NAME FIX (already present)
+                        $.each(cars, function(carId, carDetails) {
                             const carDisplayName = carDetails.name || carDetails.item_name;
-                            // --- Use carDetails.id for Car ID --- <---- CORRECT CAR ID - VERSION 2.13 - USE carDetails.id
-                            const carRealID = carDetails.id; // <---- CORRECT CAR ID - VERSION 2.13 - Get car ID from carDetails.id
-
-                            carSelect.append(`<option value="${carRealID}">${carDisplayName} (ID: ${carRealID})</option>`); // <---- CORRECT CAR ID - VERSION 2.13 - Use carRealID in option VALUE and display
+                            const carRealID = carDetails.id;
+                            carSelect.append(`<option value="${carRealID}">${carDisplayName} (ID: ${carRealID})</option>`);
                         });
                     }
                 }
@@ -198,44 +161,40 @@
 
     // --- RFC Value Fetching ---
     function getRFC() {
-        console.log("getRFC() function called");
         if (typeof $.cookie !== 'function') {
             console.error("Error: jQuery Cookie plugin is not loaded correctly!");
-            // REMOVED ALERT in v2.25: alert("Error: jQuery Cookie plugin is not loaded. Race creation might use fallback RFC method."); // <--- REMOVED ALERT in v2.25
-            console.log("Attempting fallback cookie parsing for rfc_v..."); // <--- Log fallback attempt
-            let rfc = null; // Initialize rfc to null
-            const cookies = document.cookie.split("; ");
-            for (let i in cookies) { // Changed to 'let' for block scope
-                let cookie = cookies[i].split("=");
-                if (cookie[0] && cookie[0].trim() === "rfc_v") { // Added trim() and check if cookie[0] exists
-                    rfc = decodeURIComponent(cookie[1]); // DecodeURIComponent for safety
-                    console.log("Fallback cookie parsing successful. rfc_v value:", rfc); // <--- Log success and value
-                    return rfc;
-                }
-            }
-            console.warn("Fallback cookie parsing failed to find rfc_v cookie."); // <--- Log parsing failure
-            return ''; // Return empty string if not found by fallback parsing either
-        }
-
-        let rfcValue = $.cookie('rfc_v'); // Try jQuery Cookie first (even though it's failing for you currently)
-        if (rfcValue) {
-            console.log("rfc_v cookie value (jQuery.cookie):", rfcValue); // Log if jQuery.cookie works (for debugging later)
-            return rfcValue;
-        } else {
-            console.log("jQuery.cookie failed to get rfc_v, attempting fallback parsing..."); // Log if jQuery.cookie fails but fallback is used
-            console.log("Attempting fallback cookie parsing for rfc_v..."); // Redundant log - can remove one of these if needed
+            console.log("Attempting fallback cookie parsing for rfc_v...");
             let rfc = null;
             const cookies = document.cookie.split("; ");
-            for (let i in cookies) { // Changed to 'let' for block scope
+            for (let i in cookies) {
                 let cookie = cookies[i].split("=");
-                if (cookie[0] && cookie[0].trim() === "rfc_v") { // Added trim() and check if cookie[0] exists
-                    rfc = decodeURIComponent(cookie[1]); // DecodeURIComponent for safety
+                if (cookie[0] && cookie[0].trim() === "rfc_v") {
+                    rfc = decodeURIComponent(cookie[1]);
                     console.log("Fallback cookie parsing successful. rfc_v value:", rfc);
                     return rfc;
                 }
             }
             console.warn("Fallback cookie parsing failed to find rfc_v cookie.");
-            return ''; // Return empty string if not found by either method
+            return '';
+        }
+
+        let rfcValue = $.cookie('rfc_v');
+        if (rfcValue) {
+            return rfcValue;
+        } else {
+            console.log("jQuery.cookie failed to get rfc_v, attempting fallback parsing...");
+            let rfc = null;
+            const cookies = document.cookie.split("; ");
+            for (let i in cookies) {
+                let cookie = cookies[i].split("=");
+                if (cookie[0] && cookie[0].trim() === "rfc_v") {
+                    rfc = decodeURIComponent(cookie[1]);
+                    console.log("Fallback cookie parsing successful. rfc_v value:", rfc);
+                    return rfc;
+                }
+            }
+            console.warn("Fallback cookie parsing failed to find rfc_v cookie.");
+            return '';
         }
     }
 
@@ -244,7 +203,7 @@
     function loadPresets() {
         const presets = GM_getValue('racePresets', {});
         const presetButtonsDiv = $('#presetButtons');
-        presetButtonsDiv.empty(); // Clear existing buttons
+        presetButtonsDiv.empty();
 
         $.each(presets, function(presetName, presetConfig) {
             presetButtonsDiv.append(createPresetButton(presetName, presetConfig));
@@ -258,7 +217,7 @@
         const presets = GM_getValue('racePresets', {});
         presets[presetName] = getCurrentConfig();
         GM_setValue('racePresets', presets);
-        loadPresets(); // Reload buttons to display the new one
+        loadPresets();
     }
 
     function removePreset(presetName, buttonElement) {
@@ -266,7 +225,7 @@
             const presets = GM_getValue('racePresets', {});
             delete presets[presetName];
             GM_setValue('racePresets', presets);
-            $(buttonElement).closest('.preset-button-container').remove(); // Remove the button from GUI directly
+            $(buttonElement).closest('.preset-button-container').remove();
         }
     }
 
@@ -275,13 +234,15 @@
         $('#raceName').val(presetConfig.raceName);
         $('#laps').val(presetConfig.laps);
         $('#carID').val(presetConfig.carID);
-        $('#minDrivers').val(presetConfig.minDrivers); // Apply minDrivers from preset
-        $('#maxDrivers').val(presetConfig.maxDrivers); // Apply maxDrivers from preset
+        $('#minDrivers').val(presetConfig.minDrivers);
+        $('#maxDrivers').val(presetConfig.maxDrivers);
+        $('#racePassword').val(presetConfig.racePassword || '');
+        $('#raceStartTime').val(presetConfig.raceStartTime || '');
     }
 
     function createPresetButton(presetName, presetConfig) {
         const container = $('<div class="preset-button-container" style="display: inline-block; margin-right: 5px; margin-bottom: 5px;"></div>');
-        const button = $(`<button class="preset-button" style="cursor: pointer; margin-right: 2px; color: #ddd; background-color: #555; border: 1px solid #777; border-radius: 3px; padding: 8px 15px;">${presetName}</button>`); // <--- STYLED BUTTON
+        const button = $(`<button class="preset-button" style="cursor: pointer; margin-right: 2px; color: #ddd; background-color: #555; border: 1px solid #777; border-radius: 3px; padding: 8px 15px;">${presetName}</button>`);
         const removeButton = $(`<button class="remove-preset" style="cursor: pointer; font-size: 0.8em; color: #ddd; background: #555; border: none; border-radius: 3px;">x</button>`);
 
         button.on('click', function() {
@@ -302,29 +263,64 @@
         const carID = $('#carID').val();
         const trackID = $('#trackID').val();
         const laps = $('#laps').val();
-        const raceName = $('#raceName').val() || `${tracks[trackID]} Race`; // Default race name if empty
-        const minDrivers = $('#minDrivers').val(); // Get minDrivers value from input
-        const maxDrivers = $('#maxDrivers').val(); // Get maxDrivers value from input
-        const racePassword = $('#racePassword').val(); // <--- NEW: Get password value
+        const raceName = $('#raceName').val() || `${tracks[trackID]} Race`;
+        const minDrivers = $('#minDrivers').val();
+        const maxDrivers = $('#maxDrivers').val();
+        const racePassword = $('#racePassword').val();
+        let raceStartTimeInputValue = $('#raceStartTime').val();
 
         if (!carID || !trackID || !laps || !minDrivers || !maxDrivers) {
             alert("Please fill in all race details (Car, Track, Laps, Min/Max Drivers).");
             return;
         }
 
-        const rfcValue = getRFC(); // Get RFC value using getRFC()
+        const rfcValue = getRFC();
 
-        // --- VERSION 2.25: window.location REDIRECT - PASSWORD ---
-        let raceURL = `https://www.torn.com/loader.php?sid=racing&tab=customrace&action=getInRace&step=getInRace&id=&carID=${carID}&createRace=true&title=${encodeURIComponent(raceName)}&minDrivers=${minDrivers}&maxDrivers=${maxDrivers}&trackID=${trackID}&laps=${laps}&minClass=5&carsTypeAllowed=1&carsAllowed=5&betAmount=0&waitTime=${Math.floor(Date.now()/1000)}&rfcv=${rfcValue}`; // <--- Base URL with rfcv
+        let raceURL = `https://www.torn.com/loader.php?sid=racing&tab=customrace&action=getInRace&step=getInRace&id=&carID=${carID}&createRace=true&title=${encodeURIComponent(raceName)}&minDrivers=${minDrivers}&maxDrivers=${maxDrivers}&trackID=${trackID}&laps=${laps}&minClass=5&carsTypeAllowed=1&carsAllowed=5&betAmount=0`;
 
-        if (racePassword) { // <--- CONDITIONALLY ADD PASSWORD PARAMETER
-            raceURL += `&password=${encodeURIComponent(racePassword)}`; // <--- Add password to URL if it exists
+        if (racePassword) {
+            raceURL += `&password=${encodeURIComponent(racePassword)}`;
         }
 
-        window.location = raceURL; // <--- BROWSER REDIRECT - VERSION 2.25 - NO AJAX
-        console.log("Initiating race creation via browser redirect to:", raceURL); // Log redirect URL
-        alert("Race created successfully! Please check Torn racing page."); // <--- SUCCESS ALERT v2.25 - Clearer message
+        let waitTimeValue = Math.floor(Date.now()/1000);
 
+        if (raceStartTimeInputValue) {
+            const parts = raceStartTimeInputValue.split('T');
+            const dateParts = parts[0].split('-');
+            const timeParts = parts[1].split(':');
+
+            const year = parseInt(dateParts[0], 10);
+            const month = parseInt(dateParts[1], 10) - 1;
+            const day = parseInt(dateParts[2], 10);
+            const hour = parseInt(timeParts[0], 10);
+            const minute = parseInt(timeParts[1], 10);
+
+            let startTimeDate = new Date(Date.UTC(year, month, day, hour, minute, 0, 0));
+
+            const minutes = startTimeDate.getUTCMinutes();
+            const remainder = minutes % 15;
+
+            if (remainder !== 0) {
+                const minutesToAdd = 15 - remainder;
+                startTimeDate.setUTCMinutes(minutes + minutesToAdd, 0, 0);
+                raceStartTimeInputValue = startTimeDate.toISOString().slice(0, 16);
+                $('#raceStartTime').val(raceStartTimeInputValue);
+                alert("Start time adjusted to the next 15-minute mark (GMT). Please check the adjusted time in the GUI.");
+            }
+
+
+            waitTimeValue = Math.floor(startTimeDate.getTime() / 1000);
+
+            if (isNaN(waitTimeValue)) {
+                alert("Invalid Start Time. Using current time instead.");
+                waitTimeValue = Math.floor(Date.now()/1000);
+            }
+        }
+        raceURL += `&waitTime=${waitTimeValue}&rfcv=${rfcValue}`;
+
+        window.location = raceURL;
+        console.log("Initiating race creation via browser redirect to:", raceURL);
+        alert("Race created successfully! Please check Torn racing page.");
     }
 
 
@@ -337,7 +333,8 @@
             carID: $('#carID').val(),
             minDrivers: $('#minDrivers').val(),
             maxDrivers: $('#maxDrivers').val(),
-            racePassword: $('#racePassword').val() // <--- NEW: Save password
+            racePassword: $('#racePassword').val(),
+            // raceStartTime: $('#raceStartTime').val() // Not saving start time in presets add this back if you want to save it
         };
     }
 
@@ -348,35 +345,14 @@
         $('#carID').val(presetConfig.carID);
         $('#minDrivers').val(presetConfig.minDrivers);
         $('#maxDrivers').val(presetConfig.maxDrivers);
-        $('#racePassword').val(presetConfig.racePassword || ''); // <--- NEW: Apply password (handle undefined case)
-    }
-
-
-
-    function applyPresetFromURL() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const presetParam = urlParams.get('preset');
-
-        if (presetParam) {
-            const presets = GM_getValue('racePresets', {});
-            const presetToApply = presets[presetParam];
-            if (presetToApply) {
-                applyPreset(presetToApply);
-                alert(`Preset "${presetParam}" applied from URL.`);
-            } else {
-                alert(`Preset "${presetParam}" not found.`);
-            }
-        }
+        $('#racePassword').val(presetConfig.racePassword || '');
+        // $('#raceStartTime').val(presetConfig.raceStartTime || ''); // Not saving start time in presets add this back if you want to save it
     }
 
 
     // --- Event Listeners ---
     function setupEventListeners() {
-        console.log("setupEventListeners() called (v2.25)");
-
-        // --- SAVE API KEY BUTTON CLICK EVENT ---
         $('#saveApiKeyCustom').on('click', saveApiKey);
-
         $('#createRaceButton').on('click', createRace);
         $('#savePresetButton').on('click', savePreset);
         $('#closeGUIButton').on('click', function() { $('#raceConfigGUI').hide(); });
@@ -389,7 +365,6 @@
 
     // --- Initialization ---
     $(document).ready(function() {
-        // Add a button to toggle the GUI - placed next to the page title for example
         if ($('div.content-title > h4').length > 0 && !$('#toggleRaceGUIButton').length) {
             const toggleButton = $(`<button id="toggleRaceGUIButton" style="color: var(--default-blue-color); cursor: pointer; margin-right: 10px;">Race Config GUI</button>`);
             $('div.content-title > h4').append(toggleButton);
@@ -398,7 +373,7 @@
                 if ($('#raceConfigGUI').is(':visible')) {
                     $('#raceConfigGUI').hide();
                 } else {
-                    createGUI(); // Create GUI only when first shown
+                    createGUI();
                     $('#raceConfigGUI').show();
                 }
             });
