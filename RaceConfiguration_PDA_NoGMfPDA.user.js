@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Torn Race Config GUI - PDA & Desktop - v2.6 - Syntax Error Fixed
+// @name         Torn Race Config GUI - PDA & Desktop - v2.68 - Syntax Error Fixed
 // @namespace    torn.raceconfiggui.pdadesktop
-// @description  Simplified GUI with Syntax Error Fixed - v2.67 - Syntax Error Fixed
-// @version      2.67-PDA-Desktop-GMfPDA-SyntaxFixed
+// @description  Simplified GUI with Syntax Error Fixed - v2.68 - Syntax Error Fixed
+// @version      2.68-PDA-Desktop-GMfPDA-SyntaxFixed
 // @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
 // @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
 // @author       GNSC4 [268863] (Based on Shlefter's script)
@@ -204,7 +204,7 @@
 
 
 const STORAGE_API_KEY = 'torn.raceconfiggui.pdadesktop_raceConfigAPIKey_release';
-const PRESET_STORAGE_KEY = 'torn.raceconfiggui.pdadesktop_racePresets_v2_66'; // <--- UNIQUE PRESET STORAGE KEY (v2.66)
+const PRESET_STORAGE_KEY = 'torn.raceconfiggui.pdadesktop_racePresets_v2_68'; // <--- UNIQUE PRESET STORAGE KEY (v2.68)
 
 // --- Global Styles (Minimal) ---
 const style = document.createElement('style');
@@ -229,7 +229,7 @@ if ($('#raceConfigGUI').length) {
 
 const guiHTML = `
     <div id="raceConfigGUI" style="position: fixed; top: 75px; left: 20px; background-color: #333; border: 1px solid #666; padding: 15px; z-index: 1000; border-radius: 5px; color: #eee;">
-        <h3 style="margin-top: 0; color: #fff;">Race Config - v2.66 - Syntax Error Fixed</h3>
+        <h3 style="margin-top: 0; color: #fff;">Race Config - v2.68 - Syntax Error Fixed</h3>
         <div style="margin-bottom: 10px;">
             <label for="raceConfigApiKey">API Key:</label>
             <input type="text" id="raceConfigApiKey" placeholder="Enter Torn API Key" style="margin-left: 5px; color: black;">
@@ -237,14 +237,14 @@ const guiHTML = `
         </div>
 
         <div style="border-top: 1px solid #eee; padding-top: 10px;">
-            <h4>Presets (v2.66 - Syntax Error Fixed)</h4>
+            <h4>Presets (v2.68 - Syntax Error Fixed)</h4>
             <div id="presetButtons"></div>
             <div style="margin-top: 10px;">
                 <button id="savePresetButton" class="gui-button" style="color: #ddd; background-color: #555; border: 1px solid #777; border-radius: 3px; padding: 8px 15px; cursor: pointer;">Save Preset</button>
             </div>
         </div>
         <button id="closeGUIButton" class="close-button" style="position: absolute; top: 5px; right: 5px; cursor: pointer; color: #ddd; background: #555; border: none; border-radius: 3px;">[X]</button>
-        <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">v2.66 - Syntax Error Fixed</span>
+        <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">v2.68 - Syntax Error Fixed</span>
     </div>
 `;
 $('body').append(guiHTML);
@@ -263,14 +263,14 @@ function loadSavedApiKey() {
 function saveApiKey() {
     let apiKeyToSave = $('#raceConfigApiKey').val().trim();
     GM_setValue(STORAGE_API_KEY, apiKeyToSave);
-    alert('API Key Saved (v2.66 - Syntax Error Fixed)');
+    alert('API Key Saved (v2.68 - Syntax Error Fixed)');
     // No loadCars() in this simplified version
 }
 
 
 // --- Preset Functions (Simplified for Debugging) ---
 function loadPresets() {
-    console.log("loadPresets() - START (v2.66)"); // DEBUG CONSOLE LOG - START
+    console.log("loadPresets() - START (v2.68)"); // DEBUG CONSOLE LOG - START
     let presets = {}; // <--- EXPLICITLY CLEAR PRESETS OBJECT
     presets = GM_getValue(PRESET_STORAGE_KEY, {}); // Load from storage AFTER clearing
     console.log("loadPresets() - After GM_getValue, presets object:", presets); // DEBUG CONSOLE LOG - PRESETS OBJECT
@@ -281,50 +281,50 @@ function loadPresets() {
         console.log("loadPresets() - Inside loop, presetName: " + presetName); // DEBUG CONSOLE LOG - LOOP ITERATION
         presetButtonsDiv.append(createPresetButton(presetName, presetConfig));
     });
-    console.log("loadPresets() - END (v2.66)"); // DEBUG CONSOLE LOG - END
+    console.log("loadPresets() - END (v2.68)"); // DEBUG CONSOLE LOG - END
 }
 
 function savePreset() {
-    console.log("savePreset() - START (v2.66)"); // DEBUG CONSOLE LOG - START
-    const presetName = prompt("Enter a name for this preset (v2.66 - Syntax Error Fixed):"); // UPDATED PROMPT
+    console.log("savePreset() - START (v2.68)"); // DEBUG CONSOLE LOG - START
+    const presetName = prompt("Enter a name for this preset (v2.68 - Syntax Error Fixed):"); // UPDATED PROMPT
     if (!presetName) {
-        console.log("savePreset() - No preset name, cancelled (v2.66)"); // DEBUG CONSOLE LOG - CANCELLED
+        console.log("savePreset() - No preset name, cancelled (v2.68)"); // DEBUG CONSOLE LOG - CANCELLED
         return;
     }
 
     const presets = GM_getValue(PRESET_STORAGE_KEY, {});
     console.log("savePreset() - Before save, current presets object:", presets); // DEBUG CONSOLE LOG - PRESETS OBJECT BEFORE SAVE
-    presets[presetName] = { name: presetName, debugVersion: "v2.66-SyntaxFixed" }; // Simplified preset data - UPDATED VERSION
+    presets[presetName] = { name: presetName, debugVersion: "v2.68-SyntaxFixed" }; // Simplified preset data - UPDATED VERSION
     GM_setValue(PRESET_STORAGE_KEY, presets);
     console.log("savePreset() - After GM_setValue, presets object:", presets); // DEBUG CONSOLE LOG - PRESETS OBJECT AFTER SAVE
     loadPresets(); // Immediately reload presets after saving
-    console.log("savePreset() - END (v2.66)"); // DEBUG CONSOLE LOG - END
+    console.log("savePreset() - END (v2.68)"); // DEBUG CONSOLE LOG - END
 }
 
 function removePreset(presetName, buttonElement) {
-    console.log("removePreset() - START, presetName: " + presetName + " (v2.66)"); // DEBUG CONSOLE LOG - START
-    if (confirm(`Are you sure you want to delete preset "${presetName}"? (v2.66 - Syntax Error Fixed)`)) { // UPDATED CONFIRM MESSAGE
-        console.log("removePreset() - Confirmed delete: " + presetName + " (v2.66)"); // DEBUG CONSOLE LOG - DELETE CONFIRMED
+    console.log("removePreset() - START, presetName: " + presetName + " (v2.68)"); // DEBUG CONSOLE LOG - START
+    if (confirm(`Are you sure you want to delete preset "${presetName}"? (v2.68 - Syntax Error Fixed)`)) { // UPDATED CONFIRM MESSAGE
+        console.log("removePreset() - Confirmed delete: " + presetName + " (v2.68)"); // DEBUG CONSOLE LOG - DELETE CONFIRMED
         const presets = GM_getValue(PRESET_STORAGE_KEY, {});
         delete presets[presetName];
         GM_setValue(PRESET_STORAGE_KEY, presets);
         $(buttonElement).closest('.preset-button-container').remove();
-        console.log("removePreset() - Preset removed from GUI: " + presetName + " (v2.66)"); // DEBUG CONSOLE LOG - GUI REMOVED
+        console.log("removePreset() - Preset removed from GUI: " + presetName + " (v2.68)"); // DEBUG CONSOLE LOG - GUI REMOVED
     } else {
-        console.log("removePreset() - Cancelled delete: " + presetName + " (v2.66)"); // DEBUG CONSOLE LOG - DELETE CANCELLED
+        console.log("removePreset() - Cancelled delete: " + presetName + " (v2.68)"); // DEBUG CONSOLE LOG - DELETE CANCELLED
     }
-    console.log("removePreset() - END, presetName: " + presetName + " (v2.66)"); // DEBUG CONSOLE LOG - END
+    console.log("removePreset() - END, presetName: " + presetName + " (v2.68)"); // DEBUG CONSOLE LOG - END
 }
 
 function applyPreset(presetConfig) {
-    console.log("applyPreset() - Applying preset: " + presetConfig.name + " (v2.66)"); // DEBUG CONSOLE LOG - APPLY START
-    console.log("applyPreset() - END (v2.66)"); // DEBUG CONSOLE LOG - APPLY END
+    console.log("applyPreset() - Applying preset: " + presetConfig.name + " (v2.68)"); // DEBUG CONSOLE LOG - APPLY START
+    console.log("applyPreset() - END (v2.68)"); // DEBUG CONSOLE LOG - APPLY END
 }
 
 
 function createPresetButton(presetName, presetConfig) {
     const container = $('<div class="preset-button-container" style="display: inline-block; margin-right: 5px; margin-bottom: 5px;"></div>');
-    const button = $(`<button class="preset-button" style="cursor: pointer; margin-right: 2px; color: #ddd; background-color: #555; border: 1px solid #777; border-radius: 3px; padding: 8px 15px;">${presetName} (v2.66)</button>`); // v2.66 label
+    const button = $(`<button class="preset-button" style="cursor: pointer; margin-right: 2px; color: #ddd; background-color: #555; border: 1px solid #777; border-radius: 3px; padding: 8px 15px;">${presetName} (v2.68)</button>`); // v2.68 label
     const removeButton = $(`<button class="remove-preset" style="cursor: pointer; font-size: 0.8em; color: #ddd; background: #555; border: none; border-radius: 3px;">x</button>`);
 
     button.on('click', function() { applyPreset(presetConfig); });
@@ -339,7 +339,7 @@ function createPresetButton(presetName, presetConfig) {
 // --- Event Listeners ---
 function setupEventListeners() {
     $('#saveApiKeyCustom').on('click', saveApiKey);
-    $('#savePresetButton').on('click', savePreset); // Save Preset - NO DEBOUNCE in v2.66 (for now)
+    $('#savePresetButton').on('click', savePreset); // Save Preset - NO DEBOUNCE in v2.68 (for now)
     $('#closeGUIButton').on('click', function() { $('#raceConfigGUI').hide(); });
     $('#presetButtons').on('click', '.remove-preset', function() {
         const presetName = $(this).prev('.preset-button').text();
@@ -350,7 +350,7 @@ function setupEventListeners() {
 // --- Initialization ---
 $(document).ready(function() {
     if ($('div.content-title > h4').length > 0 && !$('#toggleRaceGUIButton').length) {
-        const toggleButton = $(`<button id="toggleRaceGUIButton" style="color: #ddd; background-color: #555; border: 1px solid #777; border-radius: 3px; padding: 8px 15px; cursor: pointer; text-decoration: none; margin-right: 10px;">Race Config GUI (v2.66)</button>`); // v2.66 Label
+        const toggleButton = $(`<button id="toggleRaceGUIButton" style="color: #ddd; background-color: #555; border: 1px solid #777; border-radius: 3px; padding: 8px 15px; cursor: pointer; text-decoration: none; margin-right: 10px;">Race Config GUI (v2.68)</button>`); // v2.68 Label
         $('div.content-title > h4').append(toggleButton);
 
         toggleButton.on('click', function() {
@@ -362,5 +362,5 @@ $(document).ready(function() {
             }
         });
     }
-        $('div.content-title > h4').append('<span style="color: orange; margin-left: 10px;">v2.66 - SYNTAX ERROR FIXED - GUI TEST</span>'); // Orange - syntax fixed GUI test
+        $('div.content-title > h4').append('<span style="color: orange; margin-left: 10px;">v2.68 - SYNTAX ERROR FIXED - GUI TEST</span>'); // Orange - syntax fixed GUI test
 });
