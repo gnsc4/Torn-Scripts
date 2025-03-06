@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Race Config GUI
 // @namespace    torn.raceconfiggui
-// @description  GUI to configure Torn racing parameters, schedule races, set passwords, save presets, create races easily, betting feature, styled toggle button, release storage key, hover button color change, final polish, with Torn PDA support, update URL.
+// @description  GUI to configure Torn racing parameters, schedule races, set passwords, save presets, create races easily. Works on PDA
 // @version      2.45
 // @updateURL    https://raw.githubusercontent.com/gnsc4/Torn-Scripts/refs/heads/master/RaceConfiguration.js
 // @downloadURL  https://raw.githubusercontent.com/gnsc4/Torn-Scripts/refs/heads/master/RaceConfiguration.js
