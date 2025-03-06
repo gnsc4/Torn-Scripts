@@ -2,7 +2,7 @@
 // @name         Torn Race Config GUI - PDA & Desktop - v2.57 - Debounced Save DEBUG
 // @namespace    torn.raceconfiggui.pdadesktop
 // @description  Simplified GUI with Debounced Save & Alert Debug - v2.57 - Debounced Save DEBUG
-// @version      2.57-PDA-Desktop-GMfPDA-DebouncedSave-DEBUG
+// @version      2.57
 // @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_Desktop_GMfPDA_DirectAssign.user.js  // <-- IMPORTANT: Use REAL URL
 // @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_Desktop_GMfPDA_DirectAssign.user.js // <-- IMPORTANT: Use REAL URL
 // @author       GNSC4 [268863] (Based on Shlefter's script)
