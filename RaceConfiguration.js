@@ -2,7 +2,7 @@
 // @name         Torn Race Config GUI
 // @namespace    torn.raceconfiggui
 // @description  GUI to configure Torn racing parameters, schedule races, set passwords, save presets, create races easily.
-// @version      2.35
+// @version      2.38
 // @updateURL    https://raw.githubusercontent.com/gnsc4/Torn-Scripts/refs/heads/master/RaceConfiguration.js
 // @downloadURL  https://raw.githubusercontent.com/gnsc4/Torn-Scripts/refs/heads/master/RaceConfiguration.js
 // @author       GNSC4 [268863] (Based on Shlefter's script)
@@ -18,7 +18,7 @@
 (function() {
     'use strict';
 
-    const STORAGE_API_KEY = 'raceConfigAPIKey_v2_15_debug';
+    const STORAGE_API_KEY = 'raceConfigAPIKey_release';
 
     // Track data
     const tracks = {
@@ -42,7 +42,7 @@
                 <div style="margin-bottom: 10px;">
                     <label for="raceConfigApiKey">API Key:</label>
                     <input type="text" id="raceConfigApiKey" placeholder="Enter your API Key" style="margin-left: 5px; color: black;">
-                    <button id="saveApiKeyCustom" style="margin-left: 5px; color: #ddd; background-color: #555; border: 1px solid #777; border-radius: 3px; padding: 5px 10px; cursor: pointer;">Save API Key</button>
+                    <button id="saveApiKeyCustom" class="gui-button" style="margin-left: 5px; color: #ddd; background-color: #555; border: 1px solid #777; border-radius: 3px; padding: 5px 10px; cursor: pointer;">Save API Key</button>
                 </div>
                 <div style="margin-bottom: 10px;">
                     <label for="trackID">Track:</label>
@@ -80,7 +80,7 @@
                 </div>
 
                 <div style="margin-bottom: 15px; border-top: 1px solid #eee; padding-top: 10px;">
-                    <button id="createRaceButton" style="color: #ddd; background-color: #555; border: 1px solid #777; border-radius: 3px; padding: 8px 15px; cursor: pointer;">Create Race</button>
+                    <button id="createRaceButton" class="gui-button" style="color: #ddd; background-color: #555; border: 1px solid #777; border-radius: 3px; padding: 8px 15px; cursor: pointer;">Create Race</button>
                 </div>
 
                 <div style="border-top: 1px solid #eee; padding-top: 10px;">
@@ -88,16 +88,25 @@
                     <div id="presetButtons">
                         </div>
                     <div style="margin-top: 10px;">
-                        <button id="savePresetButton" style="color: #ddd; background-color: #555; border: 1px solid #777; border-radius: 3px; padding: 8px 15px; cursor: pointer;">Save Preset</button>
+                        <button id="savePresetButton" class="gui-button" style="color: #ddd; background-color: #555; border: 1px solid #777; border-radius: 3px; padding: 8px 15px; cursor: pointer;">Save Preset</button>
                     </div>
                 </div>
-                <button id="closeGUIButton" style="position: absolute; top: 5px; right: 5px; cursor: pointer; color: #ddd; background: #555; border: none; border-radius: 3px;">[X]</button>
-                <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">v2.35</span>  </div>
+                <button id="closeGUIButton" class="close-button" style="position: absolute; top: 5px; right: 5px; cursor: pointer; color: #ddd; background: #555; border: none; border-radius: 3px;">[X]</button>
+                <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">v2.38</span>  </div>
         `;
         $('body').append(guiHTML);
 
         const style = document.createElement('style');
-        style.textContent = `#tcLogo { pointer-events: none; }`;
+        style.textContent = `
+            #tcLogo { pointer-events: none; }
+            .gui-button:hover,
+            .preset-button:hover,
+            .remove-preset:hover,
+            .close-button:hover,
+            #closeGUIButton:hover { /* Added #closeGUIButton to hover styles too for consistency */
+                background-color: #777; /* Lighter background on hover */
+            }
+        `;
         document.head.appendChild(style);
 
         loadSavedApiKey();
@@ -369,7 +378,7 @@
     // --- Initialization ---
     $(document).ready(function() {
         if ($('div.content-title > h4').length > 0 && !$('#toggleRaceGUIButton').length) {
-            const toggleButton = $(`<button id="toggleRaceGUIButton" style="color: var(--default-blue-color); cursor: pointer; margin-right: 10px;">Race Config GUI</button>`);
+            const toggleButton = $(`<button id="toggleRaceGUIButton" style="color: #ddd; background-color: #555; border: 1px solid #777; border-radius: 3px; padding: 8px 15px; cursor: pointer; text-decoration: none; margin-right: 10px;">Race Config GUI</button>`); // <--- UPDATED STYLE
             $('div.content-title > h4').append(toggleButton);
 
             toggleButton.on('click', function() {
