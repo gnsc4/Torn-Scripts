@@ -1,6 +1,6 @@
 // ==UserScript==
-// @name         Minimal Test Script - DOM Test PDA v2
+// @name         Minimal Test Script - Alert PDA
 // @match        https://www.torn.com/loader.php?sid=racing*
 // ==/UserScript==
 
-document.querySelector('div.content-title > h4').textContent += ' PDA Script Injected!';
+alert('Minimal PDA Alert Script Loaded!');
