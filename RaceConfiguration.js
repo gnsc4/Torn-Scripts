@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Torn Race Config GUI
 // @namespace    torn.raceconfiggui
-// @description  GUI to configure Torn racing parameters and save presets - Customizable Racers - Improved CSS Buttons & Position - Logo Overlap & Event Listener Fix - v2.6 Focus Blur Capture
-// @version      2.6
+// @description  GUI to configure Torn racing parameters and save presets - Customizable Racers - Improved CSS Buttons & Position - Logo Overlap & Event Listener Fix - v2.13 Truly Correct Car IDs
+// @version      2.13
 // @author       GNSC4 (Based on GPT-Assistant & Shlefter's script)
 // @match        https://www.torn.com/loader.php?sid=racing*
 // @grant        GM_setValue
@@ -15,10 +15,9 @@
     'use strict';
 
     // --- DEBUG STORAGE KEY ---
-    const STORAGE_API_KEY = 'raceConfigAPIKey_v2_6_debug'; // <--- NEW STORAGE KEY
+    const STORAGE_API_KEY = 'raceConfigAPIKey_v2_13_debug'; // <--- NEW STORAGE KEY
+    const STORAGE_API_KEY_OLD = 'raceConfigAPIKey_v2_12_debug'; // <--- OLD STORAGE KEY (v2.12)
 
-    // --- STORED API KEY VARIABLE ---
-    let capturedApiKey = ""; // <--- VARIABLE TO STORE API KEY
 
     // Track data
     const tracks = {
@@ -41,8 +40,8 @@
             <div id="raceConfigGUI" style="position: fixed; top: 75px; left: 20px; background-color: #333; border: 1px solid #666; padding: 15px; z-index: 1000; border-radius: 5px; color: #eee;">
                 <h3 style="margin-top: 0; color: #fff;">Race Configuration</h3>
                 <div style="margin-bottom: 10px;">
-                    <label for="apiKey">API Key:</label>
-                    <input type="text" id="apiKey" placeholder="Enter your API Key" style="margin-left: 5px; color: black;">
+                    <label for="raceConfigApiKey">API Key:</label> <!-  --- UNIQUE ID ---->
+                    <input type="text" id="raceConfigApiKey" placeholder="Enter your API Key" style="margin-left: 5px; color: black;"> <!-  --- UNIQUE ID ---->
                     <button id="saveApiKeyCustom" style="margin-left: 5px; color: #ddd; background-color: #555; border: 1px solid #777; border-radius: 3px; padding: 5px 10px; cursor: pointer;">Save API Key</button>
                 </div>
                 <div style="margin-bottom: 10px;">
@@ -85,7 +84,7 @@
                     </div>
                 </div>
                 <button id="closeGUIButton" style="position: absolute; top: 5px; right: 5px; cursor: pointer; color: #ddd; background: #555; border: none; border-radius: 3px;">[X]</button>
-                <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">v2.6</span>
+                <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">v2.13</span>
             </div>
         `;
         $('body').append(guiHTML);
@@ -104,22 +103,34 @@
 
     // --- Load and Save API Key ---
     function loadSavedApiKey() {
-        const apiKey = GM_getValue(STORAGE_API_KEY, ''); // <--- NEW STORAGE KEY
-        $('#apiKey').val(apiKey);
+        // --- Prioritize NEW storage key, fallback to OLD if needed ---
+        let apiKey = GM_getValue(STORAGE_API_KEY, ''); // <--- NEW STORAGE KEY (v2.13)
+        if (!apiKey) { // Fallback to old key if new one is empty
+            apiKey = GM_getValue(STORAGE_API_KEY_OLD, ''); // <--- OLD STORAGE KEY (v2.12)
+            if (apiKey) {
+                GM_setValue(STORAGE_API_KEY, apiKey); // Migrate from old to new key
+                GM_deleteValue(STORAGE_API_KEY_OLD); // Remove old key
+                console.log("API Key migrated from old storage key to new key.");
+            }
+        }
+        $('#raceConfigApiKey').val(apiKey); // <--- UNIQUE ID
     }
 
     function saveApiKey() {
-        console.log("saveApiKey() function called - v2.6"); // <--- Added log
+        console.log("saveApiKey() function called - v2.13"); // <--- Added log
 
-        console.log("--- saveApiKey() Using CAPTURED API KEY ---"); // Log captured API key section start
-        let apiKeyToSave = capturedApiKey.trim(); // Use the captured value
-        console.log("Saving API Key VALUE (after trim - from captured value):", apiKeyToSave);
+        console.log("--- saveApiKey() DIRECT INPUT READ ---"); // Log direct input read section start
+
+        let apiKeyInputValue_jQuery = $('#raceConfigApiKey').val(); // Get value directly from input on button click  <--- UNIQUE ID
+        let apiKeyToSave = apiKeyInputValue_jQuery.trim(); // Trim the value
+
+        console.log("Reading API Key VALUE directly from input (jQuery):", apiKeyToSave); // Log value being saved
 
         GM_setValue(STORAGE_API_KEY, apiKeyToSave); // <--- NEW STORAGE KEY
 
         // --- IMMEDIATE READ BACK AND LOG ---
         const apiKeyReadBack = GM_getValue(STORAGE_API_KEY); // <--- NEW STORAGE KEY
-        console.log("API Key Read Back IMMEDIATELY after saving (from captured value):", apiKeyReadBack);
+        console.log("API Key Read Back IMMEDIATELY after saving (direct input read):", apiKeyReadBack);
 
         alert('API Key Saved (It is stored locally in your browser storage).');
 
@@ -159,8 +170,17 @@
                     if (Object.keys(cars).length === 0) {
                         carSelect.html('<option value="">No cars enlisted</option>');
                     } else {
-                        $.each(cars, function(carId, carDetails) {
-                            carSelect.append(`<option value="${carId}">${carDetails.name} (ID: ${carId})</option>`);
+                        $.each(cars, function(carId, carDetails) { // <--- carId is the KEY, carDetails is the VALUE (object)
+                            // --- DEBUG LOGGING INSIDE LOOP ---
+                            console.log("Car ID (from loop key):", carId); // Log the key from the loop (should not be used as car ID)
+                            console.log("Car Details Object:", carDetails); // Log the entire carDetails object to inspect its properties
+
+                            // --- Use carDetails.item_name if carDetails.name is null --- <---- CAR NAME FIX (already present)
+                            const carDisplayName = carDetails.name || carDetails.item_name;
+                            // --- Use carDetails.id for Car ID --- <---- CORRECT CAR ID - VERSION 2.13 - USE carDetails.id
+                            const carRealID = carDetails.id; // <---- CORRECT CAR ID - VERSION 2.13 - Get car ID from carDetails.id
+
+                            carSelect.append(`<option value="${carRealID}">${carDisplayName} (ID: ${carRealID})</option>`); // <---- CORRECT CAR ID - VERSION 2.13 - Use carRealID in option VALUE and display
                         });
                     }
                 }
@@ -285,15 +305,7 @@
 
     // --- Event Listeners ---
     function setupEventListeners() {
-        console.log("setupEventListeners() called (v2.6)");
-
-        // --- API KEY INPUT BLUR EVENT ---
-        $('#apiKey').on('blur', function() { // <--- BLUR EVENT LISTENER
-            capturedApiKey = $(this).val();
-            console.log("--- API Key Input BLUR Event ---"); // Log blur event
-            console.log("capturedApiKey on blur:", capturedApiKey); // Log captured value on blur
-        });
-
+        console.log("setupEventListeners() called (v2.13)");
 
         // --- SAVE API KEY BUTTON CLICK EVENT ---
         $('#saveApiKeyCustom').on('click', saveApiKey);
