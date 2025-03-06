@@ -1,11 +1,11 @@
 // ==UserScript==
-// @name         Torn Race Config GUI - PDA (No GMfPDA)
-// @namespace    torn.raceconfiggui.pda
-// @description  GUI to configure Torn racing parameters, schedule races, set passwords, save presets, create races easily. Works on PDA (No GMforPDA Inline)
-// @version      2.50-PDA-NoGMfPDA
-// @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
-// @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
-// @author       GNSC4 [268863] (Based on Shlefter's script, GMforPDA by Kwack)
+// @name         Torn Race Config GUI - PDA & Desktop (GMfPDA Direct Assign)
+// @namespace    torn.raceconfiggui.pdadesktop
+// @description  GUI to configure Torn racing, schedule races, set passwords, presets. Works on PDA & Desktop with GMforPDA (Direct Assign)
+// @version      2.51-PDA-Desktop-GMfPDA-DirectAssign
+// @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_Desktop_GMfPDA_DirectAssign.user.js
+// @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_Desktop_GMfPDA_DirectAssign.user.js
+// @author       GNSC4 [268863] (Based on Shlefter's script, GMforPDA by Kwack, Direct Assign Mod for Desktop)
 // @match        https://www.torn.com/loader.php?sid=racing*
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -17,6 +17,188 @@
 
 (function() {
     'use strict';
+
+    // --- GMforPDA Inlined Code (Direct Assignment Modified) ---
+    ((e, t, o, r, n, i) => {
+        if (typeof GM !== 'undefined') {
+            return;
+        }
+        const s = {
+            script: {},
+            scriptHandler: "GMforPDA version 2.2",
+            version: 2.2,
+        };
+        function a(e, t) {
+            if (!e) throw new TypeError("No key supplied to GM_getValue");
+            const o = i.getItem(e);
+            return "string" != typeof o
+                ? t
+                : o.startsWith("GMV2_")
+                    ? JSON.parse(o.slice(5)) ?? t
+                    : o ?? t;
+        }
+        function l(e, t) {
+            if (!e) throw new TypeError("No key supplied to GM_setValue");
+            i.setItem(e, "GMV2_" + JSON.stringify(t));
+        }
+        function u(e) {
+            if (!e) throw new TypeError("No key supplied to GM_deleteValue");
+            i.removeItem(e);
+        }
+        function c() {
+            return t.keys(i);
+        }
+        function d(e) {
+            if (!e || "string" != typeof e) return;
+            const t = document.createElement("style");
+            (t.type = "text/css"), (t.innerHTML = e), document.head.appendChild(t);
+        }
+        function p(...e) {
+            if ("object" == typeof e[0]) {
+                const { text: o, title: r, onclick: n, ondone: i } = e[0];
+                t(o, r, n, i);
+            } else if ("string" == typeof e[0]) {
+                const [o, r, , n] = e;
+                t(o, r, n);
+            }
+            return { remove: () => {} };
+            function t(e, t, o, r) {
+                if (!e)
+                    throw new TypeError(
+                        "No notification text supplied to GM_notification"
+                    );
+                confirm(`${t ?? "No title specified"}\n${e}`) && o?.(), r?.();
+            }
+        }
+        function f(e) {
+            if (!e) throw new TypeError("No text supplied to GM_setClipboard");
+            navigator.clipboard.writeText(e);
+        }
+        function y(e) {
+            const t = new r(),
+                i = t.signal,
+                s = new r(),
+                a = s.signal,
+                {
+                    url: l,
+                    method: u,
+                    headers: c,
+                    timeout: d,
+                    data: p,
+                    onabort: f,
+                    onerror: w,
+                    onload: y,
+                    onloadend: h,
+                    onprogress: b,
+                    onreadystatechange: m,
+                    ontimeout: M,
+                } = e;
+            setTimeout(() => s.abort(), d ?? 3e4);
+            return {
+                abortController: t,
+                prom: new n(async (e, t) => {
+                    try {
+                        l || t("No URL supplied"),
+                            i.addEventListener("abort", () => t("Request aborted")),
+                            a.addEventListener("abort", () =>
+                                t("Request timed out")
+                            ),
+                            u && "post" === u.toLowerCase()
+                                ? (PDA_httpPost(l, c ?? {}, p ?? "")
+                                    .then(e)
+                                    .catch(t),
+                                  b?.())
+                                : (PDA_httpGet(l).then(e).catch(t), b?.());
+                    } catch (e) {
+                        t(e);
+                    }
+                })
+                    .then((e) => (y?.(e), h?.(e), m?.(e), e))
+                    .catch((e) => {
+                        switch (!0) {
+                            case "Request aborted" === e:
+                                if (
+                                    ((e = new o("Request aborted", "AbortError")),
+                                    f)
+                                )
+                                    return f(e);
+                                if (w) return w(e);
+                                throw e;
+                            case "Request timed out" === e:
+                                if (
+                                    ((e = new o(
+                                        "Request timed out",
+                                        "TimeoutError"
+                                    )),
+                                    M)
+                                )
+                                    return M(e);
+                                if (w) return w(e);
+                                throw e;
+                            case "No URL supplied" === e:
+                                if (
+                                    ((e = new TypeError(
+                                        "Failed to fetch: No URL supplied"
+                                    )),
+                                    w)
+                                )
+                                    return w(e);
+                                throw e;
+                            default:
+                                if (
+                                    ((e && e instanceof Error) ||
+                                        (e = new Error(e ?? "Unknown Error")),
+                                    w)
+                                )
+                                    return w(e);
+                                throw e;
+                        }
+                    }),
+            };
+        }
+        const w = {
+            version: 2.2,
+            info: s,
+            addStyle: d,
+            deleteValue: async (e) => u(e),
+            getValue: async (e, t) => a(e, t),
+            listValues: async () => c(),
+            notification: p,
+            setClipboard: f,
+            setValue: async (e, t) => l(e, t),
+            xmlHttpRequest: async (e) => {
+                if (!e || "object" != typeof e)
+                    throw new TypeError(
+                        "Invalid details passed to GM.xmlHttpRequest"
+                    );
+                const { abortController: t, prom: o } = y(e);
+                return (o.abort = () => t.abort()), o;
+            },
+        };
+        t.entries({
+            GM: t.freeze(w),
+            GM_info: t.freeze(s),
+            GM_getValue: a,
+            GM_setValue: l,
+            GM_deleteValue: u,
+            GM_listValues: c,
+            GM_addStyle: d,
+            GM_notification: p,
+            GM_setClipboard: f,
+            GM_xmlhttpRequest: function (e) {
+                const { abortController: t } = y(e);
+                if (!e || "object" != typeof e)
+                    throw new TypeError(
+                        "Invalid details passed to GM_xmlHttpRequest"
+                    );
+                return { abort: () => t.abort() };
+            },
+            unsafeWindow: e,
+        }).forEach(([o, r]) => {
+            window[o] = r; // <--- DIRECT ASSIGNMENT: window[o] = r;
+        });
+    })(window, Object, DOMException, AbortController, Promise, localStorage);
+    // --- End GMforPDA Inlined Code ---
 
     const STORAGE_API_KEY = 'raceConfigAPIKey_release';
 
@@ -111,7 +293,7 @@
                 </div>
             </div>
             <button id="closeGUIButton" class="close-button" style="position: absolute; top: 5px; right: 5px; cursor: pointer; color: #ddd; background: #555; border: none; border-radius: 3px;">[X]</button>
-            <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">v2.50</span>    </div>
+            <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">v2.51</span>    </div>
     `;
     $('body').append(guiHTML);
 
@@ -404,6 +586,12 @@
                     $('#raceConfigGUI').show();
                 }
             });
+        }
+            $('div.content-title > h4').append('<span style="color: blue; margin-left: 10px;">GMforPDA Direct Assign + Headers</span>'); //  Desktop Test Message - Blue
+        if (typeof GM_getValue !== 'undefined') {
+            $('div.content-title > h4').append('<span style="color: green; margin-left: 10px;">GM_getValue is Defined!</span>'); // Green if defined
+        } else {
+            $('div.content-title > h4').append('<span style="color: red; margin-left: 10px;">GM_getValue is UNDEFINED!</span>'); // Red if UNDEFINED
         }
     });
 
