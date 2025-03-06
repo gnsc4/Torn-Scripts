@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Torn Race Config GUI
 // @namespace    torn.raceconfiggui
-// @description  GUI to configure Torn racing parameters, schedule races, set passwords, save presets, create races easily.
-// @version      2.38
+// @description  GUI to configure Torn racing parameters, schedule races, set passwords, save presets, create races easily, betting feature, styled toggle button, release storage key, hover button color change, final polish, with update URL.
+// @version      2.40
 // @updateURL    https://raw.githubusercontent.com/gnsc4/Torn-Scripts/refs/heads/master/RaceConfiguration.js
 // @downloadURL  https://raw.githubusercontent.com/gnsc4/Torn-Scripts/refs/heads/master/RaceConfiguration.js
 // @author       GNSC4 [268863] (Based on Shlefter's script)
@@ -41,7 +41,7 @@
                 <h3 style="margin-top: 0; color: #fff;">Race Configuration</h3>
                 <div style="margin-bottom: 10px;">
                     <label for="raceConfigApiKey">API Key:</label>
-                    <input type="text" id="raceConfigApiKey" placeholder="Enter your API Key" style="margin-left: 5px; color: black;">
+                    <input type="text" id="raceConfigApiKey" placeholder="Enter Torn API Key" style="margin-left: 5px; color: black;">
                     <button id="saveApiKeyCustom" class="gui-button" style="margin-left: 5px; color: #ddd; background-color: #555; border: 1px solid #777; border-radius: 3px; padding: 5px 10px; cursor: pointer;">Save API Key</button>
                 </div>
                 <div style="margin-bottom: 10px;">
@@ -55,8 +55,12 @@
                     <input type="text" id="raceName" style="margin-left: 5px; color: black;">
                 </div>
                 <div style="margin-bottom: 10px;">
-                    <label for="racePassword">Password (optional):</label>
-                    <input type="text" id="racePassword" placeholder="Race Password" style="margin-left: 5px; color: black;">
+                    <label for="racePassword">Password:</label> <span style="font-size: 0.8em; color: #ccc;"> (optional)</span>
+                    <input type="text" id="racePassword" placeholder="Race Password Optional" style="margin-left: 5px; color: black;">
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <label for="betAmount">Bet Amount:</label> <span style="font-size: 0.8em; color: #ccc;">(Max 10M, Optional for Race)</span>
+                    <input type="number" id="betAmount" value="0" min="0" max="10000000" style="margin-left: 5px; width: 100px; color: black;">
                 </div>
                 <div style="margin-bottom: 10px;">
                     <label for="raceStartTime">Race Start Time (TCT):</label> <span style="font-size: 0.8em; color: #ccc;">(Optional, 15 min intervals)</span>
@@ -92,7 +96,7 @@
                     </div>
                 </div>
                 <button id="closeGUIButton" class="close-button" style="position: absolute; top: 5px; right: 5px; cursor: pointer; color: #ddd; background: #555; border: none; border-radius: 3px;">[X]</button>
-                <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">v2.38</span>  </div>
+                <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">v2.40</span>  </div>
         `;
         $('body').append(guiHTML);
 
@@ -103,8 +107,8 @@
             .preset-button:hover,
             .remove-preset:hover,
             .close-button:hover,
-            #closeGUIButton:hover { /* Added #closeGUIButton to hover styles too for consistency */
-                background-color: #777; /* Lighter background on hover */
+            #closeGUIButton:hover {
+                background-color: #777;
             }
         `;
         document.head.appendChild(style);
@@ -250,6 +254,7 @@
         $('#maxDrivers').val(presetConfig.maxDrivers);
         $('#racePassword').val(presetConfig.racePassword || '');
         $('#raceStartTime').val(presetConfig.raceStartTime || '');
+        $('#betAmount').val(presetConfig.betAmount || '0');
     }
 
     function createPresetButton(presetName, presetConfig) {
@@ -280,6 +285,8 @@
         const maxDrivers = $('#maxDrivers').val();
         const racePassword = $('#racePassword').val();
         let raceStartTimeInputValue = $('#raceStartTime').val();
+        const betAmount = $('#betAmount').val();
+
 
         if (!carID || !trackID || !laps || !minDrivers || !maxDrivers) {
             alert("Please fill in all race details (Car, Track, Laps, Min/Max Drivers).");
@@ -288,7 +295,7 @@
 
         const rfcValue = getRFC();
 
-        let raceURL = `https://www.torn.com/loader.php?sid=racing&tab=customrace&action=getInRace&step=getInRace&id=&carID=${carID}&createRace=true&title=${encodeURIComponent(raceName)}&minDrivers=${minDrivers}&maxDrivers=${maxDrivers}&trackID=${trackID}&laps=${laps}&minClass=5&carsTypeAllowed=1&carsAllowed=5&betAmount=0`;
+        let raceURL = `https://www.torn.com/loader.php?sid=racing&tab=customrace&action=getInRace&step=getInRace&id=&carID=${carID}&createRace=true&title=${encodeURIComponent(raceName)}&minDrivers=${minDrivers}&maxDrivers=${maxDrivers}&trackID=${trackID}&laps=${laps}&minClass=5&carsTypeAllowed=1&carsAllowed=5&betAmount=0`; //Default betAmount=0 - will be updated below
 
         if (racePassword) {
             raceURL += `&password=${encodeURIComponent(racePassword)}`;
@@ -330,13 +337,18 @@
         }
         raceURL += `&waitTime=${waitTimeValue}&rfcv=${rfcValue}`;
 
+        if (betAmount && parseInt(betAmount) > 0) { // Only add betAmount parameter if it's greater than 0 and not empty
+            raceURL = raceURL.replace("&betAmount=0", `&betAmount=${parseInt(betAmount)}`); //Replace default 0 with user bet amount
+        }
+
+
         window.location = raceURL;
         console.log("Initiating race creation via browser redirect to:", raceURL);
-        alert("Race created successfully! Please check Torn racing page.");
+        alert("Race created and URL opened! Check the Torn racing page to confirm and manage your race.");
     }
 
 
-    // --- Helper Functions ---
+    // --- Preset Configuration Functions ---
     function getCurrentConfig() {
         return {
             trackID: $('#trackID').val(),
@@ -346,7 +358,8 @@
             minDrivers: $('#minDrivers').val(),
             maxDrivers: $('#maxDrivers').val(),
             racePassword: $('#racePassword').val(),
-            // raceStartTime: $('#raceStartTime').val() // Not saving start time in presets add this back if you want to save it
+            //raceStartTime: $('#raceStartTime').val(), // <--- COMMENTED OUT TO AVOID SAVING TIME IN PRESETS
+            betAmount: $('#betAmount').val()
         };
     }
 
@@ -358,7 +371,8 @@
         $('#minDrivers').val(presetConfig.minDrivers);
         $('#maxDrivers').val(presetConfig.maxDrivers);
         $('#racePassword').val(presetConfig.racePassword || '');
-        // $('#raceStartTime').val(presetConfig.raceStartTime || ''); // Not saving start time in presets add this back if you want to save it
+        //$('#raceStartTime').val(presetConfig.raceStartTime || '');  // <--- COMMENTED OUT TO AVOID APPLYING TIME FROM PRESETS
+        $('#betAmount').val(presetConfig.betAmount || '0');
     }
 
 
