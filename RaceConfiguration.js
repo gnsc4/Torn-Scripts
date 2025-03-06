@@ -1,4 +1,4 @@
-// // ==UserScript==
+// ==UserScript==
 // @name         Torn Race Config GUI
 // @namespace    torn.raceconfiggui
 // @description  GUI to configure Torn racing parameters, schedule races, set passwords, save presets, create races easily.
