@@ -2,7 +2,7 @@
 // @name         Torn Race Config GUI
 // @namespace    torn.raceconfiggui
 // @description  GUI to configure Torn racing parameters, schedule races, set passwords, save presets, create races easily.
-// @version      2.34
+// @version      2.35
 // @updateURL    https://raw.githubusercontent.com/gnsc4/Torn-Scripts/refs/heads/master/RaceConfiguration.js
 // @downloadURL  https://raw.githubusercontent.com/gnsc4/Torn-Scripts/refs/heads/master/RaceConfiguration.js
 // @author       GNSC4 [268863] (Based on Shlefter's script)
@@ -59,7 +59,7 @@
                     <input type="text" id="racePassword" placeholder="Race Password" style="margin-left: 5px; color: black;">
                 </div>
                 <div style="margin-bottom: 10px;">
-                    <label for="raceStartTime">Race Start Time (GMT):</label> <span style="font-size: 0.8em; color: #ccc;">(Optional, 15 min intervals)</span>
+                    <label for="raceStartTime">Race Start Time (TCT):</label> <span style="font-size: 0.8em; color: #ccc;">(Optional, 15 min intervals)</span>
                     <input type="datetime-local" id="raceStartTime" style="margin-left: 5px; color: black; width: 170px;">
                 </div>
                 <div style="margin-bottom: 10px;">
@@ -92,7 +92,7 @@
                     </div>
                 </div>
                 <button id="closeGUIButton" style="position: absolute; top: 5px; right: 5px; cursor: pointer; color: #ddd; background: #555; border: none; border-radius: 3px;">[X]</button>
-                <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">v2.34</span>  </div>
+                <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">v2.35</span>  </div>
         `;
         $('body').append(guiHTML);
 
@@ -308,7 +308,7 @@
                 startTimeDate.setUTCMinutes(minutes + minutesToAdd, 0, 0);
                 raceStartTimeInputValue = startTimeDate.toISOString().slice(0, 16);
                 $('#raceStartTime').val(raceStartTimeInputValue);
-                alert("Start time adjusted to the next 15-minute mark (GMT). Please check the adjusted time in the GUI.");
+                alert("Start time adjusted to the next 15-minute mark (TCT). Please check the adjusted time in the GUI.");
             }
 
 
