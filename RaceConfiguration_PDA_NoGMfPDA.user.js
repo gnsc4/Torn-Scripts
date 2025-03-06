@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Torn Race Config GUI - PDA & Desktop - v2.66 - Syntax Error Fixed
+// @name         Torn Race Config GUI - PDA & Desktop - v2.6 - Syntax Error Fixed
 // @namespace    torn.raceconfiggui.pdadesktop
-// @description  Simplified GUI with Syntax Error Fixed - v2.66 - Syntax Error Fixed
-// @version      2.66-PDA-Desktop-GMfPDA-SyntaxFixed
+// @description  Simplified GUI with Syntax Error Fixed - v2.67 - Syntax Error Fixed
+// @version      2.67-PDA-Desktop-GMfPDA-SyntaxFixed
 // @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
 // @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
 // @author       GNSC4 [268863] (Based on Shlefter's script)
@@ -199,7 +199,7 @@
         });
     })(window, Object, DOMException, AbortController, Promise, localStorage);
 
-// **})();  <--- EXTRA, INCORRECT CLOSING IIFE REMOVED - LINE 369 in v2.65 DELETED**
+    })();
 // --- **END Inlined GMforPDA Code** ---
 
 
@@ -364,5 +364,3 @@ $(document).ready(function() {
     }
         $('div.content-title > h4').append('<span style="color: orange; margin-left: 10px;">v2.66 - SYNTAX ERROR FIXED - GUI TEST</span>'); // Orange - syntax fixed GUI test
 });
-
-})();
