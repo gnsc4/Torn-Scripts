@@ -2,9 +2,9 @@
 // @name         Torn Race Config GUI - PDA & Desktop (GMfPDA Direct Assign)
 // @namespace    torn.raceconfiggui.pdadesktop
 // @description  GUI to configure Torn racing, schedule races, set passwords, presets. Works on PDA & Desktop with GMforPDA (Direct Assign)
-// @version      2.51-PDA-Desktop-GMfPDA-DirectAssign
-// @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_Desktop_GMfPDA_DirectAssign.user.js
-// @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_Desktop_GMfPDA_DirectAssign.user.js
+// @version      2.52
+// @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
+// @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
 // @author       GNSC4 [268863] (Based on Shlefter's script, GMforPDA by Kwack, Direct Assign Mod for Desktop)
 // @match        https://www.torn.com/loader.php?sid=racing*
 // @grant        GM_setValue
@@ -293,7 +293,7 @@
                 </div>
             </div>
             <button id="closeGUIButton" class="close-button" style="position: absolute; top: 5px; right: 5px; cursor: pointer; color: #ddd; background: #555; border: none; border-radius: 3px;">[X]</button>
-            <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">v2.51</span>    </div>
+            <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">v2.52</span>    </div>
     `;
     $('body').append(guiHTML);
 
