@@ -3,8 +3,8 @@
 // @namespace    torn.raceconfiggui.pdadesktop
 // @description  Simplified GUI with Syntax Error Fixed - v2.66 - Syntax Error Fixed
 // @version      2.66-PDA-Desktop-GMfPDA-SyntaxFixed
-// @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_Desktop_GMfPDA_DirectAssign.user.js  // <-- IMPORTANT: Use REAL URL
-// @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_Desktop_GMfPDA_DirectAssign.user.js // <-- IMPORTANT: Use REAL URL
+// @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
+// @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
 // @author       GNSC4 [268863] (Based on Shlefter's script)
 // @match        https://www.torn.com/loader.php?sid=racing*
 // @grant        GM_setValue
