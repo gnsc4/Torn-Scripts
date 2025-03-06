@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Minimal GMforPDA Test - v2.62
+// @name         Minimal GMforPDA Test - v2.63 - Early Init
 // @namespace    torn.raceconfiggui.test
-// @description  Minimal script to test inlined GMforPDA - v2.62
-// @version      2.62-PDA-Desktop-GMfPDA-MinimalTest
+// @description  Minimal script to test inlined GMforPDA - v2.63 - Early Init
+// @version      2.63-PDA-Desktop-GMfPDA-EarlyInitTest
 // @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
 // @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
 // @author       GNSC4 [268863]
@@ -13,10 +13,10 @@
 // @license      MIT
 // ==/UserScript==
 
+// --- **GMforPDA Inlined Code (Version 2.2) - EARLY INITIALIZATION - WRAPPED IN IIFE** ---
 (function() {
-    'use strict';
+    'use strict'; // <-- 'use strict' moved INSIDE the IIFE
 
-    // --- GMforPDA Inlined Code (Direct Assignment Modified) ---
     ((e, t, o, r, n, i) => {
         if (typeof GM !== 'undefined') {
             return;
@@ -196,36 +196,38 @@
             window[o] = r; // <--- DIRECT ASSIGNMENT: window[o] = r;
         });
     })(window, Object, DOMException, AbortController, Promise, localStorage);
-    // --- End GMforPDA Inlined Code ---
 
-    const TEST_STORAGE_KEY = 'minimal_gmfpda_test_v2_62'; // Unique key for this test
+})(); // <-- **IMMEDIATELY INVOKED FUNCTION EXPRESSION (IIFE) WRAPPER ENDS HERE**
+// --- **END Inlined GMforPDA Code** ---
 
-    function runTest() {
-        const testValue = "GMforPDA Test Value - v2.62";
+'use strict'; // <--- 'use strict' is now AFTER the IIFE
 
-        GM_setValue(TEST_STORAGE_KEY, testValue);
-        alert("GM_setValue called (v2.62). Value saved: " + testValue); // Alert after setValue
+const TEST_STORAGE_KEY = 'minimal_gmfpda_test_v2_63'; // Unique key for this test
 
-        const loadedValue = GM_getValue(TEST_STORAGE_KEY, "Default Value if not found");
-        alert("GM_getValue called (v2.62). Value loaded: " + loadedValue); // Alert after getValue
+function runTest() {
+    const testValue = "GMforPDA Test Value - v2.63";
 
-        if (loadedValue === testValue) {
-            alert("GMforPDA Test v2.62 PASSED! GM_setValue and GM_getValue are working with inlined GMforPDA."); // Success alert
-        } else {
-            alert("GMforPDA Test v2.62 FAILED! GM_setValue and/or GM_getValue are NOT working correctly with inlined GMforPDA."); // Failure alert
-            alert("Loaded value: " + loadedValue + ", Expected value: " + testValue); // Show loaded and expected values
-        }
+    GM_setValue(TEST_STORAGE_KEY, testValue);
+    alert("GM_setValue called (v2.63). Value saved: " + testValue); // Alert after setValue
+
+    const loadedValue = GM_getValue(TEST_STORAGE_KEY, "Default Value if not found");
+    alert("GM_getValue called (v2.63). Value loaded: " + loadedValue); // Alert after getValue
+
+    if (loadedValue === testValue) {
+        alert("GMforPDA Test v2.63 PASSED! GM_setValue and GM_getValue are working with inlined GMforPDA."); // Success alert
+    } else {
+        alert("GMforPDA Test v2.63 FAILED! GM_setValue and/or GM_getValue are NOT working correctly with inlined GMforPDA."); // Failure alert
+        alert("Loaded value: " + loadedValue + ", Expected value: " + testValue); // Show loaded and expected values
     }
+}
 
 
-    $(document).ready(function() {
-        if ($('div.content-title > h4').length > 0 && !$('#minimalTestButton').length) {
-            const testButton = $(`<button id="minimalTestButton" style="color: #ddd; background-color: #555; border: 1px solid #777; border-radius: 3px; padding: 8px 15px; cursor: pointer; text-decoration: none; margin-right: 10px;">Run GMforPDA Test v2.62</button>`); // v2.62 Label
-            $('div.content-title > h4').append(testButton);
+$(document).ready(function() {
+    if ($('div.content-title > h4').length > 0 && !$('#minimalTestButton').length) {
+        const testButton = $(`<button id="minimalTestButton" style="color: #ddd; background-color: #555; border: 1px solid #777; border-radius: 3px; padding: 8px 15px; cursor: pointer; text-decoration: none; margin-right: 10px;">Run GMforPDA Test v2.63</button>`); // v2.63 Label
+        $('div.content-title > h4').append(testButton);
 
-            testButton.on('click', runTest);
-        }
-        $('div.content-title > h4').append('<span style="color: orange; margin-left: 10px;">v2.62 - MINIMAL GMforPDA TEST</span>'); // Orange - minimal test
-    });
-
-})();
+        testButton.on('click', runTest);
+    }
+    $('div.content-title > h4').append('<span style="color: orange; margin-left: 10px;">v2.63 - EARLY GMforPDA INIT TEST</span>'); // Orange - early init test
+});
