@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name         Torn Race Config GUI
 // @namespace    torn.raceconfiggui
-// @description  GUI to configure Torn racing parameters, schedule races, set passwords, save presets, create races easily, betting feature, styled toggle button, release storage key, hover button color change, final polish, with update URL.
-// @version      2.40
+// @description  GUI to configure Torn racing parameters, schedule races, set passwords, save presets, create races easily, betting feature, styled toggle button, release storage key, hover button color change, final polish, with Torn PDA support, update URL.
+// @version      2.44
 // @updateURL    https://raw.githubusercontent.com/gnsc4/Torn-Scripts/refs/heads/master/RaceConfiguration.js
 // @downloadURL  https://raw.githubusercontent.com/gnsc4/Torn-Scripts/refs/heads/master/RaceConfiguration.js
-// @author       GNSC4 [268863] (Based on Shlefter's script)
+// @author       GNSC4 [268863] (Based on Shlefter's script, GMforPDA by Kwack)
 // @match        https://www.torn.com/loader.php?sid=racing*
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -15,10 +15,30 @@
 // @license      MIT
 // ==/UserScript==
 
+// --- Conditional @require for GMforPDA ---
+if (typeof GM_info === 'undefined') { // Check if GM_info is NOT defined (likely PDA)
+    @require https://github.com/Kwack-Kwack/GMforPDA/raw/refs/heads/main/GMforPDA.raw.user.js
+}
+
 (function() {
     'use strict';
 
     const STORAGE_API_KEY = 'raceConfigAPIKey_release';
+
+    // --- Global Styles ---
+    const style = document.createElement('style');
+    style.textContent = `
+        #tcLogo { pointer-events: none; }
+        #raceConfigGUI .gui-button:hover,
+        #raceConfigGUI .preset-button:hover,
+        #raceConfigGUI .remove-preset:hover,
+        #raceConfigGUI .close-button:hover,
+        #raceConfigGUI #closeGUIButton:hover,
+        #toggleRaceGUIButton:hover { 
+            background-color: #777 !important; 
+        }
+    `;
+    document.head.appendChild(style);
 
     // Track data
     const tracks = {
@@ -32,92 +52,78 @@
 
     // --- GUI Elements ---
     function createGUI() {
-        if ($('#raceConfigGUI').length) {
-            return;
-        }
+    if ($('#raceConfigGUI').length) {
+        return;
+    }
 
-        const guiHTML = `
-            <div id="raceConfigGUI" style="position: fixed; top: 75px; left: 20px; background-color: #333; border: 1px solid #666; padding: 15px; z-index: 1000; border-radius: 5px; color: #eee;">
-                <h3 style="margin-top: 0; color: #fff;">Race Configuration</h3>
-                <div style="margin-bottom: 10px;">
-                    <label for="raceConfigApiKey">API Key:</label>
-                    <input type="text" id="raceConfigApiKey" placeholder="Enter Torn API Key" style="margin-left: 5px; color: black;">
-                    <button id="saveApiKeyCustom" class="gui-button" style="margin-left: 5px; color: #ddd; background-color: #555; border: 1px solid #777; border-radius: 3px; padding: 5px 10px; cursor: pointer;">Save API Key</button>
-                </div>
-                <div style="margin-bottom: 10px;">
-                    <label for="trackID">Track:</label>
-                    <select id="trackID" style="margin-left: 5px; color: black;">
-                        ${Object.entries(tracks).map(([id, name]) => `<option value="${id}">${name}</option>`).join('')}
-                    </select>
-                </div>
-                <div style="margin-bottom: 10px;">
-                    <label for="raceName">Race Name:</label>
-                    <input type="text" id="raceName" style="margin-left: 5px; color: black;">
-                </div>
-                <div style="margin-bottom: 10px;">
-                    <label for="racePassword">Password:</label> <span style="font-size: 0.8em; color: #ccc;"> (optional)</span>
-                    <input type="text" id="racePassword" placeholder="Race Password Optional" style="margin-left: 5px; color: black;">
-                </div>
-                <div style="margin-bottom: 10px;">
-                    <label for="betAmount">Bet Amount:</label> <span style="font-size: 0.8em; color: #ccc;">(Max 10M, Optional for Race)</span>
-                    <input type="number" id="betAmount" value="0" min="0" max="10000000" style="margin-left: 5px; width: 100px; color: black;">
-                </div>
-                <div style="margin-bottom: 10px;">
-                    <label for="raceStartTime">Race Start Time (TCT):</label> <span style="font-size: 0.8em; color: #ccc;">(Optional, 15 min intervals)</span>
-                    <input type="datetime-local" id="raceStartTime" style="margin-left: 5px; color: black; width: 170px;">
-                </div>
-                <div style="margin-bottom: 10px;">
-                    <label for="laps">Laps:</label>
-                    <input type="number" id="laps" value="100" style="margin-left: 5px; width: 60px; color: black;">
-                </div>
-                <div style="margin-bottom: 10px;">
-                    <label for="minDrivers">Min Drivers:</label>
-                    <input type="number" id="minDrivers" value="2" style="margin-left: 5px; width: 40px; color: black;">
-                    <label for="maxDrivers" style="margin-left: 10px;">Max Drivers:</label>
-                    <input type="number" id="maxDrivers" value="2" style="margin-left: 5px; width: 40px; color: black;">
-                </div>
-                <div style="margin-bottom: 10px;">
-                    <label for="carID">Car ID:</label>
-                    <select id="carID" style="margin-left: 5px; color: black;">
-                        <option value="">Loading Cars...</option>
-                    </select>
-                </div>
+    const guiHTML = `
+        <div id="raceConfigGUI" style="position: fixed; top: 75px; left: 20px; background-color: #333; border: 1px solid #666; padding: 15px; z-index: 1000; border-radius: 5px; color: #eee;">
+            <h3 style="margin-top: 0; color: #fff;">Race Configuration</h3>
+            <div style="margin-bottom: 10px;">
+                <label for="raceConfigApiKey">API Key:</label>
+                <input type="text" id="raceConfigApiKey" placeholder="Enter Torn API Key" style="margin-left: 5px; color: black;">
+                <button id="saveApiKeyCustom" class="gui-button" style="margin-left: 5px; color: #ddd; background-color: #555; border: 1px solid #777; border-radius: 3px; padding: 5px 10px; cursor: pointer;">Save API Key</button>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label for="trackID">Track:</label>
+                <select id="trackID" style="margin-left: 5px; color: black;">
+                    ${Object.entries(tracks).map(([id, name]) => `<option value="${id}">${name}</option>`).join('')}
+                </select>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label for="raceName">Race Name:</label>
+                <input type="text" id="raceName" style="margin-left: 5px; color: black;">
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label for="racePassword">Password:</label> <span style="font-size: 0.8em; color: #ccc;"> (optional)</span>
+                <input type="text" id="racePassword" placeholder="Race Password Optional" style="margin-left: 5px; color: black;">
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label for="betAmount">Bet Amount:</label> <span style="font-size: 0.8em; color: #ccc;">(Max 10M, Optional for Race)</span>
+                <input type="number" id="betAmount" value="0" min="0" max="10000000" style="margin-left: 5px; width: 100px; color: black;">
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label for="raceStartTime">Race Start Time (TCT):</label> <span style="font-size: 0.8em; color: #ccc;">(Optional, 15 min intervals)</span>
+                <input type="datetime-local" id="raceStartTime" style="margin-left: 5px; color: black; width: 170px;">
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label for="laps">Laps:</label>
+                <input type="number" id="laps" value="100" style="margin-left: 5px; width: 60px; color: black;">
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label for="minDrivers">Min Drivers:</label>
+                <input type="number" id="minDrivers" value="2" style="margin-left: 5px; width: 40px; color: black;">
+                <label for="maxDrivers" style="margin-left: 10px;">Max Drivers:</label>
+                <input type="number" id="maxDrivers" value="2" style="margin-left: 5px; width: 40px; color: black;">
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label for="carID">Car ID:</label>
+                <select id="carID" style="margin-left: 5px; color: black;">
+                    <option value="">Loading Cars...</option>
+                </select>
+            </div>
 
-                <div style="margin-bottom: 15px; border-top: 1px solid #eee; padding-top: 10px;">
-                    <button id="createRaceButton" class="gui-button" style="color: #ddd; background-color: #555; border: 1px solid #777; border-radius: 3px; padding: 8px 15px; cursor: pointer;">Create Race</button>
-                </div>
+            <div style="margin-bottom: 15px; border-top: 1px solid #eee; padding-top: 10px;">
+                <button id="createRaceButton" class="gui-button" style="color: #ddd; background-color: #555; border: 1px solid #777; border-radius: 3px; padding: 8px 15px; cursor: pointer;">Create Race</button>
+            </div>
 
-                <div style="border-top: 1px solid #eee; padding-top: 10px;">
-                    <h4>Presets</h4>
-                    <div id="presetButtons">
-                        </div>
-                    <div style="margin-top: 10px;">
-                        <button id="savePresetButton" class="gui-button" style="color: #ddd; background-color: #555; border: 1px solid #777; border-radius: 3px; padding: 8px 15px; cursor: pointer;">Save Preset</button>
+            <div style="border-top: 1px solid #eee; padding-top: 10px;">
+                <h4>Presets</h4>
+                <div id="presetButtons">
                     </div>
+                <div style="margin-top: 10px;">
+                    <button id="savePresetButton" class="gui-button" style="color: #ddd; background-color: #555; border: 1px solid #777; border-radius: 3px; padding: 8px 15px; cursor: pointer;">Save Preset</button>
                 </div>
-                <button id="closeGUIButton" class="close-button" style="position: absolute; top: 5px; right: 5px; cursor: pointer; color: #ddd; background: #555; border: none; border-radius: 3px;">[X]</button>
-                <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">v2.40</span>  </div>
-        `;
-        $('body').append(guiHTML);
+            </div>
+            <button id="closeGUIButton" class="close-button" style="position: absolute; top: 5px; right: 5px; cursor: pointer; color: #ddd; background: #555; border: none; border-radius: 3px;">[X]</button>
+            <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">v2.43</span>  </div>
+    `;
+    $('body').append(guiHTML);
 
-        const style = document.createElement('style');
-        style.textContent = `
-            #tcLogo { pointer-events: none; }
-            .gui-button:hover,
-            .preset-button:hover,
-            .remove-preset:hover,
-            .close-button:hover,
-            #closeGUIButton:hover {
-                background-color: #777;
-            }
-        `;
-        document.head.appendChild(style);
-
-        loadSavedApiKey();
-        loadCars();
-        loadPresets();
-        setupEventListeners();
-        applyPresetFromURL();
+    loadSavedApiKey();
+    loadCars();
+    loadPresets();
+    setupEventListeners();
     }
 
     // --- Load and Save API Key ---
