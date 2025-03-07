@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name         Torn Race Config GUI
 // @namespace    torn.raceconfigguipda
-// @description  PDA GUI to configure Torn racing parameters, schedule races, set passwords, save presets, create races easily, betting feature, styled toggle button, release storage key, hover button color change, final polish, with update URL, PDA/Mobile Friendly, No GM Functions for wider compatibility. With Preset Descriptions and Author Credit.
-// @version      3.0.2  // Release Version 3.0.2
+// @description  GUI to configure Torn racing parameters, schedule races, set passwords, save presets, create races easily, betting feature, styled toggle button, release storage key.
+// @version      3.0.2
 // @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration.raw.user.js
 // @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration.raw.user.js
-// @author       GNSC4 [268863] (Based on Shlefter's script, GMforPDA by Kwack -  Version 2.49 base + CSS fix + Toggle Button BG Fix + Revert Create Button Style + Clear Presets Feature + Preset Hover Fix - Input Text Color Fix - Clear Presets Button Style Fix - All Input Text Color Fix - White Text for Dark Mode - Definitive Input Text Color Fix - White Text Everywhere - Forced White Text Color - Definitive Fix with !important - GUI Visual Polish - Compact Driver Inputs - GUI Position Lower & Solid White Section Lines - Refine Section Lines - Create Race Button Hover Fix & Lower GUI - Close Button Hover Fix - Reduce Race Settings Spacing - Tighter Race Settings Spacing - Quick Preset Race Buttons - Styled Quick Race Buttons - GUI Toggle Race Entry Fix - Quick Button Border & Hover Fix - CSS Specificity Fix for Quick Buttons - Preset Descriptions & Author Credit - Preset Button & Delete Button Alignment Fixes - Preset Button Content Fix - Preset Car Description Fix & Cache Update - Preset Button Info on Button - Preset Delete Button Position Right - Race Settings Layout Fix - Forceful CSS - GUI Width Lock - Preset Overflow Fix - Button Width Control - Preset Container Width Limit - GUI Width Reduced - Button Text Cleaned - GUI Width 325px - Footer Position Adjusted)
+// @author       GNSC4 [268863] (Based on Shlefter's script, GMforPDA by Kwack)
 // @match        https://www.torn.com/loader.php?sid=racing*
 // @grant        GM_setValue
 // @grant        GM_getValue
