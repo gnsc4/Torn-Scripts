@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Torn Race Config GUI - PDA & Desktop - v2.83
+// @name         Torn Race Config GUI - PDA & Desktop - v2.84
 // @namespace    torn.raceconfiggui.pdadesktop
-// @description  Full Feature Race Config GUI - v2.83
-// @version      2.83.1
+// @description  Full Feature Race Config GUI - v2.84
+// @version      2.84
 // @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
 // @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
 // @author       GNSC4 [268863] (Based on Shlefter's script)
@@ -206,7 +206,7 @@
 'use strict';
 
 const STORAGE_API_KEY = 'torn.raceconfiggui.pdadesktop_raceConfigAPIKey_release';
-const PRESET_STORAGE_KEY = 'torn.raceconfiggui.pdadesktop_racePresets_v2_83'; // <--- UNIQUE PRESET STORAGE KEY (v2_83) - PARAMETER CONFIRMATION
+const PRESET_STORAGE_KEY = 'torn.raceconfiggui.pdadesktop_racePresets_v2_84'; // <--- UNIQUE PRESET STORAGE KEY (v2.84) - PARAMETER CONFIRMATION
 const TORN_API_BASE_URL = 'https://api.torn.com/';
 const FAST_API_VEHICLE_ID_URL = 'api.torn.com/torn/vehicleids'; // <-- Corrected domain, but endpoint might not exist - for reference only
 const VEHICLE_ID_CACHE_KEY = 'torn.raceconfiggui.pdadesktop_vehicleIdCache'; // <-- Now Caching OPTIMIZED CAR DATA (item_name, id only)
@@ -588,7 +588,7 @@ function createGUI() {
         <div id="raceConfigGUI">
             <button id="closeGUIButton" class="close-button">[X]</button>
             <h2>Torn Race Config GUI</h2>
-            <h3>Version 2.83 - User Enlisted Cars - Official API - Parameter Confirmation - Error & Syntax Fix - \`throw new TypeError\` - LINE 591 RE-TYPED</h3>
+            <h3>Version 2.84 - User Enlisted Cars - Official API - Parameter Confirmation - Error & Syntax Fix - \`throw new TypeError\` - LINE 591 RE-TYPED</h3>
 
             <div class="api-key-section config-section">
                 <h4>API Key Configuration</h4>
@@ -606,18 +606,6 @@ function createGUI() {
                     <option value="">Loading Cars...</option>
                 </select>
                 <button id="updateCarsButton" class="gui-button">Update Cars</button>
-            </div>
-
-
-            <div class="config-params-section config-section">
-                <h4>Configuration Parameters</h4>
-                <div><label for="topSpeed">Top Speed:</label><input type="text" id="topSpeed" value="100"></div>
-                <div><label for="acceleration">Acceleration:</label><input type="text" id="acceleration" value="100"></div>
-                <div><label for="braking">Braking:</label><input type="text" id="braking" value="100"></div>
-                <div><label for="handling">Handling:</label><input type="text" id="handling" value="100"></div>
-                <div><label for="dirt">Dirt Multiplier:</label><input type="text" id="dirt" value="1.00"></div>
-                <div><label for="tarmac">Tarmac Multiplier:</label><input type="text" id="tarmac" value="1.00"></div>
-                <div><label for="safety">Safety:</label><input type="text" id="safety" value="100"></div>
             </div>
 
             <div class="config-section"> <!- --- **RACE CREATION PARAMETERS SECTION** --- ->
@@ -650,7 +638,7 @@ function createGUI() {
 
 
             <div style="text-align: center; margin-top: 15px; font-size: 0.8em; color: #888;">
-                Version 2.83 - User Enlisted Cars - Official API - Parameter Confirmation - Syntax & Error Fix - \`throw new TypeError\` - LINE 591 RE-TYPED<br>
+                Version 2.84 - User Enlisted Cars - Official API - Parameter Confirmation - Syntax & Error Fix - \`throw new TypeError\` - LINE 591 RE-TYPED<br>
                 Based on Shlefter's Script | By GNSC4 [268863]
             </div>
         </div>
@@ -812,7 +800,7 @@ function updateCars() {
 
 // --- Preset Functions ---
 function loadPresets() {
-    console.log("loadPresets() - START (v2.83)"); // DEBUG CONSOLE LOG - START
+    console.log("loadPresets() - START (v2.84)"); // DEBUG CONSOLE LOG - START
     let presets = {};
     presets = GM_getValue(PRESET_STORAGE_KEY, {});
     console.log("loadPresets() - After GM_getValue, presets object:", presets); // DEBUG CONSOLE LOG - PRESETS OBJECT
@@ -823,16 +811,16 @@ function loadPresets() {
         console.log("loadPresets() - Inside loop, presetName: " + presetName); // DEBUG CONSOLE LOG - LOOP ITERATION
         presetButtonsDiv.append(createPresetButton(presetName, presetConfig));
     });
-    console.log("loadPresets() - END (v2.83)"); // DEBUG CONSOLE LOG - END
+    console.log("loadPresets() - END (v2.84)"); // DEBUG CONSOLE LOG - END
 }
 
 
 function savePreset_Internal() { // <-- **Internal, non-debounced savePreset function**
-    console.log("savePreset_Internal() - START (v2.83 - Simplified Presets)"); // DEBUG CONSOLE LOG - START
+    console.log("savePreset_Internal() - START (v2.84 - Simplified Presets)"); // DEBUG CONSOLE LOG - START
 
     const presetName = prompt("Enter a name for this preset:");
     if (!presetName) {
-        console.log("savePreset_Internal() - No preset name, cancelled (v2.83 - Simplified Presets)"); // DEBUG CONSOLE LOG - CANCELLED
+        console.log("savePreset_Internal() - No preset name, cancelled (v2.84 - Simplified Presets)"); // DEBUG CONSOLE LOG - CANCELLED
         return;
     }
 
@@ -859,7 +847,7 @@ function savePreset_Internal() { // <-- **Internal, non-debounced savePreset fun
     GM_setValue(PRESET_STORAGE_KEY, presets);
     console.log("savePreset_Internal() - After GM_setValue, presets object:", presets); // DEBUG CONSOLE LOG - PRESETS OBJECT AFTER SAVE
     loadPresets(); // Update preset buttons after saving
-    console.log("savePreset_Internal() - END (v2.83 - Simplified Presets)"); // DEBUG CONSOLE LOG - END
+    console.log("savePreset_Internal() - END (v2.84 - Simplified Presets)"); // DEBUG CONSOLE LOG - END
 }
 
 // --- Debounced savePreset function ---
@@ -867,7 +855,7 @@ const savePreset = debounce(savePreset_Internal, 1000); // <--- **DEBOUNCED save
 
 
 function applyPreset(presetConfig) {
-    console.log("applyPreset() - Applying preset: " + presetConfig.name + " (v2.83 - Simplified Presets)"); // DEBUG CONSOLE LOG - APPLY START
+    console.log("applyPreset() - Applying preset: " + presetConfig.name + " (v2.84 - Simplified Presets)"); // DEBUG CONSOLE LOG - APPLY START
 
     $('#carSelect').val(presetConfig.carId); // <-- Now setting selected value to enlistedCarId
     $('#trackID').val(presetConfig.trackID);         // <--- RACE CREATION PARAMETERS APPLIED FROM PRESET - Track
@@ -879,25 +867,25 @@ function applyPreset(presetConfig) {
     $('#minDrivers').val(presetConfig.minDrivers);      // <--- RACE CREATION PARAMETERS APPLIED FROM PRESET - Min Drivers
     $('#maxDrivers').val(presetConfig.maxDrivers);       // <--- RACE CREATION PARAMETERS APPLIED FROM PRESET - Max Drivers
 
-    console.log("applyPreset() - Preset applied: " + presetConfig.name + " (v2.83 - Simplified Presets)"); // DEBUG CONSOLE LOG - APPLY END
+    console.log("applyPreset() - Preset applied: " + presetConfig.name + " (v2.84 - Simplified Presets)"); // DEBUG CONSOLE LOG - APPLY END
     $('#statusMessageBox').text(`Preset "${presetConfig.name}" applied (Simplified).`).removeClass('error').addClass('success').show(); // <-- Updated status message
     setTimeout(() => $('#statusMessageBox').fadeOut(), 3000);
 }
 
 
 function removePreset(presetName, buttonElement) {
-    console.log("removePreset() - START, presetName: " + presetName + " (v2.83)"); // DEBUG CONSOLE LOG - REMOVE START
+    console.log("removePreset() - START, presetName: " + presetName + " (v2.84)"); // DEBUG CONSOLE LOG - REMOVE START
     if (confirm(`Are you sure you want to delete preset "${presetName}"?`)) {
-        console.log("removePreset() - Confirmed delete: " + presetName + " (v2.83)"); // DEBUG CONSOLE LOG - DELETE CONFIRMED
+        console.log("removePreset() - Confirmed delete: " + presetName + " (v2.84)"); // DEBUG CONSOLE LOG - DELETE CONFIRMED
         const presets = GM_getValue(PRESET_STORAGE_KEY, {});
         delete presets[presetName];
         GM_setValue(PRESET_STORAGE_KEY, presets);
         $(buttonElement).closest('.preset-button-container').remove();
-        console.log("removePreset() - Preset removed from GUI: " + presetName + " (v2.83)"); // DEBUG CONSOLE LOG - REMOVE GUI ELEMENT
+        console.log("removePreset() - Preset removed from GUI: " + presetName + " (v2.84)"); // DEBUG CONSOLE LOG - REMOVE GUI ELEMENT
     } else {
-        console.log("removePreset() - Cancelled delete: " + presetName + " (v2.83)"); // DEBUG CONSOLE LOG - DELETE CANCELLED
+        console.log("removePreset() - Cancelled delete: " + presetName + " (v2.84)"); // DEBUG CONSOLE LOG - DELETE CANCELLED
     }
-    console.log("removePreset() - END, presetName: " + presetName + " (v2.83)"); // DEBUG CONSOLE LOG - REMOVE END
+    console.log("removePreset() - END, presetName: " + presetName + " (v2.84)"); // DEBUG CONSOLE LOG - REMOVE END
 }
 
 
@@ -907,9 +895,9 @@ function clearAllPresets() {
         $('#presetButtons').empty(); // Clear buttons from GUI
         $('#statusMessageBox').text('All presets cleared.').removeClass('error').addClass('success').show();
         setTimeout(() => $('#statusMessageBox').fadeOut(), 3000);
-        console.log("clearAllPresets() - All presets cleared (v2.83)"); // DEBUG CONSOLE LOG - CLEAR ALL
+        console.log("clearAllPresets() - All presets cleared (v2.84)"); // DEBUG CONSOLE LOG - CLEAR ALL
     } else {
-        console.log("clearAllPresets() - Clear all presets cancelled (v2.83)"); // DEBUG CONSOLE LOG - CLEAR ALL CANCELLED
+        console.log("clearAllPresets() - Clear all presets cancelled (v2.84)"); // DEBUG CONSOLE LOG - CLEAR ALL CANCELLED
     }
 }
 
@@ -935,7 +923,7 @@ function createPresetButton(presetName, presetConfig) {
 // --- Event Listener Setup ---
 function setupEventListeners() {
     $('#saveApiKeyCustom').on('click', saveApiKey);
-    $('#savePresetButton').on('click', savePreset); // Save Preset - DEBOUNCED in v2.83
+    $('#savePresetButton').on('click', savePreset); // Save Preset - DEBOUNCED in v2.84
     $('#clearPresetsButton').on('click', clearAllPresets);
     $('#closeGUIButton').on('click', function() { $('#raceConfigGUI').hide(); });
     $('#updateCarsButton').on('click', updateCars);
@@ -950,7 +938,7 @@ function setupEventListeners() {
 // --- Initialization ---
 $(document).ready(function() {
     if ($('div.content-title > h4').length > 0 && !$('#toggleRaceGUIButton').length) {
-        const toggleButton = $(`<button id="toggleRaceGUIButton">Race Config GUI (v2.83)</button>`);
+        const toggleButton = $(`<button id="toggleRaceGUIButton">Race Config GUI (v2.84)</button>`);
         $('div.content-title > h4').append(toggleButton);
 
         toggleButton.on('click', function() {
@@ -962,7 +950,7 @@ $(document).ready(function() {
             }
         });
     }
-    $('div.content-title > h4').append('<span style="color: orange; margin-left: 10px;">v2.83 - USER ENLISTED CARS & OFFICIAL API - PARAMETER CONFIRMATION - SYNTAX & ERROR FIX - `throw new TypeError` - LINE 591 RE-TYPED</span>'); // Orange - Syntax Error Fix Label
+    $('div.content-title > h4').append('<span style="color: orange; margin-left: 10px;">v2.84 - USER ENLISTED CARS & OFFICIAL API - PARAMETER CONFIRMATION - SYNTAX & ERROR FIX - `throw new TypeError` - LINE 591 RE-TYPED</span>'); // Orange - Syntax Error Fix Label
 });
 
 })();
