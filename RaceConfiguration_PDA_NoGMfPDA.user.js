@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name         Torn Race Config GUI
 // @namespace    torn.raceconfigguipda
-// @description  GUI to configure Torn racing parameters, schedule races, set passwords, save presets, create races easily, betting feature, styled toggle button, release storage key.
-// @version      3.0.3
+// @description  PDA GUI to configure Torn racing parameters, schedule races, set passwords, save presets, create races easily, betting feature, styled toggle button, release storage key, hover button color change, final polish, with update URL, PDA/Mobile Friendly, No GM Functions for wider compatibility. With Preset Descriptions and Author Credit.
+// @version      3.0.16
 // @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration.raw.user.js
 // @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration.raw.user.js
-// @author       GNSC4 [268863] (Based on Shlefter's script, GMforPDA by Kwack)
+// @author       GNSC4 [268863] (Based on Shlefter's script, GMforPDA by Kwack -  Version 2.49 base + CSS fix + Toggle Button BG Fix + Revert Create Button Style + Clear Presets Feature + Preset Hover Fix - Input Text Color Fix - Clear Presets Button Style Fix - All Input Text Color Fix - White Text for Dark Mode - Definitive Input Text Color Fix - White Text Everywhere - Forced White Text Color - Definitive Fix with !important - GUI Visual Polish - Compact Driver Inputs - GUI Position Lower & Solid White Section Lines - Refine Section Lines - Create Race Button Hover Fix & Lower GUI - Close Button Hover Fix - Reduce Race Settings Spacing - Tighter Race Settings Spacing - Quick Preset Race Buttons - Styled Quick Race Buttons - GUI Toggle Race Entry Fix - Quick Button Border & Hover Fix - CSS Specificity Fix for Quick Buttons - Preset Descriptions & Author Credit - Preset Button & Delete Button Alignment Fixes - Preset Button Content Fix - Preset Car Description Fix & Cache Update - Preset Button Info on Button - Preset Delete Button Position Right - Race Settings Layout Fix - Forceful CSS - GUI Width Lock - Preset Overflow Fix - Button Width Control - GUI Width Reduced - Button Text Cleaned - GUI Width 325px - Footer Position Adjusted)
 // @match        https://www.torn.com/loader.php?sid=racing*
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -226,12 +226,25 @@
             return;
         }
 
+        // Generate hour options for dropdown (00-23)
+        let hourOptions = '';
+        for (let i = 0; i < 24; i++) {
+            hourOptions += `<option value="${String(i).padStart(2, '0')}">${String(i).padStart(2, '0')}</option>`;
+        }
+        // Generate minute options for dropdown (00, 15, 30, 45)
+        const minuteIntervals = ['00', '15', '30', '45'];
+        let minuteOptions = ''; // Reset and rebuild minuteOptions string to ensure correct HTML
+        minuteIntervals.forEach(minute => {
+            minuteOptions += `<option value="${minute}">${minute}</option>`; //Rebuild string - v3.0.11 - Minute Dropdown Fix - CORRECTED HTML
+        });
+
+
         const guiHTML = `
             <div id="raceConfigGUI" style="position: fixed; top: 75px; left: 20px; background-color: #333; border: 1px solid #666; padding: 15px; z-index: 1000; border-radius: 5px; color: #eee;">
                 <h3 style="margin-top: 0; color: #fff;">Race Configuration</h3>
                 <div class="api-key-section">
                     <label for="raceConfigApiKey">API Key:</label>
-                    <input type="text" id="raceConfigApiKey" placeholder="Enter Torn API Key" style="margin-left: 5px; color: black;">
+                    <input type="password" id="raceConfigApiKey" placeholder="Enter Torn API Key" style="margin-left: 5px; color: black;">
                     <button id="saveApiKeyCustom" class="gui-button">Save API Key</button>
                 </div>
 
@@ -240,7 +253,7 @@
                     <div class="config-params-section">
                         <div><label for="trackID">Track:</label>
                         <select id="trackID">
-                            ${Object.entries(tracks).map(([id, name]) => `<option value="${id}">${name}</option>`).join('')}
+                            ${Object.entries(tracks).map(([id, name]) => `<option value="${id}">${id} - ${name}</option>`).join('')}
                         </select></div>
 
                         <div class="driver-input-container"> <label for="laps">Laps:</label>
@@ -266,9 +279,19 @@
                         <input type="number" id="betAmount" value="0" min="0" max="10000000" style="width: 100px; color: black;">
                     </div>
                     <div style="margin-bottom: 10px;">
-                        <label for="raceStartTime">Race Start Time (TCT):</label> <span style="font-size: 0.8em; color: #ccc;">(Optional, 15 min intervals)</span>
-                        <input type="datetime-local" id="raceStartTime" style="width: 170px; color: black;">
-                    </div>
+                        <label>Race Start Time (TCT 24hr):</label>
+                        <div style="display: flex; align-items: center;">
+                            <label for="raceStartTimeHours" style="margin-right: 5px;">Hours (TCT):</label>
+                            <select id="raceStartTimeHours" style="width: 65px; margin-right: 5px; color: black;" title="Hours (TCT)">
+                                ${hourOptions}
+                            </select>
+                            <label for="raceStartTimeMinutes" style="margin-right: 5px;">Minutes (TCT):</label>
+                            <select id="raceStartTimeMinutes" style="width: 65px; color: black;" title="Minutes (TCT)">
+                                ${minuteOptions}
+                            </select>
+                            <button id="setNowButton" class="gui-button" style="padding: 5px 10px; font-size: 0.8em; margin-left: 5px;">NOW</button>
+                        </div>
+                        <span style="font-size: 0.8em; color: #ccc; display: block;">(TCT, 15 min intervals)</span> </div>
                 </div>
 
 
@@ -297,10 +320,15 @@
 
 
                 <button id="closeGUIButton" class="close-button">[X]</button>
-                <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">Script created by <a href="https://www.torn.com/profiles.php?XID=268863" target="_blank" style="color: #999; text-decoration: underline;">GNSC4 [268863]</a> - v3.0.3</span>
+                <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">Script created by <a href="https://www.torn.com/profiles.php?XID=268863" target="_blank" style="color: #999; text-decoration: underline;">GNSC4 [268863]</a> - v3.0.13</span>
             </div>
         `;
         $('body').append(guiHTML);
+
+        // Set default hour and minute in dropdowns to "00"
+        $('#raceStartTimeHours').val('00');
+        $('#raceStartTimeMinutes').val('00');
+
 
         loadSavedApiKey();
         loadPresets();
@@ -479,7 +507,8 @@
         $('#minDrivers').val(presetConfig.minDrivers);
         $('#maxDrivers').val(presetConfig.maxDrivers);
         $('#racePassword').val(presetConfig.racePassword || '');
-        $('#raceStartTime').val(presetConfig.raceStartTime || '');
+        $('#raceStartTimeHours').val(presetConfig.raceStartTimeHours || '00');   // Apply hours from preset - v3.0.7 - Default to '00' if missing
+        $('#raceStartTimeMinutes').val(presetConfig.raceStartTimeMinutes || '00'); // Apply minutes from preset - v3.0.7 - Default to '00' if missing
         $('#betAmount').val(presetConfig.betAmount || '0');
     }
 
@@ -553,7 +582,9 @@
         const maxDrivers = presetConfig.maxDrivers;
         const racePassword = presetConfig.racePassword;
         const betAmount = presetConfig.betAmount;
-        let raceStartTimeInputValue = presetConfig.raceStartTime; //Keep saved start time if any
+        const raceStartTimeHoursValue = presetConfig.raceStartTimeHours;     // Get hours from preset - v3.0.7
+        const raceStartTimeMinutesValue = presetConfig.raceStartTimeMinutes;   // Get minutes from preset - v3.0.7
+
 
         if (!carID || !trackID || !laps || !minDrivers || !maxDrivers) {
             alert("Preset is incomplete. Please check all race details in the GUI.");
@@ -570,18 +601,18 @@
 
         let waitTimeValue = Math.floor(Date.now()/1000);
 
-        if (raceStartTimeInputValue) {
-            const parts = raceStartTimeInputValue.split('T');
-            const dateParts = parts[0].split('-');
-            const timeParts = parts[1].split(':');
+        if (raceStartTimeHoursValue && raceStartTimeMinutesValue) { // Check for hours AND minutes values - v3.0.7, Date is now assumed to be current
+            const hour = parseInt(raceStartTimeHoursValue, 10);   // Hours from dropdown - v3.0.7
+            const minute = parseInt(raceStartTimeMinutesValue, 10); // Minutes from dropdown - v3.0.7
+            const now = new Date(); // Get current date/time
+            const year = now.getUTCFullYear();
+            const month = now.getUTCMonth(); // Month is 0-indexed in JavaScript Date
+            const day = now.getUTCDate();
 
-            const year = parseInt(dateParts[0], 10);
-            const month = parseInt(dateParts[1], 10) - 1;
-            const day = parseInt(dateParts[2], 10);
-            const hour = parseInt(timeParts[0], 10);
-            const minute = parseInt(timeParts[1], 10);
 
-            let startTimeDate = new Date(Date.UTC(year, month, day, hour, minute, 0, 0));
+            // --- Time Input Handling for Dropdown Menus - v3.0.7 ---
+            // Date and time inputs are interpreted as UTC (now TCT)
+            let startTimeDate = new Date(Date.UTC(year, month, day, hour, minute, 0, 0)); // Use Date.UTC to interpret as TCT
 
             const minutes = startTimeDate.getUTCMinutes();
             const remainder = minutes % 15;
@@ -589,17 +620,30 @@
             if (remainder !== 0) {
                 const minutesToAdd = 15 - remainder;
                 startTimeDate.setUTCMinutes(minutes + minutesToAdd, 0, 0);
-                raceStartTimeInputValue = startTimeDate.toISOString().slice(0, 16);
-                // NO GUI UPDATE HERE as this is background process - $('#raceStartTime').val(raceStartTimeInputValue);
-                alert("Start time adjusted to the next 15-minute mark (TCT)."); // Inform user, but don't change GUI field
+                const adjustedTimeStringTCT = startTimeDate.toISOString().slice(11, 16); // HH:mm in TCT (Not directly used in GUI display anymore)
+
+                const adjustedHoursTCT = String(startTimeDate.getUTCHours()).padStart(2, '0');    // Get hours in 24hr format and pad - v3.0.7
+                const adjustedMinutesTCT = String(startTimeDate.getUTCMinutes()).padStart(2, '0');  // Get minutes and pad - v3.0.7
+
+                $('#raceStartTimeHours').val(adjustedHoursTCT);           // Update hours dropdown in GUI - v3.0.7
+                $('#raceStartTimeMinutes').val(adjustedMinutesTCT);         // Update minutes dropdown in GUI - v3.0.7
+
+                alert("Start time adjusted to the next 15-minute mark (TCT). Please check the adjusted time in the GUI."); // Inform user - v3.0.7 - Adjusted alert message to TCT only and GUI check
             }
 
 
-            waitTimeValue = Math.floor(startTimeDate.getTime() / 1000);
+            waitTimeValue = Math.floor(startTimeDate.getTime() / 1000); // getTime() returns milliseconds since epoch in TCT
 
-            if (isNaN(waitTimeValue)) {
-                alert("Invalid Start Time in Preset. Using current time instead.");
-                waitTimeValue = Math.floor(Date.now()/1000);
+             //Ensure waitTimeValue is in the future
+            const currentTimeTCT = Date.now() / 1000; // Current TCT time in seconds
+            if (waitTimeValue <= currentTimeTCT) {
+                waitTimeValue = Math.floor(currentTimeTCT) + 900; // Default to NOW + 15 mins if time is in the past
+                const futureStartTime = new Date(waitTimeValue * 1000); // Convert back to Date object for formatting
+                const adjustedHoursTCT = String(futureStartTime.getUTCHours()).padStart(2, '0');
+                const adjustedMinutesTCT = String(futureStartTime.getUTCMinutes()).padStart(2, '0');
+                $('#raceStartTimeHours').val(adjustedHoursTCT);
+                $('#raceStartTimeMinutes').val(adjustedMinutesTCT);
+                alert("Selected time was in the past. Start time adjusted to NOW + 15 minutes (TCT). Please check the adjusted time in the GUI.");
             }
         }
         raceURL += `&waitTime=${waitTimeValue}&rfcv=${rfcValue}`;
@@ -624,7 +668,8 @@
         const minDrivers = $('#minDrivers').val();
         const maxDrivers = $('#maxDrivers').val();
         const racePassword = $('#racePassword').val();
-        let raceStartTimeInputValue = $('#raceStartTime').val();
+        const raceStartTimeHoursValue = $('#raceStartTimeHours').val();     // Get hours dropdown value - v3.0.7
+        const raceStartTimeMinutesValue = $('#raceStartTimeMinutes').val();   // Get minutes dropdown value - v3.0.7
         const betAmount = $('#betAmount').val();
 
 
@@ -643,18 +688,18 @@
 
         let waitTimeValue = Math.floor(Date.now()/1000);
 
-        if (raceStartTimeInputValue) {
-            const parts = raceStartTimeInputValue.split('T');
-            const dateParts = parts[0].split('-');
-            const timeParts = parts[1].split(':');
+        if (raceStartTimeHoursValue && raceStartTimeMinutesValue) { // Check for hours AND minutes values - v3.0.7, Date is now assumed to be current
+            const hour = parseInt(raceStartTimeHoursValue, 10);   // Hours from dropdown - v3.0.7
+            const minute = parseInt(raceStartTimeMinutesValue, 10); // Minutes from dropdown - v3.0.7
+            const now = new Date(); // Get current date/time
+            const year = now.getUTCFullYear();
+            const month = now.getUTCMonth(); // Month is 0-indexed in JavaScript Date
+            const day = now.getUTCDate();
 
-            const year = parseInt(dateParts[0], 10);
-            const month = parseInt(dateParts[1], 10) - 1;
-            const day = parseInt(dateParts[2], 10);
-            const hour = parseInt(timeParts[0], 10);
-            const minute = parseInt(timeParts[1], 10);
 
-            let startTimeDate = new Date(Date.UTC(year, month, day, hour, minute, 0, 0));
+            // --- Time Input Handling for Dropdown Menus - v3.0.7 ---
+            // Date and time inputs are interpreted as UTC (now TCT)
+            let startTimeDate = new Date(Date.UTC(year, month, day, hour, minute, 0, 0)); // Use Date.UTC to interpret as TCT
 
             const minutes = startTimeDate.getUTCMinutes();
             const remainder = minutes % 15;
@@ -662,17 +707,30 @@
             if (remainder !== 0) {
                 const minutesToAdd = 15 - remainder;
                 startTimeDate.setUTCMinutes(minutes + minutesToAdd, 0, 0);
-                raceStartTimeInputValue = startTimeDate.toISOString().slice(0, 16);
-                $('#raceStartTime').val(raceStartTimeInputValue);
-                alert("Start time adjusted to the next 15-minute mark (TCT). Please check the adjusted time in the GUI.");
+                const adjustedTimeStringTCT = startTimeDate.toISOString().slice(11, 16); // HH:mm in TCT (Not directly used in GUI display anymore)
+
+                const adjustedHoursTCT = String(startTimeDate.getUTCHours()).padStart(2, '0');    // Get hours in 24hr format and pad - v3.0.7
+                const adjustedMinutesTCT = String(startTimeDate.getUTCMinutes()).padStart(2, '0');  // Get minutes and pad - v3.0.7
+
+                $('#raceStartTimeHours').val(adjustedHoursTCT);           // Update hours dropdown in GUI - v3.0.7
+                $('#raceStartTimeMinutes').val(adjustedMinutesTCT);         // Update minutes dropdown in GUI - v3.0.7
+
+                alert("Start time adjusted to the next 15-minute mark (TCT). Please check the adjusted time in the GUI."); // Inform user - v3.0.7 - Adjusted alert message to TCT only and GUI check
             }
 
 
-            waitTimeValue = Math.floor(startTimeDate.getTime() / 1000);
+            waitTimeValue = Math.floor(startTimeDate.getTime() / 1000); // getTime() returns milliseconds since epoch in TCT
 
-            if (isNaN(waitTimeValue)) {
-                alert("Invalid Start Time. Using current time instead.");
-                waitTimeValue = Math.floor(Date.now()/1000);
+            //Ensure waitTimeValue is in the future
+            const currentTimeTCT = Date.now() / 1000; // Current TCT time in seconds
+            if (waitTimeValue <= currentTimeTCT) {
+                waitTimeValue = Math.floor(currentTimeTCT) + 900; // Default to NOW + 15 mins if time is in the past
+                const futureStartTime = new Date(waitTimeValue * 1000); // Convert back to Date object for formatting
+                const adjustedHoursTCT = String(futureStartTime.getUTCHours()).padStart(2, '0');
+                const adjustedMinutesTCT = String(futureStartTime.getUTCMinutes()).padStart(2, '0');
+                $('#raceStartTimeHours').val(adjustedHoursTCT);
+                $('#raceStartTimeMinutes').val(adjustedMinutesTCT);
+                alert("Selected time was in the past. Start time adjusted to NOW + 15 minutes (TCT). Please check the adjusted time in the GUI.");
             }
         }
         raceURL += `&waitTime=${waitTimeValue}&rfcv=${rfcValue}`;
@@ -688,6 +746,18 @@
     }
 
 
+    // --- Set Time to NOW function - REVISED for EXACT UTC time - v3.0.13 ---
+    function setTimeToNow() {
+        const nowUTC = new Date(); // This will be in browser's understanding of UTC
+
+        const adjustedHoursUTC = String(nowUTC.getUTCHours()).padStart(2, '0');    // Get UTC hours in 24hr format and pad
+        const adjustedMinutesUTC = String(nowUTC.getUTCMinutes()).padStart(2, '0');  // Get UTC minutes and pad
+
+        $('#raceStartTimeHours').val(adjustedHoursUTC);
+        $('#raceStartTimeMinutes').val(adjustedMinutesUTC);
+    }
+
+
     // --- Preset Configuration Functions ---
     function getCurrentConfig() {
         return {
@@ -698,22 +768,10 @@
             minDrivers: $('#minDrivers').val(),
             maxDrivers: $('#maxDrivers').val(),
             racePassword: $('#racePassword').val(),
-            //raceStartTime: $('#raceStartTime').val(), // <--- COMMENTED OUT TO AVOID SAVING TIME IN PRESETS - Now we want to save time in Presets!
-            raceStartTime: $('#raceStartTime').val(), // <--- RE-ENABLED Race Start Time in Presets - v2.98v - to save time in presets
+            raceStartTimeHours: $('#raceStartTimeHours').val(),       // Save hours from dropdown in preset - v3.0.7
+            raceStartTimeMinutes: $('#raceStartTimeMinutes').val(),     // Save minutes from dropdown in preset - v3.0.7
             betAmount: $('#betAmount').val()
         };
-    }
-
-    function applyPreset(presetConfig) {
-        $('#trackID').val(presetConfig.trackID);
-        $('#raceName').val(presetConfig.raceName);
-        $('#laps').val(presetConfig.laps);
-        $('#carID').val(presetConfig.carID);
-        $('#minDrivers').val(presetConfig.minDrivers);
-        $('#maxDrivers').val(presetConfig.maxDrivers);
-        $('#racePassword').val(presetConfig.racePassword || '');
-        $('#raceStartTime').val(presetConfig.raceStartTime || ''); 	// <--- RE-ENABLED Race Start Time in Apply Presets - v2.98v - to apply time from presets
-        $('#betAmount').val(presetConfig.betAmount || '0');
     }
 
 
@@ -728,12 +786,13 @@
             const presetName = $(this).prev('.preset-button').text();
             removePreset(presetName, this);
         });
+        $('#setNowButton').on('click', setTimeToNow); // Event listener for NOW button - v3.0.7
     }
 
 
     // --- Initialization ---
     $(document).ready(function() {
-        // --- Inject CSS Styles IMMEDIATELY in $(document).ready - Version 3.0.3 ---
+        // --- Inject CSS Styles IMMEDIATELY in $(document).ready - Version 3.0.7 ---
         const style = document.createElement('style');
         style.textContent = `
             #tcLogo { pointer-events: none; }
@@ -758,6 +817,7 @@
             .close-button:hover,
             #closeGUIButton:hover,
             #toggleRaceGUIButton:hover,
+            #setNowButton:hover, /* Hover for NOW button - v3.0.7 */
             /* --- More Specific Selector for Quick Race Buttons - v2.98ah --- */
             #quickPresetButtonsContainer > .quick-race-button:hover, /* Hover style with increased specificity - v2.98ah */
             div.content-title > h4 > #toggleRaceGUIButton:hover {
@@ -782,7 +842,7 @@
                 z-index: 1000;
                 font-family: sans-serif;
                 border-radius: 10px;
-                max-width: 325px; /* <<---  GUI Width set to 325px - Version 3.0.3 Release */
+                max-width: 340px; /* Slightly increase max-width to accommodate content - v3.0.16 */
             }
 
             #raceConfigGUI h2, #raceConfigGUI h3, #raceConfigGUI h4 {
@@ -800,21 +860,22 @@
 
             #raceConfigGUI input[type="text"],
             #raceConfigGUI input[type="number"],
-            #raceConfigGUI input[type="datetime-local"],
+            #raceConfigGUI input[type="date"], /* <<--- NEW: Style for date input - v3.0.4 */
+            #raceConfigGUI input[type="time"], /* <<--- NEW: Style for time input - v3.0.4 - Although now replaced with dropdowns in v3.0.7, keeping for potential future use or CSS consistency */
             #raceConfigGUI select {
-                padding: 8px;
-                margin-bottom: 8px;
-                border: 1px solid #777;
-                background-color: #333;
+                padding: 9px; /* Slightly increase padding - v3.0.14 - Visual Update */
+                margin-bottom: 0px; /* Ensure no bottom margin - v3.0.14 - Visual Update */
+                border: 1px solid #555; /* Darker border - v3.0.14 - Visual Update */
+                background-color: #444; /* Slightly darker background - v3.0.14 - Visual Update */
                 color: #eee !important;
-                border-radius: 5px;
-                width: calc(100% - 22px);
+                border-radius: 7px; /* Slightly more rounded corners - v3.0.14 - Visual Update */
+                width: calc(100% - 30px); /* Slightly reduce width to ensure containment - v3.0.16 */
             }
 
             #raceConfigGUI input:focus,
             #raceConfigGUI select:focus {
-                border-color: #aaa;
-                box-shadow: 0 0 5px rgba(170, 170, 170, 0.5);
+                border-color: #888; /* Highlight border on focus - v3.0.14 - Visual Update */
+                box-shadow: 0 0 6px rgba(136, 136, 136, 0.5); /* Slightly stronger focus shadow - v3.0.14 - Visual Update */
             }
 
 
@@ -837,8 +898,10 @@
             #raceConfigGUI .config-section h4,
             #raceConfigGUI .car-select-section h4,
             #raceConfigGUI .presets-section h4 {
-                border-top: 1px solid #eee;
-                padding-top: 10px;
+                border-top: 1px solid #555; /* Darker, less harsh section line color - v3.0.14 - Visual Update */
+                padding-top: 12px; /* Slightly more padding above line - v3.0.14 - Visual Update */
+                font-size: 1.4em; /* Slightly larger heading - v3.0.14 - Visual Update */
+                margin-bottom: 18px; /* More space below heading - v3.0.14 - Visual Update */
             }
 
 
@@ -858,8 +921,13 @@
 
             /* --- ENSURE BUTTON HOVER EFFECTS --- */
             #raceConfigGUI #createRaceButton:hover,
-            #raceConfigGUI #closeGUIButton:hover {
+            #raceConfigGUI #closeGUIButton:hover,
+            #raceConfigGUI #setNowButton:hover { /* Hover style for NOW button - v3.0.7 */
                 background-color: #777 !important;
+            }
+
+            #raceConfigGUI #setNowButton:hover {
+                background-color: #888; /* Lighter hover background for NOW button - v3.0.14 - Visual Update */
             }
 
 
@@ -1020,8 +1088,19 @@
             }
 
             /* --- TIGHTER SPACING for DIVs in config-params-section --- */
-            #raceConfigGUI .config-params-section > div {
-                margin-bottom: 7px; /* Adjusted tighter div spacing */
+            #raceConfigGUI .config-section > div {
+                margin-bottom: 12px; /* Adjusted tighter div spacing - v3.0.14 - Visual Update */
+                display: flex; /* Enable flexbox layout - v3.0.14 - Visual Update */
+                align-items: center; /* Vertically center items in each row - v3.0.14 - Visual Update */
+            }
+
+            #raceConfigGUI .config-section label {
+                margin-bottom: 0; /* Remove bottom margin from labels now using flexbox for spacing - v3.0.14 - Visual Update */
+                margin-right: 10px; /* Add right margin to labels to space from inputs - v3.0.14 - Visual Update */
+                width: auto; /* Allow label width to adjust to content - v3.0.14 - Visual Update */
+                flex-shrink: 0; /* Prevent labels from shrinking - v3.0.14 - Visual Update */
+                text-align: right; /* Right-align labels for cleaner look - v3.0.14 - Visual Update */
+                min-width: 110px; /* Slightly reduce label min-width - v3.0.16 */
             }
 
 
@@ -1250,7 +1329,7 @@
 
         if ($('div.content-title > h4').length > 0 && !$('#toggleRaceGUIButton').length) {
             // Simplified inline styles - relying on CSS class for most styling now
-            const toggleButton = $(`<button id="toggleRaceGUIButton" class="gui-button" style="text-decoration: none; margin-right: 10px;">Race Config GUI</button>`); // v3.0.3 Release Version - Name Change
+            const toggleButton = $(`<button id="toggleRaceGUIButton" class="gui-button" style="text-decoration: none; margin-right: 10px;">Race Config GUI</button>`); // v3.0.10 - Minute Dropdown Text & Time Description Removed
 
             $('div.content-title > h4').append(toggleButton);
 
