@@ -1,11 +1,11 @@
 // ==UserScript==
-// @name         Torn Race Config GUI PDA NoGMf
+// @name         Torn Race Config GUI
 // @namespace    torn.raceconfigguipda
-// @description  PDA GUI to configure Torn racing parameters, schedule races, set passwords, save presets, create races easily, betting feature, styled toggle button, release storage key, hover button color change, final polish, with update URL, PDA/Mobile Friendly, No GM Functions for wider compatibility. With Preset Descriptions and Author Credit.
-// @version      2.98ai  // Corrected @version for Tampermonkey - "PDA NoGMf" moved to name/description - Toggle Button BG Fix - Revert Create Button Style - Clear Presets Feature - Preset Hover Fix - Input Text Color Fix - Clear Presets Button Style Fix - All Input Text Color Fix - White Text for Dark Mode - Definitive Input Text Color Fix - White Text Everywhere - Forced White Text Color - Definitive Fix with !important - GUI Visual Polish - Compact Driver Inputs - GUI Position Lower & Solid White Section Lines - Refine Section Lines - Create Race Button Fix & Header Lines - Create Race Button Hover Fix & Lower GUI - Close Button Hover Fix - Reduce Race Settings Spacing - Tighter Race Settings Spacing - Quick Preset Race Buttons - Styled Quick Race Buttons - GUI Toggle Race Entry Fix - Quick Button Border & Hover Fix - CSS Specificity Fix for Quick Buttons - Preset Descriptions & Author Credit - Preset Button & Delete Button Alignment Fixes - Preset Button Content Fix - Preset Car Description Fix & Cache Update - Preset Button Info on Button - Preset Delete Button Position Right - Race Settings Layout Fix - Forceful CSS - GUI Width Lock - Preset Overflow Fix - Button Width Control
-// @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
-// @downloadURL  https://github.com/gnsc-scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
-// @author       GNSC4 [268863] (Based on Shlefter's script, GMforPDA by Kwack -  Version 2.49 base + CSS fix + Toggle Button BG Fix + Revert Create Button Style + Clear Presets Feature + Preset Hover Fix - Input Text Color Fix - Clear Presets Button Style Fix - All Input Text Color Fix - White Text for Dark Mode - Definitive Input Text Color Fix - White Text Everywhere - Forced White Text Color - Definitive Fix with !important - GUI Visual Polish - Compact Driver Inputs - GUI Position Lower & Solid White Section Lines - Refine Section Lines - Create Race Button Hover Fix & Lower GUI - Close Button Hover Fix - Reduce Race Settings Spacing - Tighter Race Settings Spacing - Quick Preset Race Buttons - Styled Quick Race Buttons - GUI Toggle Race Entry Fix - Quick Button Border & Hover Fix - CSS Specificity Fix for Quick Buttons - Preset Descriptions & Author Credit - Preset Button & Delete Button Alignment Fixes - Preset Button Content Fix - Preset Car Description Fix & Cache Update - Preset Button Info on Button - Preset Delete Button Position Right - Race Settings Layout Fix - Forceful CSS - GUI Width Lock - Preset Overflow Fix - Button Width Control)
+// @description  GUI to configure Torn racing parameters, schedule races, set passwords, save presets, create races easily, betting feature, styled toggle button, release storage key.
+// @version      3.0.3
+// @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration.raw.user.js
+// @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration.raw.user.js
+// @author       GNSC4 [268863] (Based on Shlefter's script, GMforPDA by Kwack)
 // @match        https://www.torn.com/loader.php?sid=racing*
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -297,7 +297,7 @@
 
 
                 <button id="closeGUIButton" class="close-button">[X]</button>
-                <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">Script created by <a href="https://www.torn.com/profiles.php?XID=268863" target="_blank" style="color: #999; text-decoration: underline;">GNSC4 [268863]</a> - v2.98ai PDA NoGMf</span>
+                <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">Script created by <a href="https://www.torn.com/profiles.php?XID=268863" target="_blank" style="color: #999; text-decoration: underline;">GNSC4 [268863]</a> - v3.0.3</span>
             </div>
         `;
         $('body').append(guiHTML);
@@ -733,7 +733,7 @@
 
     // --- Initialization ---
     $(document).ready(function() {
-        // --- Inject CSS Styles IMMEDIATELY in $(document).ready - Version 2.98ai ---
+        // --- Inject CSS Styles IMMEDIATELY in $(document).ready - Version 3.0.3 ---
         const style = document.createElement('style');
         style.textContent = `
             #tcLogo { pointer-events: none; }
@@ -782,7 +782,7 @@
                 z-index: 1000;
                 font-family: sans-serif;
                 border-radius: 10px;
-                max-width: 450px; /* <<---  NEW:  Locked GUI Width to max 450px - v2.98ah */
+                max-width: 325px; /* <<---  GUI Width set to 325px - Version 3.0.3 Release */
             }
 
             #raceConfigGUI h2, #raceConfigGUI h3, #raceConfigGUI h4 {
@@ -891,6 +891,7 @@
                 gap: 8px;
                 margin-bottom: 15px;
                 align-items: flex-start; /* <<--- NEW: Align items to start in wrapped container - v2.98ah - for vertical stacking */
+                max-width: calc(100% - 20px); /* <<--- NEW: Limit Preset Button Container Width - v2.98aj */
             }
 
             #raceConfigGUI .preset-button-container {
@@ -1069,10 +1070,11 @@
             }
 
 
-            /* --- Quick Preset Buttons Container Style --- v2.98ah --- */
+            /* --- Quick Preset Buttons Container Style --- v2.98ah - UPDATED in v2.98aj to add max-width to container --- */
             #quickPresetButtonsContainer {
                 margin-top: 15px; /* Space above the buttons */
                 text-align: left; /* Align buttons to the left */
+                max-width: calc(100% - 20px); /* <<--- NEW: Limit container width - v2.98aj */
             }
 
             /* --- Style for Quick Race Buttons - v2.98ah --- */
@@ -1160,6 +1162,7 @@
 
                 #quickPresetButtonsContainer { /* Center align quick preset buttons on PDA - v2.98ah */
                     text-align: center;
+                    max-width: 95%; /* Limit container width on PDA as well - v2.98aj - matching GUI width */
                 }
 
                 .quick-race-button { /* Adjust quick race button margin for PDA - v2.98ah */
@@ -1247,7 +1250,7 @@
 
         if ($('div.content-title > h4').length > 0 && !$('#toggleRaceGUIButton').length) {
             // Simplified inline styles - relying on CSS class for most styling now
-            const toggleButton = $(`<button id="toggleRaceGUIButton" class="gui-button" style="text-decoration: none; margin-right: 10px;">Race Config GUI (v2.98ai PDA NoGMf)</button>`); // v2.98 Version Bump - Corrected to v2.98ai PDA NoGMf in button
+            const toggleButton = $(`<button id="toggleRaceGUIButton" class="gui-button" style="text-decoration: none; margin-right: 10px;">Race Config GUI</button>`); // v3.0.3 Release Version - Name Change
 
             $('div.content-title > h4').append(toggleButton);
 
