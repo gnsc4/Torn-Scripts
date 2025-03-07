@@ -2,7 +2,7 @@
 // @name         Torn Race Config GUI PDA NoGMf
 // @namespace    torn.raceconfigguipda
 // @description  PDA GUI to configure Torn racing parameters, schedule races, set passwords, save presets, create races easily, betting feature, styled toggle button, release storage key, hover button color change, final polish, with update URL, PDA/Mobile Friendly, No GM Functions for wider compatibility.
-// @version      2.96 PDA NoGMf
+// @version      2.97 PDA NoGMf
 // @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
 // @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
 // @author       GNSC4 [268863] (Based on Shlefter's script)
@@ -105,7 +105,7 @@
 
 
                 <button id="closeGUIButton" class="close-button">[X]</button>
-                <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">v2.96 PDA NoGMf</span>
+                <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">v2.97 PDA NoGMf</span>
             </div>
         `;
         $('body').append(guiHTML);
@@ -755,10 +755,10 @@
     // --- Initialization ---
     $(document).ready(function() {
         if ($('div.content-title > h4').length > 0 && !$('#toggleRaceGUIButton').length) {
-            const toggleButton = $(`<button id="toggleRaceGUIButton" class="gui-button">Race Config GUI (v2.96 PDA NoGMf)</button>`);
+            // Simplified inline styles - relying on CSS class for most styling now
+            const toggleButton = $(`<button id="toggleRaceGUIButton" class="gui-button" style="text-decoration: none; margin-right: 10px;">Race Config GUI (v2.97 PDA NoGMf)</button>`);
 
             $('div.content-title > h4').append(toggleButton);
-
 
             toggleButton.on('click', function() {
                 if ($('#raceConfigGUI').is(':visible')) {
