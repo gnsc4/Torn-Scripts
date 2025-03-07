@@ -2,7 +2,7 @@
 // @name         Torn Race Config GUI
 // @namespace    torn.raceconfigguipda
 // @description  GUI to configure Torn racing parameters, schedule races, set passwords, save presets, create races easily, betting feature, styled toggle button, release storage key.
-// @version      3.0.2
+// @version      3.0.3
 // @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration.raw.user.js
 // @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration.raw.user.js
 // @author       GNSC4 [268863] (Based on Shlefter's script, GMforPDA by Kwack)
@@ -297,7 +297,7 @@
 
 
                 <button id="closeGUIButton" class="close-button">[X]</button>
-                <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">Script created by <a href="https://www.torn.com/profiles.php?XID=268863" target="_blank" style="color: #999; text-decoration: underline;">GNSC4 [268863]</a> - v3.0.2</span>
+                <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">Script created by <a href="https://www.torn.com/profiles.php?XID=268863" target="_blank" style="color: #999; text-decoration: underline;">GNSC4 [268863]</a> - v3.0.3</span>
             </div>
         `;
         $('body').append(guiHTML);
@@ -733,7 +733,7 @@
 
     // --- Initialization ---
     $(document).ready(function() {
-        // --- Inject CSS Styles IMMEDIATELY in $(document).ready - Version 3.0.2 ---
+        // --- Inject CSS Styles IMMEDIATELY in $(document).ready - Version 3.0.3 ---
         const style = document.createElement('style');
         style.textContent = `
             #tcLogo { pointer-events: none; }
@@ -782,7 +782,7 @@
                 z-index: 1000;
                 font-family: sans-serif;
                 border-radius: 10px;
-                max-width: 325px; /* <<---  GUI Width set to 325px - Version 3.0.2 Release */
+                max-width: 325px; /* <<---  GUI Width set to 325px - Version 3.0.3 Release */
             }
 
             #raceConfigGUI h2, #raceConfigGUI h3, #raceConfigGUI h4 {
@@ -1250,7 +1250,7 @@
 
         if ($('div.content-title > h4').length > 0 && !$('#toggleRaceGUIButton').length) {
             // Simplified inline styles - relying on CSS class for most styling now
-            const toggleButton = $(`<button id="toggleRaceGUIButton" class="gui-button" style="text-decoration: none; margin-right: 10px;">Race Config GUI</button>`); // v3.0.2 Release Version - Name Change
+            const toggleButton = $(`<button id="toggleRaceGUIButton" class="gui-button" style="text-decoration: none; margin-right: 10px;">Race Config GUI</button>`); // v3.0.3 Release Version - Name Change
 
             $('div.content-title > h4').append(toggleButton);
 
