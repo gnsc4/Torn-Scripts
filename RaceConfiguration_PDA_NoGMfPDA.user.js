@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Torn Race Config GUI - PDA & Desktop - v2.85 - Full GUI - User Enlisted Cars - Official API - DATA OPTIMIZATION - PARAMETER CONFIRMATION - **ERROR & SYNTAX FIX - GUI Cleanup - RESTORED RACE BUTTON**
+// @name         Torn Race Config GUI - PDA & Desktop - v2.89
 // @namespace    torn.raceconfiggui.pdadesktop
-// @description  Full Feature Race Config GUI - v2.85 - User Enlisted Cars Endpoint - Official API Domain - ROBUST CACHED DATA + "UPDATE CARS" BUTTON - DATA OPTIMIZATION (item_name, id only) - PARAMETER CONFIRMATION (Race Creation Params) - **ERROR & SYNTAX FIX - GUI Cleanup - RESTORED RACE BUTTON**
-// @version      2.85-PDA-Desktop-GMfPDA-FullGUI-UserEnlistedCars-OfficialAPI-ROBUST-CACHED-DATA-UPDATE-CARS-BUTTON-DATA-OPTIMIZED-PARAM-CONFIRM-ERROR-SYNTAX-GUI-CLEANUP-RACE-BUTTON
+// @description  Full Feature Race Config GUI - v2.89 - User Enlisted Cars Endpoint - Official API Domain - ROBUST CACHED DATA + "UPDATE CARS" BUTTON - DATA OPTIMIZATION (item_name, id only) - PARAMETER CONFIRMATION (Race Creation Params) - ERROR & SYNTAX FIX - GUI Cleanup - RESTORED RACE BUTTON - RACE CREATION LOGIC - VEHICLE ID FALLBACK REMOVED - UNNEEDED COMMENT TAGS REMOVED - **OLD CODE COMMENTS REMOVED**
+// @version      2.89
 // @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
 // @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
 // @author       GNSC4 [268863] (Based on Shlefter's script)
@@ -12,6 +12,7 @@
 // @grant        GM_deleteValue
 // @grant        GM_xmlHttpRequest
 // @require      https://code.jquery.com/jquery-3.7.1.min.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.min.js // <-- ADDED jQuery Cookie REQUIRE
 // @license      MIT
 // ==/UserScript==
 
@@ -197,9 +198,7 @@
             unsafeWindow: e,
         }).forEach(([o, r]) => {
             window[o] = r; // <--- DIRECT ASSIGNMENT: window[o] = r;
-        }); // End document.ready
-        
-        })(); // End IIFE
+        });
     })(window, Object, DOMException, AbortController, Promise, localStorage);
 
 // --- **END Inlined GMforPDA Code** ---
@@ -504,7 +503,7 @@ style.textContent = `
         }
     }
 
-    
+
     /* --- Dark Mode --- */
     body {
         background-color: #181818; /* Dark body background */
@@ -590,7 +589,7 @@ function createGUI() {
         <div id="raceConfigGUI">
             <button id="closeGUIButton" class="close-button">[X]</button>
             <h2>Torn Race Config GUI</h2>
-            <h3>Version 2.85 - User Enlisted Cars - Official API - Parameter Confirmation - Error & Syntax Fix - GUI Cleanup - **RESTORED RACE BUTTON**</h3>
+            <h3>Version 2.89 - User Enlisted Cars - Official API - Parameter Confirmation - Error & Syntax Fix - GUI Cleanup - RACE CREATION LOGIC - VEHICLE ID FALLBACK REMOVED - UNNEEDED COMMENT TAGS REMOVED - **OLD CODE COMMENTS REMOVED**</h3>
 
             <div class="api-key-section config-section">
                 <h4>API Key Configuration</h4>
@@ -611,9 +610,9 @@ function createGUI() {
             </div>
 
 
-            <div class="config-section"> <!- --- **RACE CREATION PARAMETERS SECTION** --- ->
+            <div class="config-section">
                 <h4>Race Creation Parameters</h4>
-                <div class="config-params-section"> <!- --- NOTE: .config-params-section is re-used for layout --- ->
+                <div class="config-params-section">
                     <div><label for="trackID">Track:</label>
                         <select id="trackID">
                             ${Object.entries(tracks).map(([id, name]) => `<option value="${id}">${name}</option>`).join('')}
@@ -626,10 +625,10 @@ function createGUI() {
                     <div><label for="minDrivers">Min Drivers:</label><input type="number" id="minDrivers" value="2"></div>
                     <div><label for="maxDrivers">Max Drivers:</label><input type="number" id="maxDrivers" value="2"></div>
                 </div>
-                <div class="config-section" style="text-align: center; margin-top: 20px;"> <!- --- **CREATE RACE BUTTON SECTION** --- ->
+                <div class="config-section" style="text-align: center; margin-top: 20px;">
                     <button id="createRaceButton" class="gui-button">Create Race</button>
-                </div> <!- --- **END CREATE RACE BUTTON SECTION** --- ->
-            </div> <!- --- **END RACE CREATION PARAMETERS SECTION** --- ->
+                </div>
+            </div>
 
 
             <div class="presets-section config-section">
@@ -644,7 +643,7 @@ function createGUI() {
 
 
             <div style="text-align: center; margin-top: 15px; font-size: 0.8em; color: #888;">
-                Version 2.85 - User Enlisted Cars - Official API - Parameter Confirmation - Syntax & Error Fix - GUI Cleanup - **RESTORED RACE BUTTON**<br>
+                Version 2.89 - User Enlisted Cars - Official API - Parameter Confirmation - Syntax & Error Fix - GUI Cleanup - RACE CREATION LOGIC - VEHICLE ID FALLBACK REMOVED - UNNEEDED COMMENT TAGS REMOVED - **OLD CODE COMMENTS REMOVED**<br>
                 Based on Shlefter's Script | By GNSC4 [268863]
             </div>
         </div>
@@ -708,7 +707,7 @@ async function loadCars() {
             await GM_setValue(VEHICLE_ID_CACHE_KEY + '_timestamp', now);
             console.log('Enlisted car data fetched, optimized (item_name, id only), and cached (from /user/enlistedcars - official api.torn.com).'); // <--- Updated log message - Official API
             populateCarDropdown(optimizedCarData); // <-- Pass OPTIMIZED CAR DATA to populate dropdown
-            $('#statusMessageBox').text('Car list updated (from Enlisted Cars - official api.torn.com, data optimized).').removeClass('error').addClass('success').show(); // <--- Updated status message - Official API
+            $('#statusMessageBox').text('Car list updated (from Enlisted Cars - official api.torn.com, data optimized, Vehicle ID Fallback Removed, HTML & Old Code Comments Removed).').removeClass('error').addClass('success').show(); // <--- Updated status message - Official API - VEHICLE ID FALLBACK REMOVED - HTML & OLD CODE COMMENTS REMOVED
             setTimeout(() => $('#statusMessageBox').fadeOut(), 3000);
         } else {
             $('#statusMessageBox').text('Error loading car list from API (/user/enlistedcars - No cars received or API error - official api.torn.com).').addClass('error').removeClass('success').show(); // <--- Updated error message - Official API
@@ -771,7 +770,6 @@ function populateCarDropdown(enlistedCarData) { // <--- Now takes OPTIMIZED ENLI
             } else {
                 console.warn("populateCarDropdown: Incomplete car data encountered and skipped:", carInfo); // Warn in console about incomplete data
                 // Fallback: Skip this car if data is incomplete, or append a generic error option if you prefer
-                // carSelect.append('<option value="">Error - Incomplete Car Data</option>');
             }
         });
     } else {
@@ -782,31 +780,20 @@ function populateCarDropdown(enlistedCarData) { // <--- Now takes OPTIMIZED ENLI
 }
 
 
-function getVehicleNameFromID(vehicleId) { // <-- Still useful as fallback for generic names (though might not be needed now)
-    const vehicleNames = {
-        "2": "Veloria", "3": "Magnum", "4": "Deimos", "5": "Nemesis", "6": "Centurion", "7": "Paladin", "8": "Dominator", "9": "Overlord", "10": "Tyrant", "11": "Inferno", "12": "Apocalypse", "13": "Armageddon", "14": "Behemoth", "15": "Colossus", "16": "Titan", "17": "Vanquisher", "18": "Conqueror", "19": "Obliterator", "20": "Annihilator", "21": "Desolator", "22": "Eradicator", "23": "Terminator", "24": "Exterminator", "25": "Devastator", "26": "Eliminator", "27": "Marauder", "28": "Outlaw", "29": "Raider", "30": "Renegade", "31": "Avenger", "32": "Challenger", "33": "Defender", "34": "Enforcer", "35": "Vindicator", "36": "Crusader", "37": "Liberator", "38": "Redeemer", "39": "Oppressor", "40": "Punisher", "41": "Slayer", "42": "Destroyer", "43": "Executioner", "44": "Judicator", "45": "Persecutor", "46": "Tormentor", "47": "Vandal", "48": "Barbarian", "49": "Berserker", "50": "Warlord",
-        "51": "Interceptor", "52": "Pursuit", "53": "Vigilante", "54": "Wrangler", "55": "Cavalier", "56": "Gallant", "57": "Valiant", "58": "Paladin LFA", "59": "Dominator LFA", "60": "Overlord LFA", "61": "Tyrant LFA", "62": "Inferno LFA", "63": "Apocalypse LFA", "64": "Armageddon LFA", "65": "Behemoth LFA", "66": "Colossus LFA", "67": "Titan LFA", "68": "Vanquisher LFA", "69": "Conqueror LFA", "70": "Obliterator LFA", "71": "Annihilator LFA", "72": "Desolator LFA", "73": "Eradicator LFA", "74": "Terminator LFA", "75": "Exterminator LFA", "76": "Devastator LFA", "77": "Eliminator LFA", "78": "Marauder LFA", "79": "Outlaw LFA", "80": "Raider LFA", "81": "Renegade LFA", "82": "Avenger LFA", "83": "Challenger LFA", "84": "Defender LFA", "85": "Enforcer LFA", "86": "Vindicator LFA", "87": "Crusader LFA", "88": "Liberator LFA", "89": "Redeemer LFA", "90": "Oppressor LFA", "91": "Punisher LFA", "92": "Slayer LFA", "93": "Destroyer LFA", "94": "Executioner LFA", "95": "Judicator LFA", "96": "Persecutor LFA", "97": "Tormentor", "98": "Vandal", "99": "Barbarian", "100": "Berserker",
-        "101": "Warlord LFA", "102": "Interceptor LFA", "103": "Pursuit LFA", "104": "Vigilante LFA", "105": "Wrangler LFA", "106": "Cavalier LFA", "107": "Gallant LFA", "108": "Valiant LFA", "109": "Veloria LFA", "110": "Magnum LFA", "111": "Deimos LFA", "112": "Nemesis LFA", "113": "Centurion", "114": "Paladin SE", "115": "Dominator SE", "116": "Overlord SE", "117": "Tyrant SE", "118": "Inferno SE", "119": "Apocalypse SE", "120": "Armageddon SE", "121": "Behemoth SE", "122": "Colossus SE", "123": "Titan SE", "124": "Vanquisher SE", "125": "Conqueror SE", "126": "Obliterator SE", "127": "Annihilator SE", "128": "Desolator SE", "129": "Eradicator SE", "130": "Terminator SE", "131": "Exterminator SE", "132": "Devastator SE", "133": "Eliminator SE", "134": "Marauder SE", "135": "Outlaw SE", "136": "Raider SE", "137": "Renegade SE", "138": "Avenger SE", "139": "Challenger SE", "140": "Defender SE", "141": "Enforcer SE", "142": "Vindicator SE", "143": "Crusader SE", "144": "Liberator SE", "145": "Redeemer SE", "146": "Oppressor SE", "147": "Punisher SE", "148": "Slayer SE", "149": "Destroyer SE", "150": "Executioner SE",
-        "151": "Judicator SE", "152": "Persecutor SE", "153": "Tormentor SE", "154": "Vandal SE", "155": "Barbarian SE", "156": "Berserker SE", "157": "Warlord SE", "158": "Interceptor SE", "159": "Pursuit SE", "160": "Vigilante SE", "161": "Wrangler SE", "162": "Cavalier SE", "163": "Gallant SE", "164": "Valiant SE", "165": "Monster Truck", "166": "Hearse", "167": "Ice Cream Truck", "168": "Taxi", "169": "Box Truck", "170": "Bus",	"171": "Garbage Truck", "172": "Cement Truck", "173": "Firetruck", "174": "Limousine", "175": "Duke", "176": "Count", "177": "Princess", "178": "Queen", "179": "King", "180": "Emperor"
-    };
-
-    return vehicleNames[vehicleId] || `Unknown Vehicle (ID: ${vehicleId})`;
-}
-
 // --- **NEW** Function to update cars (clear cache and reload) ---
 function updateCars() {
     $('#statusMessageBox').text('Updating car list... Clearing cache and fetching fresh data...').removeClass('error').removeClass('success').show();
     GM_deleteValue(VEHICLE_ID_CACHE_KEY); // Clear cached car data
     GM_deleteValue(VEHICLE_ID_CACHE_KEY + '_timestamp'); // Clear timestamp as well (optional, but good practice)
     loadCars(); // Reload car data from API
-    setTimeout(() => $('#statusMessageBox').text('Car list updated! (Cache cleared and reloaded from API, data optimized)').removeClass('error').addClass('success').fadeIn(), 1000); // <--- Updated success message - DATA OPTIMIZED
+    setTimeout(() => $('#statusMessageBox').text('Car list updated! (Cache cleared and reloaded from API, data optimized, Vehicle ID Fallback, HTML & Old Code Comments Removed)').removeClass('error').addClass('success').fadeIn(), 1000); // <--- Updated success message - DATA OPTIMIZED - VEHICLE ID FALLBACK, HTML & OLD CODE COMMENTS REMOVED
     setTimeout(() => $('#statusMessageBox').fadeOut(), 5000); // Auto-fade success message after 5 seconds
 }
 
 
 // --- Preset Functions ---
 function loadPresets() {
-    console.log("loadPresets() - START (v2.85)"); // DEBUG CONSOLE LOG - START
+    console.log("loadPresets() - START (v2.89)"); // DEBUG CONSOLE LOG - START
     let presets = {};
     presets = GM_getValue(PRESET_STORAGE_KEY, {});
     console.log("loadPresets() - After GM_getValue, presets object:", presets); // DEBUG CONSOLE LOG - PRESETS OBJECT
@@ -817,16 +804,16 @@ function loadPresets() {
         console.log("loadPresets() - Inside loop, presetName: " + presetName); // DEBUG CONSOLE LOG - LOOP ITERATION
         presetButtonsDiv.append(createPresetButton(presetName, presetConfig));
     });
-    console.log("loadPresets() - END (v2.85)"); // DEBUG CONSOLE LOG - END
+    console.log("loadPresets() - END (v2.89)"); // DEBUG CONSOLE LOG - END
 }
 
 
 function savePreset_Internal() { // <-- **Internal, non-debounced savePreset function**
-    console.log("savePreset_Internal() - START (v2.85 - Simplified Presets)"); // DEBUG CONSOLE LOG - START
+    console.log("savePreset_Internal() - START (v2.89 - Simplified Presets)"); // DEBUG CONSOLE LOG - START
 
     const presetName = prompt("Enter a name for this preset:");
     if (!presetName) {
-        console.log("savePreset_Internal() - No preset name, cancelled (v2.85 - Simplified Presets)"); // DEBUG CONSOLE LOG - CANCELLED
+        console.log("savePreset_Internal() - No preset name, cancelled (v2.89 - Simplified Presets)"); // DEBUG CONSOLE LOG - CANCELLED
         return;
     }
 
@@ -847,21 +834,13 @@ function savePreset_Internal() { // <-- **Internal, non-debounced savePreset fun
         laps: $('#laps').val(),              // <--- RACE CREATION PARAMETERS SAVED IN PRESET - Laps
         minDrivers: $('#minDrivers').val(),      // <--- RACE CREATION PARAMETERS SAVED IN PRESET - Min Drivers
         maxDrivers: $('#maxDrivers').val()       // <--- RACE CREATION PARAMETERS SAVED IN PRESET - Max Drivers
-        // --- **CAR PERFORMANCE PARAMETERS REMOVED FROM PRESET SAVING in v2.83** ---
-        // topSpeed: $('#topSpeed').val(),
-        // acceleration: $('#acceleration').val(),
-        // braking: $('#braking').val(),
-        // handling: $('#handling').val(),
-        // dirt: $('#dirt').val(),
-        // tarmac: $('#tarmac').val(),
-        // safety: $('#safety').val()
     };
 
     presets[presetName] = presetConfig;
     GM_setValue(PRESET_STORAGE_KEY, presets);
     console.log("savePreset_Internal() - After GM_setValue, presets object:", presets); // DEBUG CONSOLE LOG - PRESETS OBJECT AFTER SAVE
     loadPresets(); // Update preset buttons after saving
-    console.log("savePreset_Internal() - END (v2.85 - Simplified Presets)"); // DEBUG CONSOLE LOG - END
+    console.log("savePreset_Internal() - END (v2.89 - Simplified Presets)"); // DEBUG CONSOLE LOG - END
 }
 
 // --- Debounced savePreset function ---
@@ -869,7 +848,7 @@ const savePreset = debounce(savePreset_Internal, 1000); // <--- **DEBOUNCED save
 
 
 function applyPreset(presetConfig) {
-    console.log("applyPreset() - Applying preset: " + presetConfig.name + " (v2.85 - Simplified Presets)"); // DEBUG CONSOLE LOG - APPLY START
+    console.log("applyPreset() - Applying preset: " + presetConfig.name + " (v2.89 - Simplified Presets)"); // DEBUG CONSOLE LOG - APPLY START
 
     $('#carSelect').val(presetConfig.carId); // <-- Now setting selected value to enlistedCarId
     $('#trackID').val(presetConfig.trackID);         // <--- RACE CREATION PARAMETERS APPLIED FROM PRESET - Track
@@ -881,34 +860,26 @@ function applyPreset(presetConfig) {
     $('#minDrivers').val(presetConfig.minDrivers);      // <--- RACE CREATION PARAMETERS APPLIED FROM PRESET - Min Drivers
     $('#maxDrivers').val(presetConfig.maxDrivers);       // <--- RACE CREATION PARAMETERS APPLIED FROM PRESET - Max Drivers
 
-    // --- **CAR PERFORMANCE PARAMETER APPLICATION REMOVED in v2.83 -  No longer needed or saved in presets** ---
-    // $('#topSpeed').val(presetConfig.topSpeed);
-    // $('#acceleration').val(presetConfig.acceleration);
-    // $('#braking').val(presetConfig.braking);
-    // $('#handling').val(presetConfig.handling);
-    // $('#dirt').val(presetConfig.dirt);
-    // $('#tarmac').val(presetConfig.tarmac);
-    // $('#safety').val(presetConfig.safety);
 
-    console.log("applyPreset() - Preset applied: " + presetConfig.name + " (v2.85 - Simplified Presets)"); // DEBUG CONSOLE LOG - APPLY END
-    $('#statusMessageBox').text(`Preset "${presetConfig.name}" applied (Simplified).`).removeClass('error').addClass('success').show(); // <-- Updated status message
+    console.log("applyPreset() - Preset applied: " + presetConfig.name + " (v2.89 - Simplified Presets)"); // DEBUG CONSOLE LOG - APPLY END
+    $('#statusMessageBox').text(`Preset "${presetConfig.name}" applied (Simplified, Vehicle ID Fallback, HTML & Old Code Comments Removed).`).removeClass('error').addClass('success').show(); // <-- Updated status message - VEHICLE ID FALLBACK, HTML & OLD CODE COMMENTS REMOVED
     setTimeout(() => $('#statusMessageBox').fadeOut(), 3000);
 }
 
 
 function removePreset(presetName, buttonElement) {
-    console.log("removePreset() - START, presetName: " + presetName + " (v2.85)"); // DEBUG CONSOLE LOG - REMOVE START
+    console.log("removePreset() - START, presetName: " + presetName + " (v2.89)"); // DEBUG CONSOLE LOG - REMOVE START
     if (confirm(`Are you sure you want to delete preset "${presetName}"?`)) {
-        console.log("removePreset() - Confirmed delete: " + presetName + " (v2.85)"); // DEBUG CONSOLE LOG - DELETE CONFIRMED
+        console.log("removePreset() - Confirmed delete: " + presetName + " (v2.89)"); // DEBUG CONSOLE LOG - DELETE CONFIRMED
         const presets = GM_getValue(PRESET_STORAGE_KEY, {});
         delete presets[presetName];
         GM_setValue(PRESET_STORAGE_KEY, presets);
         $(buttonElement).closest('.preset-button-container').remove();
-        console.log("removePreset() - Preset removed from GUI: " + presetName + " (v2.85)"); // DEBUG CONSOLE LOG - REMOVE GUI ELEMENT
+        console.log("removePreset() - Preset removed from GUI: " + presetName + " (v2.89)"); // DEBUG CONSOLE LOG - REMOVE GUI ELEMENT
     } else {
-        console.log("removePreset() - Cancelled delete: " + presetName + " (v2.85)"); // DEBUG CONSOLE LOG - DELETE CANCELLED
+        console.log("removePreset() - Cancelled delete: " + presetName + " (v2.89)"); // DEBUG CONSOLE LOG - DELETE CANCELLED
     }
-    console.log("removePreset() - END, presetName: " + presetName + " (v2.85)"); // DEBUG CONSOLE LOG - REMOVE END
+    console.log("removePreset() - END, presetName: " + presetName + " (v2.89)"); // DEBUG CONSOLE LOG - REMOVE END
 }
 
 
@@ -916,11 +887,11 @@ function clearAllPresets() {
     if (confirm('Are you sure you want to clear ALL saved presets? This action is irreversible.')) {
         GM_deleteValue(PRESET_STORAGE_KEY);
         $('#presetButtons').empty(); // Clear buttons from GUI
-        $('#statusMessageBox').text('All presets cleared.').removeClass('error').addClass('success').show();
+        $('#statusMessageBox').text('All presets cleared (Vehicle ID Fallback, HTML & Old Code Comments Removed).').removeClass('error').addClass('success').show(); // <-- Updated status message - VEHICLE ID FALLBACK, HTML & OLD CODE COMMENTS REMOVED
         setTimeout(() => $('#statusMessageBox').fadeOut(), 3000);
-        console.log("clearAllPresets() - All presets cleared (v2.85)"); // DEBUG CONSOLE LOG - CLEAR ALL
+        console.log("clearAllPresets() - All presets cleared (v2.89)"); // DEBUG CONSOLE LOG - CLEAR ALL
     } else {
-        console.log("clearAllPresets() - Clear all presets cancelled (v2.85)"); // DEBUG CONSOLE LOG - CLEAR ALL CANCELLED
+        console.log("clearAllPresets() - Clear all presets cancelled (v2.89)"); // DEBUG CONSOLE LOG - CLEAR ALL CANCELLED
     }
 }
 
@@ -943,10 +914,150 @@ function createPresetButton(presetName, presetConfig) {
 }
 
 
+// --- **NEW in v2.86** - RFC Value Fetching ---
+function getRFC() {
+    if (typeof $.cookie !== 'function') {
+        console.error("Error: jQuery Cookie plugin is not loaded correctly!");
+        console.log("Attempting fallback cookie parsing for rfc_v...");
+        let rfc = null;
+        const cookies = document.cookie.split("; ");
+        for (let i in cookies) {
+            let cookie = cookies[i].split("=");
+            if (cookie[0] && cookie[0].trim() === "rfc_v") {
+                rfc = decodeURIComponent(cookie[1]);
+                console.log("Fallback cookie parsing successful. rfc_v value:", rfc);
+                return rfc;
+            }
+        }
+        console.warn("Fallback cookie parsing failed to find rfc_v cookie.");
+        return '';
+    }
+
+    let rfcValue = $.cookie('rfc_v');
+    if (rfcValue) {
+        return rfcValue;
+    } else {
+        console.log("jQuery.cookie failed to get rfc_v, attempting fallback parsing...");
+        let rfc = null;
+        const cookies = document.cookie.split("; ");
+        for (let i in cookies) {
+            let cookie = cookies[i].split("=");
+            if (cookie[0] && cookie[0].trim() === "rfc_v") {
+                rfc = decodeURIComponent(cookie[1]);
+                console.log("Fallback cookie parsing successful. rfc_v value:", rfc);
+                return rfc;
+            }
+        }
+        console.warn("Fallback cookie parsing failed to find rfc_v cookie.");
+        return '';
+    }
+}
+
+
+// --- **NEW in v2.86** - Race Creation ---
+function createRace() {
+    const carID = $('#carSelect').val(); // <-- **CORRECTED SELECTOR to #carSelect (from #carID in reference script)**
+    const trackID = $('#trackID').val();
+    const laps = $('#laps').val();
+    const raceName = $('#raceName').val() || `${tracks[trackID]} Race`;
+    const minDrivers = $('#minDrivers').val();
+    const maxDrivers = $('#maxDrivers').val();
+    const racePassword = $('#racePassword').val();
+    let raceStartTimeInputValue = $('#raceStartTime').val();
+    const betAmount = $('#betAmount').val();
+
+
+    if (!carID || !trackID || !laps || !minDrivers || !maxDrivers) {
+        alert("Please fill in all race details (Car, Track, Laps, Min/Max Drivers).");
+        return;
+    }
+
+    const rfcValue = getRFC();
+
+    let raceURL = `https://www.torn.com/loader.php?sid=racing&tab=customrace&action=getInRace&step=getInRace&id=&carID=${carID}&createRace=true&title=${encodeURIComponent(raceName)}&minDrivers=${minDrivers}&maxDrivers=${maxDrivers}&trackID=${trackID}&laps=${laps}&minClass=5&carsTypeAllowed=1&carsAllowed=5&betAmount=0`; //Default betAmount=0 - will be updated below
+
+    if (racePassword) {
+        raceURL += `&password=${encodeURIComponent(racePassword)}`;
+    }
+
+    let waitTimeValue = Math.floor(Date.now()/1000);
+
+    if (raceStartTimeInputValue) {
+        const parts = raceStartTimeInputValue.split('T');
+        const dateParts = parts[0].split('-');
+        const timeParts = parts[1].split(':');
+
+        const year = parseInt(dateParts[0], 10);
+        const month = parseInt(dateParts[1], 10) - 1;
+        const day = parseInt(dateParts[2], 10);
+        const hour = parseInt(timeParts[0], 10);
+        const minute = parseInt(timeParts[1], 10);
+
+        let startTimeDate = new Date(Date.UTC(year, month, day, hour, minute, 0, 0));
+
+        const minutes = startTimeDate.getUTCMinutes();
+        const remainder = minutes % 15;
+
+        if (remainder !== 0) {
+            const minutesToAdd = 15 - remainder;
+            startTimeDate.setUTCMinutes(minutes + minutesToAdd, 0, 0);
+            raceStartTimeInputValue = startTimeDate.toISOString().slice(0, 16);
+            $('#raceStartTime').val(raceStartTimeInputValue);
+            alert("Start time adjusted to the next 15-minute mark (TCT). Please check the adjusted time in the GUI.");
+        }
+
+
+        waitTimeValue = Math.floor(startTimeDate.getTime() / 1000);
+
+        if (isNaN(waitTimeValue)) {
+            alert("Invalid Start Time. Using current time instead.");
+            waitTimeValue = Math.floor(Date.now()/1000);
+        }
+    }
+    raceURL += `&waitTime=${waitTimeValue}&rfcv=${rfcValue}`;
+
+    if (betAmount && parseInt(betAmount) > 0) { // Only add betAmount parameter if it's greater than 0 and not empty
+        raceURL = raceURL.replace("&betAmount=0", `&betAmount=${parseInt(betAmount)}`); //Replace default 0 with user bet amount
+    }
+
+
+    window.location = raceURL;
+    console.log("Initiating race creation via browser redirect to:", raceURL);
+    alert("Race created and URL opened! Check the Torn racing page to confirm and manage your race.");
+}
+
+
+// --- Preset Configuration Functions ---
+function getCurrentConfig() {
+    return {
+        trackID: $('#trackID').val(),
+        raceName: $('#raceName').val(),
+        laps: $('#laps').val(),
+        carId: $('#carSelect').val(), // <-- **CORRECTED SELECTOR to #carSelect (from #carID in reference script)**
+        minDrivers: $('#minDrivers').val(),
+        maxDrivers: $('#maxDrivers').val(),
+        racePassword: $('#racePassword').val(),
+        betAmount: $('#betAmount').val()
+    };
+}
+
+function applyPreset(presetConfig) {
+    $('#trackID').val(presetConfig.trackID);
+    $('#raceName').val(presetConfig.raceName);
+    $('#laps').val(presetConfig.laps);
+    $('#carSelect').val(presetConfig.carId); // <-- **CORRECTED SELECTOR to #carSelect (from #carID in reference script)**
+    $('#minDrivers').val(presetConfig.minDrivers);
+    $('#maxDrivers').val(presetConfig.maxDrivers);
+    $('#racePassword').val(presetConfig.racePassword || '');
+    $('#betAmount').val(presetConfig.betAmount || '0');
+}
+
+
 // --- Event Listener Setup ---
 function setupEventListeners() {
     $('#saveApiKeyCustom').on('click', saveApiKey);
-    $('#savePresetButton').on('click', savePreset); // Save Preset - DEBOUNCED in v2.85
+    $('#createRaceButton').on('click', createRace); // <-- **Now calling createRace() function**
+    $('#savePresetButton').on('click', savePreset);
     $('#clearPresetsButton').on('click', clearAllPresets);
     $('#closeGUIButton').on('click', function() { $('#raceConfigGUI').hide(); });
     $('#updateCarsButton').on('click', updateCars);
@@ -955,17 +1066,14 @@ function setupEventListeners() {
         const presetName = $(this).prev('.preset-button').text().split('<br>')[0]; // Extract preset name (before <br>)
         removePreset(presetName, this); // 'this' is the remove button element
     });
-    $('#createRaceButton').on('click', function() { // <-- **NEW: Event listener for Create Race button**
-        // --- **RACE CREATION LOGIC WILL GO HERE (Version 2.86 and beyond)** ---
-        alert('Create Race Button Clicked! - Race Creation Logic to be implemented in Version 2.86+'); // Placeholder for now
-    });
+    // createRaceButton event listener is already set up above to call createRace()
 }
 
 
 // --- Initialization ---
 $(document).ready(function() {
     if ($('div.content-title > h4').length > 0 && !$('#toggleRaceGUIButton').length) {
-        const toggleButton = $(`<button id="toggleRaceGUIButton">Race Config GUI (v2.85)</button>`);
+        const toggleButton = $(`<button id="toggleRaceGUIButton">Race Config GUI (v2.89)</button>`);
         $('div.content-title > h4').append(toggleButton);
 
         toggleButton.on('click', function() {
@@ -977,6 +1085,7 @@ $(document).ready(function() {
             }
         });
     }
-    $('div.content-title > h4').append('<span style="color: orange; margin-left: 10px;">v2.85 - USER ENLISTED CARS & OFFICIAL API - PARAMETER CONFIRMATION - SYNTAX & ERROR FIX - GUI Cleanup - **RESTORED RACE BUTTON**</span>'); // Orange - Syntax Error Fix Label
-
+    $('div.content-title > h4').append('<span style="color: orange; margin-left: 10px;">v2.89 - USER ENLISTED CARS & OFFICIAL API - PARAMETER CONFIRMATION - SYNTAX & ERROR FIX - GUI Cleanup - RACE CREATION LOGIC - VEHICLE ID FALLBACK REMOVED - UNNEEDED COMMENT TAGS REMOVED - **OLD CODE COMMENTS REMOVED**</span>'); // Orange - Syntax Error Fix Label
 });
+
+})();
