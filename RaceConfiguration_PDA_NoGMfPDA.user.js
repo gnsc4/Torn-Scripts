@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Torn Race Config GUI - PDA & Desktop - v2.70 - Full GUI Debounced Save v2
+// @name         Torn Race Config GUI - PDA & Desktop - v2.70c - Full GUI - Official API Vehicle IDs
 // @namespace    torn.raceconfiggui.pdadesktop
-// @description  Full Feature Race Config GUI with Debounced Save v2 - v2.70 - Full GUI Debounced Save v2
-// @version      2.70-PDA-Desktop-GMfPDA-FullGUI-DebounceV2
+// @description  Full Feature Race Config GUI - v2.70c - Official api.torn.com Vehicle IDs - TEST
+// @version      2.70c-PDA-Desktop-GMfPDA-FullGUI-OfficialAPIvIDs
 // @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
 // @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
 // @author       GNSC4 [268863] (Based on Shlefter's script)
@@ -73,6 +73,7 @@
         }
         function f(e) {
             if (!e) throw new TypeError("No text supplied to GM_setClipboard");
+            navigator.clipboard.writeText(e);
             navigator.clipboard.writeText(e);
         }
         function y(e) {
@@ -186,7 +187,7 @@
             GM_addStyle: d,
             GM_notification: p,
             GM_setClipboard: f,
-            GM_xmlhttpRequest: function (e) {
+            GM_xmlHttpRequest: function (e) {
                 const { abortController: t } = y(e);
                 if (!e || "object" != typeof e)
                     throw new TypeError(
@@ -206,9 +207,9 @@
 'use strict';
 
 const STORAGE_API_KEY = 'torn.raceconfiggui.pdadesktop_raceConfigAPIKey_release';
-const PRESET_STORAGE_KEY = 'torn.raceconfiggui.pdadesktop_racePresets_v2_70'; // <--- UNIQUE PRESET STORAGE KEY (v2.70)
+const PRESET_STORAGE_KEY = 'torn.raceconfiggui.pdadesktop_racePresets_v2_70c'; // <--- UNIQUE PRESET STORAGE KEY (v2.70c)
 const TORN_API_BASE_URL = 'https://api.torn.com/';
-const FAST_API_VEHICLE_ID_URL = 'tornapi.com/v2/vehicleids'; // Using tornapi.com for faster vehicle IDs
+const FAST_API_VEHICLE_ID_URL = 'api.torn.com/torn/vehicleids'; // <--- UPDATED to official api.torn.com
 const VEHICLE_ID_CACHE_KEY = 'torn.raceconfiggui.pdadesktop_vehicleIdCache';
 const VEHICLE_ID_CACHE_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -540,7 +541,7 @@ function createGUI() {
         <div id="raceConfigGUI">
             <button id="closeGUIButton" class="close-button">[X]</button>
             <h2>Torn Race Config GUI</h2>
-            <h3>Version 2.70 - Full GUI Debounced Save v2</h3>
+            <h3>Version 2.70c - Official API Vehicle IDs</h3>
 
             <div class="api-key-section config-section">
                 <h4>API Key Configuration</h4>
@@ -584,7 +585,7 @@ function createGUI() {
 
 
             <div style="text-align: center; margin-top: 15px; font-size: 0.8em; color: #888;">
-                Version 2.70 - Full GUI Debounced Save v2<br>
+                Version 2.70c - Official API Vehicle IDs<br>
                 Based on Shlefter's Script | By GNSC4 [268863]
             </div>
         </div>
@@ -632,25 +633,25 @@ async function loadCars() {
         return;
     }
 
-    console.log('Fetching vehicle IDs from API...');
+    console.log('Fetching vehicle IDs from official API: api.torn.com/torn/vehicleids...'); // <--- Updated log message
     $('#carSelect').html('<option value="">Loading Cars...</option>'); // Reset dropdown
 
     try {
-        const vehicleIds = await fetchVehicleIDsFromAPI();
+        const vehicleIds = await fetchVehicleIDsFromAPI(); // <--- fetchVehicleIDsFromAPI now fetches from official endpoint
         if (vehicleIds && vehicleIds.length > 0) {
             await GM_setValue(VEHICLE_ID_CACHE_KEY, vehicleIds);
             await GM_setValue(VEHICLE_ID_CACHE_KEY + '_timestamp', now);
-            console.log('Vehicle IDs fetched and cached.');
+            console.log('Vehicle IDs fetched and cached (from official api.torn.com).'); // <--- Updated log message
             populateCarDropdown(vehicleIds);
-            $('#statusMessageBox').text('Car list updated.').removeClass('error').addClass('success').show();
+            $('#statusMessageBox').text('Car list updated (Official API).').removeClass('error').addClass('success').show(); // <--- Updated status message
             setTimeout(() => $('#statusMessageBox').fadeOut(), 3000);
         } else {
-            $('#statusMessageBox').text('Error loading car list from API (No vehicle IDs received).').addClass('error').removeClass('success').show();
+            $('#statusMessageBox').text('Error loading car list from official API (No vehicle IDs received).').addClass('error').removeClass('success').show(); // <--- Updated error message
             setTimeout(() => $('#statusMessageBox').fadeOut(), 5000);
             $('#carSelect').html('<option value="">Error Loading Cars</option>');
         }
     } catch (error) {
-        console.error('Error loading vehicle IDs:', error);
+        console.error('Error loading vehicle IDs from official API:', error); // <--- Updated error log
         $('#statusMessageBox').text('Error loading car list. Check console for details.').addClass('error').removeClass('success').show();
         setTimeout(() => $('#statusMessageBox').fadeOut(), 5000);
         $('#carSelect').html('<option value="">Error Loading Cars</option>');
@@ -658,10 +659,10 @@ async function loadCars() {
 }
 
 
-async function fetchVehicleIDsFromAPI() {
+async function fetchVehicleIDsFromAPI() { // <--- fetchVehicleIDsFromAPI now uses official endpoint
     try {
         const response = await GM.xmlHttpRequest({
-            url: FAST_API_VEHICLE_ID_URL, // Use fast tornapi.com endpoint
+            url: `https://${FAST_API_VEHICLE_ID_URL}`, // <--- Using official api.torn.com/torn/vehicleids
             method: 'GET',
             timeout: 15000 // 15 seconds timeout for vehicle ID fetch
         });
@@ -670,11 +671,11 @@ async function fetchVehicleIDsFromAPI() {
             const vehicleIds = JSON.parse(response.responseText);
             return vehicleIds;
         } else {
-            console.error('Error fetching vehicle IDs. API Status:', response.status);
+            console.error('Error fetching vehicle IDs from official API. API Status:', response.status);
             return null;
         }
     } catch (error) {
-        console.error('Error fetching vehicle IDs:', error);
+        console.error('Error fetching vehicle IDs from official API:', error);
         return null;
     }
 }
@@ -699,7 +700,7 @@ function populateCarDropdown(vehicleIds) {
 function getVehicleNameFromID(vehicleId) {
     const vehicleNames = {
         "2": "Veloria", "3": "Magnum", "4": "Deimos", "5": "Nemesis", "6": "Centurion", "7": "Paladin", "8": "Dominator", "9": "Overlord", "10": "Tyrant", "11": "Inferno", "12": "Apocalypse", "13": "Armageddon", "14": "Behemoth", "15": "Colossus", "16": "Titan", "17": "Vanquisher", "18": "Conqueror", "19": "Obliterator", "20": "Annihilator", "21": "Desolator", "22": "Eradicator", "23": "Terminator", "24": "Exterminator", "25": "Devastator", "26": "Eliminator", "27": "Marauder", "28": "Outlaw", "29": "Raider", "30": "Renegade", "31": "Avenger", "32": "Challenger", "33": "Defender", "34": "Enforcer", "35": "Vindicator", "36": "Crusader", "37": "Liberator", "38": "Redeemer", "39": "Oppressor", "40": "Punisher", "41": "Slayer", "42": "Destroyer", "43": "Executioner", "44": "Judicator", "45": "Persecutor", "46": "Tormentor", "47": "Vandal", "48": "Barbarian", "49": "Berserker", "50": "Warlord",
-        "51": "Interceptor", "52": "Pursuit", "53": "Vigilante", "54": "Wrangler", "55": "Cavalier", "56": "Gallant", "57": "Valiant", "58": "Paladin LFA", "59": "Dominator LFA", "60": "Overlord LFA", "61": "Tyrant LFA", "62": "Inferno LFA", "63": "Apocalypse LFA", "64": "Armageddon LFA", "65": "Behemoth LFA", "66": "Colossus LFA", "67": "Titan LFA", "68": "Vanquisher LFA", "69": "Conqueror LFA", "70": "Obliterator LFA", "71": "Annihilator LFA", "72": "Desolator LFA", "73": "Eradicator LFA", "74": "Terminator LFA", "75": "Exterminator LFA", "76": "Devastator LFA", "77": "Eliminator LFA", "78": "Marauder LFA", "79": "Outlaw LFA", "80": "Raider LFA", "81": "Renegade LFA", "82": "Avenger LFA", "83": "Challenger LFA", "84": "Defender LFA", "85": "Enforcer LFA", "86": "Vindicator LFA", "87": "Crusader LFA", "88": "Liberator LFA", "89": "Redeemer LFA", "90": "Oppressor LFA", "91": "Punisher LFA", "92": "Slayer LFA", "93": "Destroyer LFA", "94": "Executioner LFA", "95": "Judicator LFA", "96": "Persecutor LFA", "97": "Tormentor LFA", "98": "Vandal LFA", "99": "Barbarian LFA", "100": "Berserker LFA",
+        "51": "Interceptor", "52": "Pursuit", "53": "Vigilante", "54": "Wrangler", "55": "Cavalier", "56": "Gallant", "57": "Valiant", "58": "Paladin LFA", "59": "Dominator LFA", "60": "Overlord LFA", "61": "Tyrant LFA", "62": "Inferno LFA", "63": "Apocalypse LFA", "64": "Armageddon LFA", "65": "Behemoth LFA", "66": "Colossus LFA", "67": "Titan LFA", "68": "Vanquisher LFA", "69": "Conqueror LFA", "70": "Obliterator LFA", "71": "Annihilator LFA", "72": "Desolator LFA", "73": "Eradicator LFA", "74": "Terminator LFA", "75": "Exterminator LFA", "76": "Devastator LFA", "77": "Eliminator LFA", "78": "Marauder LFA", "79": "Outlaw LFA", "80": "Raider LFA", "81": "Renegade LFA", "82": "Avenger LFA", "83": "Challenger LFA", "84": "Defender LFA", "85": "Enforcer LFA", "86": "Vindicator LFA", "87": "Crusader LFA", "88": "Liberator LFA", "89": "Redeemer LFA", "90": "Oppressor LFA", "91": "Punisher LFA", "92": "Slayer LFA", "93": "Destroyer LFA", "94": "Executioner LFA", "95": "Judicator LFA", "96": "Persecutor LFA", "97": "Tormentor", "98": "Vandal", "99": "Barbarian", "100": "Berserker",
         "101": "Warlord LFA", "102": "Interceptor LFA", "103": "Pursuit LFA", "104": "Vigilante LFA", "105": "Wrangler LFA", "106": "Cavalier LFA", "107": "Gallant LFA", "108": "Valiant LFA", "109": "Veloria LFA", "110": "Magnum LFA", "111": "Deimos LFA", "112": "Nemesis LFA", "113": "Centurion LFA", "114": "Paladin SE", "115": "Dominator SE", "116": "Overlord SE", "117": "Tyrant SE", "118": "Inferno SE", "119": "Apocalypse SE", "120": "Armageddon SE", "121": "Behemoth SE", "122": "Colossus SE", "123": "Titan SE", "124": "Vanquisher SE", "125": "Conqueror SE", "126": "Obliterator SE", "127": "Annihilator SE", "128": "Desolator SE", "129": "Eradicator SE", "130": "Terminator SE", "131": "Exterminator SE", "132": "Devastator SE", "133": "Eliminator SE", "134": "Marauder SE", "135": "Outlaw SE", "136": "Raider SE", "137": "Renegade SE", "138": "Avenger SE", "139": "Challenger SE", "140": "Defender SE", "141": "Enforcer SE", "142": "Vindicator SE", "143": "Crusader SE", "144": "Liberator SE", "145": "Redeemer SE", "146": "Oppressor SE", "147": "Punisher SE", "148": "Slayer SE", "149": "Destroyer SE", "150": "Executioner SE",
         "151": "Judicator SE", "152": "Persecutor SE", "153": "Tormentor SE", "154": "Vandal SE", "155": "Barbarian SE", "156": "Berserker SE", "157": "Warlord SE", "158": "Interceptor SE", "159": "Pursuit SE", "160": "Vigilante SE", "161": "Wrangler SE", "162": "Cavalier SE", "163": "Gallant SE", "164": "Valiant SE", "165": "Monster Truck", "166": "Hearse", "167": "Ice Cream Truck", "168": "Taxi", "169": "Box Truck", "170": "Bus",	"171": "Garbage Truck", "172": "Cement Truck", "173": "Firetruck", "174": "Limousine", "175": "Duke", "176": "Count", "177": "Princess", "178": "Queen", "179": "King", "180": "Emperor"
     };
@@ -710,7 +711,7 @@ function getVehicleNameFromID(vehicleId) {
 
 // --- Preset Functions ---
 function loadPresets() {
-    console.log("loadPresets() - START (v2.70)"); // DEBUG CONSOLE LOG - START
+    console.log("loadPresets() - START (v2.70c)"); // DEBUG CONSOLE LOG - START
     let presets = {};
     presets = GM_getValue(PRESET_STORAGE_KEY, {});
     console.log("loadPresets() - After GM_getValue, presets object:", presets); // DEBUG CONSOLE LOG - PRESETS OBJECT
@@ -721,16 +722,16 @@ function loadPresets() {
         console.log("loadPresets() - Inside loop, presetName: " + presetName); // DEBUG CONSOLE LOG - LOOP ITERATION
         presetButtonsDiv.append(createPresetButton(presetName, presetConfig));
     });
-    console.log("loadPresets() - END (v2.70)"); // DEBUG CONSOLE LOG - END
+    console.log("loadPresets() - END (v2.70c)"); // DEBUG CONSOLE LOG - END
 }
 
 
 function savePreset_Internal() { // <-- **Internal, non-debounced savePreset function**
-    console.log("savePreset_Internal() - START (v2.70)"); // DEBUG CONSOLE LOG - START
+    console.log("savePreset_Internal() - START (v2.70c)"); // DEBUG CONSOLE LOG - START
 
     const presetName = prompt("Enter a name for this preset:");
     if (!presetName) {
-        console.log("savePreset_Internal() - No preset name, cancelled (v2.70)"); // DEBUG CONSOLE LOG - CANCELLED
+        console.log("savePreset_Internal() - No preset name, cancelled (v2.70c)"); // DEBUG CONSOLE LOG - CANCELLED
         return;
     }
 
@@ -757,7 +758,7 @@ function savePreset_Internal() { // <-- **Internal, non-debounced savePreset fun
     GM_setValue(PRESET_STORAGE_KEY, presets);
     console.log("savePreset_Internal() - After GM_setValue, presets object:", presets); // DEBUG CONSOLE LOG - PRESETS OBJECT AFTER SAVE
     loadPresets(); // Update preset buttons after saving
-    console.log("savePreset_Internal() - END (v2.70)"); // DEBUG CONSOLE LOG - END
+    console.log("savePreset_Internal() - END (v2.70c)"); // DEBUG CONSOLE LOG - END
 }
 
 // --- Debounced savePreset function ---
@@ -765,7 +766,7 @@ const savePreset = debounce(savePreset_Internal, 1000); // <--- **DEBOUNCED save
 
 
 function applyPreset(presetConfig) {
-    console.log("applyPreset() - Applying preset: " + presetConfig.name + " (v2.70)"); // DEBUG CONSOLE LOG - APPLY START
+    console.log("applyPreset() - Applying preset: " + presetConfig.name + " (v2.70c)"); // DEBUG CONSOLE LOG - APPLY START
 
     $('#carSelect').val(presetConfig.carId);
     $('#topSpeed').val(presetConfig.topSpeed);
@@ -776,25 +777,25 @@ function applyPreset(presetConfig) {
     $('#tarmac').val(presetConfig.tarmac);
     $('#safety').val(presetConfig.safety);
 
-    console.log("applyPreset() - Preset applied: " + presetConfig.name + " (v2.70)"); // DEBUG CONSOLE LOG - APPLY END
+    console.log("applyPreset() - Preset applied: " + presetConfig.name + " (v2.70c)"); // DEBUG CONSOLE LOG - APPLY END
     $('#statusMessageBox').text(`Preset "${presetConfig.name}" applied.`).removeClass('error').addClass('success').show();
     setTimeout(() => $('#statusMessageBox').fadeOut(), 3000);
 }
 
 
 function removePreset(presetName, buttonElement) {
-    console.log("removePreset() - START, presetName: " + presetName + " (v2.70)"); // DEBUG CONSOLE LOG - REMOVE START
+    console.log("removePreset() - START, presetName: " + presetName + " (v2.70c)"); // DEBUG CONSOLE LOG - REMOVE START
     if (confirm(`Are you sure you want to delete preset "${presetName}"?`)) {
-        console.log("removePreset() - Confirmed delete: " + presetName + " (v2.70)"); // DEBUG CONSOLE LOG - DELETE CONFIRMED
+        console.log("removePreset() - Confirmed delete: " + presetName + " (v2.70c)"); // DEBUG CONSOLE LOG - DELETE CONFIRMED
         const presets = GM_getValue(PRESET_STORAGE_KEY, {});
         delete presets[presetName];
         GM_setValue(PRESET_STORAGE_KEY, presets);
         $(buttonElement).closest('.preset-button-container').remove();
-        console.log("removePreset() - Preset removed from GUI: " + presetName + " (v2.70)"); // DEBUG CONSOLE LOG - REMOVE GUI ELEMENT
+        console.log("removePreset() - Preset removed from GUI: " + presetName + " (v2.70c)"); // DEBUG CONSOLE LOG - REMOVE GUI ELEMENT
     } else {
-        console.log("removePreset() - Cancelled delete: " + presetName + " (v2.70)"); // DEBUG CONSOLE LOG - DELETE CANCELLED
+        console.log("removePreset() - Cancelled delete: " + presetName + " (v2.70c)"); // DEBUG CONSOLE LOG - DELETE CANCELLED
     }
-    console.log("removePreset() - END, presetName: " + presetName + " (v2.70)"); // DEBUG CONSOLE LOG - REMOVE END
+    console.log("removePreset() - END, presetName: " + presetName + " (v2.70c)"); // DEBUG CONSOLE LOG - REMOVE END
 }
 
 
@@ -804,9 +805,9 @@ function clearAllPresets() {
         $('#presetButtons').empty(); // Clear buttons from GUI
         $('#statusMessageBox').text('All presets cleared.').removeClass('error').addClass('success').show();
         setTimeout(() => $('#statusMessageBox').fadeOut(), 3000);
-        console.log("clearAllPresets() - All presets cleared (v2.70)"); // DEBUG CONSOLE LOG - CLEAR ALL
+        console.log("clearAllPresets() - All presets cleared (v2.70c)"); // DEBUG CONSOLE LOG - CLEAR ALL
     } else {
-        console.log("clearAllPresets() - Clear all presets cancelled (v2.70)"); // DEBUG CONSOLE LOG - CLEAR ALL CANCELLED
+        console.log("clearAllPresets() - Clear all presets cancelled (v2.70c)"); // DEBUG CONSOLE LOG - CLEAR ALL CANCELLED
     }
 }
 
@@ -832,7 +833,7 @@ function createPresetButton(presetName, presetConfig) {
 // --- Event Listener Setup ---
 function setupEventListeners() {
     $('#saveApiKeyCustom').on('click', saveApiKey);
-    $('#savePresetButton').on('click', savePreset); // Save Preset - DEBOUNCED in v2.70
+    $('#savePresetButton').on('click', savePreset); // Save Preset - DEBOUNCED in v2.70c
     $('#clearPresetsButton').on('click', clearAllPresets);
     $('#closeGUIButton').on('click', function() { $('#raceConfigGUI').hide(); });
     $('#presetButtons').on('click', '.remove-preset', function(event) {
@@ -846,7 +847,7 @@ function setupEventListeners() {
 // --- Initialization ---
 $(document).ready(function() {
     if ($('div.content-title > h4').length > 0 && !$('#toggleRaceGUIButton').length) {
-        const toggleButton = $(`<button id="toggleRaceGUIButton">Race Config GUI (v2.70)</button>`);
+        const toggleButton = $(`<button id="toggleRaceGUIButton">Race Config GUI (v2.70c)</button>`);
         $('div.content-title > h4').append(toggleButton);
 
         toggleButton.on('click', function() {
@@ -858,7 +859,7 @@ $(document).ready(function() {
             }
         });
     }
-    $('div.content-title > h4').append('<span style="color: orange; margin-left: 10px;">v2.70 - FULL GUI & DEBOUNCED SAVE - TEST</span>'); // Orange - Full GUI Test Label
+    $('div.content-title > h4').append('<span style="color: orange; margin-left: 10px;">v2.70c - OFFICIAL API VEHICLE IDs - TEST</span>'); // Orange - Test Label
 });
 
 })();
