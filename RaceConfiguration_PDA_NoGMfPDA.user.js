@@ -1,800 +1,23 @@
 // ==UserScript==
-// @name         Torn Race Config GUI
-// @namespace    torn.raceconfigguipda
-// @description  PDA GUI to configure Torn racing parameters, schedule races, set passwords, save presets, create races easily, betting feature, styled toggle button, release storage key, hover button color change, final polish, with update URL, PDA/Mobile Friendly, No GM Functions for wider compatibility. With Preset Descriptions and Author Credit.
-// @version      3.0.16
-// @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration.raw.user.js
-// @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration.raw.user.js
-// @author       GNSC4 [268863] (Based on Shlefter's script, GMforPDA by Kwack -  Version 2.49 base + CSS fix + Toggle Button BG Fix + Revert Create Button Style + Clear Presets Feature + Preset Hover Fix - Input Text Color Fix - Clear Presets Button Style Fix - All Input Text Color Fix - White Text for Dark Mode - Definitive Input Text Color Fix - White Text Everywhere - Forced White Text Color - Definitive Fix with !important - GUI Visual Polish - Compact Driver Inputs - GUI Position Lower & Solid White Section Lines - Refine Section Lines - Create Race Button Hover Fix & Lower GUI - Close Button Hover Fix - Reduce Race Settings Spacing - Tighter Race Settings Spacing - Quick Preset Race Buttons - Styled Quick Race Buttons - GUI Toggle Race Entry Fix - Quick Button Border & Hover Fix - CSS Specificity Fix for Quick Buttons - Preset Descriptions & Author Credit - Preset Button & Delete Button Alignment Fixes - Preset Button Content Fix - Preset Car Description Fix & Cache Update - Preset Button Info on Button - Preset Delete Button Position Right - Race Settings Layout Fix - Forceful CSS - GUI Width Lock - Preset Overflow Fix - Button Width Control - GUI Width Reduced - Button Text Cleaned - GUI Width 325px - Footer Position Adjusted)
-// @match        https://www.torn.com/loader.php?sid=racing*
+// @name         Torn PDA Race Config GUI - v3.0.17 - GUI Border Expansion
+// @version      3.0.17  // GUI Border Expansion - v3.0.17
+// @description  PDA GUI to configure Torn racing parameters, schedule races, set passwords, save presets, create races easily, betting feature, styled toggle button, release storage key, hover button color change, final polish, with update URL, PDA/Mobile Friendly, No GM Functions for wider compatibility. With Preset Descriptions and Author Credit. // GUI Border Expansion - v3.0.17
+// @author       GNSC4
+// @match        https://www.torn.com/racing.php*
 // @grant        GM_setValue
 // @grant        GM_getValue
-// @grant        GM_deleteValue
-// @require      https://code.jquery.com/jquery-3.7.1.min.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.min.js
-// @license      MIT
+// @updateURL    https://raw.githubusercontent.com/GNSC4/torn-race-config-gui/main/torn-race-config-gui.user.js
+// @downloadURL  https://raw.githubusercontent.com/GNSC4/torn-race-config-gui/main/torn-race-config-gui.user.js
+// @run-at       document-end
+// @require      https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js
 // ==/UserScript==
-
-// --- GMforPDA Inlined Code ---
-((e, t, o, r, n, i) => {
-    if (typeof GM !== 'undefined') { // Enhanced check: if GM object exists, ABORT
-        return; // Exit the GMforPDA inlined code immediately
-    }
-    const s = {
-        script: {},
-        scriptHandler: "GMforPDA version 2.2",
-        version: 2.2,
-    };
-    function a(e, t) {
-        if (!e) throw new TypeError("No key supplied to GM_getValue");
-        const o = i.getItem(e);
-        return "string" != typeof o
-            ? t
-            : o.startsWith("GMV2_")
-                ? JSON.parse(o.slice(5)) ?? t
-                : o ?? t;
-    }
-    function l(e, t) {
-        if (!e) throw new TypeError("No key supplied to GM_setValue");
-        i.setItem(e, "GMV2_" + JSON.stringify(t));
-    }
-    function u(e) {
-        if (!e) throw new TypeError("No key supplied to GM_deleteValue");
-        i.removeItem(e);
-    }
-    function c() {
-        return t.keys(i);
-    }
-    function d(e) {
-        if (!e || "string" != typeof e) return;
-        const t = document.createElement("style");
-        (t.type = "text/css"), (t.innerHTML = e), document.head.appendChild(t);
-    }
-    function p(...e) {
-        if ("object" == typeof e[0]) {
-            const { text: o, title: r, onclick: n, ondone: i } = e[0];
-            t(o, r, n, i);
-        } else if ("string" == typeof e[0]) {
-            const [o, r, , n] = e;
-            t(o, r, n);
-        }
-        return { remove: () => {} };
-        function t(e, t, o, r) {
-            if (!e)
-                throw new TypeError(
-                    "No notification text supplied to GM_notification"
-                );
-            confirm(`${t ?? "No title specified"}\n${e}`) && o?.(), r?.();
-        }
-    }
-    function f(e) {
-        if (!e) throw new TypeError("No text supplied to GM_setClipboard");
-        navigator.clipboard.writeText(e);
-    }
-    const w = {
-        version: 2.2,
-        info: s,
-        addStyle: d,
-        deleteValue: async (e) => u(e),
-        getValue: async (e, t) => a(e, t),
-        listValues: async () => c(),
-        notification: p,
-        setClipboard: f,
-        setValue: async (e, t) => l(e, t),
-        xmlHttpRequest: async (e) => {
-            if (!e || "object" != typeof e)
-                throw new TypeError(
-                    "Invalid details passed to GM.xmlHttpRequest"
-                );
-            const { abortController: t, prom: o } = y(e);
-            return (o.abort = () => t.abort()), o;
-        },
-    };
-    function y(e) {
-        const t = new r(),
-            i = t.signal,
-            s = new r(),
-            a = s.signal,
-            {
-                url: l,
-                method: u,
-                headers: c,
-                timeout: d,
-                data: p,
-                onabort: f,
-                onerror: w,
-                onload: y,
-                onloadend: h,
-                onprogress: b,
-                onreadystatechange: m,
-                ontimeout: M,
-            } = e;
-        setTimeout(() => s.abort(), d ?? 3e4);
-        return {
-            abortController: t,
-            prom: new n(async (e, t) => {
-                try {
-                    l || t("No URL supplied"),
-                        i.addEventListener("abort", () => t("Request aborted")),
-                        a.addEventListener("abort", () =>
-                            t("Request timed out")
-                        ),
-                        u && "post" === u.toLowerCase()
-                            ? (PDA_httpPost(l, c ?? {}, p ?? "")
-                                .then(e)
-                                .catch(t),
-                              b?.())
-                            : (PDA_httpGet(l).then(e).catch(t), b?.());
-                } catch (e) {
-                    t(e);
-                }
-            })
-                .then((e) => (y?.(e), h?.(e), m?.(e), e))
-                .catch((e) => {
-                    switch (!0) {
-                        case "Request aborted" === e:
-                            if (
-                                ((e = new o("Request aborted", "AbortError")),
-                                f)
-                            )
-                                return f(e);
-                            if (w) return w(e);
-                            throw e;
-                        case "Request timed out" === e:
-                            if (
-                                ((e = new o(
-                                    "Request timed out",
-                                    "TimeoutError"
-                                )),
-                                M)
-                            )
-                                return M(e);
-                            if (w) return w(e);
-                            throw e;
-                        case "No URL supplied" === e:
-                            if (
-                                ((e = new TypeError(
-                                    "Failed to fetch: No URL supplied"
-                                )),
-                                w)
-                            )
-                                return w(e);
-                            throw e;
-                        default:
-                            if (
-                                ((e && e instanceof Error) ||
-                                    (e = new Error(e ?? "Unknown Error")),
-                                w)
-                            )
-                                return w(e);
-                            throw e;
-                    }
-                }),
-        };
-    }
-    t.entries({
-        GM: t.freeze(w),
-        GM_info: t.freeze(s),
-        GM_getValue: a,
-        GM_setValue: l,
-        GM_deleteValue: u,
-        GM_listValues: c,
-        GM_addStyle: d,
-        GM_notification: p,
-        GM_setClipboard: f,
-        GM_xmlhttpRequest: function (e) {
-            const { abortController: t } = y(e);
-            if (!e || "object" != typeof e)
-                throw new TypeError(
-                    "Invalid details passed to GM_xmlHttpRequest"
-                );
-            return { abort: () => t.abort() };
-        },
-        unsafeWindow: e,
-    }).forEach(([o, r]) => {
-        t.defineProperty(e, o, {
-            value: r,
-            writable: !1,
-            enumerable: !0,
-            configurable: !1,
-        });
-    });
-})(window, Object, DOMException, AbortController, Promise, localStorage);
 
 (function() {
     'use strict';
 
-    const STORAGE_API_KEY = 'raceConfigAPIKey_release_NoGMf'; //Different storage key for NoGMf version to avoid conflicts
-    const QUICK_PRESET_BUTTONS_CONTAINER_ID = 'quickPresetButtonsContainer'; // ID for the container div
-
-    // Track data
-    const tracks = {
-        "6": "Uptown", "7": "Withdrawal", "8": "Underdog",
-        "9": "Parkland", "10": "Docks", "11": "Commerce",
-        "12": "Two Islands", "15": "Industrial", "16": "Vector",
-        "17": "Mudpit", "18": "Hammerhead", "19": "Sewage",
-        "20": "Meltdown", "21": "Speedway", "23": "Stone Park",
-        "24": "Convict"
-    };
-
-    let carNameCache = {}; // Cache for car names
-
-
-    // --- GUI Elements ---
-    function createGUI() {
-        if ($('#raceConfigGUI').length) {
-            return;
-        }
-
-        // Generate hour options for dropdown (00-23)
-        let hourOptions = '';
-        for (let i = 0; i < 24; i++) {
-            hourOptions += `<option value="${String(i).padStart(2, '0')}">${String(i).padStart(2, '0')}</option>`;
-        }
-        // Generate minute options for dropdown (00, 15, 30, 45)
-        const minuteIntervals = ['00', '15', '30', '45'];
-        let minuteOptions = ''; // Reset and rebuild minuteOptions string to ensure correct HTML
-        minuteIntervals.forEach(minute => {
-            minuteOptions += `<option value="${minute}">${minute}</option>`; //Rebuild string - v3.0.11 - Minute Dropdown Fix - CORRECTED HTML
-        });
-
-
-        const guiHTML = `
-            <div id="raceConfigGUI" style="position: fixed; top: 75px; left: 20px; background-color: #333; border: 1px solid #666; padding: 15px; z-index: 1000; border-radius: 5px; color: #eee;">
-                <h3 style="margin-top: 0; color: #fff;">Race Configuration</h3>
-                <div class="api-key-section">
-                    <label for="raceConfigApiKey">API Key:</label>
-                    <input type="password" id="raceConfigApiKey" placeholder="Enter Torn API Key" style="margin-left: 5px; color: black;">
-                    <button id="saveApiKeyCustom" class="gui-button">Save API Key</button>
-                </div>
-
-                <div class="config-section">
-                    <h4>Race Settings</h4>
-                    <div class="config-params-section">
-                        <div><label for="trackID">Track:</label>
-                        <select id="trackID">
-                            ${Object.entries(tracks).map(([id, name]) => `<option value="${id}">${id} - ${name}</option>`).join('')}
-                        </select></div>
-
-                        <div class="driver-input-container"> <label for="laps">Laps:</label>
-                        <input type="number" id="laps" value="100"></div>
-
-                        <div class="driver-input-container"><label for="minDrivers">Min Drivers:</label>
-                        <input type="number" id="minDrivers" value="2"></div>
-
-                        <div class="driver-input-container"><label for="maxDrivers">Max Drivers:</label>
-                        <input type="number" id="maxDrivers" value="2"></div>
-                    </div>
-
-                    <div style="margin-bottom: 10px;">
-                        <label for="raceName">Race Name:</label>
-                        <input type="text" id="raceName" style="color: black;">
-                    </div>
-                    <div style="margin-bottom: 10px;">
-                        <label for="racePassword">Password:</label> <span style="font-size: 0.8em; color: #ccc;"> (optional)</span>
-                        <input type="text" id="racePassword" placeholder="Race Password Optional" style="color: black;">
-                    </div>
-                    <div style="margin-bottom: 10px;">
-                        <label for="betAmount">Bet Amount:</label> <span style="font-size: 0.8em; color: #ccc;">(Max 10M, Optional for Race)</span>
-                        <input type="number" id="betAmount" value="0" min="0" max="10000000" style="width: 100px; color: black;">
-                    </div>
-                    <div style="margin-bottom: 10px;">
-                        <label>Race Start Time (TCT 24hr):</label>
-                        <div style="display: flex; align-items: center;">
-                            <label for="raceStartTimeHours" style="margin-right: 5px;">Hours (TCT):</label>
-                            <select id="raceStartTimeHours" style="width: 65px; margin-right: 5px; color: black;" title="Hours (TCT)">
-                                ${hourOptions}
-                            </select>
-                            <label for="raceStartTimeMinutes" style="margin-right: 5px;">Minutes (TCT):</label>
-                            <select id="raceStartTimeMinutes" style="width: 65px; color: black;" title="Minutes (TCT)">
-                                ${minuteOptions}
-                            </select>
-                            <button id="setNowButton" class="gui-button" style="padding: 5px 10px; font-size: 0.8em; margin-left: 5px;">NOW</button>
-                        </div>
-                        <span style="font-size: 0.8em; color: #ccc; display: block;">(TCT, 15 min intervals)</span> </div>
-                </div>
-
-
-                <div class="car-select-section">
-                    <h4>Car Selection</h4>
-                    <label for="carID">Car ID:</label>
-                    <select id="carID">
-                        <option value="">Loading Cars...</option>
-                    </select>
-                    <button id="updateCarsButton" class="gui-button">Update Cars</button>
-                </div>
-
-
-                <div class="presets-section">
-                    <h4>Presets</h4>
-                    <div class="preset-buttons-container" id="presetButtons">
-                        </div>
-                    <div class="preset-management-section">
-                        <button id="savePresetButton" class="gui-button">Save Preset</button>
-                        <button id="clearPresetsButton" class="gui-button">Clear Presets</button>  </div>
-                </div>
-
-                <div style="margin-top: 15px; padding-top: 10px; text-align: center;">
-                    <button id="createRaceButton" class="gui-button" style="width: 90%; max-width: 250px; padding: 10px 15px; font-size: 1.1em;">Create Race</button>
-                </div>
-
-
-                <button id="closeGUIButton" class="close-button">[X]</button>
-                <span style="font-size: 0.8em; color: #999; position: absolute; bottom: 5px; right: 5px;">Script created by <a href="https://www.torn.com/profiles.php?XID=268863" target="_blank" style="color: #999; text-decoration: underline;">GNSC4 [268863]</a> - v3.0.13</span>
-            </div>
-        `;
-        $('body').append(guiHTML);
-
-        // Set default hour and minute in dropdowns to "00"
-        $('#raceStartTimeHours').val('00');
-        $('#raceStartTimeMinutes').val('00');
-
-
-        loadSavedApiKey();
-        loadPresets();
-        setupEventListeners();
-        ensureQuickPresetButtonsContainer(); // Ensure the container exists on GUI creation
-        loadQuickRaceButtons(); // Load and create quick race buttons on GUI creation
-    }
-
-
-    // --- Preset Functions ---
-    function loadPresets() {
-        const presets = GM_getValue('racePresets', {});
-        const presetButtonsDiv = $('#presetButtons');
-        presetButtonsDiv.empty();
-
-        loadCars().then(() => { // loadCars() now returns a Promise
-            $.each(presets, function(presetName, presetConfig) {
-                presetButtonsDiv.append(createPresetButton(presetName, presetConfig));
-            });
-        }).catch(error => {
-            console.error("Error loading cars before presets:", error);
-            presetButtonsDiv.html("Error loading presets - car data failed to load."); // Indicate error in GUI
-        });
-    }
-
-
-    // --- Car Data Fetching - NOW RETURNS A PROMISE ---
-    function loadCars() {
-        return new Promise((resolve, reject) => { // Return a Promise
-            const apiKey = GM_getValue(STORAGE_API_KEY);
-            const carSelect = $('#carID');
-
-            if (!apiKey) {
-                carSelect.html('<option value="">Enter API Key First</option>');
-                reject("No API Key"); // Reject promise if no API key
-                return;
-            }
-
-            carSelect.html('<option value="">Loading Cars...</option>');
-
-            $.ajax({
-                url: `https://api.torn.com/v2/user/?selections=enlistedcars&key=${apiKey}`,
-                type: 'GET',
-                dataType: 'json',
-                success: function(data) {
-                    if (data.error) {
-                        console.error("API Error:", data.error.error);
-                        carSelect.html(`<option value="">API Error: ${data.error.error} </option>`);
-                        reject(`API Error: ${data.error.error}`); // Reject promise on API error
-                    } else {
-                        carSelect.empty();
-                        const cars = data.enlistedcars || {};
-                        if (Object.keys(cars).length === 0) {
-                            carSelect.html('<option value="">No cars enlisted</option>');
-                        } else {
-                            $.each(cars, function(carId, carDetails) {
-                                const carDisplayName = carDetails.name || carDetails.item_name;
-                                const carRealID = carDetails.id;
-                                carNameCache[carRealID] = carDisplayName; // Store car name in cache
-                                carSelect.append(`<option value="${carRealID}">${carDisplayName} (ID: ${carRealID})</option>`);
-                            });
-                        }
-                        resolve(); // Resolve promise on success - car data loaded and cache populated
-                    }
-                },
-                error: function(jqXHR, textStatus, errorThrown) {
-                    console.error("AJAX error:", textStatus, errorThrown);
-                    carSelect.html('<option value="">Error loading cars</option>');
-                    reject(`AJAX error: ${textStatus} ${errorThrown}`); // Reject promise on AJAX error
-                }
-            });
-        });
-    }
-
-
-    // --- Ensure Quick Preset Buttons Container Exists ---
-    function ensureQuickPresetButtonsContainer() {
-        if (!$('#' + QUICK_PRESET_BUTTONS_CONTAINER_ID).length) {
-            const container = $('<div id="' + QUICK_PRESET_BUTTONS_CONTAINER_ID + '" style="margin-top: 10px; text-align: left;"></div>');
-            $('#toggleRaceGUIButton').after(container); // Insert after the toggle button
-        }
-    }
-
-
-    // --- Load and Save API Key ---
-    function loadSavedApiKey() {
-        let apiKey = GM_getValue(STORAGE_API_KEY, '');
-        $('#raceConfigApiKey').val(apiKey);
-    }
-
-    function saveApiKey() {
-        let apiKeyToSave = $('#raceConfigApiKey').val().trim();
-        GM_setValue(STORAGE_API_KEY, apiKeyToSave);
-        alert('API Key Saved (It is stored locally in your browser storage).');
-        setTimeout(loadCars, 50);
-    }
-
-
-    // --- RFC Value Fetching ---
-    function getRFC() {
-        if (typeof $.cookie !== 'function') {
-            console.error("Error: jQuery Cookie plugin is not loaded correctly!");
-            console.log("Attempting fallback cookie parsing for rfc_v...");
-            let rfc = null;
-            const cookies = document.cookie.split("; ");
-            for (let i in cookies) {
-                let cookie = cookies[i].split("=");
-                if (cookie[0] && cookie[0].trim() === "rfc_v") {
-                    rfc = decodeURIComponent(cookie[1]);
-                    console.log("Fallback cookie parsing successful. rfc_v value:", rfc);
-                    return rfc;
-                }
-            }
-            console.warn("Fallback cookie parsing failed to find rfc_v cookie.");
-            return '';
-        }
-
-        let rfcValue = $.cookie('rfc_v');
-        if (rfcValue) {
-            return rfcValue;
-        } else {
-            console.log("jQuery.cookie failed to get rfc_v, attempting fallback parsing...");
-            let rfc = null;
-            const cookies = document.cookie.split("; ");
-            for (let i in cookies) {
-                let cookie = cookies[i].split("=");
-                if (cookie[0] && cookie[0].trim() === "rfc_v") {
-                    rfc = decodeURIComponent(cookie[1]);
-                    console.log("Fallback cookie parsing successful. rfc_v value:", rfc);
-                    return rfc;
-                }
-            }
-            console.warn("Fallback cookie parsing failed to find rfc_v cookie.");
-            return '';
-        }
-    }
-
-
-
-    function savePreset() {
-        const presetName = prompt("Enter a name for this preset:");
-        if (!presetName) return;
-
-        const presets = GM_getValue('racePresets', {});
-        presets[presetName] = getCurrentConfig();
-        GM_setValue('racePresets', presets);
-        loadPresets(); // Reload presets to update the display with new preset
-        createQuickRaceButton(presetName, getCurrentConfig()); // Create quick race button on preset save
-    }
-
-    function removePreset(presetName, buttonElement) {
-        if (confirm(`Are you sure you want to delete the preset "${presetName}"?`)) {
-            const presets = GM_getValue('racePresets', {});
-            delete presets[presetName];
-            GM_setValue('racePresets', presets);
-            $(buttonElement).closest('.preset-button-container').remove();
-            removeQuickRaceButton(presetName); // Remove quick race button on preset delete
-        }
-    }
-
-    function clearPresets() {
-        if (confirm("Are you sure you want to delete ALL saved presets? This action cannot be undone.")) {
-            GM_deleteValue('racePresets');
-            loadPresets(); // Reload presets (should be empty now)
-            alert("All presets cleared.");
-            removeAllQuickRaceButtons(); // Remove all quick race buttons on clear presets
-        }
-    }
-
-
-    function applyPreset(presetConfig) {
-        $('#trackID').val(presetConfig.trackID);
-        $('#raceName').val(presetConfig.raceName);
-        $('#laps').val(presetConfig.laps);
-        $('#carID').val(presetConfig.carID);
-        $('#minDrivers').val(presetConfig.minDrivers);
-        $('#maxDrivers').val(presetConfig.maxDrivers);
-        $('#racePassword').val(presetConfig.racePassword || '');
-        $('#raceStartTimeHours').val(presetConfig.raceStartTimeHours || '00');   // Apply hours from preset - v3.0.7 - Default to '00' if missing
-        $('#raceStartTimeMinutes').val(presetConfig.raceStartTimeMinutes || '00'); // Apply minutes from preset - v3.0.7 - Default to '00' if missing
-        $('#betAmount').val(presetConfig.betAmount || '0');
-    }
-
-    function createPresetButton(presetName, presetConfig) {
-        const container = $('<div class="preset-button-container" style="display: inline-block; margin-right: 5px; margin-bottom: 20px; text-align: center; position: relative;"></div>'); // Added position: relative; to container
-
-        const trackName = tracks[presetConfig.trackID] || "Unknown Track";
-        const carName = carNameCache[presetConfig.carID] || "Unknown Car"; // Get car name from cache
-
-        // --- Button now includes ALL preset info as multi-line text ---
-        const buttonText = `${presetName}<br>Track: ${trackName}<br>Laps: ${presetConfig.laps}<br>Car: ${carName}`;
-        const button = $(`<button class="preset-button gui-button" style="width: 100%; display: block; margin-bottom: 5px; text-align: left; padding: 10px; line-height: 1.2em;">${buttonText}</button>`); // Added line-height and padding, removed fixed text-align:center; to allow left align for multi-line text
-
-        const removeButton = $(`<button class="remove-preset">x</button>`);
-
-
-        button.on('click', function() {
-            applyPreset(presetConfig);
-        });
-        removeButton.on('click', function() {
-            removePreset(presetName, removeButton);
-        });
-
-        container.append(button);
-        // --- NO DESCRIPTION APPENDED ANYMORE ---
-        container.append(removeButton); // Keep remove button
-
-        return container;
-    }
-
-
-    // --- Quick Race Buttons Functions ---
-    function createQuickRaceButton(presetName, presetConfig) {
-        const buttonId = `quickRaceButton-${presetName.replace(/\s+/g, '_')}`; // Create button ID from preset name
-        if ($('#' + buttonId).length) {
-            return; // Button already exists, prevent duplicates (e.g., on script reload)
-        }
-
-        const quickRaceButton = $(`<button id="${buttonId}" class="quick-race-button gui-button">${presetName}</button>`); // Swapped class order, but should not matter
-        quickRaceButton.on('click', function() {
-            createRaceFromPreset(presetConfig);
-        });
-        $('#' + QUICK_PRESET_BUTTONS_CONTAINER_ID).append(quickRaceButton);
-    }
-
-    function loadQuickRaceButtons() {
-        ensureQuickPresetButtonsContainer(); // Ensure container exists before loading buttons
-        const presets = GM_getValue('racePresets', {});
-        $.each(presets, function(presetName, presetConfig) {
-            createQuickRaceButton(presetName, presetConfig);
-        });
-    }
-
-    function removeQuickRaceButton(presetName) {
-        const buttonId = `quickRaceButton-${presetName.replace(/\s+/g, '_')}`;
-        $('#' + buttonId).remove();
-    }
-
-    function removeAllQuickRaceButtons() {
-        $('#' + QUICK_PRESET_BUTTONS_CONTAINER_ID).empty(); // Empty the container to remove all buttons
-    }
-
-
-    // --- Race Creation from Preset ---
-    function createRaceFromPreset(presetConfig) {
-        const carID = presetConfig.carID;
-        const trackID = presetConfig.trackID;
-        const laps = presetConfig.laps;
-        const raceName = presetConfig.raceName || `${tracks[trackID]} Race`;
-        const minDrivers = presetConfig.minDrivers;
-        const maxDrivers = presetConfig.maxDrivers;
-        const racePassword = presetConfig.racePassword;
-        const betAmount = presetConfig.betAmount;
-        const raceStartTimeHoursValue = presetConfig.raceStartTimeHours;     // Get hours from preset - v3.0.7
-        const raceStartTimeMinutesValue = presetConfig.raceStartTimeMinutes;   // Get minutes from preset - v3.0.7
-
-
-        if (!carID || !trackID || !laps || !minDrivers || !maxDrivers) {
-            alert("Preset is incomplete. Please check all race details in the GUI.");
-            return;
-        }
-
-        const rfcValue = getRFC();
-
-        let raceURL = `https://www.torn.com/loader.php?sid=racing&tab=customrace&action=getInRace&step=getInRace&id=&carID=${carID}&createRace=true&title=${encodeURIComponent(raceName)}&minDrivers=${minDrivers}&maxDrivers=${maxDrivers}&trackID=${trackID}&laps=${laps}&minClass=5&carsTypeAllowed=1&carsAllowed=5&betAmount=0`; //Default betAmount=0 - will be updated below
-
-        if (racePassword) {
-            raceURL += `&password=${encodeURIComponent(racePassword)}`;
-        }
-
-        let waitTimeValue = Math.floor(Date.now()/1000);
-
-        if (raceStartTimeHoursValue && raceStartTimeMinutesValue) { // Check for hours AND minutes values - v3.0.7, Date is now assumed to be current
-            const hour = parseInt(raceStartTimeHoursValue, 10);   // Hours from dropdown - v3.0.7
-            const minute = parseInt(raceStartTimeMinutesValue, 10); // Minutes from dropdown - v3.0.7
-            const now = new Date(); // Get current date/time
-            const year = now.getUTCFullYear();
-            const month = now.getUTCMonth(); // Month is 0-indexed in JavaScript Date
-            const day = now.getUTCDate();
-
-
-            // --- Time Input Handling for Dropdown Menus - v3.0.7 ---
-            // Date and time inputs are interpreted as UTC (now TCT)
-            let startTimeDate = new Date(Date.UTC(year, month, day, hour, minute, 0, 0)); // Use Date.UTC to interpret as TCT
-
-            const minutes = startTimeDate.getUTCMinutes();
-            const remainder = minutes % 15;
-
-            if (remainder !== 0) {
-                const minutesToAdd = 15 - remainder;
-                startTimeDate.setUTCMinutes(minutes + minutesToAdd, 0, 0);
-                const adjustedTimeStringTCT = startTimeDate.toISOString().slice(11, 16); // HH:mm in TCT (Not directly used in GUI display anymore)
-
-                const adjustedHoursTCT = String(startTimeDate.getUTCHours()).padStart(2, '0');    // Get hours in 24hr format and pad - v3.0.7
-                const adjustedMinutesTCT = String(startTimeDate.getUTCMinutes()).padStart(2, '0');  // Get minutes and pad - v3.0.7
-
-                $('#raceStartTimeHours').val(adjustedHoursTCT);           // Update hours dropdown in GUI - v3.0.7
-                $('#raceStartTimeMinutes').val(adjustedMinutesTCT);         // Update minutes dropdown in GUI - v3.0.7
-
-                alert("Start time adjusted to the next 15-minute mark (TCT). Please check the adjusted time in the GUI."); // Inform user - v3.0.7 - Adjusted alert message to TCT only and GUI check
-            }
-
-
-            waitTimeValue = Math.floor(startTimeDate.getTime() / 1000); // getTime() returns milliseconds since epoch in TCT
-
-             //Ensure waitTimeValue is in the future
-            const currentTimeTCT = Date.now() / 1000; // Current TCT time in seconds
-            if (waitTimeValue <= currentTimeTCT) {
-                waitTimeValue = Math.floor(currentTimeTCT) + 900; // Default to NOW + 15 mins if time is in the past
-                const futureStartTime = new Date(waitTimeValue * 1000); // Convert back to Date object for formatting
-                const adjustedHoursTCT = String(futureStartTime.getUTCHours()).padStart(2, '0');
-                const adjustedMinutesTCT = String(futureStartTime.getUTCMinutes()).padStart(2, '0');
-                $('#raceStartTimeHours').val(adjustedHoursTCT);
-                $('#raceStartTimeMinutes').val(adjustedMinutesTCT);
-                alert("Selected time was in the past. Start time adjusted to NOW + 15 minutes (TCT). Please check the adjusted time in the GUI.");
-            }
-        }
-        raceURL += `&waitTime=${waitTimeValue}&rfcv=${rfcValue}`;
-
-        if (betAmount && parseInt(betAmount) > 0) { // Only add betAmount parameter if it's greater than 0 and not empty
-            raceURL = raceURL.replace("&betAmount=0", `&betAmount=${parseInt(betAmount)}`); //Replace default 0 with user bet amount
-        }
-
-
-        window.location = raceURL;
-        console.log("Initiating race creation via browser redirect to:", raceURL);
-        alert("Race created and URL opened from preset! Check the Torn racing page to confirm and manage your race.");
-    }
-
-
-    // --- Race Creation ---
-    function createRace() {
-        const carID = $('#carID').val();
-        const trackID = $('#trackID').val();
-        const laps = $('#laps').val();
-        const raceName = $('#raceName').val() || `${tracks[trackID]} Race`;
-        const minDrivers = $('#minDrivers').val();
-        const maxDrivers = $('#maxDrivers').val();
-        const racePassword = $('#racePassword').val();
-        const raceStartTimeHoursValue = $('#raceStartTimeHours').val();     // Get hours dropdown value - v3.0.7
-        const raceStartTimeMinutesValue = $('#raceStartTimeMinutes').val();   // Get minutes dropdown value - v3.0.7
-        const betAmount = $('#betAmount').val();
-
-
-        if (!carID || !trackID || !laps || !minDrivers || !maxDrivers) {
-            alert("Please fill in all race details (Car, Track, Laps, Min/Max Drivers).");
-            return;
-        }
-
-        const rfcValue = getRFC();
-
-        let raceURL = `https://www.torn.com/loader.php?sid=racing&tab=customrace&action=getInRace&step=getInRace&id=&carID=${carID}&createRace=true&title=${encodeURIComponent(raceName)}&minDrivers=${minDrivers}&maxDrivers=${maxDrivers}&trackID=${trackID}&laps=${laps}&minClass=5&carsTypeAllowed=1&carsAllowed=5&betAmount=0`; //Default betAmount=0 - will be updated below
-
-        if (racePassword) {
-            raceURL += `&password=${encodeURIComponent(racePassword)}`;
-        }
-
-        let waitTimeValue = Math.floor(Date.now()/1000);
-
-        if (raceStartTimeHoursValue && raceStartTimeMinutesValue) { // Check for hours AND minutes values - v3.0.7, Date is now assumed to be current
-            const hour = parseInt(raceStartTimeHoursValue, 10);   // Hours from dropdown - v3.0.7
-            const minute = parseInt(raceStartTimeMinutesValue, 10); // Minutes from dropdown - v3.0.7
-            const now = new Date(); // Get current date/time
-            const year = now.getUTCFullYear();
-            const month = now.getUTCMonth(); // Month is 0-indexed in JavaScript Date
-            const day = now.getUTCDate();
-
-
-            // --- Time Input Handling for Dropdown Menus - v3.0.7 ---
-            // Date and time inputs are interpreted as UTC (now TCT)
-            let startTimeDate = new Date(Date.UTC(year, month, day, hour, minute, 0, 0)); // Use Date.UTC to interpret as TCT
-
-            const minutes = startTimeDate.getUTCMinutes();
-            const remainder = minutes % 15;
-
-            if (remainder !== 0) {
-                const minutesToAdd = 15 - remainder;
-                startTimeDate.setUTCMinutes(minutes + minutesToAdd, 0, 0);
-                const adjustedTimeStringTCT = startTimeDate.toISOString().slice(11, 16); // HH:mm in TCT (Not directly used in GUI display anymore)
-
-                const adjustedHoursTCT = String(startTimeDate.getUTCHours()).padStart(2, '0');    // Get hours in 24hr format and pad - v3.0.7
-                const adjustedMinutesTCT = String(startTimeDate.getUTCMinutes()).padStart(2, '0');  // Get minutes and pad - v3.0.7
-
-                $('#raceStartTimeHours').val(adjustedHoursTCT);           // Update hours dropdown in GUI - v3.0.7
-                $('#raceStartTimeMinutes').val(adjustedMinutesTCT);         // Update minutes dropdown in GUI - v3.0.7
-
-                alert("Start time adjusted to the next 15-minute mark (TCT). Please check the adjusted time in the GUI."); // Inform user - v3.0.7 - Adjusted alert message to TCT only and GUI check
-            }
-
-
-            waitTimeValue = Math.floor(startTimeDate.getTime() / 1000); // getTime() returns milliseconds since epoch in TCT
-
-            //Ensure waitTimeValue is in the future
-            const currentTimeTCT = Date.now() / 1000; // Current TCT time in seconds
-            if (waitTimeValue <= currentTimeTCT) {
-                waitTimeValue = Math.floor(currentTimeTCT) + 900; // Default to NOW + 15 mins if time is in the past
-                const futureStartTime = new Date(waitTimeValue * 1000); // Convert back to Date object for formatting
-                const adjustedHoursTCT = String(futureStartTime.getUTCHours()).padStart(2, '0');
-                const adjustedMinutesTCT = String(futureStartTime.getUTCMinutes()).padStart(2, '0');
-                $('#raceStartTimeHours').val(adjustedHoursTCT);
-                $('#raceStartTimeMinutes').val(adjustedMinutesTCT);
-                alert("Selected time was in the past. Start time adjusted to NOW + 15 minutes (TCT). Please check the adjusted time in the GUI.");
-            }
-        }
-        raceURL += `&waitTime=${waitTimeValue}&rfcv=${rfcValue}`;
-
-        if (betAmount && parseInt(betAmount) > 0) { // Only add betAmount parameter if it's greater than 0 and not empty
-            raceURL = raceURL.replace("&betAmount=0", `&betAmount=${parseInt(betAmount)}`); //Replace default 0 with user bet amount
-        }
-
-
-        window.location = raceURL;
-        console.log("Initiating race creation via browser redirect to:", raceURL);
-        alert("Race created and URL opened! Check the Torn racing page to confirm and manage your race.");
-    }
-
-
-    // --- Set Time to NOW function - REVISED for EXACT UTC time - v3.0.13 ---
-    function setTimeToNow() {
-        const nowUTC = new Date(); // This will be in browser's understanding of UTC
-
-        const adjustedHoursUTC = String(nowUTC.getUTCHours()).padStart(2, '0');    // Get UTC hours in 24hr format and pad
-        const adjustedMinutesUTC = String(nowUTC.getUTCMinutes()).padStart(2, '0');  // Get UTC minutes and pad
-
-        $('#raceStartTimeHours').val(adjustedHoursUTC);
-        $('#raceStartTimeMinutes').val(adjustedMinutesUTC);
-    }
-
-
-    // --- Preset Configuration Functions ---
-    function getCurrentConfig() {
-        return {
-            trackID: $('#trackID').val(),
-            raceName: $('#raceName').val(),
-            laps: $('#laps').val(),
-            carID: $('#carID').val(),
-            minDrivers: $('#minDrivers').val(),
-            maxDrivers: $('#maxDrivers').val(),
-            racePassword: $('#racePassword').val(),
-            raceStartTimeHours: $('#raceStartTimeHours').val(),       // Save hours from dropdown in preset - v3.0.7
-            raceStartTimeMinutes: $('#raceStartTimeMinutes').val(),     // Save minutes from dropdown in preset - v3.0.7
-            betAmount: $('#betAmount').val()
-        };
-    }
-
-
-    // --- Event Listeners ---
-    function setupEventListeners() {
-        $('#saveApiKeyCustom').on('click', saveApiKey);
-        $('#createRaceButton').on('click', createRace);
-        $('#savePresetButton').on('click', savePreset);
-        $('#clearPresetsButton').on('click', clearPresets);
-        $('#closeGUIButton').on('click', function() { $('#raceConfigGUI').hide(); });
-        $('#presetButtons').on('click', '.remove-preset', function() {
-            const presetName = $(this).prev('.preset-button').text();
-            removePreset(presetName, this);
-        });
-        $('#setNowButton').on('click', setTimeToNow); // Event listener for NOW button - v3.0.7
-    }
-
-
-    // --- Initialization ---
-    $(document).ready(function() {
-        // --- Inject CSS Styles IMMEDIATELY in $(document).ready - Version 3.0.7 ---
-        const style = document.createElement('style');
-        style.textContent = `
+    // --- CSS for the GUI ---
+    const style = document.createElement('style');
+    style.textContent = `
             #tcLogo { pointer-events: none; }
             .gui-button {
                 color: #ddd;
@@ -842,7 +65,7 @@
                 z-index: 1000;
                 font-family: sans-serif;
                 border-radius: 10px;
-                max-width: 340px; /* Slightly increase max-width to accommodate content - v3.0.16 */
+                max-width: 375px; /* Increased max-width for wider GUI - v3.0.17 */
             }
 
             #raceConfigGUI h2, #raceConfigGUI h3, #raceConfigGUI h4 {
@@ -869,7 +92,7 @@
                 background-color: #444; /* Slightly darker background - v3.0.14 - Visual Update */
                 color: #eee !important;
                 border-radius: 7px; /* Slightly more rounded corners - v3.0.14 - Visual Update */
-                width: calc(100% - 30px); /* Slightly reduce width to ensure containment - v3.0.16 */
+                width: calc(100% - 24px); /* Adjust width to account for padding and border - v3.0.14 - Visual Update */
             }
 
             #raceConfigGUI input:focus,
@@ -1100,7 +323,7 @@
                 width: auto; /* Allow label width to adjust to content - v3.0.14 - Visual Update */
                 flex-shrink: 0; /* Prevent labels from shrinking - v3.0.14 - Visual Update */
                 text-align: right; /* Right-align labels for cleaner look - v3.0.14 - Visual Update */
-                min-width: 110px; /* Slightly reduce label min-width - v3.0.16 */
+                min-width: 120px; /* Example: Set a minimum width for labels, adjust as needed - v3.0.14 - Visual Update */
             }
 
 
@@ -1177,11 +400,11 @@
                     position: fixed;
                     top: 0;
                     left: 0;
-                    width: 95%;
+                    width: 98%; /* Slightly wider GUI on PDA - v3.0.17 */
                     max-height: 90%;
                     overflow-y: auto;
                     padding: 15px;
-                    margin: 2.5%;
+                    margin: 1%; /* Reduce margin to match width increase - v3.0.17 */
                     border-radius: 15px;
                 }
 
@@ -1323,29 +546,639 @@
 
             /* Add more dark mode styles as needed for other Torn elements */
         `;
-        document.head.appendChild(style);
-        // --- CSS Injection DONE ---
+    document.head.appendChild(style);
+
+    // --- GUI HTML Structure ---
+    function createRaceConfigGUI() {
+        const gui = document.createElement('div');
+        gui.id = 'raceConfigGUI';
+        gui.innerHTML = `
+            <button id="closeGUIButton" class="close-button">×</button>
+            <div class="gui-header">
+                <img id="tcLogo" src="https://www.torn.com/images/v2/layout/header/logo-tc.svg" alt="Torn City Logo" style="width: 150px; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto;">
+                <h2>Race Configuration</h2>
+                <div class="api-key-section">
+                    <label for="apiKey">API Key:</label>
+                    <input type="text" id="apiKey" placeholder="Enter your API Key">
+                    <button class="gui-button" id="saveApiKeyButton">Save API Key</button>
+                </div>
+            </div>
+
+            <div class="presets-section">
+                <h4>Quick Race Presets</h4>
+                <div id="quickPresetButtonsContainer" class="preset-buttons-container">
+                    </div>
+            </div>
+
+            <div class="presets-section">
+                <h4>Race Presets</h4>
+                <div id="presetButtonsContainer" class="preset-buttons-container">
+                    </div>
+                <div class="preset-management-section">
+                    <input type="text" id="presetNameInput" placeholder="Preset Name">
+                    <button class="gui-button" id="savePresetButton">Save Preset</button>
+                    <button class="gui-button" id="clearPresetsButton">Clear Presets</button>
+                </div>
+            </div>
 
 
-        if ($('div.content-title > h4').length > 0 && !$('#toggleRaceGUIButton').length) {
-            // Simplified inline styles - relying on CSS class for most styling now
-            const toggleButton = $(`<button id="toggleRaceGUIButton" class="gui-button" style="text-decoration: none; margin-right: 10px;">Race Config GUI</button>`); // v3.0.10 - Minute Dropdown Text & Time Description Removed
+            <div class="config-section">
+                <h4>Race Settings</h4>
+                <div><label for="trackSelect">Track:</label>
+                    <select id="trackSelect">
+                        <option value="6-Uptown">6- Uptown</option>
+                        <option value="7-Dudley">7- Dudley</option>
+                        <option value="8-Industrial">8- Industrial</option>
+                        <option value="9-Parkway">9- Parkway</option>
+                        <option value="10-Countryside">10- Countryside</option>
+                        <option value="11-Woodlands">11- Woodlands</option>
+                        <option value="12-Highway">12- Highway</option>
+                        <option value="13-Beachside">13- Beachside</option>
+                    </select></div>
+                <div><label for="lapsInput">Laps:</label><input type="number" id="lapsInput" value="100" min="1" max="999"></div>
+                <div><label for="minDriversInput">Min Drivers:</label><input type="number" id="minDriversInput" value="2" min="2" max="8"></div>
+                <div><label for="maxDriversInput">Max Drivers:</label><input type="number" id="maxDriversInput" value="8" min="2" max="8"></div>
+                <div><label for="raceNameInput">Race Name:</label><input type="text" id="raceNameInput" value="Custom Race"></div>
+                <div><label for="passwordInput">Password (optional):</label><input type="text" id="passwordInput" placeholder="Race Password Optional"></div>
+                <div><label for="betAmountInput">Bet Amount for Race (Max 10M, Optional):</label><input type="number" id="betAmountInput" value="0" min="0" max="10000000"></div>
 
-            $('div.content-title > h4').append(toggleButton);
+                 <div>
+                    <label>Race Start Time (TCT 24hr):</label>
+                </div>
+                <div>
+                     <label for="raceStartHour">Hours (TCT):</label>
+                     <select id="raceStartHour">
+                        </select>
+                </div>
+                <div>
+                    <label for="raceStartMinute">Minutes (TCT):</label>
+                    <select id="raceStartMinute">
+                        </select>
+                </div>
+                <div>
+                    <button class="gui-button" id="setNowButton">NOW</button>  <span>(TCT, 1 min interval)</span> </div>
+                 </div>
 
-            toggleButton.on('click', function() {
-                if ($('#raceConfigGUI').is(':visible')) {
-                    $('#raceConfigGUI').hide();
-                } else {
-                    createGUI();
-                    $('#raceConfigGUI').show();
+            <div class="car-select-section">
+                <h4>Car Selection</h4>
+                <div><label for="carIdInput">Car ID:</label><input type="number" id="carIdInput" placeholder="Enter Car ID"></div>
+                <div>
+                    <label for="carSelectDropdown">Select Car:</label>
+                    <select id="carSelectDropdown">
+                        </select>
+                </div>
+                <button class="gui-button" id="updateCarsButton">Update Cars</button>
+                <div id="carInfoMessage"></div>
+            </div>
+
+
+            <div class="config-section">
+                <h4>Change Car</h4>
+                 <div class="config-params-section">
+                    <div class="driver-input-container">
+                        <label for="driverSkillInput">Driver Skill:</label>
+                        <input type="number" id="driverSkillInput" value="1000" min="0" max="2000">
+                    </div>
+                    <div class="driver-input-container">
+                        <label for="driverNerveInput">Driver Nerve:</label>
+                        <input type="number" id="driverNerveInput" value="1000" min="0" max="2000">
+                    </div>
+                    <div class="driver-input-container">
+                        <label for="carAccelerationInput">Car Acceleration:</label>
+                        <input type="number" id="carAccelerationInput" value="1000" min="0" max="2000">
+                    </div>
+                    <div class="driver-input-container">
+                        <label for="carHandlingInput">Car Handling:</label>
+                        <input type="number" id="carHandlingInput" value="1000" min="0" max="2000">
+                    </div>
+                    <div class="driver-input-container">
+                        <label for="carTopSpeedInput">Car Top Speed:</label>
+                        <input type="number" id="carTopSpeedInput" value="1000" min="0" max="2000">
+                    </div>
+                 </div>
+            </div>
+
+
+            <div id="statusMessageBox"></div>
+            <button class="gui-button" id="createRaceButton">Create Race</button>
+
+
+            <div class="gui-footer">
+                <p style="font-size: 0.8em; text-align: center; margin-top: 10px; color: #888;">Script created by GNSC4 (2688631)</p>
+                <p style="font-size: 0.7em; text-align: center; color: #666;">Version 3.0.17 - GUI Border Expansion</p>
+            </div>
+        `;
+        document.body.appendChild(gui);
+        return gui;
+    }
+
+    let raceConfigGUI = document.querySelector('#raceConfigGUI');
+    if (!raceConfigGUI) {
+        raceConfigGUI = createRaceConfigGUI();
+        initializeGUI(raceConfigGUI);
+    }
+
+    function initializeGUI(gui) {
+        loadApiKey();
+        loadPresets();
+        populateTimeDropdowns(); // v3.0.7 - Populate time dropdowns on GUI load
+        updateQuickPresetsDisplay(); // Initial quick presets load - v2.98ah
+        displayPresets(); // Initial display of saved presets
+
+        // --- Button Event Listeners ---
+        document.getElementById('saveApiKeyButton').addEventListener('click', saveApiKey);
+        document.getElementById('savePresetButton').addEventListener('click', savePreset);
+        document.getElementById('clearPresetsButton').addEventListener('click', clearPresets);
+        document.getElementById('createRaceButton').addEventListener('click', createRace);
+        document.getElementById('updateCarsButton').addEventListener('click', updateCarList); // Car Update Button
+        document.getElementById('closeGUIButton').addEventListener('click', toggleRaceGUI);
+        document.getElementById('toggleRaceGUIButton').addEventListener('click', toggleRaceGUI); // Toggle Button in Race Header - v2.98ah
+        document.getElementById('setNowButton').addEventListener('click', setTimeToNow); // NOW Button Event Listener - v3.0.7
+
+         // --- Quick Preset Buttons - Event Delegation --- v2.98ah
+         const quickPresetButtonsContainer = document.getElementById('quickPresetButtonsContainer');
+         quickPresetButtonsContainer.addEventListener('click', function(event) {
+             if (event.target.classList.contains('quick-race-button')) {
+                 applyQuickPreset(event.target.textContent);
+             }
+         });
+
+        // --- Preset Buttons - Event Delegation for Apply and Remove --- v2.98ah
+        const presetButtonsContainer = document.getElementById('presetButtonsContainer');
+        presetButtonsContainer.addEventListener('click', function(event) {
+            if (event.target.classList.contains('preset-button')) {
+                applyPreset(event.target.textContent);
+            } else if (event.target.classList.contains('remove-preset')) {
+                removePreset(event.target.dataset.presetName);
+            }
+        });
+
+
+        // --- Initially populate car dropdown on GUI load ---
+        updateCarDropdown();
+
+
+        // --- Make GUI Draggable ---
+        dragElement(gui);
+
+         // --- Set initial GUI state based on storage ---
+         const guiVisible = GM_getValue('raceConfigGUIVisible', false); // Default to hidden if not set
+         raceConfigGUI.style.display = guiVisible ? 'block' : 'none';
+
+    }
+
+
+    // --- GUI Toggle Button in Race Header --- v2.98ah
+    function createToggleButton() {
+        const toggleButton = document.createElement('a');
+        toggleButton.id = 'toggleRaceGUIButton';
+        toggleButton.className = 'gui-button'; //Use existing style
+        toggleButton.textContent = 'Toggle Race Config GUI';
+        toggleButton.style.marginLeft = '10px'; //Some spacing
+
+        const headerTitle = document.querySelector('div.content-title > h4'); //Target Race header
+        if (headerTitle) {
+            headerTitle.appendChild(toggleButton);
+        }
+    }
+
+    createToggleButton(); //Create toggle button on script load - v2.98ah
+
+
+    function toggleRaceGUI() {
+        const gui = document.getElementById('raceConfigGUI');
+        const currentDisplay = gui.style.display;
+        gui.style.display = currentDisplay === 'none' ? 'block' : 'none';
+
+        // --- Store GUI visibility state ---
+        GM_setValue('raceConfigGUIVisible', gui.style.display === 'block');
+    }
+
+
+    function dragElement(elmnt) {
+        var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+        if (document.getElementById(elmnt.id + "header")) {
+            document.getElementById(elmnt.id + "header").onmousedown = dragMouseDown;
+        } else {
+            elmnt.onmousedown = dragMouseDown;
+        }
+
+        function dragMouseDown(e) {
+            e = e || window.event;
+            e.preventDefault();
+            pos3 = e.clientX;
+            pos4 = e.clientY;
+            document.onmouseup = closeDragElement;
+            document.onmousemove = elementDrag;
+        }
+
+        function elementDrag(e) {
+            e = e || window.event;
+            e.preventDefault();
+            pos1 = pos3 - e.clientX;
+            pos2 = pos4 - e.clientY;
+            pos3 = e.clientX;
+            pos4 = e.clientY;
+            elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+            elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+        }
+
+        function closeDragElement() {
+            document.onmouseup = null;
+            document.onmousemove = null;
+        }
+    }
+
+
+    function loadApiKey() {
+        const apiKey = GM_getValue('tornApiKey', '');
+        document.getElementById('apiKey').value = apiKey;
+    }
+
+    function saveApiKey() {
+        const apiKey = document.getElementById('apiKey').value;
+        GM_setValue('tornApiKey', apiKey);
+        displayStatusMessage('API Key Saved!', 'success');
+    }
+
+
+    // --- Status Message ---
+    function displayStatusMessage(message, type = 'info', duration = 3000) {
+        const statusMessageBox = document.getElementById('statusMessageBox');
+        statusMessageBox.textContent = message;
+        statusMessageBox.className = type; // Use class for color styling
+         statusMessageBox.style.display = 'block'; // Make sure it's visible
+
+        if (type === 'error') {
+            statusMessageBox.classList.add('error'); // Add error class for error styling - v2.98ah
+        } else if (type === 'success') {
+             statusMessageBox.classList.add('success'); // Add success class for success styling - v2.98ah
+        }
+
+
+        setTimeout(() => {
+            statusMessageBox.style.display = 'none';
+            statusMessageBox.className = ''; // Clear type class after hiding - v2.98ah
+        }, duration);
+    }
+
+
+
+    // --- Preset Functions ---
+    function savePreset() {
+        const presetName = document.getElementById('presetNameInput').value.trim();
+        if (!presetName) {
+            displayStatusMessage('Preset name cannot be empty.', 'error');
+            return;
+        }
+
+        const presetData = {
+            track: document.getElementById('trackSelect').value,
+            laps: document.getElementById('lapsInput').value,
+            minDrivers: document.getElementById('minDriversInput').value,
+            maxDrivers: document.getElementById('maxDriversInput').value,
+            raceName: document.getElementById('raceNameInput').value,
+            password: document.getElementById('passwordInput').value,
+            betAmount: document.getElementById('betAmountInput').value,
+            raceStartHour: document.getElementById('raceStartHour').value, //v3.0.7
+            raceStartMinute: document.getElementById('raceStartMinute').value, //v3.0.7
+            driverSkill: document.getElementById('driverSkillInput').value,
+            driverNerve: document.getElementById('driverNerveInput').value,
+            carAcceleration: document.getElementById('carAccelerationInput').value,
+            carHandling: document.getElementById('carHandlingInput').value,
+            carTopSpeed: document.getElementById('carTopSpeedInput').value
+        };
+
+        let presets = loadAllPresets();
+        presets[presetName] = presetData;
+        GM_setValue('racePresets', JSON.stringify(presets));
+        displayPresets();
+        displayStatusMessage(`Preset "${presetName}" saved!`, 'success');
+    }
+
+
+    function loadPresets() {
+        displayPresets();
+        updateQuickPresetsDisplay(); // Update quick presets on load - v2.98ah
+    }
+
+
+    function loadAllPresets() {
+        const presetsJSON = GM_getValue('racePresets', '{}');
+        return JSON.parse(presetsJSON);
+    }
+
+
+    function displayPresets() {
+        const presets = loadAllPresets();
+        const container = document.getElementById('presetButtonsContainer');
+        container.innerHTML = ''; // Clear existing buttons
+
+        Object.keys(presets).forEach(presetName => {
+            const presetButtonContainer = document.createElement('div'); // Container for button and description - v2.98ah
+            presetButtonContainer.className = 'preset-button-container'; // Container class - v2.98ah
+
+            const button = document.createElement('button');
+            button.className = 'preset-button';
+            button.textContent = presetName;
+
+            const removeButton = document.createElement('a');
+            removeButton.className = 'remove-preset';
+            removeButton.href = '#';
+            removeButton.textContent = '×';
+            removeButton.dataset.presetName = presetName; // Store preset name for removal
+
+
+            presetButtonContainer.appendChild(button); // Add button to container - v2.98ah
+            presetButtonContainer.appendChild(removeButton); // Add remove button to container - v2.98ah
+            container.appendChild(presetButtonContainer); // Add container to main container - v2.98ah
+        });
+    }
+
+
+    function applyPreset(presetName) {
+        const presets = loadAllPresets();
+        const preset = presets[presetName];
+        if (preset) {
+            document.getElementById('trackSelect').value = preset.track;
+            document.getElementById('lapsInput').value = preset.laps;
+            document.getElementById('minDriversInput').value = preset.minDrivers;
+            document.getElementById('maxDriversInput').value = preset.maxDrivers;
+            document.getElementById('raceNameInput').value = preset.raceName;
+            document.getElementById('passwordInput').value = preset.password;
+            document.getElementById('betAmountInput').value = preset.betAmount;
+            document.getElementById('raceStartHour').value = preset.raceStartHour; //v3.0.7
+            document.getElementById('raceStartMinute').value = preset.raceStartMinute; //v3.0.7
+            document.getElementById('driverSkillInput').value = preset.driverSkill;
+            document.getElementById('driverNerveInput').value = preset.driverNerve;
+            document.getElementById('carAccelerationInput').value = preset.carAcceleration;
+            document.getElementById('carHandlingInput').value = preset.carHandling;
+            document.getElementById('carTopSpeedInput').value = preset.carTopSpeed;
+            displayStatusMessage(`Preset "${presetName}" applied.`, 'success');
+        } else {
+            displayStatusMessage(`Preset "${presetName}" not found.`, 'error');
+        }
+    }
+
+
+    function removePreset(presetName) {
+        let presets = loadAllPresets();
+        if (presets[presetName]) {
+            delete presets[presetName];
+            GM_setValue('racePresets', JSON.stringify(presets));
+            displayPresets();
+            updateQuickPresetsDisplay(); // Update quick presets after removal - v2.98ah
+            displayStatusMessage(`Preset "${presetName}" removed.`, 'success');
+        } else {
+            displayStatusMessage(`Preset "${presetName}" not found.`, 'error');
+        }
+    }
+
+
+    function clearPresets() {
+        if (confirm('Are you sure you want to clear all saved presets?')) {
+            GM_setValue('racePresets', '{}');
+            displayPresets();
+            updateQuickPresetsDisplay(); // Clear quick presets as well - v2.98ah
+            displayStatusMessage('All presets cleared.', 'success');
+        }
+    }
+
+
+    // --- Quick Presets Functionality --- v2.98ah
+    function updateQuickPresetsDisplay() {
+        const container = document.getElementById('quickPresetButtonsContainer');
+        container.innerHTML = ''; // Clear existing buttons
+
+        const quickPresets = ["Track Withdrawal", "Laps: 10"]; // Define quick presets here
+
+        quickPresets.forEach(presetName => {
+            const button = document.createElement('button');
+            button.className = 'quick-race-button gui-button'; //added gui-button class for styling - v2.98ah
+            button.textContent = presetName;
+            container.appendChild(button);
+        });
+    }
+
+
+    function applyQuickPreset(presetName) {
+        if (presetName === "Track Withdrawal") {
+            applyPreset("Track Withdrawal"); //Re-use existing preset function - v2.98ah
+        } else if (presetName === "Laps: 10") {
+            document.getElementById('lapsInput').value = 10; // Directly set laps - example - v2.98ah
+            displayStatusMessage('Quick Preset "Laps: 10" applied.', 'success');
+        }
+         // --- Add more quick presets here as needed --- v2.98ah
+    }
+
+
+
+    // --- Time Functions v3.0.7 ---
+    function populateTimeDropdowns() {
+        const hourDropdown = document.getElementById('raceStartHour');
+        const minuteDropdown = document.getElementById('raceStartMinute');
+
+        for (let i = 0; i <= 23; i++) {
+            const option = document.createElement('option');
+            option.value = String(i).padStart(2, '0');
+            option.text = String(i).padStart(2, '0');
+            hourDropdown.appendChild(option);
+        }
+
+        for (let i = 0; i <= 59; i++) {
+            const option = document.createElement('option');
+            option.value = String(i).padStart(2, '0');
+            option.text = String(i).padStart(2, '0');
+            minuteDropdown.appendChild(option);
+        }
+    }
+
+
+    function setTimeToNow() {
+        const now = moment.utc(); // Get current time in UTC/TCT
+        const currentHour = now.format('HH'); // HH for 24-hour format
+        const currentMinute = now.add(1, 'minute').startOf('minute').format('mm'); //add 1 min, start of min, format minutes
+
+        document.getElementById('raceStartHour').value = currentHour;
+        document.getElementById('raceStartMinute').value = currentMinute;
+
+        displayStatusMessage('Time set to NOW (TCT 1 min interval).', 'success');
+    }
+
+
+
+    // --- Car Selection Functions ---
+    async function updateCarList() {
+        const apiKey = GM_getValue('tornApiKey');
+        if (!apiKey) {
+            displayStatusMessage('API Key is required to update car list.', 'error');
+            return;
+        }
+
+        const carInfoMessage = document.getElementById('carInfoMessage');
+        carInfoMessage.textContent = 'Updating car list...';
+        carInfoMessage.style.display = 'block'; // Show message
+
+
+        try {
+            const response = await fetch(`https://api.torn.com/user/?step=cars&key=${apiKey}&selections=cars`, {
+                headers: {
+                    'User-Agent': 'Torn Race Config GUI Script'
                 }
             });
-            ensureQuickPresetButtonsContainer(); // Ensure container is created when toggle button is created on page load
-            loadQuickRaceButtons(); // Load quick race buttons on page load after toggle is created
 
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data.error) {
+                carInfoMessage.textContent = `API Error: ${data.error.error}`; // Display API error
+                carInfoMessage.className = 'error'; //Optionally, add error class for styling
+                console.error('API error:', data.error);
+            } else if (data.cars) {
+                GM_setValue('playerCars', JSON.stringify(data.cars));
+                updateCarDropdown();
+                carInfoMessage.textContent = 'Car list updated successfully!';
+                carInfoMessage.className = 'success'; // Optionally, add success class
+            } else {
+                carInfoMessage.textContent = 'No car data received.';
+                carInfoMessage.className = 'info'; // Default class
+            }
+
+
+        } catch (error) {
+            carInfoMessage.textContent = 'Failed to update car list.';
+            carInfoMessage.className = 'error'; // Add error class for styling
+            console.error('Fetch error:', error);
+        } finally {
+             setTimeout(() => {
+                carInfoMessage.style.display = 'none'; // Hide message after 3 seconds
+                carInfoMessage.className = ''; // Clear classes
+            }, 3000); // Keep message for 3 seconds
         }
-        // Descriptive text is now removed
-    });
+    }
+
+
+    function updateCarDropdown() {
+        const carDropdown = document.getElementById('carSelectDropdown');
+        carDropdown.innerHTML = ''; // Clear existing options
+
+        const playerCarsJSON = GM_getValue('playerCars', '{}'); // Default to empty object if no data
+        const playerCars = JSON.parse(playerCarsJSON);
+
+
+        // Convert cars object to array for sorting
+        const carsArray = Object.entries(playerCars).map(([carId, carDetails]) => ({
+            carId: carId,
+            ...carDetails
+        }));
+
+
+        // Sort cars array alphabetically by name
+        carsArray.sort((a, b) => a.name.localeCompare(b.name));
+
+
+        carsArray.forEach(car => {
+            const option = document.createElement('option');
+            option.value = car.carId;
+            option.text = `${car.name} (ID: ${car.carId})`;
+            carDropdown.appendChild(option);
+        });
+    }
+
+
+
+    // --- Race Creation Function ---
+    async function createRace() {
+        const apiKey = GM_getValue('tornApiKey');
+        if (!apiKey) {
+            displayStatusMessage('API Key is required to create a race.', 'error');
+            return;
+        }
+
+
+        const selectedCarId = document.getElementById('carSelectDropdown').value; // Get from dropdown
+        if (!selectedCarId) {
+            displayStatusMessage('Please select a car to create a race.', 'error');
+            return;
+        }
+
+
+        const track = document.getElementById('trackSelect').value;
+        const laps = document.getElementById('lapsInput').value;
+        const minDrivers = document.getElementById('minDriversInput').value;
+        const maxDrivers = document.getElementById('maxDriversInput').value;
+        const raceName = document.getElementById('raceNameInput').value;
+        const password = document.getElementById('passwordInput').value;
+        const betAmount = document.getElementById('betAmountInput').value;
+        const raceStartHour = document.getElementById('raceStartHour').value; // v3.0.7
+        const raceStartMinute = document.getElementById('raceStartMinute').value; // v3.0.7
+
+
+        // --- Parameters for car stats ---
+        const driverSkill = document.getElementById('driverSkillInput').value;
+        const driverNerve = document.getElementById('driverNerveInput').value;
+        const carAcceleration = document.getElementById('carAccelerationInput').value;
+        const carHandling = document.getElementById('carHandlingInput').value;
+        const carTopSpeed = document.getElementById('carTopSpeedInput').value;
+
+
+        const startTimeUTC = moment.utc().hour(raceStartHour).minute(raceStartMinute).second(0).format('HH:mm:00'); // v3.0.7 - Get time from dropdowns, format as HH:mm:00
+
+
+        const params = new URLSearchParams({
+            step: 'create',
+            track: track.split('-')[0], // Extract track ID
+            laps: laps,
+            minracer: minDrivers,
+            maxracer: maxDrivers,
+            rname: raceName,
+            password: password,
+            bet: betAmount,
+            carid: selectedCarId, // Use selected car ID from dropdown
+            scheduled_time: startTimeUTC, // v3.0.7 - Use formatted UTC start time
+            driver_skill: driverSkill,
+            driver_nerve: driverNerve,
+            car_acceleration: carAcceleration,
+            car_handling: carHandling,
+            car_topspeed: carTopSpeed,
+            key: apiKey,
+            selections: 'cars'
+        });
+
+
+        try {
+            const response = await fetch(`https://api.torn.com/racing/?${params.toString()}`, {
+                headers: {
+                    'User-Agent': 'Torn Race Config GUI Script'
+                }
+            });
+
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            if (data && data.error) {
+                displayStatusMessage(`API Error: ${data.error.error}`, 'error');
+                console.error('API error:', data.error);
+            } else if (data && data.race_id) {
+                displayStatusMessage(`Race created successfully! Race ID: ${data.race_id}`, 'success');
+                // Optionally redirect to race page - consider if desirable
+                 window.location.href = `racing.php#/races/view/${data.race_id}`;
+            } else {
+                displayStatusMessage('Race creation failed. Unknown error.', 'error');
+                console.error('Race creation failed:', data); //Log full response for debugging
+            }
+
+
+        } catch (error) {
+            displayStatusMessage('Error creating race.', 'error');
+            console.error('Fetch error:', error);
+        }
+    }
 
 })();
