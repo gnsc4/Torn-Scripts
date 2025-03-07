@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Torn Race Config GUI - PDA & Desktop - v2.91 - Full GUI - User Enlisted Cars - Official API - DATA OPTIMIZATION - PARAMETER CONFIRMATION - ERROR & SYNTAX FIX - GUI Cleanup - RESTORED RACE BUTTON - RACE CREATION LOGIC - VEHICLE ID FALLBACK REMOVED - UNNEEDED COMMENT TAGS REMOVED - OLD CODE COMMENTS REMOVED - GUI CONCISE - **GUI REFINEMENTS**
+// @name         Torn Race Config GUI - PDA & Desktop - v2.92 - Full GUI - User Enlisted Cars - Official API - DATA OPTIMIZATION - PARAMETER CONFIRMATION - ERROR & SYNTAX FIX - GUI Cleanup - RESTORED RACE BUTTON - RACE CREATION LOGIC - VEHICLE ID FALLBACK REMOVED - UNNEEDED COMMENT TAGS REMOVED - OLD CODE COMMENTS REMOVED - GUI CONCISE - GUI REFINEMENTS - **GUI BUTTON FIX**
 // @namespace    torn.raceconfiggui.pdadesktop
-// @description  Full Feature Race Config GUI - v2.91 - User Enlisted Cars Endpoint - Official API Domain - ROBUST CACHED DATA + "UPDATE CARS" BUTTON - DATA OPTIMIZATION (item_name, id only) - PARAMETER CONFIRMATION (Race Creation Params) - ERROR & SYNTAX FIX - GUI Cleanup - RESTORED RACE BUTTON - RACE CREATION LOGIC - VEHICLE ID FALLBACK REMOVED - UNNEEDED COMMENT TAGS REMOVED - OLD CODE COMMENTS REMOVED - GUI CONCISE - **GUI REFINEMENTS**
-// @version      2.91-PDA-Desktop-GMfPDA-FullGUI-UserEnlistedCars-OfficialAPI-ROBUST-CACHED-DATA-UPDATE-CARS-BUTTON-DATA-OPTIMIZED-PARAM-CONFIRM-ERROR-SYNTAX-GUI-CLEANUP-RACE-BUTTON-RACECREATION-NO-VEHICLE-ID-FALLBACK-NO-HTML-COMMENTS-NO-OLD-CODE-COMMENTS-GUI-CONCISE-GUI-REFINEMENTS
+// @description  Full Feature Race Config GUI - v2.92 - User Enlisted Cars Endpoint - Official API Domain - ROBUST CACHED DATA + "UPDATE CARS" BUTTON - DATA OPTIMIZATION (item_name, id only) - PARAMETER CONFIRMATION (Race Creation Params) - ERROR & SYNTAX FIX - GUI Cleanup - RESTORED RACE BUTTON - RACE CREATION LOGIC - VEHICLE ID FALLBACK REMOVED - UNNEEDED COMMENT TAGS REMOVED - OLD CODE COMMENTS REMOVED - GUI CONCISE - GUI REFINEMENTS - **GUI BUTTON FIX**
+// @version      2.92-PDA-Desktop-GMfPDA-FullGUI-UserEnlistedCars-OfficialAPI-ROBUST-CACHED-DATA-UPDATE-CARS-BUTTON-DATA-OPTIMIZED-PARAM-CONFIRM-ERROR-SYNTAX-GUI-CLEANUP-RACE-BUTTON-RACECREATION-NO-VEHICLE-ID-FALLBACK-NO-HTML-COMMENTS-NO-OLD-CODE-COMMENTS-GUI-CONCISE-GUI-REFINEMENTS-GUI-BUTTON-FIX
 // @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
 // @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
 // @author       GNSC4 [268863] (Based on Shlefter's script)
@@ -12,7 +12,7 @@
 // @grant        GM_deleteValue
 // @grant        GM_xmlHttpRequest
 // @require      https://code.jquery.com/jquery-3.7.1.min.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.min.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.min.js // <-- ADDED jQuery Cookie REQUIRE
 // @license      MIT
 // ==/UserScript==
 
@@ -457,6 +457,14 @@ style.textContent = `
         text-align: center;
     }
 
+    /* --- NEW CSS for GUI Description Span --- */
+    #raceConfigGUI .gui-description {
+        color: orange;
+        margin-left: 10px; /* Add some left margin for visual separation */
+        display: block; /* Ensure it's on a new line */
+        font-size: 0.9em; /* Slightly smaller font if desired */
+    }
+
 
     /* --- PDA Specific Styles --- */
     @media (max-width: 768px) {
@@ -620,7 +628,8 @@ function createGUI() {
 
 
             <div class="car-select-section config-section">
-                <h4>Car Selection</h4>  <label for="carSelect">Select Car:</label>
+                <h4>Car Selection</h4>
+                <label for="carSelect">Select Car:</label>
                 <select id="carSelect">
                     <option value="">Loading Cars...</option>
                 </select>
@@ -661,7 +670,7 @@ function createGUI() {
 
 
             <div style="text-align: center; margin-top: 15px; font-size: 0.8em; color: #888;">
-                v2.91  <br>Based on Shlefter's Script | By GNSC4 [268863]
+                v2.92  <br>Based on Shlefter's Script | By GNSC4 [268863]
             </div>
         </div>
     `;
@@ -724,7 +733,7 @@ async function loadCars() {
             await GM_setValue(VEHICLE_ID_CACHE_KEY + '_timestamp', now);
             console.log('Enlisted car data fetched, optimized (item_name, id only), and cached (from /user/enlistedcars - official api.torn.com).'); // <--- Updated log message - Official API
             populateCarDropdown(optimizedCarData); // <-- Pass OPTIMIZED CAR DATA to populate dropdown
-            $('#statusMessageBox').text('Car list updated (from Enlisted Cars - official api.torn.com, data optimized, Vehicle ID Fallback, HTML, Old Code Comments, GUI Verbosity & GUI Refinements Removed).').removeClass('error').addClass('success').show(); // <--- Updated status message - GUI Refinements Removed
+            $('#statusMessageBox').text('Car list updated (from Enlisted Cars - official api.torn.com, data optimized, Vehicle ID Fallback, HTML, Old Code Comments, GUI Verbosity, GUI Refinements & GUI Button Fix Removed).').removeClass('error').addClass('success').show(); // <--- Updated status message - GUI Button Fix Removed
             setTimeout(() => $('#statusMessageBox').fadeOut(), 3000);
         } else {
             $('#statusMessageBox').text('Error loading car list from API (/user/enlistedcars - No cars received or API error - official api.torn.com).').addClass('error').removeClass('success').show(); // <--- Updated error message - Official API
@@ -802,14 +811,14 @@ function updateCars() {
     GM_deleteValue(VEHICLE_ID_CACHE_KEY); // Clear cached car data
     GM_deleteValue(VEHICLE_ID_CACHE_KEY + '_timestamp'); // Clear timestamp as well (optional, but good practice)
     loadCars(); // Reload car data from API
-    setTimeout(() => $('#statusMessageBox').text('Car list updated! (Cache cleared and reloaded from API, data optimized, Vehicle ID Fallback, HTML, Old Code Comments, GUI Verbosity & GUI Refinements Removed)').removeClass('error').addClass('success').fadeIn(), 1000); // <--- Updated success message - GUI Refinements Removed
+    setTimeout(() => $('#statusMessageBox').text('Car list updated! (Cache cleared and reloaded from API, data optimized, Vehicle ID Fallback, HTML, Old Code Comments, GUI Verbosity, GUI Refinements & GUI Button Fix Removed)').removeClass('error').addClass('success').fadeIn(), 1000); // <--- Updated success message - GUI Button Fix Removed
     setTimeout(() => $('#statusMessageBox').fadeOut(), 5000); // Auto-fade success message after 5 seconds
 }
 
 
 // --- Preset Functions ---
 function loadPresets() {
-    console.log("loadPresets() - START (v2.91)"); // DEBUG CONSOLE LOG - START
+    console.log("loadPresets() - START (v2.92)"); // DEBUG CONSOLE LOG - START
     let presets = {};
     presets = GM_getValue(PRESET_STORAGE_KEY, {});
     console.log("loadPresets() - After GM_getValue, presets object:", presets); // DEBUG CONSOLE LOG - PRESETS OBJECT
@@ -820,16 +829,16 @@ function loadPresets() {
         console.log("loadPresets() - Inside loop, presetName: " + presetName); // DEBUG CONSOLE LOG - LOOP ITERATION
         presetButtonsDiv.append(createPresetButton(presetName, presetConfig));
     });
-    console.log("loadPresets() - END (v2.91)"); // DEBUG CONSOLE LOG - END
+    console.log("loadPresets() - END (v2.92)"); // DEBUG CONSOLE LOG - END
 }
 
 
 function savePreset_Internal() { // <-- **Internal, non-debounced savePreset function**
-    console.log("savePreset_Internal() - START (v2.91 - Simplified Presets)"); // DEBUG CONSOLE LOG - START
+    console.log("savePreset_Internal() - START (v2.92 - Simplified Presets)"); // DEBUG CONSOLE LOG - START
 
     const presetName = prompt("Enter a name for this preset:");
     if (!presetName) {
-        console.log("savePreset_Internal() - No preset name, cancelled (v2.91 - Simplified Presets)"); // DEBUG CONSOLE LOG - CANCELLED
+        console.log("savePreset_Internal() - No preset name, cancelled (v2.92 - Simplified Presets)"); // DEBUG CONSOLE LOG - CANCELLED
         return;
     }
 
@@ -856,7 +865,7 @@ function savePreset_Internal() { // <-- **Internal, non-debounced savePreset fun
     GM_setValue(PRESET_STORAGE_KEY, presets);
     console.log("savePreset_Internal() - After GM_setValue, presets object:", presets); // DEBUG CONSOLE LOG - PRESETS OBJECT AFTER SAVE
     loadPresets(); // Update preset buttons after saving
-    console.log("savePreset_Internal() - END (v2.91 - Simplified Presets)"); // DEBUG CONSOLE LOG - END
+    console.log("savePreset_Internal() - END (v2.92 - Simplified Presets)"); // DEBUG CONSOLE LOG - END
 }
 
 // --- Debounced savePreset function ---
@@ -864,7 +873,7 @@ const savePreset = debounce(savePreset_Internal, 1000); // <--- **DEBOUNCED save
 
 
 function applyPreset(presetConfig) {
-    console.log("applyPreset() - Applying preset: " + presetConfig.name + " (v2.91 - Simplified Presets)"); // DEBUG CONSOLE LOG - APPLY START
+    console.log("applyPreset() - Applying preset: " + presetConfig.name + " (v2.92 - Simplified Presets)"); // DEBUG CONSOLE LOG - APPLY START
 
     $('#carSelect').val(presetConfig.carId); // <-- Now setting selected value to enlistedCarId
     $('#trackID').val(presetConfig.trackID);         // <--- RACE CREATION PARAMETERS APPLIED FROM PRESET - Track
@@ -877,25 +886,25 @@ function applyPreset(presetConfig) {
     $('#maxDrivers').val(presetConfig.maxDrivers);       // <--- RACE CREATION PARAMETERS APPLIED FROM PRESET - Max Drivers
 
 
-    console.log("applyPreset() - Preset applied: " + presetConfig.name + " (v2.91 - Simplified Presets)"); // DEBUG CONSOLE LOG - APPLY END
-    $('#statusMessageBox').text(`Preset "${presetConfig.name}" applied (Simplified, Vehicle ID Fallback, HTML, Old Code Comments, GUI Verbosity & GUI Refinements Removed).`).removeClass('error').addClass('success').show(); // <-- Updated status message - GUI Refinements Removed
+    console.log("applyPreset() - Preset applied: " + presetConfig.name + " (v2.92 - Simplified Presets)"); // DEBUG CONSOLE LOG - APPLY END
+    $('#statusMessageBox').text(`Preset "${presetConfig.name}" applied (Simplified, Vehicle ID Fallback, HTML, Old Code Comments, GUI Verbosity, GUI Refinements & GUI Button Fix Removed).`).removeClass('error').addClass('success').show(); // <-- Updated status message - GUI Button Fix Removed
     setTimeout(() => $('#statusMessageBox').fadeOut(), 3000);
 }
 
 
 function removePreset(presetName, buttonElement) {
-    console.log("removePreset() - START, presetName: " + presetName + " (v2.91)"); // DEBUG CONSOLE LOG - REMOVE START
+    console.log("removePreset() - START, presetName: " + presetName + " (v2.92)"); // DEBUG CONSOLE LOG - REMOVE START
     if (confirm(`Are you sure you want to delete preset "${presetName}"?`)) {
-        console.log("removePreset() - Confirmed delete: " + presetName + " (v2.91)"); // DEBUG CONSOLE LOG - DELETE CONFIRMED
+        console.log("removePreset() - Confirmed delete: " + presetName + " (v2.92)"); // DEBUG CONSOLE LOG - DELETE CONFIRMED
         const presets = GM_getValue(PRESET_STORAGE_KEY, {});
         delete presets[presetName];
         GM_setValue(PRESET_STORAGE_KEY, presets);
         $(buttonElement).closest('.preset-button-container').remove();
-        console.log("removePreset() - Preset removed from GUI: " + presetName + " (v2.91)"); // DEBUG CONSOLE LOG - REMOVE GUI ELEMENT
+        console.log("removePreset() - Preset removed from GUI: " + presetName + " (v2.92)"); // DEBUG CONSOLE LOG - REMOVE GUI ELEMENT
     } else {
-        console.log("removePreset() - Cancelled delete: " + presetName + " (v2.91)"); // DEBUG CONSOLE LOG - DELETE CANCELLED
+        console.log("removePreset() - Cancelled delete: " + presetName + " (v2.92)"); // DEBUG CONSOLE LOG - DELETE CANCELLED
     }
-    console.log("removePreset() - END, presetName: " + presetName + " (v2.91)"); // DEBUG CONSOLE LOG - REMOVE END
+    console.log("removePreset() - END, presetName: " + presetName + " (v2.92)"); // DEBUG CONSOLE LOG - REMOVE END
 }
 
 
@@ -903,11 +912,11 @@ function clearAllPresets() {
     if (confirm('Are you sure you want to clear ALL saved presets? This action is irreversible.')) {
         GM_deleteValue(PRESET_STORAGE_KEY);
         $('#presetButtons').empty(); // Clear buttons from GUI
-        $('#statusMessageBox').text('All presets cleared (Vehicle ID Fallback, HTML, Old Code Comments, GUI Verbosity & GUI Refinements Removed).').removeClass('error').addClass('success').show(); // <-- Updated status message - GUI Refinements Removed
+        $('#statusMessageBox').text('All presets cleared (Vehicle ID Fallback, HTML, Old Code Comments, GUI Verbosity, GUI Refinements & GUI Button Fix Removed).').removeClass('error').addClass('success').show(); // <-- Updated status message - GUI Button Fix Removed
         setTimeout(() => $('#statusMessageBox').fadeOut(), 3000);
-        console.log("clearAllPresets() - All presets cleared (v2.91)"); // DEBUG CONSOLE LOG - CLEAR ALL
+        console.log("clearAllPresets() - All presets cleared (v2.92)"); // DEBUG CONSOLE LOG - CLEAR ALL
     } else {
-        console.log("clearAllPresets() - Clear all presets cancelled (v2.91)"); // DEBUG CONSOLE LOG - CLEAR ALL CANCELLED
+        console.log("clearAllPresets() - Clear all presets cancelled (v2.92)"); // DEBUG CONSOLE LOG - CLEAR ALL CANCELLED
     }
 }
 
@@ -1089,8 +1098,13 @@ function setupEventListeners() {
 // --- Initialization ---
 $(document).ready(function() {
     if ($('div.content-title > h4').length > 0 && !$('#toggleRaceGUIButton').length) {
-        const toggleButton = $(`<button id="toggleRaceGUIButton">Race Config GUI (v2.91)</button>`);
+        const toggleButton = $(`<button id="toggleRaceGUIButton">Race Config GUI (v2.92)</button>`);
+        const descriptionSpan = $(`<span class="gui-description">v2.92 - USER ENLISTED CARS & OFFICIAL API - PARAMETER CONFIRMATION - SYNTAX & ERROR FIX - GUI Cleanup - RACE CREATION LOGIC - VEHICLE ID FALLBACK REMOVED - UNNEEDED COMMENT TAGS REMOVED - OLD CODE COMMENTS REMOVED - GUI CONCISE - GUI REFINEMENTS - **GUI BUTTON FIX**</span>`);
+
         $('div.content-title > h4').append(toggleButton);
+        $('div.content-title > h4').append('<br>'); // Add line break
+        $('div.content-title > h4').append(descriptionSpan);
+
 
         toggleButton.on('click', function() {
             if ($('#raceConfigGUI').is(':visible')) {
@@ -1101,7 +1115,7 @@ $(document).ready(function() {
             }
         });
     }
-    $('div.content-title > h4').append('<span style="color: orange; margin-left: 10px;">v2.91 - USER ENLISTED CARS & OFFICIAL API - PARAMETER CONFIRMATION - SYNTAX & ERROR FIX - GUI Cleanup - RACE CREATION LOGIC - VEHICLE ID FALLBACK REMOVED - UNNEEDED COMMENT TAGS REMOVED - OLD CODE COMMENTS REMOVED - GUI CONCISE - **GUI REFINEMENTS**</span>'); // Orange - GUI Refinements Label
+    // Descriptive text is now handled by the descriptionSpan element
 });
 
-})(); // <--- **CLOSING IIFE BRACKET - CONFIRMED PRESENT in v2.91**
+})(); // <--- **CLOSING IIFE BRACKET - CONFIRMED PRESENT in v2.92**
