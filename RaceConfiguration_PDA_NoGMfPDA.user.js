@@ -2,7 +2,7 @@
 // @name         Torn Race Config GUI - PDA & Desktop - v2.83
 // @namespace    torn.raceconfiggui.pdadesktop
 // @description  Full Feature Race Config GUI - v2.83
-// @version      2.83
+// @version      2.83.1
 // @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
 // @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
 // @author       GNSC4 [268863] (Based on Shlefter's script)
@@ -867,28 +867,20 @@ const savePreset = debounce(savePreset_Internal, 1000); // <--- **DEBOUNCED save
 
 
 function applyPreset(presetConfig) {
-    console.log("applyPreset() - Applying preset: " + presetConfig.name + " (v2.83)"); // DEBUG CONSOLE LOG - APPLY START
+    console.log("applyPreset() - Applying preset: " + presetConfig.name + " (v2.83 - Simplified Presets)"); // DEBUG CONSOLE LOG - APPLY START
 
     $('#carSelect').val(presetConfig.carId); // <-- Now setting selected value to enlistedCarId
-    $('#topSpeed').val(presetConfig.topSpeed);
-    $('#acceleration').val(presetConfig.acceleration);
-    $('#braking').val(presetConfig.braking);
-    $('#handling').val(presetConfig.handling);
-    $('#dirt').val(presetConfig.dirt);
-    $('#tarmac').val(presetConfig.tarmac);
-    $('#safety').val(presetConfig.safety);
-    $('#trackID').val(presetConfig.trackID);         // <--- **RACE CREATION PARAMETERS APPLIED FROM PRESET** - Track
-    $('#raceName').val(presetConfig.raceName);       // <--- **RACE CREATION PARAMETERS APPLIED FROM PRESET** - Race Name
-    $('#racePassword').val(presetConfig.racePassword); // <--- **RACE CREATION PARAMETERS APPLIED FROM PRESET** - Race Password
-    $('#betAmount').val(presetConfig.betAmount);       // <--- **RACE CREATION PARAMETERS APPLIED FROM PRESET** - Bet Amount
-    $('#raceStartTime').val(presetConfig.raceStartTime); // <--- **RACE CREATION PARAMETERS APPLIED FROM PRESET** - Race Start Time
-    $('#laps').val(presetConfig.laps);              // <--- **RACE CREATION PARAMETERS APPLIED FROM PRESET** - Laps
-    $('#minDrivers').val(presetConfig.minDrivers);      // <--- **RACE CREATION PARAMETERS APPLIED FROM PRESET** - Min Drivers
-    $('#maxDrivers').val(presetConfig.maxDrivers);       // <--- **RACE CREATION PARAMETERS APPLIED FROM PRESET** - Max Drivers
+    $('#trackID').val(presetConfig.trackID);         // <--- RACE CREATION PARAMETERS APPLIED FROM PRESET - Track
+    $('#raceName').val(presetConfig.raceName);       // <--- RACE CREATION PARAMETERS APPLIED FROM PRESET - Race Name
+    $('#racePassword').val(presetConfig.racePassword); // <--- RACE CREATION PARAMETERS APPLIED FROM PRESET - Race Password
+    $('#betAmount').val(presetConfig.betAmount);       // <--- RACE CREATION PARAMETERS APPLIED FROM PRESET - Bet Amount
+    $('#raceStartTime').val(presetConfig.raceStartTime); // <--- RACE CREATION PARAMETERS APPLIED FROM PRESET - Race Start Time
+    $('#laps').val(presetConfig.laps);              // <--- RACE CREATION PARAMETERS APPLIED FROM PRESET - Laps
+    $('#minDrivers').val(presetConfig.minDrivers);      // <--- RACE CREATION PARAMETERS APPLIED FROM PRESET - Min Drivers
+    $('#maxDrivers').val(presetConfig.maxDrivers);       // <--- RACE CREATION PARAMETERS APPLIED FROM PRESET - Max Drivers
 
-
-    console.log("applyPreset() - Preset applied: " + presetConfig.name + " (v2.83)"); // DEBUG CONSOLE LOG - APPLY END
-    $('#statusMessageBox').text(`Preset "${presetConfig.name}" applied.`).removeClass('error').addClass('success').show();
+    console.log("applyPreset() - Preset applied: " + presetConfig.name + " (v2.83 - Simplified Presets)"); // DEBUG CONSOLE LOG - APPLY END
+    $('#statusMessageBox').text(`Preset "${presetConfig.name}" applied (Simplified).`).removeClass('error').addClass('success').show(); // <-- Updated status message
     setTimeout(() => $('#statusMessageBox').fadeOut(), 3000);
 }
 
