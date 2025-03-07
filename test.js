@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Race Config GUI
-// @version      3.0.75
-// @description  PDA GUI to configure Torn racing parameters... - Version 3.0.75 - DOM Readiness Polling Fix
+// @version      3.0.26
+// @description  PDA GUI to configure Torn racing parameters... - Version 3.0.26 - DOM Readiness Polling Fix
 // @author       GNSC4
 // @match        https://www.torn.com/loader.php?sid=racing*
 // @grant        GM.xmlHttpRequest
@@ -10,8 +10,8 @@
 // @grant        GM.getValue
 // @grant        GM_setValue
 // @grant        GM_getValue
-// @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
-// @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
+// @updateURL    https://raw.githubusercontent.com/GNSC4/torn-race-config-gui/main/torn-race-config-gui-v3.0.26-DomReadyPollFix.user.js
+// @downloadURL  https://raw.githubusercontent.com/GNSC4/torn-race-config-gui/main/torn-race-config-gui-v3.0.26-DomReadyPollFix.user.js
 // @run-at       document-end
 // @require      https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js
 // ==/UserScript==
@@ -84,8 +84,8 @@
     }
 
     let guiInitialized = false;
-    let domCheckAttempts = 0; // Counter for DOM check attempts - v3.0.75
-    const MAX_DOM_CHECK_ATTEMPTS = 100; // Maximum DOM check attempts - v3.0.75
+    let domCheckAttempts = 0; // Counter for DOM check attempts - v3.0.26
+    const MAX_DOM_CHECK_ATTEMPTS = 100; // Maximum DOM check attempts - v3.0.26
 
     const style = document.createElement('style');
     style.textContent = `
@@ -1012,8 +1012,8 @@ style.textContent += `
             </div>
 
             <div style="text-align: center; margin-top: 20px; color: #888; font-size: 0.8em;">
-                Script created by GNSC4 (<a href="https://www.torn.com/profiles.php?XID=268863" target="_blank" style="color: #888; text-decoration: none;">268863</a>)-v3.0.75<br>
-                <a href="https://github.com/GNSC4/torn-race-config-gui" target="_blank" style="color: #888; text-decoration: none;">v3.0.75 - No GM Functions</a>
+                Script created by GNSC4 (<a href="https://www.torn.com/profiles.php?XID=268863" target="_blank" style="color: #888; text-decoration: none;">268863</a>)-v3.0.13<br>
+                <a href="https://github.com/GNSC4/torn-race-config-gui" target="_blank" style="color: #888; text-decoration: none;">v3.0.16 - No GM Functions</a>
             </div>
             <button type="button" id="closeGUIButton" class="close-button" title="Close GUI">×</button>
         `;
@@ -1027,7 +1027,7 @@ style.textContent += `
         updateCarDropdown();
         loadPresets();
 
-        // --- Initialize GUI Elements AFTER GUI is in DOM and perform null checks - v3.0.75 ---
+        // --- Initialize GUI Elements AFTER GUI is in DOM and perform null checks - v3.0.24 ---
         const apiKeyInput = document.getElementById('apiKeyInput');
         const saveApiKeyButton = document.getElementById('saveApiKeyButton');
         const trackSelect = document.getElementById('trackSelect');
@@ -1054,75 +1054,75 @@ style.textContent += `
         // --- End of GUI Element Initialization ---
 
 
-        if (saveApiKeyButton) { // --- Null check before adding listener - v3.0.75 ---
+        if (saveApiKeyButton) { // --- Null check before adding listener - v3.0.24 ---
             saveApiKeyButton.addEventListener('click', () => {
                 saveApiKey();
             });
         } else {
-            console.error("Error: saveApiKeyButton element not found in initializeGUI"); // --- Error Log - v3.0.75 ---
+            console.error("Error: saveApiKeyButton element not found in initializeGUI"); // --- Error Log - v3.0.24 ---
         }
 
 
-        if (setNowButton) { // --- Null check before adding listener - v3.0.75 ---
+        if (setNowButton) { // --- Null check before adding listener - v3.0.24 ---
             setNowButton.addEventListener('click', () => {
                 setTimeToNow();
             });
         } else {
-             console.error("Error: setNowButton element not found in initializeGUI"); // --- Error Log - v3.0.75 ---
+             console.error("Error: setNowButton element not found in initializeGUI"); // --- Error Log - v3.0.24 ---
         }
 
 
-        if (updateCarsButton) { // --- Null check before adding listener - v3.0.75 ---
+        if (updateCarsButton) { // --- Null check before adding listener - v3.0.24 ---
             updateCarsButton.addEventListener('click', () => {
                 updateCarList();
             });
         } else {
-            console.error("Error: updateCarsButton element not found in initializeGUI"); // --- Error Log - v3.0.75 ---
+            console.error("Error: updateCarsButton element not found in initializeGUI"); // --- Error Log - v3.0.24 ---
         }
 
 
-        if (carDropdown) { // --- Null check before adding listener - v3.0.75 ---
+        if (carDropdown) { // --- Null check before adding listener - v3.0.24 ---
             carDropdown.addEventListener('change', () => {
                 carIdInput.value = carDropdown.value;
             });
         }  else {
-            console.error("Error: carDropdown element not found in initializeGUI"); // --- Error Log - v3.0.75 ---
+            console.error("Error: carDropdown element not found in initializeGUI"); // --- Error Log - v3.0.24 ---
         }
 
 
-        if (savePresetButton) { // --- Null check before adding listener - v3.0.75 ---
+        if (savePresetButton) { // --- Null check before adding listener - v3.0.24 ---
             savePresetButton.addEventListener('click', () => {
                 savePreset();
             });
         } else {
-            console.error("Error: savePresetButton element not found in initializeGUI"); // --- Error Log - v3.0.75 ---
+            console.error("Error: savePresetButton element not found in initializeGUI"); // --- Error Log - v3.0.24 ---
         }
 
 
-        if (clearPresetsButton) { // --- Null check before adding listener - v3.0.75 ---
+        if (clearPresetsButton) { // --- Null check before adding listener - v3.0.24 ---
             clearPresetsButton.addEventListener('click', () => {
                 clearPresets();
             });
         } else {
-            console.error("Error: clearPresetsButton element not found in initializeGUI"); // --- Error Log - v3.0.75 ---
+            console.error("Error: clearPresetsButton element not found in initializeGUI"); // --- Error Log - v3.0.24 ---
         }
 
 
-        if (createRaceButton) { // --- Null check before adding listener - v3.0.75 ---
+        if (createRaceButton) { // --- Null check before adding listener - v3.0.24 ---
             createRaceButton.addEventListener('click', () => {
                 createRace();
             });
         } else {
-            console.error("Error: createRaceButton element not found in initializeGUI"); // --- Error Log - v3.0.75 ---
+            console.error("Error: createRaceButton element not found in initializeGUI"); // --- Error Log - v3.0.24 ---
         }
 
 
-        if (closeGUIButton) { // --- Null check before adding listener - v3.0.75 ---
+        if (closeGUIButton) { // --- Null check before adding listener - v3.0.24 ---
             closeGUIButton.addEventListener('click', () => {
                 toggleRaceGUI();
             });
         } else {
-            console.error("Error: closeGUIButton element not found in initializeGUI"); // --- Error Log - v3.0.75 ---
+            console.error("Error: closeGUIButton element not found in initializeGUI"); // --- Error Log - v3.0.24 ---
         }
 
 
