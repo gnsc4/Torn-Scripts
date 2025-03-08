@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Config GUI
-// @version      3.1.1
+// @version      3.1.3
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -10,8 +10,8 @@
 // @grant        GM.getValue
 // @grant        GM_setValue
 // @grant        GM_getValue
-// @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration.raw.user.js
-// @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration.raw.user.js
+// @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/master/RaceConfiguration.raw.user.js
+// @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/master/RaceConfiguration.raw.user.js
 // @run-at       document-end
 // @require      https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js
 // @license      MIT
@@ -576,11 +576,14 @@
                     </div>
                 </div>
 
-                <div><label for="raceNameInput">Race Name:</label>
+                <div><label for="raceNameInput">Race Name: <span style="font-size: 0.8em; color: #ccc;">(Required)</span></label>
                     <input type="text" 
                            id="raceNameInput" 
                            placeholder="Enter Race Name" 
-                           autocomplete="off"></div>
+                           pattern="[A-Za-z0-9 ]+"
+                           title="Only letters, numbers and spaces allowed"
+                           autocomplete="off"
+                           oninput="this.value = this.value.replace(/[^A-Za-z0-9 ]/g, '')"></div>
 
                 <div><label for="passwordInput">Password: <span style="font-size: 0.8em; color: #ccc;">(Optional)</span></label>
                     <input type="text" 
@@ -644,7 +647,7 @@
 
             <div style="text-align: center; margin-top: 20px; color: #888; font-size: 1.2em;">
                 Script created by <a href="https://www.torn.com/profiles.php?XID=268863" target="_blank" style="color: #888; text-decoration: none;">GNSC4 \[268863\]</a><br>
-                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.1.1 Official Forum Link</a>
+                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.1.3 Official Forum Link</a>
             </div>
         `;
 
@@ -1010,6 +1013,13 @@
     function savePreset() {
         const carDropdown = document.getElementById('carDropdown');
         const carId = document.getElementById('carIdInput').value;
+        const raceName = document.getElementById('raceNameInput').value.trim();
+
+        if (!raceName) {
+            displayStatusMessage('Please enter a race name before saving preset.', 'error');
+            setTimeout(() => displayStatusMessage('', ''), 3000);
+            return;
+        }
 
         if (!carId || carDropdown.value === '') {
             displayStatusMessage('Please select a car before creating a preset.', 'error');
@@ -1349,8 +1359,15 @@
         displayStatusMessage('Creating Race...', 'info');
 
         try {
-            window.open(raceLink, '_blank');
-            displayStatusMessage(`Race Created! <a href="${raceLink}" target="_blank">View Race</a>`, 'success');
+            const response = await fetch(raceLink);
+            const data = await response.text();
+            
+            if (data.includes('success') || response.ok) {
+                displayStatusMessage('Race Created Successfully!', 'success');
+            } else {
+                displayStatusMessage('Error creating race. Please try again.', 'error');
+            }
+            setTimeout(() => displayStatusMessage('', ''), 3000);
         } catch (error) {
             displayStatusMessage(`Error creating race: ${error.message}`, 'error');
             setTimeout(() => displayStatusMessage('', ''), 5000);
@@ -1604,8 +1621,16 @@
 
     async function createRace() {
         const apiKey = GM_getValue(STORAGE_API_KEY, '');
+        const raceName = document.getElementById('raceNameInput').value.trim();
+
         if (!apiKey) {
             displayStatusMessage('API Key is required to create race.', 'error');
+            setTimeout(() => displayStatusMessage('', ''), 3000);
+            return;
+        }
+
+        if (!raceName) {
+            displayStatusMessage('Please enter a race name.', 'error');
             setTimeout(() => displayStatusMessage('', ''), 3000);
             return;
         }
@@ -1649,8 +1674,15 @@
         displayStatusMessage('Creating Race...', 'info');
 
         try {
-            window.open(raceLink, '_blank');
-            displayStatusMessage(`Race Created! <a href="${raceLink}" target="_blank">View Race</a>`, 'success');
+            const response = await fetch(raceLink);
+            const data = await response.text();
+            
+            if (data.includes('success') || response.ok) {
+                displayStatusMessage('Race Created Successfully!', 'success');
+            } else {
+                displayStatusMessage('Error creating race. Please try again.', 'error');
+            }
+            setTimeout(() => displayStatusMessage('', ''), 3000);
         } catch (error) {
             displayStatusMessage(`Error creating race: ${error.message}`, 'error');
             setTimeout(() => displayStatusMessage('', ''), 5000);
