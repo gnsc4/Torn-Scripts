@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Config GUI
-// @version      3.1.2
+// @version      3.1.3
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -289,21 +289,28 @@
         .remove-preset {
             background-color: #955;
             color: #eee;
-            padding: 5px 10px;
+            padding: 0;
             border-radius: 50%;
-            font-size: 0.8em;
+            font-size: 14px;
             position: absolute;
-            top: -5px;
-            right: -5px;
+            top: -8px;
+            right: -8px;
             width: 20px;
             height: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            text-decoration: none;  /* Remove underline */
         }
 
         .remove-preset:hover {
             background-color: #c77;
+            transform: scale(1.1);
+            transition: all 0.2s ease;
+            text-decoration: none;  /* Keep underline removed on hover */
         }
 
         #statusMessageBox {
@@ -332,6 +339,12 @@
 
         .driver-input-wrapper {
             flex: 1;
+            min-width: 0;
+            margin-right: 5px;
+        }
+
+        .driver-input-wrapper:last-child {
+            margin-right: 0;
         }
 
         .preset-actions {
@@ -386,7 +399,7 @@
 
         .banner-container {
             position: relative;
-            margin-bottom: 15px;
+            margin-bottom: 25px; /* Increased from 15px */
             padding-top: 5px;
         }
 
@@ -395,6 +408,11 @@
             height: auto;
             border-radius: 5px;
             display: block;
+            margin-bottom: 15px; /* Added margin below banner */
+        }
+
+        #raceConfigGUI h2 {
+            margin-top: 10px; /* Added margin above the heading */
         }
 
         .show-password-btn {
@@ -500,7 +518,7 @@
                     <input type="password" 
                            id="apiKeyInput" 
                            placeholder="Enter your API Key" 
-                           autocomplete="off"
+                           autocomplete="new-password"
                            autocapitalize="off"
                            autocorrect="off"
                            spellcheck="false"
@@ -550,17 +568,27 @@
                             <label for="maxDriversInput">Max Drivers:</label>
                             <input type="number" id="maxDriversInput" value="2" min="2" max="10">
                         </div>
+                        <div class="driver-input-wrapper">
+                            <label for="betAmountInput">Bet: <span style="font-size: 0.8em; color: #ccc;">(Max 10M)</span></label>
+                            <input type="number" id="betAmountInput" value="0" min="0" max="10000000">
+                        </div>
                     </div>
                 </div>
 
                 <div><label for="raceNameInput">Race Name:</label>
-                    <input type="text" id="raceNameInput" placeholder="Enter Race Name"></div>
+                    <input type="text" 
+                           id="raceNameInput" 
+                           placeholder="Enter Race Name" 
+                           autocomplete="off"></div>
 
                 <div><label for="passwordInput">Password: <span style="font-size: 0.8em; color: #ccc;">(Optional)</span></label>
-                    <input type="text" id="passwordInput" placeholder="Race Password Optional"></div>
-
-                <div><label for="betAmountInput">Bet Amount: <span style="font-size: 0.8em; color: #ccc;">(Max 10M, Optional)</span></label>
-                    <input type="number" id="betAmountInput" value="0" min="0" max="10000000"></div>
+                    <input type="text" 
+                           id="passwordInput" 
+                           placeholder="Race Password Optional" 
+                           autocomplete="off"
+                           autocapitalize="off"
+                           autocorrect="off"
+                           spellcheck="false"></div>
 
                 <div class="time-config">
                     <label>Race Start Time (TCT 24hr):</label>
@@ -801,10 +829,18 @@
         return button;
     }
 
+    function setBodyScroll(disable) {
+        document.body.style.overflow = disable ? 'hidden' : '';
+        document.body.style.position = disable ? 'fixed' : '';
+        document.body.style.width = disable ? '100%' : '';
+    }
+
     function toggleRaceGUI() {
         let gui = document.getElementById('raceConfigGUI');
         if (gui) {
-            gui.style.display = gui.style.display === 'none' ? 'block' : 'none';
+            const isVisible = gui.style.display === 'none';
+            gui.style.display = isVisible ? 'block' : 'none';
+            setBodyScroll(isVisible);
             console.log('Toggling existing GUI:', gui.style.display);
         } else {
             console.log('Creating new GUI');
@@ -812,6 +848,7 @@
             document.body.appendChild(gui);
             initializeGUI(gui);
             gui.style.display = 'block';
+            setBodyScroll(true);
         }
     }
 
@@ -898,8 +935,8 @@
         }
 
         function enforceWindowBoundaries(element) {
-            const windowWidth = window.innerWidth;
-            const windowHeight = window.innerHeight;
+            const windowWidth = document.documentElement.clientWidth;
+            const windowHeight = document.documentElement.clientHeight;
             const elmntWidth = element.offsetWidth;
             const elmntHeight = element.offsetHeight;
             const padding = 10;
@@ -1094,7 +1131,8 @@
             presetButton.innerHTML = `
                 <div class="preset-title">${presetName}</div>
                 <div class="preset-info">
-                    ${trackNames[preset.track] || 'Unknown Track'} • ${preset.laps} Laps<br>
+                    ${trackNames[preset.track] || 'Unknown Track'}<br>
+                    Laps: ${preset.laps}<br>
                     ${carName}
                 </div>
             `;
