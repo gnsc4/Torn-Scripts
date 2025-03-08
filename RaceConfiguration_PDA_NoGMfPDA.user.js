@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Race Config GUI
-// @version      3.0.75
-// @description  PDA GUI to configure Torn racing parameters... - Version 3.0.75 - DOM Readiness Polling Fix
+// @version      3.1.0
+// @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4
 // @match        https://www.torn.com/loader.php?sid=racing*
 // @grant        GM.xmlHttpRequest
@@ -10,8 +10,8 @@
 // @grant        GM.getValue
 // @grant        GM_setValue
 // @grant        GM_getValue
-// @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
-// @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
+// @updateURL    https://raw.githubusercontent.com/GNSC4/torn-race-config-gui/main/RaceConfiguration_PDA_NoGMfPDA.user.js
+// @downloadURL  https://raw.githubusercontent.com/GNSC4/torn-race-config-gui/main/RaceConfiguration_PDA_NoGMfPDA.user.js
 // @run-at       document-end
 // @require      https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js
 // ==/UserScript==
@@ -19,11 +19,9 @@
 (function() {
     'use strict';
 
-    // --- Make sure GM/GM_xmlhttpRequest is available ---
     const GM = {
         xmlHttpRequest: (details) => {
             return new Promise((resolve, reject) => {
-                // Fallback to fetch if GM.xmlHttpRequest is not available
                 fetch(details.url, {
                     method: details.method,
                     headers: details.headers,
@@ -46,25 +44,49 @@
         }
     };
 
-    // --- Initialize GUI without waiting for DOMContentLoaded ---
     function init() {
-        const pollForTitle = () => {
+        const pollForElements = () => {
             const titleElement = document.querySelector('div.content-title > h4');
+            const carDropdown = document.getElementById('carDropdown');
+            const carStatusMessage = document.getElementById('carStatusMessage');
+
             if (titleElement) {
                 createToggleButton();
-                console.log('Race Config GUI initialized');
+                loadApiKey();
+                loadPresets();
+                
+                // Wait for car elements to be created
+                const waitForCarElements = () => {
+                    const carDropdown = document.getElementById('carDropdown');
+                    const carStatusMessage = document.getElementById('carStatusMessage');
+                    
+                    if (carDropdown && carStatusMessage) {
+                        updateCarList().then(() => {
+                            updateQuickLaunchButtons();
+                        });
+                        console.log('Race Config GUI initialized');
+                    } else if (domCheckAttempts < MAX_DOM_CHECK_ATTEMPTS) {
+                        domCheckAttempts++;
+                        setTimeout(waitForCarElements, 100);
+                    } else {
+                        console.error('Failed to find car elements after maximum attempts');
+                    }
+                };
+                
+                waitForCarElements();
+                
             } else if (domCheckAttempts < MAX_DOM_CHECK_ATTEMPTS) {
                 domCheckAttempts++;
-                setTimeout(pollForTitle, 100);
+                setTimeout(pollForElements, 100);
             } else {
                 console.error('Failed to find title element after maximum attempts');
             }
         };
 
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', pollForTitle);
+            document.addEventListener('DOMContentLoaded', pollForElements);
         } else {
-            pollForTitle();
+            pollForElements();
         }
     }
 
@@ -84,842 +106,520 @@
     }
 
     let guiInitialized = false;
-    let domCheckAttempts = 0; // Counter for DOM check attempts - v3.0.75
-    const MAX_DOM_CHECK_ATTEMPTS = 100; // Maximum DOM check attempts - v3.0.75
+    let domCheckAttempts = 0;
+    const MAX_DOM_CHECK_ATTEMPTS = 100;
 
     const style = document.createElement('style');
     style.textContent = `
-            #tcLogo { pointer-events: none; }
-            .gui-button {
-                color: #ddd;
-                background-color: #555;
-                border: 1px solid #777;
-                border-radius: 3px;
-                padding: 8px 15px;
-                cursor: pointer;
-                margin-top: 5px;
-                margin-right: 5px;
-                transition: background-color 0.3s ease;
-                font-size: 0.9em;
-                display: inline-block;
-                text-decoration: none;
-            }
-
-            .gui-button:hover,
-            .preset-button:hover,
-            .remove-preset:hover,
-            .close-button:hover,
-            #closeGUIButton:hover,
-            #toggleRaceGUIButton:hover,
-            #setNowButton:hover,
-            #quickPresetButtonsContainer > .quick-race-button:hover,
-            div.content-title > h4 > #toggleRaceGUIButton:hover {
-                background-color: #777;
-            }
-
-            div.content-title > h4 > #toggleRaceGUIButton {
-                background-color: #555;
-                border: 1px solid #777;
-            }
-
-
-            #raceConfigGUI {
-                position: fixed;
-                top: 85px;
-                left: 20px;
-                background-color: #222;
-                color: #ddd;
-                border: 1px solid #555;
-                padding: 25px; /* Increased padding */
-                z-index: 999999 !important;
-                font-family: Arial, sans-serif; /* More specific font */
-                border-radius: 10px;
-                max-width: 450px; /* Slightly wider */
-                display: none;
-                user-select: none;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6); /* Enhanced shadow */
-            }
-
-            #raceConfigGUI .api-key-section,
-            #raceConfigGUI .config-section,
-            #raceConfigGUI .car-select-section,
-            #raceConfigGUI .presets-section {
-                margin-bottom: 25px;
-                padding: 15px;
-                background-color: #2a2a2a; /* Slightly lighter background */
-                border-radius: 8px;
-                border: 1px solid #444;
-            }
-
-            #raceConfigGUI h4 {
-                color: #fff;
-                font-size: 1.2em;
-                margin: 0 0 15px 0;
-                padding-bottom: 10px;
-                border-bottom: 1px solid #444;
-                text-align: center;
-            }
-
-            #raceConfigGUI input[type="text"],
-            #raceConfigGUI input[type="number"],
-            #raceConfigGUI select {
-                padding: 8px 12px;
-                margin: 5px 0;
-                border: 1px solid #555;
-                background-color: #333;
-                color: #eee !important;
-                border-radius: 5px;
-                width: calc(100% - 26px);
-                font-size: 14px;
-            }
-
-            #raceConfigGUI .gui-button,
-            #raceConfigGUI .preset-button {
-                background-color: #444;
-                color: #fff;
-                border: 1px solid #555;
-                border-radius: 5px;
-                padding: 8px 15px;
-                margin: 5px;
-                cursor: pointer;
-                transition: all 0.2s ease;
-                font-size: 14px;
-            }
-
-            #raceConfigGUI .gui-button:hover,
-            #raceConfigGUI .preset-button:hover {
-                background-color: #555;
-                border-color: #666;
-            }
-
-            #raceConfigGUI #statusMessageBox {
-                margin-top: 15px;
-                padding: 12px;
-                border-radius: 5px;
-                font-size: 14px;
-                text-align: center;
-            }
-
-            #raceConfigGUI #statusMessageBox.success {
-                background-color: #1a472a;
-                border: 1px solid #2d5a3f;
-            }
-
-            #raceConfigGUI #statusMessageBox.error {
-                background-color: #5c1e1e;
-                border: 1px solid #8b2e2e;
-            }
-
-            #raceConfigGUI #createRaceButton {
-                background-color: #2d5a3f !important;
-                border-color: #3d7a5f !important;
-                font-size: 16px !important;
-                padding: 12px 24px !important;
-                margin: 15px auto !important;
-                display: block !important;
-                width: 80% !important;
-            }
-
-            #raceConfigGUI #createRaceButton:hover {
-                background-color: #3d7a5f !important;
-                border-color: #4d8a6f !important;
-            }
-
-            #raceConfigGUI label {
-                color: #bbb;
-                font-size: 14px;
-                margin-bottom: 5px;
-                display: block;
-            }
-
-            .time-config {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                margin-top: 10px;
-            }
-
-            .time-selector select {
-                width: auto !important;
-                min-width: 65px;
-            }
-
-            /* Ensure all GUI elements maintain higher z-index */
-            #raceConfigGUI * {
-                z-index: 999999 !important;
-                position: relative;
-            }
-
-            /* Additional overlay protection */
-            #raceConfigGUI .config-section,
-            #raceConfigGUI .car-select-section,
-            #raceConfigGUI .presets-section,
-            #raceConfigGUI .api-key-section {
-                background-color: #222;
-                position: relative;
-                z-index: 999999 !important;
-            }
-
-            #closeGUIButton {
-                z-index: 1000000 !important; /* Even higher than the GUI */
-                pointer-events: all !important;
-            }
-
-            .drag-handle {
-                z-index: 999998 !important; /* Just below the GUI elements */
-            }
-
-            #raceConfigGUI h2, #raceConfigGUI h3, #raceConfigGUI h4 {
-                color: #eee;
-                margin-top: 0;
-                margin-bottom: 15px;
-                text-align: center;
-            }
-
-            #raceConfigGUI label {
-                display: block;
-                margin-bottom: 5px;
-                color: #ccc;
-            }
-
-            #raceConfigGUI input[type="text"],
-            #raceConfigGUI input[type="number"],
-            #raceConfigGUI input[type="date"],
-            #raceConfigGUI input[type="time"],
-            #raceConfigGUI select {
-                padding: 9px;
-                margin-bottom: 0px;
-                border: 1px solid #555;
-                background-color: #444;
-                color: #eee !important;
-                border-radius: 7px;
-                width: calc(100% - 24px);
-            }
-
-            #raceConfigGUI input:focus,
-            #raceConfigGUI select:focus {
-                border-color: #888;
-                box-shadow: 0 0 6px rgba(136, 136, 136, 0.5);
-            }
-
-
-            #raceConfigGUI .presets-section {
-                margin-bottom: 20px;
-                padding: 15px;
-                position: relative;
-            }
-
-            #raceConfigGUI .preset-buttons-container {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 8px;
-                margin-bottom: 15px;
-                align-items: flex-start;
-                width: 100%;
-            }
-
-            #raceConfigGUI .preset-button-container {
-                display: inline-flex;
-                flex-direction: column;
-                align-items: stretch;
-                margin-bottom: 10px;
-                text-align: center;
-                position: relative;
-                width: 100%;
-            }
-
-            #raceConfigGUI .preset-actions {
-                display: flex;
-                flex-direction: row;  /* Changed from column to row */
-                justify-content: center;  /* Center the buttons horizontally */
-                gap: 10px;
-                width: 100%;
-                margin-top: 15px;
-            }
-
-            #raceConfigGUI #savePresetButton,
-            #raceConfigGUI #clearPresetsButton {
-                flex: 0 1 auto;  /* Allow buttons to shrink but not grow */
-                min-width: 120px;  /* Minimum width for buttons */
-                max-width: 150px;  /* Maximum width for buttons */
-                margin: 0;  /* Remove margin since we're using gap */
-                padding: 8px 15px;
-                text-align: center;
-            }
-
-
-            #raceConfigGUI .config-section:last-child {
-                border-bottom: 0px solid #eee;
-            }
-
-
-            #raceConfigGUI .config-section h4,
-            #raceConfigGUI .car-select-section h4,
-            #raceConfigGUI .presets-section h4 {
-                border-top: 1px solid #555;
-                padding-top: 12px;
-                font-size: 1.4em;
-                margin-bottom: 18px;
-            }
-
-
-            #raceConfigGUI #createRaceButton {
-                display: inline-block !important;
-                text-align: center !important;
-                white-space: nowrap !important;
-                overflow: visible !important;
-                width: 90% !important;
-                max-width: 250px !important;
-                padding: 10px 15px !important;
-                font-size: 1.1em !important;
-                color: #eee !important;
-                background-color: #555 !important;
-                border: 1px solid #777 !important;
-            }
-
-            #raceConfigGUI #createRaceButton:hover,
-            #raceConfigGUI #closeGUIButton:hover,
-            #raceConfigGUI #setNowButton:hover {
-                background-color: #777;
-            }
-
-            #raceConfigGUI #setNowButton:hover {
-                background-color: #888;
-            }
-
-
-            #raceConfigGUI .preset-button,
-            #raceConfigGUI .remove-preset,
-            #raceConfigGUI .close-button {
-                padding: 10px 15px;
-                margin-top: 5px;
-                margin-right: 5px;
-                border: none;
-                border-radius: 5px;
-                color: #fff;
-                background-color: #666;
-                cursor: pointer;
-                transition: background-color 0.3s ease;
-                font-size: 0.9em;
-                display: inline-block;
-                text-decoration: none;
-                width: 100%;
-                max-width: 100%;
-                box-sizing: border-box;
-                overflow-wrap: break-word;
-            }
-
-
-            #raceConfigGUI .preset-buttons-container {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 8px;
-                margin-bottom: 15px;
-                align-items: flex-start;
-                max-width: calc(100% - 20px);
-            }
-
-            #raceConfigGUI .preset-button-container {
-                display: inline-flex;
-                flex-direction: column;
-                align-items: center;
-                margin-bottom: 20px;
-                text-align: center;
-                position: relative;
-            }
-
-            #raceConfigGUI .presets-section .preset-buttons-container .preset-button:hover {
-                background-color: #777;
-            }
-
-
-            #raceConfigGUI .remove-preset {
-                background-color: #955;
-                color: #eee;
-                padding: 5px 10px;
-                border-radius: 50%;
-                font-size: 0.8em;
-                line-height: 1;
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                width: 20px;
-                height: 20px;
-                text-decoration: none;
-                position: absolute;
-                top: 0px;
-                right: -5px;
-                float: none;
-            }
-
-            #raceConfigGUI .remove-preset:hover {
-                background-color: #c77;
-            }
-
-
-            #raceConfigGUI #closeGUIButton {
-                position: absolute;
-                top: 10px;
-                right: 10px;
-                border-radius: 50%;
-                width: 25px;
-                height: 25px;
-                padding: 0;
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 1em;
-                line-height: 1;
-            }
-
-            #raceConfigGUI #statusMessageBox {
-                margin-top: 15px;
-                padding: 10px;
-                border: 1px solid #777;
-                border-radius: 5px;
-                background-color: #333;
-                color: #ddd;
-                text-align: center;
-                font-size: 0.9em;
-            }
-
-            #raceConfigGUI #statusMessageBox.error,
-            #raceConfigGUI #statusMessageBox.success {
-                background-color: #522;
-                border-color: #944;
-                color: #eee;
-            }
-
-            #raceConfigGUI #statusMessageBox.success {
-                background-color: #252;
-                border-color: #494;
-                color: #efe;
-            }
-
-            #raceConfigGUI .api-key-section {
-                margin-bottom: 20px;
-                text-align: center;
-            }
-
-            #raceConfigGUI .config-params-section {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-                gap: 15px;
-                margin-bottom: 20px;
-            }
-
-            #raceConfigGUI .config-params-section label {
-                text-align: left;
-            }
-
-            #raceConfigGUI .config-params-section input[type="text"],
-            #raceConfigGUI .config-params-section select,
-            #raceConfigGUI .config-params-section input[type="number"] {
-                width: 100%;
-            }
-
-            #raceConfigGUI .config-params-section .driver-input-container {
-                display: inline-block;
-                width: 49%;
-                margin-right: 1%;
-                margin-bottom: 0px;
-            }
-
-            #raceConfigGUI .config-params-section .driver-input-container:nth-child(even) {
-                margin-right: 0;
-            }
-
-
-            #raceConfigGUI .config-params-section .driver-input-container:last-child {
-                margin-right: 0;
-            }
-
-            #raceConfigGUI .config-params-section .driver-input-container input[type="number"] {
-                width: calc(100% - 22px);
-            }
-
-            #raceConfigGUI .config-section > div {
-                margin-bottom: 12px;
-                display: flex;
-                align-items: center;
-            }
-
-            #raceConfigGUI .config-section label {
-                margin-bottom: 0;
-                margin-right: 10px;
-                width: auto;
-                flex-shrink: 0;
-                text-align: right;
-                min-width: 110px;
-            }
-
-            #raceConfigGUI input,
-            #raceConfigGUI select,
-            #raceConfigGUI button {
-                user-select: text; /* Allow text selection in inputs */
-                pointer-events: auto; /* Ensure inputs are clickable */
-            }
-
-            .drag-handle {
-                z-index: 1;
-            }
-
-            @media (max-width: 768px) {
-                #raceConfigGUI {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 95%;
-                    max-height: 90%;
-                    overflow-y: auto;
-                    padding: 15px;
-                    margin: 2.5%;
-                    border-radius: 15px;
-                }
-
-                #raceConfigGUI h2, #raceConfigGUI h4 {
-                    font-size: 1.5em;
-                }
-
-
-                #raceConfigGUI button,
-                #raceConfigGUI #toggleRaceGUIButton,
-                #raceConfigGUI .preset-button,
-                #raceConfigGUI .remove-preset,
-                #raceConfigGUI .gui-button,
-                #raceConfigGUI .close-button {
-                    padding: 12px 20px;
-                    font-size: 1.1em;
-                    margin: 5px 8px 5px 0;
-                }
-
-                #raceConfigGUI input[type="text"],
-                #raceConfigGUI select {
-                    padding: 12px;
-                    font-size: 1.1em;
-                }
-
-                #raceConfigGUI .config-params-section {
-                    grid-template-columns: 1fr;
-                }
-
-                #raceConfigGUI .config-params-section .driver-input-container {
-                    display: block;
-                    width: 100%;
-                    margin-right: 0;
-                }
-
-
-                #raceConfigGUI .car-select-section {
-                    flex-direction: column;
-                    align-items: stretch;
-                }
-
-                #raceConfigGUI .car-select-section label {
-                    margin-right: 0;
-                    margin-bottom: 5px;
-                    text-align: center;
-                }
-
-                #raceConfigGUI .car-select-section select {
-                    margin-right: 0;
-                    margin-bottom: 10px;
-                }
-
-                #raceConfigGUI .car-select-section button#updateCarsButton {
-                    margin-right: 0;
-                    width: 100%;
-                }
-
-                #quickPresetButtonsContainer {
-                    text-align: center;
-                    max-width: 95%;
-                }
-
-                .quick-race-button {
-                    margin: 5px;
-                }
-
-                .preset-button-container {
-                    text-align: center;
-                }
-
-
-                body {
-                    background-color: #181818;
-                    color: #ddd;
-                }
-
-                a {
-                    color: #8da9c4;
-                }
-
-                a:hover {
-                    color: #b0cddb;
-                }
-
-                div.race-container {
-                    background-color: #282828 !important;
-                    color: #ddd !important;
-                }
-
-                .race-body, .race-head {
-                    background-color: #333 !important;
-                    color: #eee !important;
-                }
-
-                .race-list-row {
-                    border-bottom: 1px solid #444 !important;
-                }
-
-                .race-details-wrap {
-                    background-color: #3a3a3a !important;
-                    color: #ddd !important;
-                }
-
-                .race-bet-section {
-                    background-color: #444 !important;
-                    color: #ddd !important;
-                }
-
-                .race-bet-input {
-                    background-color: #555 !important;
-                    color: #eee !important;
-                    border-color: #666 !important;
-                }
-
-                .race-bet-button {
-                    background-color: #666 !important;
-                    color: #fff !important;
-                }
-
-                .race-bet-button:hover {
-                    background-color: #777 !important;
-                }
-
-                .race-content-section {
-                    background-color: #333 !important;
-                    color: #eee !important;
-                }
-        `;
-
-    style.textContent += `
-        #raceConfigGUI #raceBanner {
-            max-width: 100%;
-            height: auto;
-            display: block;
-            margin: 0 auto 15px auto;
-            border-radius: 5px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        #raceConfigGUI {
+            position: fixed;
+            top: 85px;
+            left: 20px;
+            background-color: #222;
+            color: #ddd;
+            border: 1px solid #555;
+            padding: 25px;
+            z-index: 999999 !important;
+            font-family: Arial, sans-serif;
+            border-radius: 10px;
+            max-width: 500px;  /* Increased from 450px */
+            max-height: 90vh;
+            overflow-y: auto;
+            display: none;
+            user-select: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+            scrollbar-width: thin;
+            scrollbar-color: #444 #222;
         }
 
-        #raceConfigGUI h2 {
-            margin-top: 10px;
-            margin-bottom: 20px;
+        /* Webkit Scrollbar Styling */
+        #raceConfigGUI::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        #raceConfigGUI::-webkit-scrollbar-track {
+            background: #222;
+            border-radius: 4px;
+        }
+
+        #raceConfigGUI::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 4px;
+            border: 2px solid #222;
+        }
+
+        #raceConfigGUI::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        #raceConfigGUI::-webkit-scrollbar-corner {
+            background: #222;
+        }
+
+        #raceConfigGUI .api-key-section,
+        #raceConfigGUI .config-section,
+        #raceConfigGUI .car-select-section,
+        #raceConfigGUI .presets-section {
+            margin-bottom: 25px;
+            padding: 15px;
+            background-color: #2a2a2a;
+            border-radius: 8px;
+            border: 1px solid #444;
+            position: relative;
+            z-index: 999999 !important;
+        }
+
+        #raceConfigGUI h2, 
+        #raceConfigGUI h3, 
+        #raceConfigGUI h4 {
             color: #fff;
-            font-size: 1.5em;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+            font-size: 1.2em;
+            margin: 0 0 15px 0;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #444;
+            text-align: center;
+        }
+
+        #raceConfigGUI input[type="text"],
+        #raceConfigGUI input[type="number"],
+        #raceConfigGUI input[type="password"],
+        #raceConfigGUI input[type="date"],
+        #raceConfigGUI input[type="time"],
+        #raceConfigGUI select {
+            padding: 8px 12px;
+            margin: 5px 0;
+            border: 1px solid #555;
+            background-color: #333 !important;
+            color: #eee !important;
+            border-radius: 5px;
+            width: calc(100% - 26px);
+            font-size: 14px;
+            -webkit-text-fill-color: #eee !important;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+            box-shadow: 0 0 0 1000px #333 inset !important;
+        }
+
+        #raceConfigGUI input:-webkit-autofill,
+        #raceConfigGUI input:-webkit-autofill:hover,
+        #raceConfigGUI input:-webkit-autofill:focus,
+        #raceConfigGUI input:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 1000px #333 inset !important;
+            -webkit-text-fill-color: #eee !important;
+            transition: background-color 0s 50000s;
+            caret-color: #eee !important;
+        }
+
+        #raceConfigGUI input:focus,
+        #raceConfigGUI select:focus {
+            border-color: #666;
+            outline: none;
+            box-shadow: 0 0 5px rgba(85, 85, 85, 0.5);
+        }
+
+        #raceConfigGUI label {
+            display: block;
+            margin-bottom: 5px;
+            color: #ccc;
+            font-size: 14px;
+        }
+
+        .gui-button,
+        .preset-button,
+        #toggleRaceGUIButton,
+        #createRaceButton,
+        #closeGUIButton,
+        #setNowButton {
+            color: #ddd;
+            background-color: #555;
+            border: 1px solid #777;
+            border-radius: 3px;
+            padding: 8px 15px;
+            cursor: pointer;
+            margin: 5px;
+            transition: background-color 0.3s ease;
+            font-size: 0.9em;
+            display: inline-block;
+            text-decoration: none;
+        }
+
+        .gui-button:hover,
+        .preset-button:hover,
+        .remove-preset:hover,
+        #toggleRaceGUIButton:hover,
+        #createRaceButton:hover,
+        #closeGUIButton:hover,
+        #setNowButton:hover {
+            background-color: #777;
+        }
+
+        #createRaceButton {
+            background-color: #2d5a3f !important;
+            border-color: #3d7a5f !important;
+            font-size: 16px !important;
+            padding: 12px 24px !important;
+            margin: 15px auto !important;
+            display: block !important;
+            width: 80% !important;
+        }
+
+        #createRaceButton:hover {
+            background-color: #3d7a5f !important;
+        }
+
+        .preset-buttons-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 8px;
+            margin-bottom: 15px;
+            padding: 5px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .preset-button-container {
+            position: relative;
+            display: inline-flex;
+            flex-direction: column;
+            align-items: stretch;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .remove-preset {
+            background-color: #955;
+            color: #eee;
+            padding: 5px 10px;
+            border-radius: 50%;
+            font-size: 0.8em;
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .remove-preset:hover {
+            background-color: #c77;
+        }
+
+        #statusMessageBox {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 5px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        #statusMessageBox.success {
+            background-color: #1a472a;
+            border: 1px solid #2d5a3f;
+        }
+
+        #statusMessageBox.error {
+            background-color: #5c1e1e;
+            border: 1px solid #8b2e2e;
+        }
+
+        @media (max-width: 768px) {
+            #raceConfigGUI {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                width: 90%;
+                max-height: 85vh;
+                overflow-y: auto;
+                padding: 15px;
+                margin: 0;
+                border-radius: 15px;
+                max-width: none;
+                -webkit-overflow-scrolling: touch; /* Enable smooth scrolling on iOS */
+                touch-action: pan-y; /* Enable vertical touch scrolling */
+            }
+
+            /* Increase touch targets for better mobile interaction */
+            #raceConfigGUI input[type="text"],
+            #raceConfigGUI input[type="password"],
+            #raceConfigGUI input[type="number"],
+            #raceConfigGUI select,
+            #raceConfigGUI button {
+                font-size: 16px !important;
+                padding: 12px !important;
+                min-height: 44px !important; /* Minimum touch target size */
+                margin-bottom: 10px !important;
+                -webkit-appearance: none; /* Remove default iOS styling */
+                appearance: none;
+            }
+
+            /* Prevent zoom on input focus in iOS */
+            #raceConfigGUI input,
+            #raceConfigGUI select,
+            #raceConfigGUI textarea {
+                font-size: 16px !important;
+            }
+
+            /* Adjust scrollbar for better touch interaction */
+            #raceConfigGUI::-webkit-scrollbar {
+                width: 12px !important;
+            }
+
+            /* Ensure buttons are easy to tap */
+            .gui-button,
+            .preset-button,
+            .quick-launch-button,
+            #closeGUIButton {
+                min-height: 44px !important;
+                min-width: 44px !important;
+                padding: 12px 20px !important;
+                margin: 5px !important;
+            }
+
+            /* Adjust preset buttons for mobile */
+            .preset-buttons-container {
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
+                gap: 10px !important;
+            }
+
+            /* Make remove preset button easier to tap */
+            .remove-preset {
+                width: 30px !important;
+                height: 30px !important;
+                font-size: 18px !important;
+            }
+
+            /* Adjust quick launch container for mobile */
+            .quick-launch-container {
+                padding: 10px !important;
+                gap: 10px !important;
+            }
+
+            /* Ensure proper form element rendering on iOS */
+            input[type="datetime-local"],
+            input[type="time"],
+            input[type="date"] {
+                -webkit-appearance: none;
+                appearance: none;
+                min-height: 44px !important;
+            }
+
+            /* Fix select element on iOS */
+            select {
+                background-image: none !important;
+                -webkit-appearance: none;
+                appearance: none;
+                padding-right: 30px !important;
+            }
+
+            /* Adjust time selector for mobile */
+            .time-selector {
+                display: flex !important;
+                align-items: center !important;
+                gap: 5px !important;
+            }
+
+            /* Ensure labels are tappable */
+            label {
+                min-height: 22px !important;
+                display: inline-block !important;
+                margin-bottom: 5px !important;
+            }
+        }
+
+        .driver-inputs-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .driver-input-wrapper {
+            flex: 1;
+        }
+
+        .preset-actions {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .api-key-wrapper {
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            gap: 10px;
+            margin: 0 auto;
+            max-width: 400px;
+            position: relative;
+        }
+
+        .api-key-wrapper label {
+            display: inline;
+            margin-bottom: 0;
+            white-space: nowrap;
+            min-width: 65px;
+        }
+
+        #closeGUIButton {
+            position: absolute;
+            top: -15px;
+            right: -15px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: #555;
+            color: #ddd;
+            border: 1px solid #777;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 0;
+            z-index: 1000000;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        #closeGUIButton:hover {
+            background-color: #777;
+            transform: scale(1.1);
+            transition: all 0.2s ease;
+        }
+
+        .banner-container {
+            position: relative;
+            margin-bottom: 15px;
+            padding-top: 5px;
+        }
+
+        #raceBanner {
+            width: 100%;
+            height: auto;
+            border-radius: 5px;
+            display: block;
+        }
+
+        .show-password-btn {
+            background: none;
+            border: none;
+            color: #777;
+            cursor: pointer;
+            padding: 5px;
+            font-size: 14px;
+            position: absolute;
+            right: 80px;
+            top: 50%;
+            transform: translateY(-50%);
+            transition: color 0.3s ease;
+        }
+
+        .show-password-btn:hover {
+            color: #999;
+        }
+
+        .quick-launch-container {
+            display: none !important;
+            position: relative !important;
+            gap: 5px !important;
+            margin-top: 5px !important;
+            margin-bottom: 10px !important;
+            flex-wrap: wrap !important;
+            width: 100% !important;
+            max-width: 800px !important;
+            background-color: #2a2a2a !important;
+            padding: 5px !important;
+            border-radius: 5px !important;
+            border: 1px solid #444 !important;
+            z-index: 1 !important;
+        }
+
+        .quick-launch-container:not(:empty) {
+            display: flex !important;
+            justify-content: flex-start !important;
+        }
+
+        .quick-launch-button {
+            color: #fff !important;
+            background-color: #555 !important;
+            border: 1px solid #777 !important;
+            border-radius: 3px !important;
+            padding: 5px 10px !important;
+            cursor: pointer !important;
+            font-size: 0.9em !important;
+            white-space: nowrap !important;
+            width: auto !important;
+            display: inline-block !important;
+            transition: all 0.2s ease !important;
+            margin: 2px !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+            flex-shrink: 0 !important;
+        }
+
+        .quick-launch-button:hover {
+            background-color: #3d7a5f !important;
+            border-color: #777 !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3) !important;
+        }
+
+        .car-select-section .car-input-container {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .car-select-section .car-id-wrapper {
+            flex: 0 0 30%;
+        }
+
+        .car-select-section .car-dropdown-wrapper {
+            flex: 0 0 70%;
+        }
+
+        .car-select-section input,
+        .car-select-section select {
+            width: 100% !important;
+            box-sizing: border-box;
         }
     `;
 
-    style.textContent += `
-    #raceConfigGUI .track-laps-container {
-        display: flex;
-        gap: 10px;
-        align-items: flex-start;
-        margin-bottom: 12px;
-    }
-
-    #raceConfigGUI .track-laps-container > div {
-        display: flex;
-        align-items: center;
-        flex: 0 0 auto;  /* Prevent flex shrinking */
-    }
-
-    /* Override the general select styles specifically for track and laps */
-    #raceConfigGUI .track-laps-container #trackSelect {
-        width: 220px !important;  /* Add !important */
-        min-width: 220px !important;  /* Force minimum width */
-        flex: 0 0 220px !important;  /* Prevent flexbox shrinking */
-        box-sizing: border-box !important;
-    }
-
-    #raceConfigGUI .track-laps-container #lapsInput {
-        width: 80px !important;  /* Add !important */
-        min-width: 80px !important;  /* Force minimum width */
-        flex: 0 0 80px !important;  /* Prevent flexbox shrinking */
-        box-sizing: border-box !important;
-    }
-
-    #raceConfigGUI .track-laps-container label {
-        margin: 0 10px 0 0;
-        min-width: auto;
-        white-space: nowrap;  /* Prevent label wrapping */
-    }
-`;
-
-/* Remove or override any conflicting width calculations */
-style.textContent = style.textContent.replace(/width:\s*calc\(100%\s*-\s*\d+px\)(.*?);/g, '');
-
-    style.textContent += `
-    #raceConfigGUI .track-laps-container {
-        display: flex;
-        gap: 20px;  /* Increased gap between track and laps */
-        align-items: flex-start;
-        margin-bottom: 12px;
-    }
-
-    #raceConfigGUI .track-laps-container > div {
-        display: flex;
-        align-items: center;
-        flex: 0 0 auto;
-    }
-
-    #raceConfigGUI .track-laps-container #trackSelect {
-        width: 220px !important;
-        min-width: 220px !important;
-        flex: 0 0 220px !important;
-        box-sizing: border-box !important;
-    }
-
-    #raceConfigGUI .track-laps-container #lapsInput {
-        width: 80px !important;
-        min-width: 80px !important;
-        flex: 0 0 80px !important;
-        box-sizing: border-box !important;
-    }
-
-    #raceConfigGUI .config-params-section {
-        display: flex;
-        gap: 20px;  /* Increased gap between min/max drivers */
-        margin-bottom: 20px;
-    }
-
-    #raceConfigGUI .config-params-section .driver-input-container {
-        flex: 1;
-        margin-right: 0;  /* Remove margin-right since we're using gap */
-    }
-`;
-
-// Then add our new spacing rules immediately after
-style.textContent += `
-    #raceConfigGUI .track-laps-container {
-        display: flex;
-        gap: 30px !important;  /* Increased gap between track and laps */
-        align-items: center;
-        margin-bottom: 12px;
-        justify-content: flex-start;
-        padding-right: 20px;
-    }
-
-    #raceConfigGUI .track-laps-container > div {
-        display: flex;
-        align-items: center;
-        flex: 0 0 auto;
-    }
-
-    #raceConfigGUI .config-params-section {
-        display: flex;
-        gap: 30px !important;  /* Increased gap between min/max drivers */
-        margin-bottom: 20px;
-        justify-content: space-between;
-        padding-right: 20px;
-    }
-
-    #raceConfigGUI .config-params-section .driver-input-container {
-        flex: 1;
-        max-width: calc(50% - 15px);  /* Account for the gap */
-    }
-
-    /* Ensure inputs maintain their widths */
-    #raceConfigGUI .track-laps-container #trackSelect {
-        width: 220px !important;
-        min-width: 220px !important;
-    }
-
-    #raceConfigGUI .track-laps-container #lapsInput {
-        width: 80px !important;
-        min-width: 80px !important;
-    }
-`;
-
-// Add these specific styles after all other style definitions
-style.textContent += `
-    /* Reset and base styles for containers */
-    #raceConfigGUI .track-laps-container,
-    #raceConfigGUI .config-params-section {
-        display: flex;
-        align-items: center;
-        margin-bottom: 15px;
-        width: 100%;
-        box-sizing: border-box;
-    }
-
-    /* Track and Laps container specific styles */
-    #raceConfigGUI .track-laps-container {
-        gap: 30px;
-        justify-content: flex-start;
-    }
-
-    #raceConfigGUI .track-laps-container > div {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    /* Min/Max Drivers container specific styles */
-    #raceConfigGUI .config-params-section {
-        gap: 30px;
-        justify-content: space-between;
-    }
-
-    #raceConfigGUI .config-params-section .driver-input-container {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        max-width: calc(50% - 15px);
-    }
-
-    /* Ensure inputs maintain specific widths */
-    #raceConfigGUI #trackSelect {
-        width: 220px !important;
-        min-width: 220px !important;
-    }
-
-    #raceConfigGUI #lapsInput {
-        width: 80px !important;
-        min-width: 80px !important;
-    }
-
-    #raceConfigGUI .driver-input-container input {
-        width: 100% !important;
-    }
-`;
-
     document.head.appendChild(style);
-
 
     function createRaceConfigGUI() {
         let gui = document.createElement('div');
         gui.id = 'raceConfigGUI';
         gui.innerHTML = `
-            <div style="text-align: center; margin-bottom: 15px;">
-                <img id="raceBanner" src="https://www.torn.com/images/v2/racing/header/banners/976_classA.png" alt="Racing Banner" style="width: 100%; height: auto; margin-bottom: 15px; border-radius: 5px;">
+            <div class="banner-container">
+                <button type="button" id="closeGUIButton" class="close-button" title="Close GUI">×</button>
+                <img id="raceBanner" src="https://www.torn.com/images/v2/racing/header/banners/976_classA.png" alt="Racing Banner">
                 <h2>Race Configuration</h2>
             </div>
 
             <div class="api-key-section">
                 <h4>API Key</h4>
-                <input type="text" id="apiKeyInput" placeholder="Enter your API Key">
-                <button id="saveApiKeyButton" class="gui-button">Save API Key</button>
+                <div class="api-key-wrapper">
+                    <label for="apiKeyInput">API Key:</label>
+                    <input type="password" 
+                           id="apiKeyInput" 
+                           placeholder="Enter your API Key" 
+                           autocomplete="off"
+                           autocapitalize="off"
+                           autocorrect="off"
+                           spellcheck="false"
+                           style="flex: 1;">
+                    <button type="button" class="show-password-btn" id="showApiKey" title="Show/Hide API Key">👁️</button>
+                    <button id="saveApiKeyButton" class="gui-button">Save</button>
+                </div>
             </div>
 
             <div class="config-section">
                 <h4>Race Settings</h4>
-
-                <div class="track-laps-container">
-                    <div>
-                        <label for="trackSelect">Track</label>
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <div style="flex: 2;">
+                        <label for="trackSelect">Track:</label>
                         <select id="trackSelect">
                             <option value="6">6 - Uptown</option>
                             <option value="7">7 - Withdrawal</option>
@@ -939,26 +639,32 @@ style.textContent += `
                             <option value="24">24 - Convict</option>
                         </select>
                     </div>
-                    <div>
+                    <div style="flex: 1;">
                         <label for="lapsInput">Laps:</label>
                         <input type="number" id="lapsInput" value="100" min="1" max="100">
                     </div>
                 </div>
 
                 <div class="config-params-section">
-                    <div class="driver-input-container"><label for="minDriversInput">Min Drivers:</label>
-                        <input type="number" id="minDriversInput" value="2" min="2" max="10"></div>
-                    <div class="driver-input-container"><label for="maxDriversInput">Max Drivers</label>
-                        <input type="number" id="maxDriversInput" value="2" min="2" max="10"></div>
+                    <div class="driver-inputs-container">
+                        <div class="driver-input-wrapper">
+                            <label for="minDriversInput">Min Drivers:</label>
+                            <input type="number" id="minDriversInput" value="2" min="2" max="10">
+                        </div>
+                        <div class="driver-input-wrapper">
+                            <label for="maxDriversInput">Max Drivers:</label>
+                            <input type="number" id="maxDriversInput" value="2" min="2" max="10">
+                        </div>
+                    </div>
                 </div>
 
                 <div><label for="raceNameInput">Race Name:</label>
-                    <input type="text" id="raceNameInput" placeholder="Race Name Optional"></div>
+                    <input type="text" id="raceNameInput" placeholder="Enter Race Name"></div>
 
-                <div><label for="passwordInput">Password (optional)</label>
+                <div><label for="passwordInput">Password: <span style="font-size: 0.8em; color: #ccc;">(Optional)</span></label>
                     <input type="text" id="passwordInput" placeholder="Race Password Optional"></div>
 
-                <div><label for="betAmountInput">(Max 10M, Optional<br>Bet Amount for Race)</label>
+                <div><label for="betAmountInput">Bet Amount: <span style="font-size: 0.8em; color: #ccc;">(Max 10M, Optional)</span></label>
                     <input type="number" id="betAmountInput" value="0" min="0" max="10000000"></div>
 
                 <div class="time-config">
@@ -968,7 +674,6 @@ style.textContent += `
                         <span style="margin: 0 5px;">:</span>
                         <select id="minuteSelect" style="width: auto; display: inline-block;"></select>
                         <button id="setNowButton" class="gui-button" style="padding: 5px 10px; font-size: 0.8em; margin-left: 5px; vertical-align: baseline;">NOW</button>
-                        <span style="font-size: 0.8em; color: #ccc; margin-left: 5px;">(TCT)</span>
                     </div>
                 </div>
             </div>
@@ -976,18 +681,20 @@ style.textContent += `
 
             <div class="car-select-section config-section">
                 <h4>Car Selection</h4>
-                <div>
-                    <label for="carIdInput">Car ID:</label>
-                    <div style="display: flex; align-items: center;">
-                        <input type="text" id="carIdInput" placeholder="Enter Car ID or use dropdown below" style="margin-right: 5px;">
-                        <button id="changeCarButton" class="gui-button" style="padding: 8px 10px; font-size: 0.8em; margin-top: 0px; margin-right: 0px; vertical-align: baseline; display: none;">Change Car</button> </div>
-                </div>
-
-                <div>
-                    <label for="carDropdown">Car:</label>
-                    <select id="carDropdown">
-                        <option value="">Select a car...</option>
-                    </select>
+                <div class="car-input-container">
+                    <div class="car-id-wrapper">
+                        <label for="carIdInput">Car ID:</label>
+                        <input type="text" 
+                               id="carIdInput" 
+                               placeholder="Enter Car ID" 
+                               style="margin-right: 5px;">
+                    </div>
+                    <div class="car-dropdown-wrapper">
+                        <label for="carDropdown">Car:</label>
+                        <select id="carDropdown">
+                            <option value="">Select a car...</option>
+                        </select>
+                    </div>
                 </div>
                 <div style="text-align: center; margin-top: 10px;">
                     <button id="updateCarsButton" class="gui-button" style="width: 80%; max-width: 200px; display: block; margin: 0 auto;">Update Cars</button>
@@ -1011,15 +718,20 @@ style.textContent += `
                 <button id="createRaceButton" class="gui-button">Create Race</button>
             </div>
 
-            <div style="text-align: center; margin-top: 20px; color: #888; font-size: 0.8em;">
-                Script created by GNSC4 (<a href="https://www.torn.com/profiles.php?XID=268863" target="_blank" style="color: #888; text-decoration: none;">268863</a>)-v3.0.75<br>
-                <a href="https://github.com/GNSC4/torn-race-config-gui" target="_blank" style="color: #888; text-decoration: none;">v3.0.75 - No GM Functions</a>
+            <div style="text-align: center; margin-top: 20px; color: #888; font-size: 1.2em;">
+                Script created by <a href="https://www.torn.com/profiles.php?XID=268863" target="_blank" style="color: #888; text-decoration: none;">GNSC4 \[268863\]</a><br>
+                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.1.0 Official Forum Link</a>
             </div>
-            <button type="button" id="closeGUIButton" class="close-button" title="Close GUI">×</button>
         `;
+
+        gui.addEventListener('touchstart', function(e) {
+            if (e.touches.length === 1) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
         return gui;
     }
-
 
     function initializeGUI(gui) {
         loadApiKey();
@@ -1027,7 +739,6 @@ style.textContent += `
         updateCarDropdown();
         loadPresets();
 
-        // --- Initialize GUI Elements AFTER GUI is in DOM and perform null checks - v3.0.75 ---
         const apiKeyInput = document.getElementById('apiKeyInput');
         const saveApiKeyButton = document.getElementById('saveApiKeyButton');
         const trackSelect = document.getElementById('trackSelect');
@@ -1051,85 +762,100 @@ style.textContent += `
         const statusMessageBox = document.getElementById('statusMessageBox');
         const createRaceButton = document.getElementById('createRaceButton');
         const closeGUIButton = document.getElementById('closeGUIButton');
-        // --- End of GUI Element Initialization ---
 
-
-        if (saveApiKeyButton) { // --- Null check before adding listener - v3.0.75 ---
+        if (saveApiKeyButton) {
             saveApiKeyButton.addEventListener('click', () => {
                 saveApiKey();
             });
         } else {
-            console.error("Error: saveApiKeyButton element not found in initializeGUI"); // --- Error Log - v3.0.75 ---
+            console.error("Error: saveApiKeyButton element not found in initializeGUI");
         }
 
-
-        if (setNowButton) { // --- Null check before adding listener - v3.0.75 ---
+        if (setNowButton) {
             setNowButton.addEventListener('click', () => {
                 setTimeToNow();
             });
         } else {
-             console.error("Error: setNowButton element not found in initializeGUI"); // --- Error Log - v3.0.75 ---
+             console.error("Error: setNowButton element not found in initializeGUI");
         }
 
-
-        if (updateCarsButton) { // --- Null check before adding listener - v3.0.75 ---
+        if (updateCarsButton) {
             updateCarsButton.addEventListener('click', () => {
                 updateCarList();
             });
         } else {
-            console.error("Error: updateCarsButton element not found in initializeGUI"); // --- Error Log - v3.0.75 ---
+            console.error("Error: updateCarsButton element not found in initializeGUI");
         }
 
-
-        if (carDropdown) { // --- Null check before adding listener - v3.0.75 ---
+        if (carDropdown) {
             carDropdown.addEventListener('change', () => {
                 carIdInput.value = carDropdown.value;
             });
         }  else {
-            console.error("Error: carDropdown element not found in initializeGUI"); // --- Error Log - v3.0.75 ---
+            console.error("Error: carDropdown element not found in initializeGUI");
         }
 
-
-        if (savePresetButton) { // --- Null check before adding listener - v3.0.75 ---
+        if (savePresetButton) {
             savePresetButton.addEventListener('click', () => {
                 savePreset();
             });
         } else {
-            console.error("Error: savePresetButton element not found in initializeGUI"); // --- Error Log - v3.0.75 ---
+            console.error("Error: savePresetButton element not found in initializeGUI");
         }
 
-
-        if (clearPresetsButton) { // --- Null check before adding listener - v3.0.75 ---
+        if (clearPresetsButton) {
             clearPresetsButton.addEventListener('click', () => {
                 clearPresets();
             });
         } else {
-            console.error("Error: clearPresetsButton element not found in initializeGUI"); // --- Error Log - v3.0.75 ---
+            console.error("Error: clearPresetsButton element not found in initializeGUI");
         }
 
-
-        if (createRaceButton) { // --- Null check before adding listener - v3.0.75 ---
+        if (createRaceButton) {
             createRaceButton.addEventListener('click', () => {
                 createRace();
             });
         } else {
-            console.error("Error: createRaceButton element not found in initializeGUI"); // --- Error Log - v3.0.75 ---
+            console.error("Error: createRaceButton element not found in initializeGUI");
         }
 
-
-        if (closeGUIButton) { // --- Null check before adding listener - v3.0.75 ---
+        if (closeGUIButton) {
             closeGUIButton.addEventListener('click', () => {
                 toggleRaceGUI();
             });
         } else {
-            console.error("Error: closeGUIButton element not found in initializeGUI"); // --- Error Log - v3.0.75 ---
+            console.error("Error: closeGUIButton element not found in initializeGUI");
         }
 
+        if (carDropdown && carIdInput) {
+            carDropdown.addEventListener('change', () => {
+                carIdInput.value = carDropdown.value;
+            });
+
+            carIdInput.addEventListener('input', () => {
+                const value = carIdInput.value.trim();
+                if (value && carDropdown.querySelector(`option[value="${value}"]`)) {
+                    carDropdown.value = value;
+                } else {
+                    carDropdown.value = '';
+                }
+            });
+        }
+
+        if (document.getElementById('showApiKey')) {
+            document.getElementById('showApiKey').addEventListener('click', function() {
+                const apiKeyInput = document.getElementById('apiKeyInput');
+                const type = apiKeyInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                apiKeyInput.setAttribute('type', type);
+                this.textContent = type === 'password' ? '👁️' : '👁️‍🗨️';
+            });
+        }
 
         dragElement(gui);
 
         displayPresets();
         updateQuickPresetsDisplay();
+        updateQuickLaunchButtons();
 
         displayStatusMessage('GUI Loaded', 'success');
         setTimeout(() => displayStatusMessage('', ''), 3000);
@@ -1143,26 +869,42 @@ style.textContent += `
             return existingButton;
         }
 
+        const titleElement = document.querySelector('div.content-title > h4');
+        if (!titleElement) {
+            console.error('Title element not found');
+            return null;
+        }
+
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = `
+            display: flex !important;
+            flex-direction: column !important;
+            width: 100% !important;
+            margin-bottom: 10px !important;
+            align-items: flex-start !important;
+        `;
+
         const button = document.createElement('button');
         button.id = 'toggleRaceGUIButton';
         button.className = 'gui-button';
-        button.textContent = 'Race Config PDA';
+        button.textContent = 'Race Config';
         button.style.position = 'relative';
         button.style.zIndex = '999';
+
+        const quickLaunchContainer = document.createElement('div');
+        quickLaunchContainer.id = 'quickLaunchContainer';
+        quickLaunchContainer.className = 'quick-launch-container';
+
+        wrapper.appendChild(button);
+        wrapper.appendChild(quickLaunchContainer);
+        titleElement.parentNode.insertBefore(wrapper, titleElement.nextSibling);
 
         button.addEventListener('click', () => {
             console.log('Toggle button clicked');
             toggleRaceGUI();
         });
 
-        const titleElement = document.querySelector('div.content-title > h4');
-        if (titleElement) {
-            titleElement.appendChild(button);
-            console.log('Toggle button added to title');
-        } else {
-            document.body.appendChild(button);
-            console.log('Toggle button added to body');
-        }
+        updateQuickLaunchButtons();
 
         return button;
     }
@@ -1188,7 +930,7 @@ style.textContent += `
             position: absolute;
             top: 0;
             left: 0;
-            right: 40px; /* Make space for close button */
+            right: 40px;
             height: 40px;
             cursor: move;
             background: transparent;
@@ -1196,11 +938,10 @@ style.textContent += `
         `;
         elmnt.insertBefore(dragHandle, elmnt.firstChild);
 
-        // Add this style to ensure close button is clickable
         const style = document.createElement('style');
         style.textContent = `
             #closeGUIButton {
-                z-index: 1001; /* Higher than drag handle */
+                z-index: 1001;
                 pointer-events: all !important;
             }
             .drag-handle {
@@ -1228,17 +969,67 @@ style.textContent += `
             pos2 = pos4 - e.clientY;
             pos3 = e.clientX;
             pos4 = e.clientY;
-            elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
-            elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+
+            // Calculate new position
+            let newTop = elmnt.offsetTop - pos2;
+            let newLeft = elmnt.offsetLeft - pos1;
+
+            // Get window dimensions and element dimensions
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            const elmntWidth = elmnt.offsetWidth;
+            const elmntHeight = elmnt.offsetHeight;
+
+            // Calculate boundaries with padding
+            const padding = 10;
+            const minLeft = padding;
+            const maxLeft = windowWidth - elmntWidth - padding;
+            const minTop = padding;
+            const maxTop = windowHeight - elmntHeight - padding;
+
+            // Apply boundaries
+            newLeft = Math.max(minLeft, Math.min(maxLeft, newLeft));
+            newTop = Math.max(minTop, Math.min(maxTop, newTop));
+
+            // Update position
+            elmnt.style.top = newTop + "px";
+            elmnt.style.left = newLeft + "px";
         }
 
         function closeDragElement() {
+            // Keep existing code
             document.onmouseup = null;
             document.onmousemove = null;
+
+            // Add boundary check after drag ends
+            enforceWindowBoundaries(elmnt);
         }
+
+        function enforceWindowBoundaries(element) {
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            const elmntWidth = element.offsetWidth;
+            const elmntHeight = element.offsetHeight;
+            const padding = 10;
+
+            let { top, left } = element.getBoundingClientRect();
+            
+            // Enforce boundaries
+            if (left < padding) element.style.left = padding + "px";
+            if (top < padding) element.style.top = padding + "px";
+            if (left + elmntWidth > windowWidth - padding) {
+                element.style.left = (windowWidth - elmntWidth - padding) + "px";
+            }
+            if (top + elmntHeight > windowHeight - padding) {
+                element.style.top = (windowHeight - elmntHeight - padding) + "px";
+            }
+        }
+
+        // Add window resize handler
+        window.addEventListener('resize', () => enforceWindowBoundaries(elmnt));
     }
 
-    const STORAGE_API_KEY = 'raceConfigAPIKey_release_NoGMf'; // Add constant for storage key name
+    const STORAGE_API_KEY = 'raceConfigAPIKey_release_NoGMf';
 
     function saveApiKey() {
         const apiKeyInput = document.getElementById('apiKeyInput');
@@ -1251,10 +1042,10 @@ style.textContent += `
         }
     
         try {
-            GM_setValue(STORAGE_API_KEY, apiKey); // Use GM_setValue instead of localStorage
+            GM_setValue(STORAGE_API_KEY, apiKey);
             displayStatusMessage('API Key Saved', 'success');
             setTimeout(() => displayStatusMessage('', ''), 3000);
-            updateCarList(); // Refresh car list after saving key
+            updateCarList();
         } catch (e) {
             console.error('Error saving API key:', e);
             displayStatusMessage('Failed to save API key', 'error');
@@ -1266,7 +1057,7 @@ style.textContent += `
         if (!apiKeyInput) return;
         
         try {
-            const savedKey = GM_getValue(STORAGE_API_KEY, ''); // Use GM_getValue instead of localStorage
+            const savedKey = GM_getValue(STORAGE_API_KEY, '');
             apiKeyInput.value = savedKey || '';
         } catch (e) {
             console.error('Error loading API key:', e);
@@ -1287,12 +1078,24 @@ style.textContent += `
     }
 
     function savePreset() {
+        const carDropdown = document.getElementById('carDropdown');
+        const carId = document.getElementById('carIdInput').value;
+
+        if (!carId || carDropdown.value === '') {
+            displayStatusMessage('Please select a car before creating a preset.', 'error');
+            setTimeout(() => displayStatusMessage('', ''), 3000);
+            return;
+        }
+
         const presetName = prompt("Enter a name for this preset:");
         if (!presetName) {
             displayStatusMessage('Preset name cannot be empty.', 'error');
             setTimeout(() => displayStatusMessage('', ''), 3000);
             return;
         }
+
+        const carOption = carDropdown.querySelector(`option[value="${carId}"]`);
+        const carName = carOption ? carOption.textContent.split(' (ID:')[0] : null;
 
         const presetData = {
             track: document.getElementById('trackSelect').value,
@@ -1304,15 +1107,59 @@ style.textContent += `
             betAmount: document.getElementById('betAmountInput').value,
             hour: document.getElementById('hourSelect').value,
             minute: document.getElementById('minuteSelect').value,
-            carId: document.getElementById('carIdInput').value
+            carId: carId,
+            carName: carName,
+            selectedCar: carDropdown.value
         };
         let presets = loadPresets();
         presets[presetName] = presetData;
         set_value('race_presets', presets);
         displayPresets();
         updateQuickPresetsDisplay();
+        updateQuickLaunchButtons();
         displayStatusMessage(`Preset "${presetName}" saved.`, 'success');
         setTimeout(() => displayStatusMessage('', ''), 3000);
+    }
+
+    function applyPreset(presetName) {
+        const presets = loadPresets();
+        const preset = presets[presetName];
+        if (preset) {
+            const trackSelect = document.getElementById('trackSelect');
+            const lapsInput = document.getElementById('lapsInput');
+            const minDriversInput = document.getElementById('minDriversInput');
+            const maxDriversInput = document.getElementById('maxDriversInput');
+            const raceNameInput = document.getElementById('raceNameInput');
+            const passwordInput = document.getElementById('passwordInput');
+            const betAmountInput = document.getElementById('betAmountInput');
+            const hourSelect = document.getElementById('hourSelect');
+            const minuteSelect = document.getElementById('minuteSelect');
+            const carDropdown = document.getElementById('carDropdown');
+            const carIdInput = document.getElementById('carIdInput');
+
+            if (trackSelect) trackSelect.value = preset.track;
+            if (lapsInput) lapsInput.value = preset.laps;
+            if (minDriversInput) minDriversInput.value = preset.minDrivers;
+            if (maxDriversInput) maxDriversInput.value = preset.maxDrivers;
+            if (raceNameInput) raceNameInput.value = preset.raceName;
+            if (passwordInput) passwordInput.value = preset.password;
+            if (betAmountInput) betAmountInput.value = preset.betAmount;
+            if (hourSelect) hourSelect.value = preset.hour;
+            if (minuteSelect) minuteSelect.value = preset.minute;
+
+            if (carDropdown && preset.selectedCar) {
+                carDropdown.value = preset.selectedCar;
+            }
+            if (carIdInput) {
+                carIdInput.value = preset.carId || preset.selectedCar || '';
+            }
+
+            displayStatusMessage(`Preset "${presetName}" applied.`, 'success');
+            setTimeout(() => displayStatusMessage('', ''), 3000);
+        } else {
+            displayStatusMessage(`Preset "${presetName}" not found.`, 'error');
+            setTimeout(() => displayStatusMessage('', ''), 3000);
+        }
     }
 
     function loadPresets() {
@@ -1335,14 +1182,31 @@ style.textContent += `
             return;
         }
 
+        const trackNames = {
+            '6': 'Uptown', '7': 'Withdrawal', '8': 'Underdog', '9': 'Parkland',
+            '10': 'Docks', '11': 'Commerce', '12': 'Two Islands', '15': 'Industrial',
+            '16': 'Vector', '17': 'Mudpit', '18': 'Hammerhead', '19': 'Sewage',
+            '20': 'Meltdown', '21': 'Speedway', '23': 'Stone Park', '24': 'Convict'
+        };
+
         Object.keys(presets).forEach(presetName => {
+            const preset = presets[presetName];
             const presetButtonContainer = document.createElement('div');
             presetButtonContainer.className = 'preset-button-container';
-            container.appendChild(presetButtonContainer);
 
             const presetButton = document.createElement('button');
             presetButton.className = 'preset-button';
-            presetButton.textContent = presetName;
+
+            const carName = preset.carName || 'Unknown Car';
+
+            presetButton.innerHTML = `
+                <div class="preset-title">${presetName}</div>
+                <div class="preset-info">
+                    ${trackNames[preset.track] || 'Unknown Track'} • ${preset.laps} Laps<br>
+                    ${carName}
+                </div>
+            `;
+
             presetButton.title = `Apply preset: ${presetName}`;
             presetButton.addEventListener('click', () => applyPreset(presetName));
             presetButtonContainer.appendChild(presetButton);
@@ -1358,6 +1222,7 @@ style.textContent += `
             });
             presetButtonContainer.appendChild(removeButton);
 
+            container.appendChild(presetButtonContainer);
         });
     }
 
@@ -1374,7 +1239,17 @@ style.textContent += `
             document.getElementById('betAmountInput').value = preset.betAmount;
             document.getElementById('hourSelect').value = preset.hour;
             document.getElementById('minuteSelect').value = preset.minute;
-            document.getElementById('carIdInput').value = preset.carId;
+            
+            const carDropdown = document.getElementById('carDropdown');
+            const carIdInput = document.getElementById('carIdInput');
+            
+            if (preset.selectedCar && carDropdown) {
+                carDropdown.value = preset.selectedCar;
+            }
+            
+            if (carIdInput) {
+                carIdInput.value = preset.carId || preset.selectedCar || '';
+            }
 
             displayStatusMessage(`Preset "${presetName}" applied.`, 'success');
             setTimeout(() => displayStatusMessage('', ''), 3000);
@@ -1394,6 +1269,7 @@ style.textContent += `
         set_value('race_presets', presets);
         displayPresets();
         updateQuickPresetsDisplay();
+        updateQuickLaunchButtons();
         displayStatusMessage(`Preset "${presetName}" removed.`, 'success');
         setTimeout(() => displayStatusMessage('', ''), 3000);
     }
@@ -1403,6 +1279,7 @@ style.textContent += `
             set_value('race_presets', {});
             displayPresets();
             updateQuickPresetsDisplay();
+            updateQuickLaunchButtons();
             displayStatusMessage('All presets cleared.', 'success');
             setTimeout(() => displayStatusMessage('', ''), 3000);
         }
@@ -1448,13 +1325,113 @@ style.textContent += `
         }
     }
 
+    function updateQuickLaunchButtons() {
+        const container = document.getElementById('quickLaunchContainer');
+        if (!container) return;
+
+        container.innerHTML = '';
+        const presets = loadPresets();
+
+        if (Object.keys(presets).length === 0) {
+            container.style.display = 'none';
+            return;
+        }
+
+        const trackNames = {
+            '6': 'Uptown', '7': 'Withdrawal', '8': 'Underdog', '9': 'Parkland',
+            '10': 'Docks', '11': 'Commerce', '12': 'Two Islands', '15': 'Industrial',
+            '16': 'Vector', '17': 'Mudpit', '18': 'Hammerhead', '19': 'Sewage',
+            '20': 'Meltdown', '21': 'Speedway', '23': 'Stone Park', '24': 'Convict'
+        };
+
+        container.style.display = 'flex';
+        Object.entries(presets).forEach(([name, preset]) => {
+            const button = document.createElement('button');
+            button.className = 'quick-launch-button';
+            button.textContent = name;
+
+            const carName = preset.carName || `Car ID: ${preset.carId}`;
+
+            const tooltipInfo = [
+                `${name}`,
+                `Track: ${trackNames[preset.track] || 'Unknown Track'}`,
+                `Car: ${carName}`,
+                `Laps: ${preset.laps}`,
+                `Drivers: ${preset.minDrivers}-${preset.maxDrivers}`,
+                `Password: ${preset.password ? 'Yes' : 'No'}`,
+                preset.betAmount > 0 ? `Bet: $${Number(preset.betAmount).toLocaleString()}` : null
+            ].filter(Boolean).join('\n');
+
+            button.title = tooltipInfo;
+
+            button.addEventListener('click', async () => {
+                await createRaceFromPreset(preset);
+            });
+            container.appendChild(button);
+        });
+    }
+
+    async function createRaceFromPreset(preset) {
+        const apiKey = GM_getValue(STORAGE_API_KEY, '');
+        if (!apiKey) {
+            displayStatusMessage('API Key is required to create race.', 'error');
+            setTimeout(() => displayStatusMessage('', ''), 3000);
+            return;
+        }
+
+        const trackId = preset.track;
+        const laps = preset.laps;
+        const minDrivers = preset.minDrivers;
+        const maxDrivers = preset.maxDrivers;
+        const raceName = preset.raceName;
+        const password = preset.password;
+        const betAmount = preset.betAmount;
+        const raceHour = preset.hour;
+        const raceMinute = preset.minute;
+        const carId = preset.carId;
+
+        let startTime = '';
+        if (raceHour && raceMinute) {
+            startTime = `${raceHour}:${raceMinute}`;
+        }
+
+        const rfcValue = getRFC();
+
+        const params = new URLSearchParams();
+        params.append('carID', carId);
+        params.append('password', password);
+        params.append('createRace', 'true');
+        params.append('title', raceName);
+        params.append('minDrivers', minDrivers);
+        params.append('maxDrivers', maxDrivers);
+        params.append('trackID', trackId);
+        params.append('laps', laps);
+        params.append('minClass', '5');
+        params.append('carsTypeAllowed', '1');
+        params.append('carsAllowed', '5');
+        params.append('betAmount', betAmount);
+        params.append('waitTime', Math.floor(Date.now() / 1000));
+        params.append('rfcv', rfcValue);
+
+        const raceLink = `https://www.torn.com/loader.php?sid=racing&tab=customrace&section=getInRace&step=getInRace&id=&${params.toString()}`;
+
+        displayStatusMessage('Creating Race...', 'info');
+
+        try {
+            window.open(raceLink, '_blank');
+            displayStatusMessage(`Race Created! <a href="${raceLink}" target="_blank">View Race</a>`, 'success');
+        } catch (error) {
+            displayStatusMessage(`Error creating race: ${error.message}`, 'error');
+            setTimeout(() => displayStatusMessage('', ''), 5000);
+        }
+    }
+
     function populateTimeDropdowns() {
         const hourSelect = document.getElementById('hourSelect');
         const minuteSelect = document.getElementById('minuteSelect');
 
         if (!hourSelect || !minuteSelect) return;
 
-        // Populate hours (0-23)
         for (let i = 0; i <= 23; i++) {
             const option = document.createElement('option');
             option.value = String(i).padStart(2, '0');
@@ -1462,7 +1439,6 @@ style.textContent += `
             hourSelect.appendChild(option);
         }
 
-        // Populate minutes (00, 15, 30, 45)
         const minutes = ['00', '15', '30', '45'];
         minutes.forEach(minute => {
             const option = document.createElement('option');
@@ -1480,19 +1456,15 @@ style.textContent += `
 
         const now = moment.utc();
         
-        // Set exact current time
         hourSelect.value = String(now.hour()).padStart(2, '0');
         
-        // For minutes, we need to create a temporary option for the exact current minute
         const currentMinute = String(now.minute()).padStart(2, '0');
         
-        // Remove any previous temporary minute option
         const tempOption = minuteSelect.querySelector('.temp-minute');
         if (tempOption) {
             tempOption.remove();
         }
         
-        // Add current minute as a temporary option if it's not one of the standard intervals
         if (!['00', '15', '30', '45'].includes(currentMinute)) {
             const option = document.createElement('option');
             option.value = currentMinute;
@@ -1505,10 +1477,35 @@ style.textContent += `
     }
 
     async function updateCarList() {
+        // Wait for elements to be available
+        const waitForElements = () => {
+            return new Promise((resolve) => {
+                const checkElements = () => {
+                    const carDropdown = document.getElementById('carDropdown');
+                    const carStatusMessage = document.getElementById('carStatusMessage');
+                    const updateCarsButton = document.getElementById('updateCarsButton');
+
+                    if (carDropdown && carStatusMessage && updateCarsButton) {
+                        resolve({ carDropdown, carStatusMessage, updateCarsButton });
+                    } else if (domCheckAttempts < MAX_DOM_CHECK_ATTEMPTS) {
+                        domCheckAttempts++;
+                        setTimeout(checkElements, 100);
+                    } else {
+                        resolve(null);
+                    }
+                };
+                checkElements();
+            });
+        };
+
+        const elements = await waitForElements();
+        if (!elements) {
+            console.error('Required elements not found for updateCarList');
+            return;
+        }
+
+        const { carDropdown, carStatusMessage, updateCarsButton } = elements;
         const apiKey = GM_getValue(STORAGE_API_KEY, '');
-        const carDropdown = document.getElementById('carDropdown');
-        const carStatusMessage = document.getElementById('carStatusMessage');
-        const updateCarsButton = document.getElementById('updateCarsButton');
 
         if (!apiKey) {
             carStatusMessage.textContent = 'API Key Required';
@@ -1516,14 +1513,22 @@ style.textContent += `
             return;
         }
 
-        carStatusMessage.textContent = 'Updating Cars...';
-        carStatusMessage.style.color = '#aaa';
-        carDropdown.disabled = true;
-        updateCarsButton.disabled = true;
+        if (carStatusMessage) {
+            carStatusMessage.textContent = 'Updating Cars...';
+            carStatusMessage.style.color = '#aaa';
+        }
+        
+        if (carDropdown) {
+            carDropdown.disabled = true;
+        }
+        
+        if (updateCarsButton) {
+            updateCarsButton.disabled = true;
+        }
 
         try {
             const response = await GM.xmlHttpRequest({
-                url: `https://api.torn.com/v2/user/?selections=enlistedcars&key=${apiKey}`, // Changed to v2 API and enlistedcars
+                url: `https://api.torn.com/v2/user/?selections=enlistedcars&key=${apiKey}`,
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json'
@@ -1533,45 +1538,71 @@ style.textContent += `
                         if (response.status === 200) {
                             const data = JSON.parse(response.responseText);
                             if (data.error) {
-                                carStatusMessage.textContent = `API Error: ${data.error.error}`;
-                                carStatusMessage.style.color = 'red';
-                            } else if (data.enlistedcars) { // Changed to check for enlistedcars
+                                if (carStatusMessage) {
+                                    carStatusMessage.textContent = `API Error: ${data.error.error}`;
+                                    carStatusMessage.style.color = 'red';
+                                }
+                            } else if (data.enlistedcars) {
                                 populateCarDropdown(data.enlistedcars);
-                                carStatusMessage.textContent = 'Cars Updated';
-                                carStatusMessage.style.color = '#efe';
+                                if (carStatusMessage) {
+                                    carStatusMessage.textContent = 'Cars Updated';
+                                    carStatusMessage.style.color = '#efe';
+                                }
                             } else {
-                                carStatusMessage.textContent = 'No car data received';
-                                carStatusMessage.style.color = 'orange';
+                                if (carStatusMessage) {
+                                    carStatusMessage.textContent = 'No car data received';
+                                    carStatusMessage.style.color = 'orange';
+                                }
                             }
                         } else {
-                            carStatusMessage.textContent = `HTTP Error: ${response.status}`;
-                            carStatusMessage.style.color = 'red';
+                            if (carStatusMessage) {
+                                carStatusMessage.textContent = `HTTP Error: ${response.status}`;
+                                carStatusMessage.style.color = 'red';
+                            }
                         }
                     } catch (e) {
                         console.error('Error parsing response:', e);
-                        carStatusMessage.textContent = 'Error parsing car data';
-                        carStatusMessage.style.color = 'red';
+                        if (carStatusMessage) {
+                            carStatusMessage.textContent = 'Error parsing car data';
+                            carStatusMessage.style.color = 'red';
+                        }
                     }
-                    carDropdown.disabled = false;
-                    updateCarsButton.disabled = false;
-                    setTimeout(() => { carStatusMessage.textContent = ''; }, 3000);
+                    if (carDropdown) carDropdown.disabled = false;
+                    if (updateCarsButton) updateCarsButton.disabled = false;
+                    if (carStatusMessage) {
+                        setTimeout(() => { 
+                            if (carStatusMessage) carStatusMessage.textContent = ''; 
+                        }, 3000);
+                    }
                 },
                 onerror: function(error) {
                     console.error('Request failed:', error);
-                    carStatusMessage.textContent = 'Request failed';
-                    carStatusMessage.style.color = 'red';
-                    carDropdown.disabled = false;
-                    updateCarsButton.disabled = false;
-                    setTimeout(() => { carStatusMessage.textContent = ''; }, 5000);
+                    if (carStatusMessage) {
+                        carStatusMessage.textContent = 'Request failed';
+                        carStatusMessage.style.color = 'red';
+                    }
+                    if (carDropdown) carDropdown.disabled = false;
+                    if (updateCarsButton) updateCarsButton.disabled = false;
+                    if (carStatusMessage) {
+                        setTimeout(() => { 
+                            if (carStatusMessage) carStatusMessage.textContent = ''; 
+                        }, 5000);
+                    }
                 }
             });
         } catch (error) {
             console.error('Error updating cars:', error);
-            carStatusMessage.textContent = `Error: ${error.message}`;
-            carStatusMessage.style.color = 'red';
-            carDropdown.disabled = false;
-            updateCarsButton.disabled = false;
-            setTimeout(() => { carStatusMessage.textContent = ''; }, 5000);
+            if (carStatusMessage) {
+                carStatusMessage.textContent = `Error: ${error.message}`;
+                carStatusMessage.style.color = 'red';
+            }
+            if (carDropdown) carDropdown.disabled = false;
+            if (updateCarsButton) updateCarsButton.disabled = false;
+            if (carStatusMessage) {
+                setTimeout(() => { 
+                    if (carStatusMessage) carStatusMessage.textContent = ''; 
+                }, 5000);
+            }
         }
     }
 
@@ -1581,7 +1612,6 @@ style.textContent += `
 
         carDropdown.innerHTML = '<option value="">Select a car...</option>';
         
-        // Convert cars object to array and sort by name
         const sortedCars = Object.values(cars)
             .filter(car => car.leased !== '1')
             .sort((a, b) => {
@@ -1603,9 +1633,46 @@ style.textContent += `
         updateCarList();
     }
 
+    function getRFC() {
+        if (typeof $.cookie !== 'function') {
+            console.error("Error: jQuery Cookie plugin is not loaded correctly!");
+            console.log("Attempting fallback cookie parsing for rfc_v...");
+            let rfc = null;
+            const cookies = document.cookie.split("; ");
+            for (let i in cookies) {
+                let cookie = cookies[i].split("=");
+                if (cookie[0] && cookie[0].trim() === "rfc_v") {
+                    rfc = decodeURIComponent(cookie[1]);
+                    console.log("Fallback cookie parsing successful. rfc_v value:", rfc);
+                    return rfc;
+                }
+            }
+            console.warn("Fallback cookie parsing failed to find rfc_v cookie.");
+            return '';
+        }
+
+        let rfcValue = $.cookie('rfc_v');
+        if (rfcValue) {
+            return rfcValue;
+        } else {
+            console.log("jQuery.cookie failed to get rfc_v, attempting fallback parsing...");
+            let rfc = null;
+            const cookies = document.cookie.split("; ");
+            for (let i in cookies) {
+                let cookie = cookies[i].split("=");
+                if (cookie[0] && cookie[0].trim() === "rfc_v") {
+                    rfc = decodeURIComponent(cookie[1]);
+                    console.log("Fallback cookie parsing successful. rfc_v value:", rfc);
+                    return rfc;
+                }
+            }
+            console.warn("Fallback cookie parsing failed to find rfc_v cookie.");
+            return '';
+        }
+    }
 
     async function createRace() {
-        const apiKey = GM_getValue(STORAGE_API_KEY, ''); // Use GM_getValue with the constant
+        const apiKey = GM_getValue(STORAGE_API_KEY, '');
         if (!apiKey) {
             displayStatusMessage('API Key is required to create race.', 'error');
             setTimeout(() => displayStatusMessage('', ''), 3000);
@@ -1628,52 +1695,31 @@ style.textContent += `
             startTime = `${raceHour}:${raceMinute}`;
         }
 
+        const rfcValue = getRFC();
+
         const params = new URLSearchParams();
+        params.append('carID', carId);
+        params.append('password', password);
+        params.append('createRace', 'true');
+        params.append('title', raceName);
+        params.append('minDrivers', minDrivers);
+        params.append('maxDrivers', maxDrivers);
         params.append('trackID', trackId);
         params.append('laps', laps);
-        params.append('min_driver', minDrivers);
-        params.append('max_driver', maxDrivers);
-        if (raceName) params.append('name', raceName);
-        if (password) params.append('password', password);
-        if (betAmount > 0) params.append('bet_amount', betAmount);
-        if (startTime) params.append('start_time', startTime);
-        if (carId) params.append('vehicleID', carId);
-        params.append('key', apiKey);
-        params.append('v', 5);
+        params.append('minClass', '5');
+        params.append('carsTypeAllowed', '1');
+        params.append('carsAllowed', '5');
+        params.append('betAmount', betAmount);
+        params.append('waitTime', Math.floor(Date.now() / 1000));
+        params.append('rfcv', rfcValue);
+
+        const raceLink = `https://www.torn.com/loader.php?sid=racing&tab=customrace&section=getInRace&step=getInRace&id=&${params.toString()}`;
 
         displayStatusMessage('Creating Race...', 'info');
 
         try {
-            const response = await GM.xmlHttpRequest({
-                url: 'https://api.torn.com/torn/racing/races',
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                data: params.toString(),
-                onload: function (response) {
-                    if (response.status === 200) {
-                        const data = JSON.parse(response.responseText);
-                        if (data.error) {
-                            displayStatusMessage(`API Error: ${data.error.error}`, 'error');
-                        } else if (data.race_id) {
-                            const raceLink = `https://www.torn.com/racing.php#/view/${data.race_id}`;
-                            displayStatusMessage(`Race Created! <a href="${raceLink}" target="_blank">View Race</a>`, 'success');
-                        } else {
-                            displayStatusMessage('Race creation response error.', 'error');
-                        }
-                    } else {
-                        displayStatusMessage(`HTTP Error: ${response.status}`, 'error');
-                    }
-                    setTimeout(() => displayStatusMessage('', ''), 5000);
-                },
-                onerror: function (error) {
-                    displayStatusMessage(`Request failed: ${error.statusText}`, 'error');
-                    setTimeout(() => displayStatusMessage('', ''), 5000);
-                }
-            });
-
-
+            window.open(raceLink, '_blank');
+            displayStatusMessage(`Race Created! <a href="${raceLink}" target="_blank">View Race</a>`, 'success');
         } catch (error) {
             displayStatusMessage(`Error creating race: ${error.message}`, 'error');
             setTimeout(() => displayStatusMessage('', ''), 5000);
@@ -1705,6 +1751,5 @@ style.textContent += `
         }
     }
 
-    // --- Start initialization ---
     init();
 })();

@@ -720,181 +720,69 @@
             font-size: 1.5em;
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
         }
+
+        #raceConfigGUI .api-key-section input[type="password"] {
+            padding: 8px 12px;
+            margin: 5px 0;
+            border: 1px solid #555;
+            background-color: #333;
+            color: #eee !important;
+            border-radius: 5px;
+            font-size: 14px;
+            width: auto;
+        }
+
+        #raceConfigGUI .api-key-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #2a2a2a;
+            border-radius: 8px;
+            border: 1px solid #444;
+        }
+
+        #raceConfigGUI #saveApiKeyButton {
+            padding: 8px 15px;
+            min-width: 60px;
+        }
     `;
 
     style.textContent += `
-    #raceConfigGUI .track-laps-container {
-        display: flex;
-        gap: 10px;
-        align-items: flex-start;
-        margin-bottom: 12px;
-    }
+        #raceConfigGUI .api-key-section input[type="password"] {
+            padding: 8px 12px;
+            margin: 5px 0;
+            border: 1px solid #555;
+            background-color: #333;
+            color: #eee !important;
+            border-radius: 5px;
+            font-size: 14px;
+            width: auto;
+            box-sizing: border-box;
+        }
 
-    #raceConfigGUI .track-laps-container > div {
-        display: flex;
-        align-items: center;
-        flex: 0 0 auto;  /* Prevent flex shrinking */
-    }
+        #raceConfigGUI .api-key-section input[type="password"]:focus {
+            border-color: #666;
+            outline: none;
+            box-shadow: 0 0 5px rgba(85, 85, 85, 0.5);
+        }
 
-    /* Override the general select styles specifically for track and laps */
-    #raceConfigGUI .track-laps-container #trackSelect {
-        width: 220px !important;  /* Add !important */
-        min-width: 220px !important;  /* Force minimum width */
-        flex: 0 0 220px !important;  /* Prevent flexbox shrinking */
-        box-sizing: border-box !important;
-    }
+        #raceConfigGUI .api-key-section input[type="password"]::placeholder {
+            color: #666;
+        }
 
-    #raceConfigGUI .track-laps-container #lapsInput {
-        width: 80px !important;  /* Add !important */
-        min-width: 80px !important;  /* Force minimum width */
-        flex: 0 0 80px !important;  /* Prevent flexbox shrinking */
-        box-sizing: border-box !important;
-    }
+        #raceConfigGUI #apiKeyInput {
+            background-color: #333 !important;
+            color: #eee !important;
+            border: 1px solid #555 !important;
+        }
 
-    #raceConfigGUI .track-laps-container label {
-        margin: 0 10px 0 0;
-        min-width: auto;
-        white-space: nowrap;  /* Prevent label wrapping */
-    }
-`;
-
-/* Remove or override any conflicting width calculations */
-style.textContent = style.textContent.replace(/width:\s*calc\(100%\s*-\s*\d+px\)(.*?);/g, '');
-
-    style.textContent += `
-    #raceConfigGUI .track-laps-container {
-        display: flex;
-        gap: 20px;  /* Increased gap between track and laps */
-        align-items: flex-start;
-        margin-bottom: 12px;
-    }
-
-    #raceConfigGUI .track-laps-container > div {
-        display: flex;
-        align-items: center;
-        flex: 0 0 auto;
-    }
-
-    #raceConfigGUI .track-laps-container #trackSelect {
-        width: 220px !important;
-        min-width: 220px !important;
-        flex: 0 0 220px !important;
-        box-sizing: border-box !important;
-    }
-
-    #raceConfigGUI .track-laps-container #lapsInput {
-        width: 80px !important;
-        min-width: 80px !important;
-        flex: 0 0 80px !important;
-        box-sizing: border-box !important;
-    }
-
-    #raceConfigGUI .config-params-section {
-        display: flex;
-        gap: 20px;  /* Increased gap between min/max drivers */
-        margin-bottom: 20px;
-    }
-
-    #raceConfigGUI .config-params-section .driver-input-container {
-        flex: 1;
-        margin-right: 0;  /* Remove margin-right since we're using gap */
-    }
-`;
-
-// Then add our new spacing rules immediately after
-style.textContent += `
-    #raceConfigGUI .track-laps-container {
-        display: flex;
-        gap: 30px !important;  /* Increased gap between track and laps */
-        align-items: center;
-        margin-bottom: 12px;
-        justify-content: flex-start;
-        padding-right: 20px;
-    }
-
-    #raceConfigGUI .track-laps-container > div {
-        display: flex;
-        align-items: center;
-        flex: 0 0 auto;
-    }
-
-    #raceConfigGUI .config-params-section {
-        display: flex;
-        gap: 30px !important;  /* Increased gap between min/max drivers */
-        margin-bottom: 20px;
-        justify-content: space-between;
-        padding-right: 20px;
-    }
-
-    #raceConfigGUI .config-params-section .driver-input-container {
-        flex: 1;
-        max-width: calc(50% - 15px);  /* Account for the gap */
-    }
-
-    /* Ensure inputs maintain their widths */
-    #raceConfigGUI .track-laps-container #trackSelect {
-        width: 220px !important;
-        min-width: 220px !important;
-    }
-
-    #raceConfigGUI .track-laps-container #lapsInput {
-        width: 80px !important;
-        min-width: 80px !important;
-    }
-`;
-
-// Add these specific styles after all other style definitions
-style.textContent += `
-    /* Reset and base styles for containers */
-    #raceConfigGUI .track-laps-container,
-    #raceConfigGUI .config-params-section {
-        display: flex;
-        align-items: center;
-        margin-bottom: 15px;
-        width: 100%;
-        box-sizing: border-box;
-    }
-
-    /* Track and Laps container specific styles */
-    #raceConfigGUI .track-laps-container {
-        gap: 30px;
-        justify-content: flex-start;
-    }
-
-    #raceConfigGUI .track-laps-container > div {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    /* Min/Max Drivers container specific styles */
-    #raceConfigGUI .config-params-section {
-        gap: 30px;
-        justify-content: space-between;
-    }
-
-    #raceConfigGUI .config-params-section .driver-input-container {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        max-width: calc(50% - 15px);
-    }
-
-    /* Ensure inputs maintain specific widths */
-    #raceConfigGUI #trackSelect {
-        width: 220px !important;
-        min-width: 220px !important;
-    }
-
-    #raceConfigGUI #lapsInput {
-        width: 80px !important;
-        min-width: 80px !important;
-    }
-
-    #raceConfigGUI .driver-input-container input {
-        width: 100% !important;
-    }
-`;
+        #raceConfigGUI #apiKeyInput:-webkit-autofill,
+        #raceConfigGUI #apiKeyInput:-webkit-autofill:hover,
+        #raceConfigGUI #apiKeyInput:-webkit-autofill:focus {
+            -webkit-text-fill-color: #eee;
+            -webkit-box-shadow: 0 0 0px 1000px #333 inset;
+            transition: background-color 5000s ease-in-out 0s;
+        }
+    `;
 
     document.head.appendChild(style);
 
@@ -910,15 +798,22 @@ style.textContent += `
 
             <div class="api-key-section">
                 <h4>API Key</h4>
-                <input type="text" id="apiKeyInput" placeholder="Enter your API Key">
-                <button id="saveApiKeyButton" class="gui-button">Save API Key</button>
+                <div style="display: flex; align-items: center;">
+                    <label for="apiKeyInput" style="min-width: 110px; text-align: right; margin-right: 10px;">API Key:</label>
+                    <input type="password" 
+                           id="apiKeyInput" 
+                           placeholder="Enter your API Key" 
+                           style="flex: 1; max-width: 200px; background-color: #333; color: #eee; border: 1px solid #555;"
+                           autocomplete="off" 
+                           spellcheck="false">
+                    <button id="saveApiKeyButton" class="gui-button" style="margin: 0 0 0 10px;">Save</button>
+                </div>
             </div>
 
             <div class="config-section">
                 <h4>Race Settings</h4>
-
-                <div class="track-laps-container">
-                    <div>
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <div style="flex: 2;">
                         <label for="trackSelect">Track</label>
                         <select id="trackSelect">
                             <option value="6">6 - Uptown</option>
@@ -939,8 +834,8 @@ style.textContent += `
                             <option value="24">24 - Convict</option>
                         </select>
                     </div>
-                    <div>
-                        <label for="lapsInput">Laps:</label>
+                    <div style="flex: 1;">
+                        <label for="lapsInput">Laps</label>
                         <input type="number" id="lapsInput" value="100" min="1" max="100">
                     </div>
                 </div>
@@ -968,7 +863,6 @@ style.textContent += `
                         <span style="margin: 0 5px;">:</span>
                         <select id="minuteSelect" style="width: auto; display: inline-block;"></select>
                         <button id="setNowButton" class="gui-button" style="padding: 5px 10px; font-size: 0.8em; margin-left: 5px; vertical-align: baseline;">NOW</button>
-                        <span style="font-size: 0.8em; color: #ccc; margin-left: 5px;">(TCT)</span>
                     </div>
                 </div>
             </div>
@@ -1146,7 +1040,7 @@ style.textContent += `
         const button = document.createElement('button');
         button.id = 'toggleRaceGUIButton';
         button.className = 'gui-button';
-        button.textContent = 'Race Config PDA';
+        button.textContent = 'Race Config';
         button.style.position = 'relative';
         button.style.zIndex = '999';
 
