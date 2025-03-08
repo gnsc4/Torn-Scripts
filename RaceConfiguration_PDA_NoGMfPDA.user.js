@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Config GUI
-// @version      3.1.1
+// @version      3.1.2
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -45,11 +45,6 @@
     };
 
     function init() {
-        if (isPDA()) {
-            // Force hardware acceleration for PDA
-            document.body.style.webkitTransform = 'translateZ(0)';
-            document.body.style.transform = 'translateZ(0)';
-        }
         const pollForElements = () => {
             const titleElement = document.querySelector('div.content-title > h4');
             const carDropdown = document.getElementById('carDropdown');
@@ -327,67 +322,6 @@
         #statusMessageBox.error {
             background-color: #5c1e1e;
             border: 1px solid #8b2e2e;
-        }
-
-        @media (max-width: 768px) {
-            #raceConfigGUI {
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                bottom: 0 !important;
-                transform: none !important;
-                width: 100% !important;
-                height: 100% !important;
-                max-height: 100% !important;
-                margin: 0 !important;
-                padding: 10px !important;
-                border-radius: 0 !important;
-                overflow-y: auto !important;
-                -webkit-overflow-scrolling: touch !important;
-                touch-action: auto !important;
-                background-color: rgba(34, 34, 34, 0.98) !important;
-                z-index: 999999 !important;
-            }
-
-            /* Force hardware acceleration */
-            #raceConfigGUI * {
-                -webkit-transform: translateZ(0);
-                transform: translateZ(0);
-                backface-visibility: hidden;
-            }
-
-            /* Adjust scroll container for WebView */
-            #raceConfigGUI .config-section,
-            #raceConfigGUI .car-select-section,
-            #raceConfigGUI .presets-section {
-                overflow-y: visible !important;
-                -webkit-overflow-scrolling: touch !important;
-                transform: translate3d(0,0,0) !important;
-            }
-
-            /* Increase tap targets */
-            #raceConfigGUI button,
-            #raceConfigGUI input,
-            #raceConfigGUI select {
-                min-height: 48px !important;
-                line-height: 48px !important;
-                font-size: 16px !important;
-                margin-bottom: 15px !important;
-            }
-
-            /* Handle WebView keyboard */
-            #raceConfigGUI input:focus {
-                position: relative !important;
-                z-index: 1000000 !important;
-            }
-        }
-
-        /* Add explicit touch handlers */
-        .touchscroll {
-            overflow-y: auto !important;
-            -webkit-overflow-scrolling: touch !important;
-            overscroll-behavior: contain !important;
         }
 
         .driver-inputs-container {
@@ -686,23 +620,6 @@
         `;
 
         gui.addEventListener('touchstart', function(e) {
-            if (e.touches.length === 1) {
-                e.preventDefault();
-            }
-        }, { passive: false });
-
-        // Add touchscroll class to scrollable containers
-        gui.classList.add('touchscroll');
-        
-        // Prevent default touch behavior except for inputs
-        gui.addEventListener('touchmove', function(e) {
-            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT') {
-                e.stopPropagation();
-            }
-        }, { passive: false });
-
-        // Handle WebView scroll
-        gui.addEventListener('scroll', function(e) {
             e.stopPropagation();
         }, { passive: true });
 
@@ -835,21 +752,6 @@
 
         displayStatusMessage('GUI Loaded', 'success');
         setTimeout(() => displayStatusMessage('', ''), 3000);
-
-        // Add touch event handlers for better scrolling
-        gui.addEventListener('touchstart', function(e) {
-            if (e.touches.length === 1) {
-                const touch = e.touches[0];
-                const target = touch.target;
-                
-                // Allow native scrolling on input elements
-                if (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA') {
-                    return;
-                }
-                
-                e.preventDefault();
-            }
-        }, { passive: false });
     }
 
     function createToggleButton() {
@@ -902,16 +804,7 @@
     function toggleRaceGUI() {
         let gui = document.getElementById('raceConfigGUI');
         if (gui) {
-            if (gui.style.display === 'none') {
-                gui.style.display = 'block';
-                // Force redraw for WebView
-                gui.style.transform = 'translateZ(0)';
-                gui.style.webkitTransform = 'translateZ(0)';
-                document.body.style.overflow = 'hidden';
-            } else {
-                gui.style.display = 'none';
-                document.body.style.overflow = '';
-            }
+            gui.style.display = gui.style.display === 'none' ? 'block' : 'none';
             console.log('Toggling existing GUI:', gui.style.display);
         } else {
             console.log('Creating new GUI');
@@ -919,12 +812,6 @@
             document.body.appendChild(gui);
             initializeGUI(gui);
             gui.style.display = 'block';
-            document.body.classList.add('gui-open');
-            
-            // Initialize touch handling for new GUI
-            gui.addEventListener('touchmove', function(e) {
-                e.stopPropagation();
-            }, { passive: false });
         }
     }
 
@@ -1754,10 +1641,6 @@
             console.error('Error reading value:', e);
             return defaultValue;
         }
-    }
-
-    function isPDA() {
-        return /TornPDA/.test(navigator.userAgent) || window.TornPDA !== undefined;
     }
 
     init();
