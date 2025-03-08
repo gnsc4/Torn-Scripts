@@ -2,7 +2,7 @@
 // @name         Torn Race Config GUI
 // @version      3.1.6
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
-// @author       GNSC4
+// @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
 // @grant        GM.xmlHttpRequest
 // @grant        GM_xmlhttpRequest
