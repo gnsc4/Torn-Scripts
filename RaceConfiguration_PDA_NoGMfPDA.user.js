@@ -326,19 +326,38 @@
 
         @media (max-width: 768px) {
             #raceConfigGUI {
-                position: fixed;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                width: 90%;
-                max-height: 85vh;
-                overflow-y: auto;
-                padding: 15px;
-                margin: 0;
-                border-radius: 15px;
-                max-width: none;
-                -webkit-overflow-scrolling: touch; /* Enable smooth scrolling on iOS */
-                touch-action: pan-y; /* Enable vertical touch scrolling */
+                position: fixed !important;
+                top: 50% !important;
+                left: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                width: 90% !important;
+                height: 85vh !important;
+                max-height: 85vh !important;
+                overflow-y: scroll !important; /* Changed from auto to scroll */
+                padding: 15px !important;
+                margin: 0 !important;
+                border-radius: 15px !important;
+                max-width: none !important;
+                -webkit-overflow-scrolling: touch !important;
+                touch-action: pan-y pinch-zoom !important;
+                overscroll-behavior: contain !important;
+                scroll-behavior: smooth !important;
+                will-change: scroll-position !important;
+                z-index: 999999 !important;
+            }
+
+            /* Force Torn PDA to recognize the scrollable area */
+            #raceConfigGUI > * {
+                -webkit-transform: translateZ(0);
+                transform: translateZ(0);
+            }
+
+            /* Prevent body scroll when modal is open */
+            body.gui-open {
+                overflow: hidden !important;
+                position: fixed !important;
+                width: 100% !important;
+                height: 100% !important;
             }
 
             /* Increase touch targets for better mobile interaction */
@@ -860,6 +879,20 @@
         displayStatusMessage('GUI Loaded', 'success');
         setTimeout(() => displayStatusMessage('', ''), 3000);
 
+        // Add touch event handlers for better scrolling
+        gui.addEventListener('touchstart', function(e) {
+            if (e.touches.length === 1) {
+                const touch = e.touches[0];
+                const target = touch.target;
+                
+                // Allow native scrolling on input elements
+                if (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA') {
+                    return;
+                }
+                
+                e.preventDefault();
+            }
+        }, { passive: false });
     }
 
     function createToggleButton() {
@@ -912,7 +945,22 @@
     function toggleRaceGUI() {
         let gui = document.getElementById('raceConfigGUI');
         if (gui) {
-            gui.style.display = gui.style.display === 'none' ? 'block' : 'none';
+            if (gui.style.display === 'none') {
+                gui.style.display = 'block';
+                document.body.classList.add('gui-open');
+                
+                // Reset scroll position when opening
+                gui.scrollTop = 0;
+                
+                // Prevent background scroll on touch
+                gui.addEventListener('touchmove', function(e) {
+                    e.stopPropagation();
+                }, { passive: false });
+                
+            } else {
+                gui.style.display = 'none';
+                document.body.classList.remove('gui-open');
+            }
             console.log('Toggling existing GUI:', gui.style.display);
         } else {
             console.log('Creating new GUI');
@@ -920,6 +968,12 @@
             document.body.appendChild(gui);
             initializeGUI(gui);
             gui.style.display = 'block';
+            document.body.classList.add('gui-open');
+            
+            // Initialize touch handling for new GUI
+            gui.addEventListener('touchmove', function(e) {
+                e.stopPropagation();
+            }, { passive: false });
         }
     }
 
