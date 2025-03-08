@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Config GUI
-// @version      3.1.0
+// @version      3.1.1
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -45,6 +45,11 @@
     };
 
     function init() {
+        if (isPDA()) {
+            // Force hardware acceleration for PDA
+            document.body.style.webkitTransform = 'translateZ(0)';
+            document.body.style.transform = 'translateZ(0)';
+        }
         const pollForElements = () => {
             const titleElement = document.querySelector('div.content-title > h4');
             const carDropdown = document.getElementById('carDropdown');
@@ -327,125 +332,62 @@
         @media (max-width: 768px) {
             #raceConfigGUI {
                 position: fixed !important;
-                top: 50% !important;
-                left: 50% !important;
-                transform: translate(-50%, -50%) !important;
-                width: 90% !important;
-                height: 85vh !important;
-                max-height: 85vh !important;
-                overflow-y: scroll !important; /* Changed from auto to scroll */
-                padding: 15px !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                transform: none !important;
+                width: 100% !important;
+                height: 100% !important;
+                max-height: 100% !important;
                 margin: 0 !important;
-                border-radius: 15px !important;
-                max-width: none !important;
+                padding: 10px !important;
+                border-radius: 0 !important;
+                overflow-y: auto !important;
                 -webkit-overflow-scrolling: touch !important;
-                touch-action: pan-y pinch-zoom !important;
-                overscroll-behavior: contain !important;
-                scroll-behavior: smooth !important;
-                will-change: scroll-position !important;
+                touch-action: auto !important;
+                background-color: rgba(34, 34, 34, 0.98) !important;
                 z-index: 999999 !important;
             }
 
-            /* Force Torn PDA to recognize the scrollable area */
-            #raceConfigGUI > * {
+            /* Force hardware acceleration */
+            #raceConfigGUI * {
                 -webkit-transform: translateZ(0);
                 transform: translateZ(0);
+                backface-visibility: hidden;
             }
 
-            /* Prevent body scroll when modal is open */
-            body.gui-open {
-                overflow: hidden !important;
-                position: fixed !important;
-                width: 100% !important;
-                height: 100% !important;
+            /* Adjust scroll container for WebView */
+            #raceConfigGUI .config-section,
+            #raceConfigGUI .car-select-section,
+            #raceConfigGUI .presets-section {
+                overflow-y: visible !important;
+                -webkit-overflow-scrolling: touch !important;
+                transform: translate3d(0,0,0) !important;
             }
 
-            /* Increase touch targets for better mobile interaction */
-            #raceConfigGUI input[type="text"],
-            #raceConfigGUI input[type="password"],
-            #raceConfigGUI input[type="number"],
-            #raceConfigGUI select,
-            #raceConfigGUI button {
-                font-size: 16px !important;
-                padding: 12px !important;
-                min-height: 44px !important; /* Minimum touch target size */
-                margin-bottom: 10px !important;
-                -webkit-appearance: none; /* Remove default iOS styling */
-                appearance: none;
-            }
-
-            /* Prevent zoom on input focus in iOS */
+            /* Increase tap targets */
+            #raceConfigGUI button,
             #raceConfigGUI input,
-            #raceConfigGUI select,
-            #raceConfigGUI textarea {
+            #raceConfigGUI select {
+                min-height: 48px !important;
+                line-height: 48px !important;
                 font-size: 16px !important;
+                margin-bottom: 15px !important;
             }
 
-            /* Adjust scrollbar for better touch interaction */
-            #raceConfigGUI::-webkit-scrollbar {
-                width: 12px !important;
+            /* Handle WebView keyboard */
+            #raceConfigGUI input:focus {
+                position: relative !important;
+                z-index: 1000000 !important;
             }
+        }
 
-            /* Ensure buttons are easy to tap */
-            .gui-button,
-            .preset-button,
-            .quick-launch-button,
-            #closeGUIButton {
-                min-height: 44px !important;
-                min-width: 44px !important;
-                padding: 12px 20px !important;
-                margin: 5px !important;
-            }
-
-            /* Adjust preset buttons for mobile */
-            .preset-buttons-container {
-                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
-                gap: 10px !important;
-            }
-
-            /* Make remove preset button easier to tap */
-            .remove-preset {
-                width: 30px !important;
-                height: 30px !important;
-                font-size: 18px !important;
-            }
-
-            /* Adjust quick launch container for mobile */
-            .quick-launch-container {
-                padding: 10px !important;
-                gap: 10px !important;
-            }
-
-            /* Ensure proper form element rendering on iOS */
-            input[type="datetime-local"],
-            input[type="time"],
-            input[type="date"] {
-                -webkit-appearance: none;
-                appearance: none;
-                min-height: 44px !important;
-            }
-
-            /* Fix select element on iOS */
-            select {
-                background-image: none !important;
-                -webkit-appearance: none;
-                appearance: none;
-                padding-right: 30px !important;
-            }
-
-            /* Adjust time selector for mobile */
-            .time-selector {
-                display: flex !important;
-                align-items: center !important;
-                gap: 5px !important;
-            }
-
-            /* Ensure labels are tappable */
-            label {
-                min-height: 22px !important;
-                display: inline-block !important;
-                margin-bottom: 5px !important;
-            }
+        /* Add explicit touch handlers */
+        .touchscroll {
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            overscroll-behavior: contain !important;
         }
 
         .driver-inputs-container {
@@ -749,6 +691,21 @@
             }
         }, { passive: false });
 
+        // Add touchscroll class to scrollable containers
+        gui.classList.add('touchscroll');
+        
+        // Prevent default touch behavior except for inputs
+        gui.addEventListener('touchmove', function(e) {
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT') {
+                e.stopPropagation();
+            }
+        }, { passive: false });
+
+        // Handle WebView scroll
+        gui.addEventListener('scroll', function(e) {
+            e.stopPropagation();
+        }, { passive: true });
+
         return gui;
     }
 
@@ -947,19 +904,13 @@
         if (gui) {
             if (gui.style.display === 'none') {
                 gui.style.display = 'block';
-                document.body.classList.add('gui-open');
-                
-                // Reset scroll position when opening
-                gui.scrollTop = 0;
-                
-                // Prevent background scroll on touch
-                gui.addEventListener('touchmove', function(e) {
-                    e.stopPropagation();
-                }, { passive: false });
-                
+                // Force redraw for WebView
+                gui.style.transform = 'translateZ(0)';
+                gui.style.webkitTransform = 'translateZ(0)';
+                document.body.style.overflow = 'hidden';
             } else {
                 gui.style.display = 'none';
-                document.body.classList.remove('gui-open');
+                document.body.style.overflow = '';
             }
             console.log('Toggling existing GUI:', gui.style.display);
         } else {
@@ -1803,6 +1754,10 @@
             console.error('Error reading value:', e);
             return defaultValue;
         }
+    }
+
+    function isPDA() {
+        return /TornPDA/.test(navigator.userAgent) || window.TornPDA !== undefined;
     }
 
     init();
