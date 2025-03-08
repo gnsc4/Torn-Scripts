@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Config GUI
-// @version      3.1.4
+// @version      3.1.5
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -437,10 +437,10 @@
         .quick-launch-container {
             display: none !important;
             position: relative !important;
+            flex-direction: column !important;  /* Changed to column */
             gap: 5px !important;
             margin-top: 5px !important;
             margin-bottom: 10px !important;
-            flex-wrap: wrap !important;
             width: 100% !important;
             max-width: 800px !important;
             background-color: #2a2a2a !important;
@@ -497,6 +497,47 @@
         .car-select-section select {
             width: 100% !important;
             box-sizing: border-box;
+        }
+
+        .quick-launch-status {
+            position: relative !important;
+            margin-top: 5px !important;
+            padding: 10px 15px !important;
+            border-radius: 5px !important;
+            color: #fff !important;
+            font-size: 14px !important;
+            opacity: 0 !important;
+            transition: opacity 0.3s ease !important;
+            text-align: center !important;
+            width: calc(100% - 30px) !important;
+            background-color: transparent !important;
+            z-index: 999999 !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
+            display: block !important;
+        }
+
+        .quick-launch-status.success {
+            background-color: #1a472a !important;
+            border: 1px solid #2d5a3f !important;
+            opacity: 1 !important;
+        }
+
+        .quick-launch-status.error {
+            background-color: #5c1e1e !important;
+            border: 1px solid #8b2e2e !important;
+            opacity: 1 !important;
+        }
+
+        .quick-launch-status.show {
+            opacity: 1 !important;
+        }
+
+        .quick-launch-container .button-container {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            gap: 5px !important;
+            width: 100% !important;
         }
     `;
 
@@ -818,6 +859,10 @@
         const quickLaunchContainer = document.createElement('div');
         quickLaunchContainer.id = 'quickLaunchContainer';
         quickLaunchContainer.className = 'quick-launch-container';
+
+        const quickLaunchStatus = document.createElement('div');
+        quickLaunchStatus.className = 'quick-launch-status';
+        quickLaunchContainer.appendChild(quickLaunchStatus);
 
         wrapper.appendChild(button);
         wrapper.appendChild(quickLaunchContainer);
@@ -1278,6 +1323,16 @@
             return;
         }
 
+        // Create button container and status div
+        const buttonContainer = document.createElement('div');
+        buttonContainer.className = 'button-container';
+        const statusDiv = document.createElement('div');
+        statusDiv.className = 'quick-launch-status';
+
+        // Add them to the container in the right order
+        container.appendChild(buttonContainer);
+        container.appendChild(statusDiv);
+
         const trackNames = {
             '6': 'Uptown', '7': 'Withdrawal', '8': 'Underdog', '9': 'Parkland',
             '10': 'Docks', '11': 'Commerce', '12': 'Two Islands', '15': 'Industrial',
@@ -1308,7 +1363,7 @@
             button.addEventListener('click', async () => {
                 await createRaceFromPreset(preset);
             });
-            container.appendChild(button);
+            buttonContainer.appendChild(button); // Append to buttonContainer instead of container
         });
     }
 
@@ -1362,6 +1417,22 @@
             const response = await fetch(raceLink);
             const data = await response.text();
             
+            const quickLaunchStatus = document.querySelector('.quick-launch-status');
+            if (quickLaunchStatus) {
+                if (data.includes('success') || response.ok) {
+                    quickLaunchStatus.textContent = 'Race Created Successfully!';
+                    quickLaunchStatus.className = 'quick-launch-status success show';
+                } else {
+                    quickLaunchStatus.textContent = 'Error creating race. Please try again.';
+                    quickLaunchStatus.className = 'quick-launch-status error show';
+                }
+                
+                setTimeout(() => {
+                    quickLaunchStatus.className = 'quick-launch-status';
+                }, 10000);
+            }
+            
+            // Regular status message for the GUI
             if (data.includes('success') || response.ok) {
                 displayStatusMessage('Race Created Successfully!', 'success');
             } else {
@@ -1369,6 +1440,15 @@
             }
             setTimeout(() => displayStatusMessage('', ''), 3000);
         } catch (error) {
+            const quickLaunchStatus = document.querySelector('.quick-launch-status');
+            if (quickLaunchStatus) {
+                quickLaunchStatus.textContent = `Error creating race: ${error.message}`;
+                quickLaunchStatus.className = 'quick-launch-status error show';
+                setTimeout(() => {
+                    quickLaunchStatus.className = 'quick-launch-status';
+                }, 10000);
+            }
+            
             displayStatusMessage(`Error creating race: ${error.message}`, 'error');
             setTimeout(() => displayStatusMessage('', ''), 5000);
         }
