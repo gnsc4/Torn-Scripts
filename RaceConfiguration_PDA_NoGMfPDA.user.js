@@ -15,6 +15,7 @@
 // @run-at       document-end
 // @require      https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js
 // @license      MIT
+// @namespace torn.raceconfigguipda
 // ==/UserScript==
 
 (function() {
