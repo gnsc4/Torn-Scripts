@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Config GUI
-// @version      3.1.2
+// @version      3.1.3
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -647,7 +647,7 @@
 
             <div style="text-align: center; margin-top: 20px; color: #888; font-size: 1.2em;">
                 Script created by <a href="https://www.torn.com/profiles.php?XID=268863" target="_blank" style="color: #888; text-decoration: none;">GNSC4 \[268863\]</a><br>
-                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.1.2 Official Forum Link</a>
+                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.1.3 Official Forum Link</a>
             </div>
         `;
 
@@ -1359,8 +1359,15 @@
         displayStatusMessage('Creating Race...', 'info');
 
         try {
-            window.open(raceLink, '_blank');
-            displayStatusMessage(`Race Created! <a href="${raceLink}" target="_blank">View Race</a>`, 'success');
+            const response = await fetch(raceLink);
+            const data = await response.text();
+            
+            if (data.includes('success') || response.ok) {
+                displayStatusMessage('Race Created Successfully!', 'success');
+            } else {
+                displayStatusMessage('Error creating race. Please try again.', 'error');
+            }
+            setTimeout(() => displayStatusMessage('', ''), 3000);
         } catch (error) {
             displayStatusMessage(`Error creating race: ${error.message}`, 'error');
             setTimeout(() => displayStatusMessage('', ''), 5000);
@@ -1667,8 +1674,15 @@
         displayStatusMessage('Creating Race...', 'info');
 
         try {
-            window.open(raceLink, '_blank');
-            displayStatusMessage(`Race Created! <a href="${raceLink}" target="_blank">View Race</a>`, 'success');
+            const response = await fetch(raceLink);
+            const data = await response.text();
+            
+            if (data.includes('success') || response.ok) {
+                displayStatusMessage('Race Created Successfully!', 'success');
+            } else {
+                displayStatusMessage('Error creating race. Please try again.', 'error');
+            }
+            setTimeout(() => displayStatusMessage('', ''), 3000);
         } catch (error) {
             displayStatusMessage(`Error creating race: ${error.message}`, 'error');
             setTimeout(() => displayStatusMessage('', ''), 5000);
