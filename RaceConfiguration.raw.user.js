@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Config GUI
-// @version      3.1.5
+// @version      3.1.6
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -515,6 +515,7 @@
             margin-left: auto !important;
             margin-right: auto !important;
             display: block !important;
+            min-height: 20px !important; /* Added to maintain space */
         }
 
         .quick-launch-status.success {
@@ -688,7 +689,7 @@
 
             <div style="text-align: center; margin-top: 20px; color: #888; font-size: 1.2em;">
                 Script created by <a href="https://www.torn.com/profiles.php?XID=268863" target="_blank" style="color: #888; text-decoration: none;">GNSC4 \[268863\]</a><br>
-                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.1.4 Official Forum Link</a>
+                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.1.6 Official Forum Link</a>
             </div>
         `;
 
@@ -1422,14 +1423,13 @@
                 if (data.includes('success') || response.ok) {
                     quickLaunchStatus.textContent = 'Race Created Successfully!';
                     quickLaunchStatus.className = 'quick-launch-status success show';
+                    // Refresh page after successful race creation
+                    setTimeout(() => window.location.reload(), 1500);
                 } else {
                     quickLaunchStatus.textContent = 'Error creating race. Please try again.';
                     quickLaunchStatus.className = 'quick-launch-status error show';
                 }
-                
-                setTimeout(() => {
-                    quickLaunchStatus.className = 'quick-launch-status';
-                }, 10000);
+                // Removed the setTimeout that was hiding the status
             }
             
             // Regular status message for the GUI
@@ -1444,9 +1444,7 @@
             if (quickLaunchStatus) {
                 quickLaunchStatus.textContent = `Error creating race: ${error.message}`;
                 quickLaunchStatus.className = 'quick-launch-status error show';
-                setTimeout(() => {
-                    quickLaunchStatus.className = 'quick-launch-status';
-                }, 10000);
+                // Removed the setTimeout that was hiding the status
             }
             
             displayStatusMessage(`Error creating race: ${error.message}`, 'error');
@@ -1758,6 +1756,8 @@
             
             if (data.includes('success') || response.ok) {
                 displayStatusMessage('Race Created Successfully!', 'success');
+                // Refresh page after successful race creation
+                setTimeout(() => window.location.reload(), 1500);
             } else {
                 displayStatusMessage('Error creating race. Please try again.', 'error');
             }
