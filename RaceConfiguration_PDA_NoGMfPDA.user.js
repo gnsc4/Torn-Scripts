@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Config GUI
-// @version      3.1.3
+// @version      3.1.4
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -647,7 +647,7 @@
 
             <div style="text-align: center; margin-top: 20px; color: #888; font-size: 1.2em;">
                 Script created by <a href="https://www.torn.com/profiles.php?XID=268863" target="_blank" style="color: #888; text-decoration: none;">GNSC4 \[268863\]</a><br>
-                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.1.3 Official Forum Link</a>
+                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.1.4 Official Forum Link</a>
             </div>
         `;
 
@@ -1639,7 +1639,6 @@
         const laps = document.getElementById('lapsInput').value;
         const minDrivers = document.getElementById('minDriversInput').value;
         const maxDrivers = document.getElementById('maxDriversInput').value;
-        const raceName = document.getElementById('raceNameInput').value;
         const password = document.getElementById('passwordInput').value;
         const betAmount = document.getElementById('betAmountInput').value;
         const raceHour = document.getElementById('hourSelect').value;
