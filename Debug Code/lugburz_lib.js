@@ -14,10 +14,18 @@ function ajax(callback) {
         requests: new Map(),
         lastResponse: null,
         timing: new Map(),
-        errors: []
+        errors: [],
+        racingRequests: new Map()
     };
 
     console.log('[Ajax Init] Setting up AJAX interceptor');
+
+    // Track racing specific requests
+    function isRacingRequest(url) {
+        return url.includes('sid=racing') || 
+               url.includes('loader.php?sid=racing') || 
+               url.includes('buildrace.js');
+    }
 
     function logAjaxDebug(type, ...args) {
         const timestamp = new Date().toISOString();
@@ -33,11 +41,34 @@ function ajax(callback) {
         const requestId = Math.random().toString(36).substring(7);
         const startTime = performance.now();
         
-        if (settings.url.includes('racing')) {
-            logAjaxDebug('request-racing', {
+        if (isRacingRequest(settings.url)) {
+            debugInfo.racingRequests.set(requestId, {
+                url: settings.url,
+                startTime,
+                status: 'pending'
+            });
+            
+            logAjaxDebug('racing-request', {
                 id: requestId,
                 url: settings.url,
-                data: settings.data
+                timestamp: startTime
+            });
+
+            // Add response handler specifically for racing requests
+            xhr.addEventListener('load', function() {
+                const racingRequest = debugInfo.racingRequests.get(requestId);
+                if (racingRequest) {
+                    racingRequest.status = 'completed';
+                    racingRequest.endTime = performance.now();
+                    racingRequest.duration = racingRequest.endTime - racingRequest.startTime;
+                    
+                    logAjaxDebug('racing-response', {
+                        id: requestId,
+                        url: settings.url,
+                        duration: racingRequest.duration,
+                        size: xhr.responseText?.length
+                    });
+                }
             });
         }
 
@@ -60,6 +91,33 @@ function ajax(callback) {
         const endTime = performance.now();
 
         if (xhr.readyState > 3) {
+            if (isRacingRequest(settings.url)) {
+                try {
+                    if (!xhr.responseText) {
+                        logAjaxDebug('racing-error', {
+                            message: 'Empty racing response',
+                            url: settings.url
+                        });
+                        return;
+                    }
+
+                    const data = JSON.parse(xhr.responseText);
+                    logAjaxDebug('racing-data', {
+                        hasData: !!data,
+                        keys: Object.keys(data || {}),
+                        raceData: !!data?.raceData,
+                        url: settings.url
+                    });
+                } catch (e) {
+                    logAjaxDebug('racing-error', {
+                        message: 'Failed to parse racing response',
+                        error: e,
+                        url: settings.url,
+                        responsePreview: xhr.responseText?.substring(0, 200)
+                    });
+                }
+            }
+
             logAjaxDebug('complete', {
                 url: settings.url,
                 status: xhr.status,
@@ -117,12 +175,13 @@ function ajax(callback) {
 
     // Track failed requests
     $(document).ajaxError((event, xhr, settings, error) => {
-        logAjaxDebug('error', {
+        const isRacing = isRacingRequest(settings.url);
+        logAjaxDebug(isRacing ? 'racing-error' : 'error', {
             url: settings.url,
             status: xhr.status,
             error,
-            requestHeaders: settings.headers,
-            responseHeaders: xhr.getAllResponseHeaders()
+            isRacing,
+            headers: xhr.getAllResponseHeaders()
         });
     });
 

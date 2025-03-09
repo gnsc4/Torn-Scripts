@@ -366,10 +366,16 @@ const DEBUG = {
     ajax: true,
     timing: true,
     errors: [],
+    requestLog: [],
     log: function(type, ...args) {
         if (!this.enabled || !this[type]) return;
         const timestamp = new Date().toISOString();
         console.log(`[Racing Debug ${type}] ${timestamp}:`, ...args);
+        
+        // Track racing requests
+        if (type === 'request') {
+            this.requestLog.push({timestamp, ...args[0]});
+        }
     },
     error: function(type, ...args) {
         if (!this.enabled) return;
@@ -381,6 +387,27 @@ const DEBUG = {
         lastRaceId: null,
         processAttempts: 0,
         lastSuccess: null
+    }
+};
+
+// Add request validation
+const RaceRequestValidator = {
+    validateRacingUrl(url) {
+        return url.includes('sid=racing') || 
+               url.includes('loader.php?sid=racing') || 
+               url.includes('buildrace.js');
+    },
+    
+    trackRequest(url, data) {
+        if (this.validateRacingUrl(url)) {
+            DEBUG.log('request', {
+                url,
+                time: new Date().toISOString(),
+                hasData: !!data
+            });
+            return true;
+        }
+        return false;
     }
 };
 
@@ -800,6 +827,15 @@ ajax((page, xhr) => {
 
     DEBUG.log('page', `Processing ${page} page`);
     
+    // Validate racing request
+    if (RaceRequestValidator.trackRequest(xhr.responseURL, xhr.responseText)) {
+        DEBUG.log('racing-request', {
+            url: xhr.responseURL,
+            status: xhr.status,
+            size: xhr.responseText?.length
+        });
+    }
+
     if (!RaceDataValidator.validateResponse(xhr)) {
         DEBUG.error('ajax', 'Invalid AJAX response structure');
         return;
