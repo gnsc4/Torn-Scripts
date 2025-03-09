@@ -5,7 +5,7 @@
 // @description Show car's current speed, precise skill, official race penalty, racing skill of others and race car skins. Now with HTML source support for pre-finished races and DOM creation fix. (AJAX Interception REMOVED)
 // @author       Lugburz (and ChatGPT - Simplified)
 // @match        https://www.torn.com/*
-// @require      https://raw.githubusercontent.com/f2404/torn-userscripts/e3bb87d75b44579cdb6f756435696960e009dc84/lib/lugburz_lib.js
+// @require      https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Debug%20Code/lugburz_lib.js
 // @updateURL    https://github.com/f2404/torn-userscripts/raw/master/racing_show_speed_simplified.user.js
 // @downloadURL  https://github.com/f2404/torn-userscripts/raw/master/racing_show_speed_simplified.user.js
 // @connect      api.torn.com
