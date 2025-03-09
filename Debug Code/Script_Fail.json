@@ -1,0 +1,498 @@
+[DEBUG][2025-03-09T05:01:27.960Z][Line 432] Starting showSpeed function {
+  "function": "showSpeed"
+}
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:141 [DEBUG][2025-03-09T05:01:27.961Z][Line 436] Race status check: {}
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:143 [DEBUG][2025-03-09T05:01:27.961Z][Line 452] Setting up speed display elements
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:143 [DEBUG][2025-03-09T05:01:28.001Z][Line 164] Starting updateDriversList
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:141 [DEBUG][2025-03-09T05:01:28.003Z][Line 167] Drivers list element: {
+  "exists": true,
+  "id": "leaderBoard",
+  "childCount": 2
+}
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:141 [DEBUG][2025-03-09T05:01:28.003Z][Line 182] FETCH_RS status: true
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:141 [DEBUG][2025-03-09T05:01:28.003Z][Line 244] getDriverIds called with driversList: {
+  "exists": true,
+  "nodeType": 1,
+  "childCount": 2
+}
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:141 [DEBUG][2025-03-09T05:01:28.004Z][Line 256] Found driver items: {
+  "count": 2,
+  "items": [
+    "\n<li class=\"color color-1\"></li>\n<li class=\"status",
+    "\n<li class=\"color color-2\"></li>\n<li class=\"status"
+  ]
+}
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:141 [DEBUG][2025-03-09T05:01:28.004Z][Line 279] getDriverId called {
+  "element": "<ul class=\"driver-item driver-item_NEXT\">\n<li class=\"color color-1\"></li>\n<li class=\"status-wrap\">\n<"
+}
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:141 [DEBUG][2025-03-09T05:01:28.004Z][Line 304] Successfully extracted driver ID {
+  "id": "lbr-268863",
+  "numberId": 268863
+}
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:141 [DEBUG][2025-03-09T05:01:28.005Z][Line 265] Extracted driver ID: {
+  "driver": "\n<li class=\"color color-1\"></li>\n<li class=\"status",
+  "id": 268863
+}
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:141 [DEBUG][2025-03-09T05:01:28.005Z][Line 279] getDriverId called {
+  "element": "<ul class=\"driver-item driver-item_NEXT\">\n<li class=\"color color-2\"></li>\n<li class=\"status-wrap\">\n<"
+}
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:141 [DEBUG][2025-03-09T05:01:28.005Z][Line 304] Successfully extracted driver ID {
+  "id": "lbr-2498353",
+  "numberId": 2498353
+}
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:141 [DEBUG][2025-03-09T05:01:28.006Z][Line 265] Extracted driver ID: {
+  "driver": "\n<li class=\"color color-2\"></li>\n<li class=\"status",
+  "id": 2498353
+}
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:141 [DEBUG][2025-03-09T05:01:28.006Z][Line 274] Final driver IDs: {
+  "count": 2,
+  "ids": [
+    268863,
+    2498353
+  ]
+}
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:141 [DEBUG][2025-03-09T05:01:28.006Z][Line 187] Retrieved driver IDs: [
+  268863,
+  2498353
+]
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:143 [DEBUG][2025-03-09T05:01:28.006Z][Line 195] Starting drivers update process
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:141 [DEBUG][2025-03-09T05:01:28.007Z][Line 402] Fetching racing skill for drivers {
+  "function": "fetchRacingSkillForDrivers",
+  "driverIds": 268863
+}
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:141 [DEBUG][2025-03-09T05:01:28.007Z][Line 406] Making API request for racing skills {
+  "url": "api.torn.com/user/268863"
+}
+[Violation] 'setTimeout' handler took 51ms
+content.js:28 [Violation] 'setTimeout' handler took 51ms
+[Violation] Forced reflow while executing JavaScript took 38ms
+app.6e4e8bb0e7d4879f140f.js:1 Socket: connected
+fetch.inject.js:6 Script Injected - Fetch Interception
+xhr.inject.js:6 Script Injected - XHR Interception
+manifest.json:1 Manifest: unknown 'dir' value ignored.Understand this warningAI
+loader.php:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">Understand this warningAI
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:141 [DEBUG][2025-03-09T05:01:28.503Z][Line 416] API response received: {
+  "personalstats": {
+    "attackswon": 13981,
+    "attackslost": 661,
+    "attacksdraw": 103,
+    "attacksassisted": 278,
+    "defendswon": 780,
+    "defendslost": 6554,
+    "defendsstalemated": 31,
+    "elo": 2521,
+    "yourunaway": 29,
+    "theyrunaway": 267,
+    "unarmoredwon": 0,
+    "killstreak": 4,
+    "bestkillstreak": 516,
+    "attackhits": 50043,
+    "attackmisses": 31058,
+    "attackdamage": 40848608,
+    "bestdamage": 7268,
+    "onehitkills": 5166,
+    "attackcriticalhits": 8599,
+    "roundsfired": 83596,
+    "specialammoused": 60,
+    "hollowammoused": 0,
+    "tracerammoused": 60,
+    "piercingammoused": 0,
+    "incendiaryammoused": 0,
+    "attacksstealthed": 9392,
+    "retals": 604,
+    "moneymugged": 42454302,
+    "largestmug": 32843820,
+    "itemslooted": 0,
+    "highestbeaten": 100,
+    "respectforfaction": 80830,
+    "rankedwarhits": 1889,
+    "raidhits": 122,
+    "territoryjoins": 1208,
+    "territoryclears": 1231,
+    "territorytime": 2982200,
+    "strength": 867675347,
+    "defense": 971653667,
+    "speed": 836183583,
+    "dexterity": 857610227,
+    "totalstats": 3533122824,
+    "manuallabor": 18491,
+    "intelligence": 440606,
+    "endurance": 225982,
+    "totalworkingstats": 685079,
+    "jobpointsused": 25382,
+    "trainsreceived": 1698,
+    "itemsbought": 1994,
+    "auctionswon": 0,
+    "auctionsells": 1,
+    "itemssent": 141,
+    "trades": 155,
+    "cityitemsbought": 450,
+    "pointsbought": 20132,
+    "pointssold": 2371,
+    "bazaarcustomers": 449,
+    "bazaarsales": 15079,
+    "bazaarprofit": 6667377988,
+    "jailed": 705,
+    "peoplebusted": 224,
+    "failedbusts": 45,
+    "peoplebought": 11,
+    "peopleboughtspent": 5918149,
+    "hospital": 7633,
+    "medicalitemsused": 6095,
+    "bloodwithdrawn": 281,
+    "reviveskill": 26,
+    "revives": 172,
+    "revivesreceived": 961,
+    "heahits": 72,
+    "machits": 56,
+    "rifhits": 2336,
+    "smghits": 435,
+    "shohits": 46,
+    "pishits": 0,
+    "grehits": 1,
+    "piehits": 9745,
+    "slahits": 1403,
+    "axehits": 3,
+    "chahits": 1,
+    "h2hhits": 24,
+    "mailssent": 10126,
+    "friendmailssent": 1644,
+    "factionmailssent": 4082,
+    "companymailssent": 548,
+    "spousemailssent": 295,
+    "classifiedadsplaced": 10,
+    "personalsplaced": 0,
+    "criminaloffenses": 64710,
+    "vandalism": 2461,
+    "theft": 14651,
+    "counterfeiting": 8142,
+    "fraud": 28047,
+    "illicitservices": 2053,
+    "cybercrime": 9356,
+    "extortion": 0,
+    "illegalproduction": 0,
+    "organisedcrimes": 455,
+    "searchforcashskill": 100,
+    "bootleggingskill": 100,
+    "graffitiskill": 100,
+    "shopliftingskill": 100,
+    "pickpocketingskill": 100,
+    "cardskimmingskill": 100,
+    "burglaryskill": 100,
+    "hustlingskill": 100,
+    "disposalskill": 100,
+    "crackingskill": 100,
+    "forgeryskill": 100,
+    "scammingskill": 50,
+    "bountiesplaced": 227,
+    "totalbountyspent": 424149007,
+    "bountiescollected": 208,
+    "totalbountyreward": 28921882,
+    "bountiesreceived": 481,
+    "receivedbountyvalue": 152912995,
+    "moneyinvested": 135849011090,
+    "investedprofit": 20464450915,
+    "stockprofits": 0,
+    "stocklosses": 0,
+    "stockfees": 19,
+    "stocknetprofits": -19,
+    "stockpayouts": 2976,
+    "cityfinds": 1847,
+    "dumpfinds": 47,
+    "itemsdumped": 5039,
+    "booksread": 10,
+    "boostersused": 336,
+    "consumablesused": 9250,
+    "candyused": 1907,
+    "alcoholused": 5811,
+    "energydrinkused": 1532,
+    "statenhancersused": 0,
+    "eastereggs": 6,
+    "eastereggsused": 1,
+    "virusescoded": 52,
+    "traveltimes": 508,
+    "traveltime": 5173320,
+    "itemsboughtabroad": 321,
+    "huntingskill": 6,
+    "attackswonabroad": 1,
+    "defendslostabroad": 180,
+    "argtravel": 0,
+    "mextravel": 50,
+    "dubtravel": 3,
+    "hawtravel": 2,
+    "japtravel": 0,
+    "lontravel": 2,
+    "soutravel": 4,
+    "switravel": 346,
+    "chitravel": 1,
+    "cantravel": 50,
+    "caytravel": 50,
+    "drugsused": 4077,
+    "overdosed": 98,
+    "rehabs": 3021,
+    "rehabcost": 685680000,
+    "cantaken": 51,
+    "exttaken": 108,
+    "kettaken": 0,
+    "lsdtaken": 0,
+    "opitaken": 32,
+    "pcptaken": 0,
+    "shrtaken": 2,
+    "spetaken": 0,
+    "victaken": 272,
+    "xantaken": 3608,
+    "missionscompleted": 1,
+    "contractscompleted": 61,
+    "dukecontractscompleted": 61,
+    "missioncreditsearned": 937,
+    "racingskill": 11,
+    "racingpointsearned": 736,
+    "racesentered": 560,
+    "raceswon": 124,
+    "networth": 34117221545,
+    "networthwallet": 233025,
+    "networthvault": 94928589,
+    "networthbank": 2414000000,
+    "networthcayman": 0,
+    "networthpoints": 57460320,
+    "networthitems": 2591616560,
+    "networthdisplaycase": 1289665,
+    "networthbazaar": 0,
+    "networthitemmarket": 0,
+    "networthproperties": 3147965250,
+    "networthstockmarket": 25806687567,
+    "networthauctionhouse": 0,
+    "networthbookie": 0,
+    "networthcompany": 0,
+    "networthenlistedcars": 3040569,
+    "networthpiggybank": 0,
+    "networthpending": 0,
+    "networthloan": 0,
+    "networthunpaidfees": 0,
+    "useractivity": 8068148,
+    "activestreak": 398,
+    "bestactivestreak": 398,
+    "awards": 470,
+    "nerverefills": 336,
+    "tokenrefills": 31,
+    "meritsbought": 50,
+    "daysbeendonator": 4003,
+    "rankedwarringwins": 30,
+    "arrestsmade": 0,
+    "weaponsbought": 0,
+    "dumpsearches": 0,
+    "refills": 961
+  }
+}
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:141 [DEBUG][2025-03-09T05:01:28.503Z][Line 402] Fetching racing skill for drivers {
+  "function": "fetchRacingSkillForDrivers",
+  "driverIds": 2498353
+}
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:141 [DEBUG][2025-03-09T05:01:28.503Z][Line 406] Making API request for racing skills {
+  "url": "api.torn.com/user/2498353"
+}
+userscript.html?name=Chat2.0Recorder.user.js&id=bb9b4d59-f51e-4b19-b440-ca6fb2d4a4ef:46 ChatRecorder: found chat2.0 websocket
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:141 [DEBUG][2025-03-09T05:01:28.841Z][Line 416] API response received: {
+  "personalstats": {
+    "attackswon": 1879,
+    "attackslost": 513,
+    "attacksdraw": 27,
+    "attacksassisted": 6,
+    "defendswon": 12,
+    "defendslost": 217,
+    "defendsstalemated": 2,
+    "elo": 1377,
+    "yourunaway": 11,
+    "theyrunaway": 0,
+    "unarmoredwon": 5,
+    "bestkillstreak": 79,
+    "attackhits": 8892,
+    "attackmisses": 2769,
+    "attackdamage": 2224968,
+    "bestdamage": 1902,
+    "onehitkills": 227,
+    "attackcriticalhits": 1357,
+    "roundsfired": 31928,
+    "specialammoused": 0,
+    "hollowammoused": 0,
+    "tracerammoused": 0,
+    "piercingammoused": 0,
+    "incendiaryammoused": 0,
+    "attacksstealthed": 784,
+    "retals": 0,
+    "moneymugged": 61815224,
+    "largestmug": 2328250,
+    "itemslooted": 0,
+    "highestbeaten": 71,
+    "respectforfaction": 4667,
+    "rankedwarhits": 0,
+    "raidhits": 0,
+    "territoryjoins": 0,
+    "territoryclears": 0,
+    "territorytime": 0,
+    "jobpointsused": 13114,
+    "trainsreceived": 826,
+    "itemsbought": 42,
+    "auctionswon": 0,
+    "auctionsells": 0,
+    "itemssent": 46,
+    "trades": 9,
+    "cityitemsbought": 5,
+    "pointsbought": 105,
+    "pointssold": 3,
+    "bazaarcustomers": 0,
+    "bazaarsales": 0,
+    "bazaarprofit": 0,
+    "jailed": 588,
+    "peoplebusted": 11,
+    "failedbusts": 39,
+    "peoplebought": 0,
+    "peopleboughtspent": 0,
+    "hospital": 963,
+    "medicalitemsused": 734,
+    "bloodwithdrawn": 19,
+    "reviveskill": 4,
+    "revives": 9,
+    "revivesreceived": 12,
+    "heahits": 10,
+    "machits": 22,
+    "rifhits": 310,
+    "smghits": 43,
+    "shohits": 5,
+    "pishits": 557,
+    "grehits": 7,
+    "piehits": 766,
+    "slahits": 7,
+    "axehits": 61,
+    "chahits": 0,
+    "h2hhits": 102,
+    "mailssent": 26,
+    "friendmailssent": 0,
+    "factionmailssent": 6,
+    "companymailssent": 0,
+    "spousemailssent": 0,
+    "classifiedadsplaced": 0,
+    "personalsplaced": 0,
+    "criminaloffenses": 20635,
+    "vandalism": 799,
+    "theft": 14553,
+    "counterfeiting": 1015,
+    "fraud": 1783,
+    "illicitservices": 2288,
+    "cybercrime": 197,
+    "extortion": 0,
+    "illegalproduction": 0,
+    "organisedcrimes": 208,
+    "searchforcashskill": 66,
+    "bootleggingskill": 39,
+    "graffitiskill": 61,
+    "shopliftingskill": 41,
+    "pickpocketingskill": 50,
+    "cardskimmingskill": 41,
+    "burglaryskill": 5,
+    "hustlingskill": 15,
+    "disposalskill": 10,
+    "crackingskill": 18,
+    "forgeryskill": 3,
+    "scammingskill": 12,
+    "bountiesplaced": 221,
+    "totalbountyspent": 341561,
+    "bountiescollected": 53,
+    "totalbountyreward": 887942,
+    "bountiesreceived": 5,
+    "receivedbountyvalue": 301332,
+    "cityfinds": 410,
+    "dumpfinds": 105,
+    "itemsdumped": 6,
+    "booksread": 0,
+    "boostersused": 2,
+    "consumablesused": 58,
+    "candyused": 58,
+    "alcoholused": 0,
+    "energydrinkused": 0,
+    "statenhancersused": 0,
+    "eastereggs": 0,
+    "eastereggsused": 0,
+    "virusescoded": 0,
+    "traveltimes": 12,
+    "traveltime": 259200,
+    "itemsboughtabroad": 137,
+    "huntingskill": 12,
+    "attackswonabroad": 8,
+    "defendslostabroad": 11,
+    "argtravel": 0,
+    "mextravel": 2,
+    "dubtravel": 0,
+    "hawtravel": 0,
+    "japtravel": 0,
+    "lontravel": 0,
+    "soutravel": 9,
+    "switravel": 0,
+    "chitravel": 0,
+    "cantravel": 0,
+    "caytravel": 1,
+    "drugsused": 21,
+    "overdosed": 0,
+    "rehabs": 0,
+    "rehabcost": 0,
+    "cantaken": 0,
+    "exttaken": 0,
+    "kettaken": 0,
+    "lsdtaken": 0,
+    "opitaken": 0,
+    "pcptaken": 0,
+    "shrtaken": 0,
+    "spetaken": 0,
+    "victaken": 0,
+    "xantaken": 20,
+    "missionscompleted": 1,
+    "contractscompleted": 439,
+    "dukecontractscompleted": 439,
+    "missioncreditsearned": 15524,
+    "racingskill": 14,
+    "racingpointsearned": 2961,
+    "racesentered": 4287,
+    "raceswon": 721,
+    "networth": 2211688584,
+    "useractivity": 1247184,
+    "activestreak": 75,
+    "bestactivestreak": 344,
+    "awards": 254,
+    "nerverefills": 0,
+    "tokenrefills": 0,
+    "meritsbought": 0,
+    "daysbeendonator": 430,
+    "rankedwarringwins": 0,
+    "arrestsmade": 0,
+    "weaponsbought": 0,
+    "dumpsearches": 0,
+    "refills": 5
+  }
+}
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:141 [DEBUG][2025-03-09T05:01:28.841Z][Line 199] Retrieved racing skills: {
+  "268863": 11,
+  "2498353": 14
+}
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:143 [DEBUG][2025-03-09T05:01:29.002Z][Line 474] Speed calculation data - Laps: 1, Length: 0.9, Completion: 00:34.77
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:141 [DEBUG][2025-03-09T05:01:29.561Z][Line 202] Retrieved racing skins: {}
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:141 [DEBUG][2025-03-09T05:01:29.561Z][Line 279] getDriverId called {
+  "element": "<ul class=\"driver-item driver-item_NEXT\">\n<li class=\"color color-1\"></li>\n<li class=\"status-wrap\">\n<"
+}
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:141 [DEBUG][2025-03-09T05:01:29.561Z][Line 304] Successfully extracted driver ID {
+  "id": "lbr-268863",
+  "numberId": 268863
+}
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:141 [DEBUG][2025-03-09T05:01:29.562Z][Line 279] getDriverId called {
+  "element": "<ul class=\"driver-item driver-item_NEXT\">\n<li class=\"color color-2\"></li>\n<li class=\"status-wrap\">\n<"
+}
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:141 [DEBUG][2025-03-09T05:01:29.562Z][Line 304] Successfully extracted driver ID {
+  "id": "lbr-2498353",
+  "numberId": 2498353
+}
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:143 [DEBUG][2025-03-09T05:01:30.010Z][Line 474] Speed calculation data - Laps: 1, Length: 0.9, Completion: 00:34.77
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:143 [DEBUG][2025-03-09T05:01:31.013Z][Line 474] Speed calculation data - Laps: 1, Length: 0.9, Completion: 00:34.77
+app.6e4e8bb0e7d4879f140f.js:1 [Chat][initApp]: Successfully Initialized
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:143 [DEBUG][2025-03-09T05:01:32.017Z][Line 474] Speed calculation data - Laps: 1, Length: 0.9, Completion: 00:34.77
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:143 [DEBUG][2025-03-09T05:01:33.017Z][Line 474] Speed calculation data - Laps: 1, Length: 0.9, Completion: 00:34.77
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:143 [DEBUG][2025-03-09T05:01:34.017Z][Line 474] Speed calculation data - Laps: 1, Length: 0.9, Completion: 00:34.77
+userscript.html?name=Torn%253A-Racing-enhancements.user.js&id=0b92ed97-6ea0-433d-a8c4-217078d5bfb6:143 
