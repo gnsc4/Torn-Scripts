@@ -5,7 +5,7 @@
 // @description  Show car's current speed, precise skill, official race penalty, racing skill of others and race car skins.
 // @author       Lugburz
 // @match        https://www.torn.com/*
-// @require      https://raw.githubusercontent.com/f2404/torn-userscripts/e3bb87d75b44579cdb6f756435696960e009dc84/lib/lugburz_lib.js
+// @require      https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Debug%20Code/lugburz_lib.js
 // @updateURL    https://github.com/f2404/torn-userscripts/raw/master/racing_show_speed.user.js
 // @downloadURL  https://github.com/f2404/torn-userscripts/raw/master/racing_show_speed.user.js
 // @connect      api.torn.com
