@@ -365,13 +365,22 @@ const DEBUG = {
     raceData: true,
     ajax: true,
     timing: true,
+    errors: [],
     log: function(type, ...args) {
         if (!this.enabled || !this[type]) return;
-        console.log(`[Racing Debug ${type}]`, ...args);
+        const timestamp = new Date().toISOString();
+        console.log(`[Racing Debug ${type}] ${timestamp}:`, ...args);
     },
     error: function(type, ...args) {
         if (!this.enabled) return;
-        console.error(`[Racing Error ${type}]`, ...args);
+        const timestamp = new Date().toISOString();
+        console.error(`[Racing Error ${type}] ${timestamp}:`, ...args);
+        this.errors.push({timestamp, type, args});
+    },
+    state: {
+        lastRaceId: null,
+        processAttempts: 0,
+        lastSuccess: null
     }
 };
 
@@ -412,15 +421,47 @@ const RaceDataValidator = {
             DEBUG.error('validation', 'Invalid driver data structure');
         }
         return valid;
+    },
+
+    logRaceState(data) {
+        DEBUG.log('state', {
+            currentRaceId: data?.raceID,
+            lastRaceId: DEBUG.state.lastRaceId,
+            attempts: DEBUG.state.processAttempts,
+            lastSuccess: DEBUG.state.lastSuccess
+        });
+    },
+    
+    validateResponse(xhr) {
+        if (!xhr?.responseText) {
+            DEBUG.error('validation', 'No response text in XHR');
+            return false;
+        }
+        
+        try {
+            const data = JSON.parse(xhr.responseText);
+            DEBUG.log('response', {
+                hasData: !!data,
+                topLevelKeys: Object.keys(data || {})
+            });
+            return true;
+        } catch (e) {
+            DEBUG.error('validation', 'Failed to parse response JSON:', e);
+            return false;
+        }
     }
 };
 
 // Enhance race data parsing with debugging
 function parseRacingData(data) {
-    DEBUG.log('raceData', 'Parsing race data:', data);
+    DEBUG.state.processAttempts++;
+    RaceDataValidator.logRaceState(data);
     
     if (!data) {
-        DEBUG.error('raceData', 'No data received');
+        DEBUG.error('raceData', 'No data received', {
+            attempts: DEBUG.state.processAttempts,
+            errors: DEBUG.errors
+        });
         return;
     }
 
@@ -752,8 +793,25 @@ ${currentPoints ? currentPoints : 'N/A'} / Daily gain: ${currentPoints && oldPoi
 'use strict';
 
 // Your code here...
+console.log('[Racing Enhancement] Script initializing');
+
 ajax((page, xhr) => {
     if (page != "loader") return;
+
+    DEBUG.log('page', `Processing ${page} page`);
+    
+    if (!RaceDataValidator.validateResponse(xhr)) {
+        DEBUG.error('ajax', 'Invalid AJAX response structure');
+        return;
+    }
+
+    try {
+        const data = JSON.parse(xhr.responseText);
+        parseRacingData(data);
+    } catch (e) {
+        DEBUG.error('ajax', 'Failed to process race data:', e);
+    }
+
     $("#racingupdatesnew").ready(addSettingsDiv);
     $("#racingupdatesnew").ready(showSpeed);
     $('#racingAdditionalContainer').ready(showPenalty);

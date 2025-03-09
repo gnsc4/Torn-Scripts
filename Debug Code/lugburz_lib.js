@@ -13,11 +13,19 @@ function ajax(callback) {
     const debugInfo = {
         requests: new Map(),
         lastResponse: null,
-        timing: new Map()
+        timing: new Map(),
+        errors: []
     };
 
+    console.log('[Ajax Init] Setting up AJAX interceptor');
+
     function logAjaxDebug(type, ...args) {
-        console.log(`[Ajax Debug ${type}]`, ...args);
+        const timestamp = new Date().toISOString();
+        console.log(`[Ajax Debug ${type}] ${timestamp}:`, ...args);
+        // Store errors for debugging
+        if (type === 'error') {
+            debugInfo.errors.push({timestamp, ...args[0]});
+        }
     }
 
     // Track all AJAX requests
@@ -25,6 +33,14 @@ function ajax(callback) {
         const requestId = Math.random().toString(36).substring(7);
         const startTime = performance.now();
         
+        if (settings.url.includes('racing')) {
+            logAjaxDebug('request-racing', {
+                id: requestId,
+                url: settings.url,
+                data: settings.data
+            });
+        }
+
         debugInfo.requests.set(requestId, {
             url: settings.url,
             startTime,
@@ -39,69 +55,62 @@ function ajax(callback) {
         });
     });
 
-    // Enhanced ajax complete handler
+    // Enhanced ajax complete handler with validation
     $(document).ajaxComplete((event, xhr, settings) => {
-        // Track response timing
         const endTime = performance.now();
 
-        if (xhr.readyState > 3 && xhr.status == 200) {
-            let url = settings.url;
-            if (url.indexOf("torn.com/") < 0) {
-                url = "torn.com" + (url.startsWith("/") ? "" : "/") + url;
-            }
-            const page = url.substring(url.indexOf("torn.com/") + "torn.com/".length, url.indexOf(".php"));
-
-            // Log detailed response info
-            logAjaxDebug('response', {
-                url,
-                page,
+        if (xhr.readyState > 3) {
+            logAjaxDebug('complete', {
+                url: settings.url,
                 status: xhr.status,
-                readyState: xhr.readyState,
-                responseType: xhr.responseType,
-                responseSize: xhr.responseText?.length,
-                timing: {
-                    total: endTime - debugInfo.requests.get([...debugInfo.requests.keys()].pop())?.startTime
-                }
+                size: xhr.responseText?.length
             });
 
-            try {
-                // Try to parse response as JSON for additional debugging
-                const responseData = xhr.responseText && xhr.responseText[0] === '{' 
-                    ? JSON.parse(xhr.responseText)
-                    : null;
+            if (xhr.status === 200) {
+                let url = settings.url;
+                if (url.indexOf("torn.com/") < 0) {
+                    url = "torn.com" + (url.startsWith("/") ? "" : "/") + url;
+                }
+                const page = url.substring(url.indexOf("torn.com/") + "torn.com/".length, url.indexOf(".php"));
 
-                if (responseData) {
-                    logAjaxDebug('parsed', {
-                        hasRaceData: !!responseData.raceData,
-                        hasUserData: !!responseData.user,
-                        dataKeys: Object.keys(responseData)
+                try {
+                    if (xhr.responseText) {
+                        logAjaxDebug('response-data', {
+                            url,
+                            responseStart: xhr.responseText.substring(0, 100)
+                        });
+
+                        if (xhr.responseText[0] === '{') {
+                            const responseData = JSON.parse(xhr.responseText);
+                            if (url.includes('racing')) {
+                                logAjaxDebug('race-data', {
+                                    hasData: !!responseData,
+                                    keys: responseData ? Object.keys(responseData) : [],
+                                    raceDataKeys: responseData?.raceData ? Object.keys(responseData.raceData) : []
+                                });
+                            }
+                        }
+                    } else {
+                        logAjaxDebug('error', 'Empty response received');
+                    }
+                } catch (e) {
+                    logAjaxDebug('error', {
+                        message: 'Failed to process response',
+                        error: e,
+                        responsePreview: xhr.responseText?.substring(0, 200)
                     });
                 }
 
-                debugInfo.lastResponse = {
-                    time: new Date(),
-                    url,
-                    page,
-                    data: responseData
-                };
-
-            } catch (e) {
-                logAjaxDebug('parse-error', {
-                    error: e,
-                    responseStart: xhr.responseText?.substring(0, 100)
-                });
-            }
-
-            // Call original callback with enhanced error handling
-            try {
-                callback(page, xhr, settings);
-            } catch (e) {
-                console.error('Error in ajax callback:', e);
-                logAjaxDebug('callback-error', {
-                    error: e,
-                    page,
-                    lastResponse: debugInfo.lastResponse
-                });
+                try {
+                    callback(page, xhr, settings);
+                } catch (e) {
+                    console.error('Error in ajax callback:', e);
+                    logAjaxDebug('callback-error', {
+                        error: e,
+                        page,
+                        lastResponse: debugInfo.lastResponse
+                    });
+                }
             }
         }
     });
