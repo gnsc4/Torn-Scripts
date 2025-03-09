@@ -10,7 +10,7 @@
 
 function ajax(callback) {
     $(document).ajaxComplete((event, xhr, settings) => {
-        console.groupCollapsed("ajaxComplete Event Triggered"); // Start of console group
+        console.groupCollapsed("ajaxComplete Event Triggered");
         console.log("Event:", event);
         console.log("XHR:", xhr);
         console.log("Settings:", settings);
@@ -28,13 +28,14 @@ function ajax(callback) {
 
             const page = url.substring(url.indexOf("torn.com/") + "torn.com/".length, url.indexOf(".php"));
             console.log("Extracted Page:", page);
+            console.log("Response Text:", xhr.responseText); // <--- ADDED THIS LINE: Log the response body!
 
-            console.groupEnd(); // End of console group
+            console.groupEnd();
 
             callback(page, xhr, settings);
         } else {
             console.log("readyState or status not matching criteria. readyState:", xhr.readyState, "status:", xhr.status);
-            console.groupEnd(); // End of console group
+            console.groupEnd();
         }
     });
 }
