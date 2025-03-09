@@ -1,0 +1,173 @@
+// ==UserScript==
+// @name         Race Collector - Modified for Error Handling and Robust Trigger v0.5.3-detailed-polling-log
+// @namespace    gnsc4.racecollector.debuglog
+// @version      0.5.3-detailed-polling-log
+// @description  Collects race data and displays it - DEBUG LOGGING in polling - ROBUST TRIGGER, WITH DISPLAY TABLE, POLLING DEBUG LOGGING
+// @author       GNSC4 (Modified for Polling Debug Log)
+// @match        https://www.torn.com/*
+// @grant        GM_addStyle
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    const POLLING_INTERVAL_MS = 100; // Interval to check for fully loaded driver names (milliseconds)
+    const MAX_POLLING_ATTEMPTS = 50; // Maximum attempts to poll (adjust if needed)
+    const DEBUG_POLLING_LOGGING = true; // Enable detailed polling logs
+
+    // Add CSS for the results table (same as before)
+    GM_addStyle(`
+        #raceResultsTable {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+        #raceResultsTable th, #raceResultsTable td {
+            border: 1px solid #ccc;
+            padding: 5px;
+            text-align: left;
+        }
+        #raceResultsTable th {
+            background-color: #f0f0f0;
+        }
+    `);
+
+    function extractData(nameElement) {
+        if (!nameElement) {
+            console.warn('Race-Collector.user.js: nameElement is null, cannot extract data.');
+            return null;
+        }
+
+        const nameContent = nameElement.textContent.trim().split('\n');
+        let positionText = 'N/A';
+        let playerName = 'N/A';
+        let finishTime = 'N/A';
+
+        if (nameContent.length >= 1) {
+            playerName = nameContent[0].trim(); // Player name is always the first part
+
+            // Robust position check: Look for position text (e.g., "#1", "#2") in the *full* nameElement.textContent
+            const positionMatch = nameElement.textContent.match(/#(\d+)(?:st|nd|rd|th)?/); //Regexp to find #1, #2, #3 etc.
+            if (positionMatch) {
+                positionText = '#' + positionMatch[1];
+            } else {
+                console.warn(`Race-Collector.user.js: Position text is missing in nameContent:`, nameContent);
+            }
+        }
+
+
+        if (nameContent.length >= 2) {
+             // Robust time check: Look for time format in the *second* line (or later if RS is present)
+            const timeRegex = /(\d{2}:\d{2}:\d{2}\.\d{3})/; // Regex for HH:MM:SS.milliseconds
+            const timeMatch = nameElement.textContent.match(timeRegex);
+            if (timeMatch && nameContent[nameContent.indexOf(timeMatch[0]) > -1 ? nameContent.indexOf(timeMatch[0]) : 1]) {
+                finishTime = timeMatch[0];
+            } else {
+                console.warn(`Race-Collector.user.js: Finish time is missing or in unexpected format for:`, nameContent);
+            }
+        }
+
+
+        return {
+            position: positionText,
+            name: playerName,
+            finishTime: finishTime
+        };
+    }
+
+
+    function processDriverItems() {
+        const driverItems = document.querySelectorAll('#leaderBoard .driver-item');
+        if (!driverItems || driverItems.length === 0) {
+            if (DEBUG_POLLING_LOGGING) console.log('DEBUG-POLL: processDriverItems - No driver items found in leaderBoard.'); // DEBUG LOG
+            return;
+        }
+        if (DEBUG_POLLING_LOGGING) console.log('DEBUG-POLL: processDriverItems - Checking driver items...'); // DEBUG LOG
+
+        let allDataExtracted = true;
+        const raceData = [];
+
+        driverItems.forEach(driverItem => {
+            const nameElement = driverItem.querySelector('.name');
+            if (!nameElement || !nameElement.textContent.trim()) {
+                if (DEBUG_POLLING_LOGGING) console.log('DEBUG-POLL: processDriverItems - Incomplete driver-item, nameElement missing or empty.'); // DEBUG LOG
+                allDataExtracted = false;
+                return;
+            }
+
+            const extractedNameData = extractData(nameElement);
+            if (!extractedNameData || extractedNameData.position === 'N/A' || extractedNameData.finishTime === 'N/A') {
+                if (DEBUG_POLLING_LOGGING) console.log('DEBUG-POLL: processDriverItems - Incomplete data from nameElement (pos/time missing):', nameElement.textContent.trim()); // DEBUG LOG
+                 allDataExtracted = false;
+                 return;
+            }
+            // ... (rest of driverItem processing - NO CHANGES) ...
+            const carElement = driverItem.querySelector('.car img');
+            const carName = carElement ? carElement.getAttribute('alt') || 'Unknown Car' : 'Unknown Car';
+
+            raceData.push({
+                position: extractedNameData.position,
+                name: extractedNameData.name,
+                car: carName,
+                finishTime: extractedNameData.finishTime
+            });
+        });
+
+         if (allDataExtracted) {
+            if (DEBUG_POLLING_LOGGING) console.log('DEBUG-POLL: processDriverItems - All data extracted successfully. Processing and displaying.'); // DEBUG LOG
+            // ... (Table display code - NO CHANGES) ...
+             let resultsTable = document.getElementById('raceResultsTable');
+             if (!resultsTable) {
+                 resultsTable = document.createElement('table');
+                 resultsTable.id = 'raceResultsTable';
+                 const headerRow = resultsTable.insertRow();
+                 headerRow.insertCell().textContent = 'Position';
+                 headerRow.insertCell().textContent = 'Name';
+                 headerRow.insertCell().textContent = 'Car';
+                 headerRow.insertCell().textContent = 'Finish Time';
+
+                 const racingUpdatesDiv = document.getElementById('racingupdatesnew');
+                 if (racingUpdatesDiv) {
+                     racingUpdatesDiv.appendChild(resultsTable); // Add table to racing updates area
+                 } else {
+                     console.warn('Race-Collector.user.js: #racingupdatesnew element not found, cannot display results table.');
+                     return true; // Still consider data processing successful even if display fails
+                 }
+             }
+
+             // Clear existing table rows (except header)
+             while (resultsTable.rows.length > 1) {
+                 resultsTable.deleteRow(1);
+             }
+
+             // Populate the table with race data
+             raceData.forEach(driver => {
+                 const row = resultsTable.insertRow();
+                 row.insertCell().textContent = driver.position;
+                 row.insertCell().textContent = driver.name;
+                 row.insertCell().textContent = driver.car;
+                 row.insertCell().textContent = driver.finishTime;
+             });
+
+            return true; // Indicate successful data extraction and processing
+        } else {
+            if (DEBUG_POLLING_LOGGING) console.log('DEBUG-POLL: processDriverItems - Incomplete data detected, will re-poll.'); // DEBUG LOG
+            return false; // Indicate incomplete data, need to re-poll
+        }
+    }
+
+    let pollingAttempts = 0;
+    let pollingIntervalId = null;
+
+    function startDataPolling() {
+        if (pollingIntervalId) {
+            if (DEBUG_POLLING_LOGGING) console.log('DEBUG-POLL: startDataPolling - Polling already in progress, returning.'); // DEBUG LOG
+            return; // Polling already in progress
+        }
+        if (DEBUG_POLLING_LOGGING) console.log('DEBUG-POLL: startDataPolling - Starting new polling interval.'); // DEBUG LOG
+
+        pollingAttempts = 0; // Reset attempts counter *here*, when starting polling
+        pollingIntervalId = setInterval(() => {
+            pollingAttempts++;
+            if (DEBUG_POLLING_LOGGING) console.log(`DEBUG-POLL: Polling attempt #${pollingAttempts} of max <span class="math-inline">\{MAX\_POLLING\_ATTEMPTS\}\.\.\.\`\); // DEBUG LOG

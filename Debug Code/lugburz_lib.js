@@ -1,41 +1,21 @@
 // ==UserScript==
-// @name         Torn: Scripts library - Modified for Debugging
-// @namespace    lugburz.lib.debug
-// @version      0.1.5-debug
-// @description  Library of functions used in my Torn scripts - DEBUGGING VERSION.
-// @author       Lugburz (Modified)
+// @name         Torn: Scripts library
+// @namespace    lugburz.lib
+// @version      0.1.5
+// @description  Library of functions used in my Torn scripts.
+// @author       Lugburz
 // @exclude      *
 // @grant        none
 // ==/UserScript==
 
 function ajax(callback) {
     $(document).ajaxComplete((event, xhr, settings) => {
-        console.groupCollapsed("ajaxComplete Event Triggered");
-        console.log("Event:", event);
-        console.log("XHR:", xhr);
-        console.log("Settings:", settings);
-
         if (xhr.readyState > 3 && xhr.status == 200) {
             let url = settings.url;
-            console.log("Original URL:", url);
-
-            if (url.indexOf("torn.com/") < 0) {
-                url = "torn.com" + (url.startsWith("/") ? "" : "/") + url;
-                console.log("Normalized URL:", url);
-            } else {
-                console.log("URL was already absolute:", url);
-            }
-
+            if (url.indexOf("torn.com/") < 0) url = "torn.com" + (url.startsWith("/") ? "" : "/") + url;
             const page = url.substring(url.indexOf("torn.com/") + "torn.com/".length, url.indexOf(".php"));
-            console.log("Extracted Page:", page);
-            console.log("Response Text:", xhr.responseText); // <--- ADDED THIS LINE: Log the response body!
-
-            console.groupEnd();
 
             callback(page, xhr, settings);
-        } else {
-            console.log("readyState or status not matching criteria. readyState:", xhr.readyState, "status:", xhr.status);
-            console.groupEnd();
         }
     });
 }
