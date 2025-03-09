@@ -359,53 +359,128 @@ function updatePoints(pointsearned) {
     GM_setValue('pointsearned', pointsearned);
 }
 
+// Add detailed debug logging system
+const DEBUG = {
+    enabled: true,
+    raceData: true,
+    ajax: true,
+    timing: true,
+    log: function(type, ...args) {
+        if (!this.enabled || !this[type]) return;
+        console.log(`[Racing Debug ${type}]`, ...args);
+    },
+    error: function(type, ...args) {
+        if (!this.enabled) return;
+        console.error(`[Racing Error ${type}]`, ...args);
+    }
+};
+
+// Enhance race data parsing with debugging
 function parseRacingData(data) {
-    // no sidebar in phone mode
-    const my_name = $("#sidebarroot").find("a[class^='menu-value']").html() || data.user.playername;
-
-    updateSkill(data['user']['racinglevel']);
-    updatePoints(data['user']['pointsearned']);
-
-    const leavepenalty = data['user']['leavepenalty'];
-    GM_setValue('leavepenalty', leavepenalty);
-    checkPenalty();
-
-    // display race link
-    if ($('#raceLink').size() < 1) {
-        RACE_ID = data.raceID;
-        const raceLink = `<a id="raceLink" href="https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${RACE_ID}" style="float: right; margin-left: 12px;">Link to the race</a>`;
-        $(raceLink).insertAfter('#racingEnhSettings');
+    DEBUG.log('raceData', 'Parsing race data:', data);
+    
+    if (!data) {
+        DEBUG.error('raceData', 'No data received');
+        return;
     }
 
-    // calc, sort & show race results
-    if (data.timeData.status >= 3) {
+    try {
+        // Track timing of data processing
+        const startTime = performance.now();
+
+        // Track data structure
+        DEBUG.log('raceData', 'Data structure:', {
+            hasUser: !!data.user,
+            hasRaceID: !!data.raceID,
+            hasTimeData: !!data.timeData,
+            hasRaceData: !!data.raceData
+        });
+
+        // no sidebar in phone mode
+        const my_name = $("#sidebarroot").find("a[class^='menu-value']").html() || data.user?.playername;
+        DEBUG.log('raceData', 'Player name:', my_name);
+
+        if (data.user?.racinglevel) {
+            updateSkill(data.user.racinglevel);
+        } else {
+            DEBUG.error('raceData', 'Missing racing level data');
+        }
+
+        if (data.user?.pointsearned) {
+            updatePoints(data.user.pointsearned);
+        } else {
+            DEBUG.error('raceData', 'Missing points earned data');
+        }
+
+        if (data.user?.leavepenalty) {
+            const leavepenalty = data.user.leavepenalty;
+            GM_setValue('leavepenalty', leavepenalty);
+            checkPenalty();
+            DEBUG.log('raceData', 'Leave penalty updated:', leavepenalty);
+        }
+
+        // display race link
+        if ($('#raceLink').size() < 1 && data.raceID) {
+            RACE_ID = data.raceID;
+            DEBUG.log('raceData', 'Setting race ID:', RACE_ID);
+            const raceLink = `<a id="raceLink" href="https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${RACE_ID}" style="float: right; margin-left: 12px;">Link to the race</a>`;
+            $(raceLink).insertAfter('#racingEnhSettings');
+        }
+
+        // Process race results with detailed tracking
+        if (data.timeData?.status >= 3) {
+            DEBUG.log('raceData', 'Processing race results');
+            processRaceResults(data, my_name);
+        }
+
+        const endTime = performance.now();
+        DEBUG.log('timing', `Race data processing took ${endTime - startTime}ms`);
+
+    } catch (error) {
+        DEBUG.error('raceData', 'Error processing race data:', error);
+        console.error('Race data that caused error:', data);
+    }
+}
+
+// Enhanced race results processing
+function processRaceResults(data, my_name) {
+    try {
         const carsData = data.raceData.cars;
         const carInfo = data.raceData.carInfo;
         const trackIntervals = data.raceData.trackData.intervals.length;
+        
+        DEBUG.log('raceData', 'Race results data:', {
+            carsCount: Object.keys(carsData).length,
+            trackIntervals,
+            laps: data.laps
+        });
+
         let results = [], crashes = [];
 
         for (const playername in carsData) {
-            const userId = carInfo[playername].userID;
-            const intervals = decode64(carsData[playername]).split(',');
-            let raceTime = 0;
-            let bestLap = 9999999999;
+            try {
+                const userId = carInfo[playername].userID;
+                const intervals = decode64(carsData[playername]).split(',');
+                
+                DEBUG.log('raceData', `Processing player ${playername}`, {
+                    userId,
+                    intervalCount: intervals.length,
+                    expectedIntervals: trackIntervals * data.laps
+                });
 
-            if (intervals.length / trackIntervals == data.laps) {
-                for (let i = 0; i < data.laps; i++) {
-                    let lapTime = 0;
-                    for (let j = 0; j < trackIntervals; j++) {
-                        lapTime += Number(intervals[i * trackIntervals + j]);
-                    }
-                    bestLap = Math.min(bestLap, lapTime);
-                    raceTime += Number(lapTime);
+                if (intervals.length / trackIntervals == data.laps) {
+                    let raceData = calculateRaceTimes(intervals, trackIntervals, data.laps);
+                    results.push([playername, userId, raceData.raceTime, raceData.bestLap]);
+                } else {
+                    crashes.push([playername, userId, 'crashed']);
+                    DEBUG.log('raceData', `Player ${playername} crashed`);
                 }
-                results.push([playername, userId, raceTime, bestLap]);
-            } else {
-                crashes.push([playername, userId, 'crashed']);
+            } catch (playerError) {
+                DEBUG.error('raceData', `Error processing player ${playername}:`, playerError);
             }
         }
 
-        // sort by time
+        // Sort and display results
         results.sort(compare);
         addExportButton(results, crashes, my_name, data.raceID, data.timeData.timeEnded);
 
@@ -413,15 +488,27 @@ function parseRacingData(data) {
             showResults(results);
             showResults(crashes, results.length);
         }
+
+    } catch (error) {
+        DEBUG.error('raceData', 'Error processing race results:', error);
     }
 }
 
-// compare by time
-function compare(a, b) {
-    if (a[2] > b[2]) return 1;
-    if (b[2] > a[2]) return -1;
+// Helper function to calculate race times
+function calculateRaceTimes(intervals, trackIntervals, laps) {
+    let raceTime = 0;
+    let bestLap = 9999999999;
 
-    return 0;
+    for (let i = 0; i < laps; i++) {
+        let lapTime = 0;
+        for (let j = 0; j < trackIntervals; j++) {
+            lapTime += Number(intervals[i * trackIntervals + j]);
+        }
+        bestLap = Math.min(bestLap, lapTime);
+        raceTime += lapTime;
+    }
+
+    return { raceTime, bestLap };
 }
 
 GM_addStyle(`

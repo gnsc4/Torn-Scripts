@@ -8,16 +8,116 @@
 // @grant        none
 // ==/UserScript==
 
+// Enhanced ajax function with debugging
 function ajax(callback) {
+    const debugInfo = {
+        requests: new Map(),
+        lastResponse: null,
+        timing: new Map()
+    };
+
+    function logAjaxDebug(type, ...args) {
+        console.log(`[Ajax Debug ${type}]`, ...args);
+    }
+
+    // Track all AJAX requests
+    $(document).ajaxSend((event, xhr, settings) => {
+        const requestId = Math.random().toString(36).substring(7);
+        const startTime = performance.now();
+        
+        debugInfo.requests.set(requestId, {
+            url: settings.url,
+            startTime,
+            xhr
+        });
+
+        logAjaxDebug('request', {
+            id: requestId,
+            url: settings.url,
+            type: settings.type,
+            data: settings.data
+        });
+    });
+
+    // Enhanced ajax complete handler
     $(document).ajaxComplete((event, xhr, settings) => {
+        // Track response timing
+        const endTime = performance.now();
+
         if (xhr.readyState > 3 && xhr.status == 200) {
             let url = settings.url;
-            if (url.indexOf("torn.com/") < 0) url = "torn.com" + (url.startsWith("/") ? "" : "/") + url;
+            if (url.indexOf("torn.com/") < 0) {
+                url = "torn.com" + (url.startsWith("/") ? "" : "/") + url;
+            }
             const page = url.substring(url.indexOf("torn.com/") + "torn.com/".length, url.indexOf(".php"));
 
-            callback(page, xhr, settings);
+            // Log detailed response info
+            logAjaxDebug('response', {
+                url,
+                page,
+                status: xhr.status,
+                readyState: xhr.readyState,
+                responseType: xhr.responseType,
+                responseSize: xhr.responseText?.length,
+                timing: {
+                    total: endTime - debugInfo.requests.get([...debugInfo.requests.keys()].pop())?.startTime
+                }
+            });
+
+            try {
+                // Try to parse response as JSON for additional debugging
+                const responseData = xhr.responseText && xhr.responseText[0] === '{' 
+                    ? JSON.parse(xhr.responseText)
+                    : null;
+
+                if (responseData) {
+                    logAjaxDebug('parsed', {
+                        hasRaceData: !!responseData.raceData,
+                        hasUserData: !!responseData.user,
+                        dataKeys: Object.keys(responseData)
+                    });
+                }
+
+                debugInfo.lastResponse = {
+                    time: new Date(),
+                    url,
+                    page,
+                    data: responseData
+                };
+
+            } catch (e) {
+                logAjaxDebug('parse-error', {
+                    error: e,
+                    responseStart: xhr.responseText?.substring(0, 100)
+                });
+            }
+
+            // Call original callback with enhanced error handling
+            try {
+                callback(page, xhr, settings);
+            } catch (e) {
+                console.error('Error in ajax callback:', e);
+                logAjaxDebug('callback-error', {
+                    error: e,
+                    page,
+                    lastResponse: debugInfo.lastResponse
+                });
+            }
         }
     });
+
+    // Track failed requests
+    $(document).ajaxError((event, xhr, settings, error) => {
+        logAjaxDebug('error', {
+            url: settings.url,
+            status: xhr.status,
+            error,
+            requestHeaders: settings.headers,
+            responseHeaders: xhr.getAllResponseHeaders()
+        });
+    });
+
+    return debugInfo; // Return debug info object for external monitoring
 }
 
 function pad(num, size) {
@@ -45,18 +145,29 @@ function formatTimeSecWithLetters(msec) {
     return (hours > 0 ? hours + "h " : '') + (hours > 0 || minutes > 0 ? minutes + "min " : '') + seconds + "s";
 }
 
+// Enhanced decode64 with validation
 function decode64(input) {
+    if (!input) {
+        console.error('decode64: Empty input');
+        return '';
+    }
+
+    const debugStart = performance.now();
+    const base64test = /[^A-Za-z0-9\+\/\=]/g;
+    
+    // Input validation logging
+    if (base64test.exec(input)) {
+        console.warn('decode64: Invalid base64 characters detected in input:', {
+            input: input.substring(0, 100),
+            invalidChars: input.match(base64test)
+        });
+    }
+
     var output = '';
     var chr1, chr2, chr3 = '';
     var enc1, enc2, enc3, enc4 = '';
     var i = 0;
     var keyStr = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
-    var base64test = /[^A-Za-z0-9\+\/\=]/g;
-    if (base64test.exec(input)) {
-        console.log('There were invalid base64 characters in the input text.\n' +
-                    'Valid base64 characters are A-Z, a-z, 0-9, \'+\', \'/\',and \'=\'\n' +
-                    'Expect errors in decoding.');
-    }
     input = input.replace(/[^A-Za-z0-9\+\/\=]/g, '');
     do {
         enc1 = keyStr.indexOf(input.charAt(i++));
@@ -76,5 +187,9 @@ function decode64(input) {
         chr1 = chr2 = chr3 = '';
         enc1 = enc2 = enc3 = enc4 = '';
     } while (i < input.length);
+
+    const debugEnd = performance.now();
+    console.log(`decode64: Processed ${input.length} chars in ${debugEnd - debugStart}ms`);
+    
     return unescape(output);
 }
