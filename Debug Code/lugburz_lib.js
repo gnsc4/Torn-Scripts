@@ -145,7 +145,7 @@ function formatTimeSecWithLetters(msec) {
     return (hours > 0 ? hours + "h " : '') + (hours > 0 || minutes > 0 ? minutes + "min " : '') + seconds + "s";
 }
 
-// Enhanced decode64 with validation
+// Enhanced decode64 with better validation
 function decode64(input) {
     if (!input) {
         console.error('decode64: Empty input');
@@ -161,35 +161,48 @@ function decode64(input) {
             input: input.substring(0, 100),
             invalidChars: input.match(base64test)
         });
+        // Clean invalid characters
+        input = input.replace(base64test, '');
     }
 
-    var output = '';
-    var chr1, chr2, chr3 = '';
-    var enc1, enc2, enc3, enc4 = '';
-    var i = 0;
-    var keyStr = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
-    input = input.replace(/[^A-Za-z0-9\+\/\=]/g, '');
-    do {
-        enc1 = keyStr.indexOf(input.charAt(i++));
-        enc2 = keyStr.indexOf(input.charAt(i++));
-        enc3 = keyStr.indexOf(input.charAt(i++));
-        enc4 = keyStr.indexOf(input.charAt(i++));
-        chr1 = (enc1 << 2) | (enc2 >> 4);
-        chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
-        chr3 = ((enc3 & 3) << 6) | enc4;
-        output = output + String.fromCharCode(chr1);
-        if (enc3 != 64) {
-            output = output + String.fromCharCode(chr2);
+    try {
+        // Validate input length
+        if (input.length % 4 !== 0) {
+            console.warn('decode64: Input length not multiple of 4:', input.length);
+            input = input.padEnd(Math.ceil(input.length / 4) * 4, '=');
         }
-        if (enc4 != 64) {
-            output = output + String.fromCharCode(chr3);
-        }
-        chr1 = chr2 = chr3 = '';
-        enc1 = enc2 = enc3 = enc4 = '';
-    } while (i < input.length);
 
-    const debugEnd = performance.now();
-    console.log(`decode64: Processed ${input.length} chars in ${debugEnd - debugStart}ms`);
-    
-    return unescape(output);
+        var output = '';
+        var chr1, chr2, chr3 = '';
+        var enc1, enc2, enc3, enc4 = '';
+        var i = 0;
+        var keyStr = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+        input = input.replace(/[^A-Za-z0-9\+\/\=]/g, '');
+        do {
+            enc1 = keyStr.indexOf(input.charAt(i++));
+            enc2 = keyStr.indexOf(input.charAt(i++));
+            enc3 = keyStr.indexOf(input.charAt(i++));
+            enc4 = keyStr.indexOf(input.charAt(i++));
+            chr1 = (enc1 << 2) | (enc2 >> 4);
+            chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
+            chr3 = ((enc3 & 3) << 6) | enc4;
+            output = output + String.fromCharCode(chr1);
+            if (enc3 != 64) {
+                output = output + String.fromCharCode(chr2);
+            }
+            if (enc4 != 64) {
+                output = output + String.fromCharCode(chr3);
+            }
+            chr1 = chr2 = chr3 = '';
+            enc1 = enc2 = enc3 = enc4 = '';
+        } while (i < input.length);
+
+        const debugEnd = performance.now();
+        console.log(`decode64: Processed ${input.length} chars in ${debugEnd - debugStart}ms`);
+        
+        return unescape(output);
+    } catch (error) {
+        console.error('decode64: Error decoding input:', error);
+        return '';
+    }
 }

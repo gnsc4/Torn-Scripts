@@ -375,6 +375,46 @@ const DEBUG = {
     }
 };
 
+// Move compare function before it's used
+function compare(a, b) {
+    if (!a || !b) return 0;
+    try {
+        if (a[2] > b[2]) return 1;
+        if (b[2] > a[2]) return -1;
+        return 0;
+    } catch (e) {
+        DEBUG.error('compare', 'Error comparing race times:', e, {a, b});
+        return 0;
+    }
+}
+
+// Add validation helpers
+const RaceDataValidator = {
+    isValidRaceData(data) {
+        if (!data) return false;
+        const required = ['timeData', 'raceData', 'raceID', 'laps'];
+        const missing = required.filter(key => !data[key]);
+        if (missing.length) {
+            DEBUG.error('validation', 'Missing required race data fields:', missing);
+            return false;
+        }
+        return true;
+    },
+
+    isValidDriverData(carsData, carInfo) {
+        if (!carsData || !carInfo) {
+            DEBUG.error('validation', 'Missing cars data or car info');
+            return false;
+        }
+        const drivers = Object.keys(carsData);
+        const valid = drivers.every(name => carInfo[name]?.userID);
+        if (!valid) {
+            DEBUG.error('validation', 'Invalid driver data structure');
+        }
+        return valid;
+    }
+};
+
 // Enhance race data parsing with debugging
 function parseRacingData(data) {
     DEBUG.log('raceData', 'Parsing race data:', data);
@@ -442,12 +482,26 @@ function parseRacingData(data) {
     }
 }
 
-// Enhanced race results processing
+// Enhance processRaceResults with validation
 function processRaceResults(data, my_name) {
     try {
+        if (!RaceDataValidator.isValidRaceData(data)) {
+            DEBUG.error('raceData', 'Invalid race data structure');
+            return;
+        }
+
         const carsData = data.raceData.cars;
         const carInfo = data.raceData.carInfo;
-        const trackIntervals = data.raceData.trackData.intervals.length;
+        
+        if (!RaceDataValidator.isValidDriverData(carsData, carInfo)) {
+            return;
+        }
+
+        const trackIntervals = data.raceData.trackData?.intervals?.length;
+        if (!trackIntervals) {
+            DEBUG.error('raceData', 'Missing track intervals');
+            return;
+        }
         
         DEBUG.log('raceData', 'Race results data:', {
             carsCount: Object.keys(carsData).length,
@@ -459,18 +513,32 @@ function processRaceResults(data, my_name) {
 
         for (const playername in carsData) {
             try {
+                if (!carInfo[playername]) {
+                    DEBUG.error('raceData', `Missing car info for player ${playername}`);
+                    continue;
+                }
+
                 const userId = carInfo[playername].userID;
-                const intervals = decode64(carsData[playername]).split(',');
+                const intervals = decode64(carsData[playername]);
+                
+                if (!intervals) {
+                    DEBUG.error('raceData', `Invalid intervals data for player ${playername}`);
+                    continue;
+                }
+
+                const intervalArray = intervals.split(',');
                 
                 DEBUG.log('raceData', `Processing player ${playername}`, {
                     userId,
-                    intervalCount: intervals.length,
+                    intervalCount: intervalArray.length,
                     expectedIntervals: trackIntervals * data.laps
                 });
 
-                if (intervals.length / trackIntervals == data.laps) {
-                    let raceData = calculateRaceTimes(intervals, trackIntervals, data.laps);
-                    results.push([playername, userId, raceData.raceTime, raceData.bestLap]);
+                if (intervalArray.length / trackIntervals == data.laps) {
+                    let raceData = calculateRaceTimes(intervalArray, trackIntervals, data.laps);
+                    if (raceData.raceTime > 0) {
+                        results.push([playername, userId, raceData.raceTime, raceData.bestLap]);
+                    }
                 } else {
                     crashes.push([playername, userId, 'crashed']);
                     DEBUG.log('raceData', `Player ${playername} crashed`);
@@ -480,13 +548,16 @@ function processRaceResults(data, my_name) {
             }
         }
 
-        // Sort and display results
-        results.sort(compare);
-        addExportButton(results, crashes, my_name, data.raceID, data.timeData.timeEnded);
+        if (results.length > 0) {
+            results.sort(compare);
+            addExportButton(results, crashes, my_name, data.raceID, data.timeData.timeEnded);
 
-        if (SHOW_RESULTS) {
-            showResults(results);
-            showResults(crashes, results.length);
+            if (SHOW_RESULTS) {
+                showResults(results);
+                showResults(crashes, results.length);
+            }
+        } else {
+            DEBUG.error('raceData', 'No valid race results to display');
         }
 
     } catch (error) {
@@ -496,19 +567,32 @@ function processRaceResults(data, my_name) {
 
 // Helper function to calculate race times
 function calculateRaceTimes(intervals, trackIntervals, laps) {
-    let raceTime = 0;
-    let bestLap = 9999999999;
+    try {
+        let raceTime = 0;
+        let bestLap = 9999999999;
 
-    for (let i = 0; i < laps; i++) {
-        let lapTime = 0;
-        for (let j = 0; j < trackIntervals; j++) {
-            lapTime += Number(intervals[i * trackIntervals + j]);
+        for (let i = 0; i < laps; i++) {
+            let lapTime = 0;
+            for (let j = 0; j < trackIntervals; j++) {
+                const time = Number(intervals[i * trackIntervals + j]);
+                if (isNaN(time)) {
+                    throw new Error(`Invalid interval time at lap ${i} interval ${j}`);
+                }
+                lapTime += time;
+            }
+            bestLap = Math.min(bestLap, lapTime);
+            raceTime += lapTime;
         }
-        bestLap = Math.min(bestLap, lapTime);
-        raceTime += lapTime;
-    }
 
-    return { raceTime, bestLap };
+        if (raceTime <= 0) {
+            throw new Error('Invalid race time calculated');
+        }
+
+        return { raceTime, bestLap };
+    } catch (error) {
+        DEBUG.error('timing', 'Error calculating race times:', error);
+        return { raceTime: 0, bestLap: 0 };
+    }
 }
 
 GM_addStyle(`
