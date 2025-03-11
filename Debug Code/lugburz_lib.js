@@ -15,59 +15,79 @@ function ajax(callback) {
         lastResponse: null,
         timing: new Map(),
         errors: [],
-        racingRequests: new Map()
+        racingRequests: new Map(),
+        activeRaces: new Set()
     };
 
     console.log('[Ajax Init] Setting up AJAX interceptor');
 
-    // Track racing specific requests
+    // Enhanced racing URL detection
     function isRacingRequest(url) {
-        return url.includes('sid=racing') || 
-               url.includes('loader.php?sid=racing') || 
-               url.includes('buildrace.js');
+        const racingPatterns = [
+            'sid=racing',
+            'sid=raceData',
+            'loader.php?sid=racing',
+            'buildrace.js',
+            'raceID='
+        ];
+        return racingPatterns.some(pattern => url.includes(pattern));
     }
 
     function logAjaxDebug(type, ...args) {
         const timestamp = new Date().toISOString();
         console.log(`[Ajax Debug ${type}] ${timestamp}:`, ...args);
         // Store errors for debugging
-        if (type === 'error') {
-            debugInfo.errors.push({timestamp, ...args[0]});
+        if (type === 'error' || type.includes('racing')) {
+            debugInfo.errors.push({timestamp, type, ...args[0]});
         }
     }
 
-    // Track all AJAX requests
+    // Pre-request validation
     $(document).ajaxSend((event, xhr, settings) => {
         const requestId = Math.random().toString(36).substring(7);
         const startTime = performance.now();
-        
-        if (isRacingRequest(settings.url)) {
+        const isRacing = isRacingRequest(settings.url);
+
+        if (isRacing) {
             debugInfo.racingRequests.set(requestId, {
                 url: settings.url,
                 startTime,
                 status: 'pending'
             });
-            
+
             logAjaxDebug('racing-request', {
                 id: requestId,
                 url: settings.url,
                 timestamp: startTime
             });
 
-            // Add response handler specifically for racing requests
+            // Add racing-specific response handler
             xhr.addEventListener('load', function() {
                 const racingRequest = debugInfo.racingRequests.get(requestId);
                 if (racingRequest) {
+                    const endTime = performance.now();
                     racingRequest.status = 'completed';
-                    racingRequest.endTime = performance.now();
-                    racingRequest.duration = racingRequest.endTime - racingRequest.startTime;
-                    
-                    logAjaxDebug('racing-response', {
-                        id: requestId,
-                        url: settings.url,
-                        duration: racingRequest.duration,
-                        size: xhr.responseText?.length
-                    });
+                    racingRequest.endTime = endTime;
+                    racingRequest.duration = endTime - startTime;
+
+                    try {
+                        const data = JSON.parse(xhr.responseText);
+                        if (data?.raceData || data?.timeData) {
+                            logAjaxDebug('racing-success', {
+                                id: requestId,
+                                url: settings.url,
+                                duration: racingRequest.duration,
+                                hasRaceData: !!data.raceData,
+                                hasTimeData: !!data.timeData
+                            });
+                        }
+                    } catch (e) {
+                        logAjaxDebug('racing-parse-error', {
+                            id: requestId,
+                            error: e,
+                            responseStart: xhr.responseText?.substring(0, 100)
+                        });
+                    }
                 }
             });
         }
@@ -86,9 +106,68 @@ function ajax(callback) {
         });
     });
 
+    // Add race tracking
+    function trackRaceData(data) {
+        if (data?.raceID && data?.timeData) {
+            debugInfo.activeRaces.add(data.raceID);
+            logAjaxDebug('race-tracked', {
+                raceId: data.raceID,
+                status: data.timeData.status,
+                activeRaces: Array.from(debugInfo.activeRaces)
+            });
+        }
+    }
+
+    // Enhanced racing response handler
+    function handleRacingResponse(xhr, settings) {
+        try {
+            const data = JSON.parse(xhr.responseText || '{}');
+            if (data?.raceData || data?.timeData) {
+                trackRaceData(data);
+                return true;
+            }
+        } catch (e) {
+            logAjaxDebug('racing-parse-error', {
+                error: e,
+                url: settings.url
+            });
+        }
+        return false;
+    }
+
     // Enhanced ajax complete handler with validation
     $(document).ajaxComplete((event, xhr, settings) => {
         const endTime = performance.now();
+        const isRacing = isRacingRequest(settings.url);
+
+        if (xhr.readyState > 3 && isRacing) {
+            handleRacingResponse(xhr, settings);
+            logAjaxDebug('racing-complete', {
+                url: settings.url,
+                status: xhr.status,
+                size: xhr.responseText?.length,
+                timing: endTime - debugInfo.requests.get([...debugInfo.requests.keys()].pop())?.startTime
+            });
+
+            if (xhr.status === 200 && xhr.responseText) {
+                try {
+                    const data = JSON.parse(xhr.responseText);
+                    if (data?.raceData || data?.timeData) {
+                        debugInfo.lastResponse = {
+                            time: new Date(),
+                            url: settings.url,
+                            data: data
+                        };
+                    }
+                } catch (e) {
+                    logAjaxDebug('racing-error', {
+                        message: 'Failed to parse racing response',
+                        error: e,
+                        responsePreview: xhr.responseText?.substring(0, 200)
+                    });
+                }
+            }
+        }
 
         if (xhr.readyState > 3) {
             if (isRacingRequest(settings.url)) {

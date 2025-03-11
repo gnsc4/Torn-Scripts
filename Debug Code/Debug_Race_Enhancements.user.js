@@ -1,900 +1,2700 @@
 // ==UserScript==
-// @name         Torn: Racing enhancements
-// @namespace    lugburz.racing_enhancements
-// @version      0.5.24
-// @description  Show car's current speed, precise skill, official race penalty, racing skill of others and race car skins.
-// @author       Lugburz
+// @name         Torn Race Config GUI
+// @version      3.1.6
+// @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
+// @author       GNSC4 [268863]
+// @match        https://www.torn.com/loader.php?sid=racing*
 // @match        https://www.torn.com/*
-// @require      https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Debug%20Code/lugburz_lib.js
-// @updateURL    https://github.com/f2404/torn-userscripts/raw/master/racing_show_speed.user.js
-// @downloadURL  https://github.com/f2404/torn-userscripts/raw/master/racing_show_speed.user.js
-// @connect      api.torn.com
-// @connect      race-skins.brainslug.nl
+// @grant        GM.xmlHttpRequest
+// @grant        GM_xmlhttpRequest
+// @grant        GM.setValue
+// @grant        GM.getValue
 // @grant        GM_setValue
 // @grant        GM_getValue
-// @grant        GM_notification
-// @grant        GM_xmlhttpRequest
-// @grant        GM_addStyle
-// @run-at       document-idle
+// @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
+// @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/RaceConfiguration_PDA_NoGMfPDA.user.js
+// @run-at       document-end
+// @require      https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js
+// @license      MIT
+// @namespace torn.raceconfigguipda
 // ==/UserScript==
 
-// Whether to show notifications.
-const NOTIFICATIONS = GM_getValue('showNotifChk') != 0;
+(function() {
+    'use strict';
 
-// Whether to show race result as soon as a race starts.
-const SHOW_RESULTS = GM_getValue('showResultsChk') != 0;
+    const GM = {
+        xmlHttpRequest: (details) => {
+            return new Promise((resolve, reject) => {
+                fetch(details.url, {
+                    method: details.method,
+                    headers: details.headers,
+                    body: details.method === 'POST' ? details.data : undefined
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (details.onload) {
+                        details.onload({ status: 200, responseText: JSON.stringify(data) });
+                    }
+                    resolve(data);
+                })
+                .catch(error => {
+                    if (details.onerror) {
+                        details.onerror(error);
+                    }
+                    reject(error);
+                });
+            });
+        }
+    };
 
-// Whether to show current speed.
-const SHOW_SPEED = GM_getValue('showSpeedChk') != 0;
+    function init() {
+        // Split initialization into racing features and alert features
+        const isRacingPage = window.location.href.includes('sid=racing');
 
-// whether to show the top3 position icon
-const SHOW_POSITION_ICONS = GM_getValue('showPositionIconChk') != 0;
+        // Initialize race alerts for all pages
+        initializeRaceAlerts();
 
-// Whether to fetch others' racing skill from the API (requires API key).
-let FETCH_RS = !!(GM_getValue('apiKey') && GM_getValue('apiKey').length > 0);
-
-// Whether to show car skins
-const SHOW_SKINS = GM_getValue('showSkinsChk') != 0;
-
-// Domain for racecar skins
-const SKIN_AWARDS = 'https://race-skins.brainslug.nl/custom/data';
-const SKIN_IMAGE = id => `https://race-skins.brainslug.nl/assets/${id}`;
-
-const userID = getUserIdFromCookie();
-var RACE_ID = '*';
-var period = 1000;
-var last_compl = -1.0;
-var x = 0;
-var penaltyNotif = 0;
-
-function maybeClear() {
-    if (x != 0 ) {
-        clearInterval(x);
-        last_compl = -1.0;
-        x = 0;
-    }
-}
-
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-// Shared racing skill
-const racingSkillCacheByDriverId = new Map();
-
-let updating = false;
-async function updateDriversList() {
-    const driversList = document.getElementById('leaderBoard');
-    if (updating || driversList === null) {
-        return;
+        // Only initialize racing features on the racing page
+        if (isRacingPage) {
+            initializeRacingFeatures();
+            initializeRaceFiltering(); // Add this line
+        }
     }
 
-    FETCH_RS = !!(GM_getValue('apiKey') && GM_getValue('apiKey').length > 0);
+    function initializeRaceAlerts() {
+        // Load saved preference
+        const raceAlertEnabled = GM_getValue('raceAlertEnabled', false);
 
-    watchForDriversListContentChanges(driversList);
+        // Set checkbox state
+        const checkbox = document.getElementById('raceAlertEnabled');
+        if (checkbox) {
+            checkbox.checked = raceAlertEnabled;
+        }
 
-    const driverIds = getDriverIds(driversList);
-    if (!driverIds || !driverIds.length) {
-        return;
-    }
-
-    updating = true;
-    $('#updating').size() < 1 && $('#racingupdatesnew').prepend('<div id="updating" style="color: green; font-size: 12px; line-height: 24px;">Updating drivers\' RS and skins...</div>');
-
-    const racingSkills = FETCH_RS ? await getRacingSkillForDrivers(driverIds) : {};
-    const racingSkins = SHOW_SKINS ? await getRacingSkinOwners(driverIds) : {};
-    for (let driver of driversList.querySelectorAll('.driver-item')) {
-        const driverId = getDriverId(driver);
-        if (FETCH_RS && !!racingSkills[driverId]) {
-            const skill = racingSkills[driverId];
-            const nameDiv = driver.querySelector('.name');
-            nameDiv.style.position = 'relative';
-            if ( ! driver.querySelector('.rs-display')) {
-                nameDiv.insertAdjacentHTML('beforeend', `<span class="rs-display">RS:${skill}</span>`);
+        // Initialize alerts if enabled
+        if (raceAlertEnabled) {
+            updateRaceAlert();
+            if (!window.raceAlertInterval) {
+                window.raceAlertInterval = setInterval(updateRaceAlert, 5000);
             }
-        } else if (!FETCH_RS) {
-            const rsSpan = driver.querySelector('.rs-display');
-            if ( !! rsSpan) {
-                rsSpan.remove();
-            }
+        } else {
+            removeRaceAlert();
         }
-        if (SHOW_SKINS && !!racingSkins[driverId]) {
-            const carImg = driver.querySelector('.car').querySelector('img');
-            const carId = carImg.getAttribute('src').replace(/[^0-9]*/g, '');
-            if (!!racingSkins[driverId][carId]) {
-                carImg.setAttribute('src', SKIN_IMAGE(racingSkins[driverId][carId]));
-                if (driverId == userID) skinCarSidebar(racingSkins[driverId][carId]);
-            }
-        }
-    }
 
-    updating = false;
-    $('#updating').size() > 0 && $('#updating').remove();
-}
+        // Add change listener if not already added
+        if (!window.alertListenerAdded) {
+            document.addEventListener('change', function(e) {
+                if (e.target && e.target.id === 'raceAlertEnabled') {
+                    const isEnabled = e.target.checked;
+                    GM_setValue('raceAlertEnabled', isEnabled);
 
-function watchForDriversListContentChanges(driversList) {
-    if (driversList.dataset.hasWatcher !== undefined) {
-        return;
-    }
-
-    // The content of #leaderBoard is rebuilt periodically so watch for changes:
-    new MutationObserver(updateDriversList).observe(driversList, {childList: true});
-    driversList.dataset.hasWatcher = 'true';
-}
-
-function getDriverIds(driversList) {
-    return Array.from(driversList.querySelectorAll('.driver-item')).map(driver => getDriverId(driver));
-}
-
-function getDriverId(driverUl) {
-    return +driverUl.closest('li').id.substr(4);
-}
-
-let racersCount = 0;
-async function getRacingSkillForDrivers(driverIds) {
-    const driverIdsToFetchSkillFor = driverIds.filter(driverId => ! racingSkillCacheByDriverId.has(driverId));
-    for (const driverId of driverIdsToFetchSkillFor) {
-        const json = await fetchRacingSkillForDrivers(driverId);
-        racingSkillCacheByDriverId.set(+driverId, json && json.personalstats && json.personalstats.racingskill ? json.personalstats.racingskill : 'N/A');
-        if (json && json.error) {
-            $('#racingupdatesnew').prepend(`<div style="color: red; font-size: 12px; line-height: 24px;">API error: ${JSON.stringify(json.error)}</div>`);
-            break;
-        }
-        racersCount++;
-        if (racersCount > 20) await sleep(1500);
-    }
-
-    const resultHash = {};
-    for (const driverId of driverIds) {
-        const skill = racingSkillCacheByDriverId.get(driverId);
-        if (!!skill) {
-            resultHash[driverId] = skill;
-        }
-    }
-    return resultHash;
-}
-
-let _skinOwnerCache = null;
-async function getRacingSkinOwners(driverIds) {
-    function filterSkins(skins) {
-        let result = {};
-        for (const driverId of driverIds) {
-            if (!!skins && !!skins['*'] && !!skins['*'][driverId]) {
-                result[driverId] = skins['*'][driverId];
-            }
-            if (!!skins && !!skins[RACE_ID] && !!skins[RACE_ID][driverId]) {
-                result[driverId] = skins[RACE_ID][driverId];
-            }
-        }
-        return result;
-    }
-    return new Promise(resolve => {
-        // fetching the list once per page load should be enough
-        if (!!_skinOwnerCache) return resolve(_skinOwnerCache);
-        // fetch and filter the owners
-        GM_xmlhttpRequest({
-            method: 'GET',
-            url: SKIN_AWARDS,
-            headers: {'Content-Type': 'application/json'},
-            onload: ({responseText}) => {
-                _skinOwnerCache = JSON.parse(responseText);
-                resolve(_skinOwnerCache);
-            },
-            onerror: (err) => {
-                console.error(err);
-                resolve({});
-            },
-        });
-    }).then(filterSkins);
-}
-
-let _skinned = false;
-function skinCarSidebar(carSkin) {
-    const carSelected = document.querySelector('.car-selected');
-    if (!carSelected) return; // fail quietly
-    const tornItem = carSelected.querySelector('.torn-item');
-    if (!tornItem) return; // fail quietly
-    if (tornItem !== _skinned) {
-        try {
-            tornItem.setAttribute('src', SKIN_IMAGE(carSkin));
-            tornItem.setAttribute('srcset', SKIN_IMAGE(carSkin));
-            tornItem.style.display = 'block';
-            tornItem.style.opacity = 1;
-            const canvas = carSelected.querySelector('canvas');
-            if ( !! canvas) canvas.style.display = 'none';
-            _skinned = tornItem;
-        } catch (err) {
-            console.error(err);
-        }
-    }
-}
-
-function getUserIdFromCookie() {
-    const userIdString = document.cookie.split(';')
-        .map(entry => entry.trim())
-        .find(entry => entry.indexOf('uid=') === 0)
-        .replace('uid=', '');
-
-    return parseInt(userIdString, 10);
-}
-
-function formatDate(date) {
-    const month = (+date.getUTCMonth()) + (+1);
-    return date.getUTCFullYear() + '-' + pad(month, 2) + '-' + pad(date.getUTCDate(), 2) + ' ' + formatTime(date);
-}
-
-function fetchRacingSkillForDrivers(driverIds) {
-    const apiKey = GM_getValue('apiKey');
-    return new Promise((resolve, reject) => {
-        GM_xmlhttpRequest({
-            method: 'POST',
-            url: `https://api.torn.com/user/${driverIds}?selections=personalstats&comment=RacingUiUx&key=${apiKey}`,
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            onload: (response) => {
-                try {
-                    resolve(JSON.parse(response.responseText));
-                } catch(err) {
-                    reject(err);
+                    if (isEnabled) {
+                        updateRaceAlert();
+                        if (!window.raceAlertInterval) {
+                            window.raceAlertInterval = setInterval(updateRaceAlert, 5000);
+                        }
+                    } else {
+                        removeRaceAlert();
+                        if (window.raceAlertInterval) {
+                            clearInterval(window.raceAlertInterval);
+                            window.raceAlertInterval = null;
+                        }
+                    }
                 }
-            },
-            onerror: (err) => {
-                reject(err);
+            });
+            window.alertListenerAdded = true;
+        }
+    }
+
+    function initializeRacingFeatures() {
+        const pollForElements = () => {
+            const titleElement = document.querySelector('div.content-title > h4');
+            if (titleElement) {
+                createToggleButton();
+                loadApiKey();
+                loadPresets();
+
+                // Initialize car-related features
+                const waitForCarElements = () => {
+                    return new Promise((resolve) => {
+                        const checkElements = () => {
+                            const carDropdown = document.getElementById('carDropdown');
+                            const carStatusMessage = document.getElementById('carStatusMessage');
+
+                            if (carDropdown && carStatusMessage) {
+                                resolve({ carDropdown, carStatusMessage });
+                            } else if (domCheckAttempts < MAX_DOM_CHECK_ATTEMPTS) {
+                                domCheckAttempts++;
+                                setTimeout(checkElements, 100);
+                            } else {
+                                resolve(null);
+                                console.warn('Car elements not found, but continuing with basic functionality');
+                            }
+                        };
+                        checkElements();
+                    });
+                };
+
+                waitForCarElements().then((elements) => {
+                    if (elements) {
+                        updateCarList().then(() => {
+                            updateQuickLaunchButtons();
+                        }).catch(err => {
+                            console.warn('Failed to update car list:', err);
+                        });
+                    }
+                    console.log('Race Config GUI initialized');
+                });
+            } else if (domCheckAttempts < MAX_DOM_CHECK_ATTEMPTS) {
+                domCheckAttempts++;
+                setTimeout(pollForElements, 100);
             }
-        });
-    });
-}
-//
+        };
 
-function showSpeed() {
-    if (!SHOW_SPEED || $('#racingdetails').size() < 1 || $('#racingdetails').find('#speed_mph').size() > 0)
-        return;
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', pollForElements);
+        } else {
+            pollForElements();
+        }
+    }
 
-    // save some space
-    $('#racingdetails').find('li.pd-name').each(function() {
-        if ($(this).text() == 'Name:') $(this).hide();
-        if ($(this).text() == 'Position:') $(this).text('Pos:');
-        if ($(this).text() == 'Completion:') $(this).text('Compl:');
-    });
-    $('#racingdetails').append('<li id="speed_mph" class="pd-val"></li>');
-
-    maybeClear();
-
-    x = setInterval(function() {
-        if ($('#racingupdatesnew').find('div.track-info').size() < 1) {
-            maybeClear();
+    function initializeScript() {
+        if (window.guiInitialized) {
+            console.warn('GUI already initialized');
             return;
         }
 
-        let laps = $('#racingupdatesnew').find('div.title-black').text().split(" - ")[1].split(" ")[0];
-        let len = $('#racingupdatesnew').find('div.track-info').attr('data-length').replace('mi', '');
-        let compl = $('#racingdetails').find('li.pd-completion').text().replace('%', '');
+        const raceConfigGUI = createRaceConfigGUI();
+        document.body.appendChild(raceConfigGUI);
+        initializeGUI(raceConfigGUI);
+        createToggleButton();
 
-        if (last_compl >= 0) {
-            let speed = (compl - last_compl) / 100 * laps * len * 60 * 60 * 1000 / period;
-            $('#speed_mph').text(speed.toFixed(2) + 'mph');
-        }
-        last_compl = compl;
-    }, period);
-}
-
-function showPenalty() {
-    if ($('#racingAdditionalContainer').find('div.msg.right-round').size() > 0 &&
-        $('#racingAdditionalContainer').find('div.msg.right-round').text().trim().startsWith('You have recently left')) {
-        const penalty = GM_getValue('leavepenalty') * 1000;
-        const now = Date.now();
-        if (penalty > now) {
-            const date = new Date(penalty);
-            $('#racingAdditionalContainer').find('div.msg.right-round').text('You may join an official race at ' + formatTime(date) + '.');
-        }
-    }
-}
-
-function checkPenalty() {
-    if (penaltyNotif) clearTimeout(penaltyNotif);
-    const leavepenalty = GM_getValue('leavepenalty');
-    const penaltyLeft = leavepenalty * 1000 - Date.now();
-    if (NOTIFICATIONS && penaltyLeft > 0) {
-        penaltyNotif = setTimeout(function() {
-            GM_notification("You may join an official race now.", "Torn: Racing enhancements");
-        }, penaltyLeft);
-    }
-}
-
-function updateSkill(level) {
-    const skill = Number(level).toFixed(5);
-    const prev = GM_getValue('racinglevel');
-
-    const now = Date.now();
-    const lastDaysRs = GM_getValue('lastDaysRs');
-    if (lastDaysRs && lastDaysRs.includes(':')) {
-        const ts = lastDaysRs.split(':')[0];
-        const dateTs = new Date();
-        dateTs.setTime(ts);
-        if (1 * (new Date(now).setUTCHours(0, 0, 0, 0)) - 1 * (dateTs.setUTCHours(0, 0, 0, 0)) >= 24*60*60*1000) {
-            GM_setValue('lastDaysRs', `${now}:${prev ? prev : skill}`);
-        }
-    } else {
-        GM_setValue('lastDaysRs', `${now}:${prev ? prev : skill}`);
+        window.guiInitialized = true;
+        console.log('Race Config GUI initialized successfully');
     }
 
-    if (prev !== "undefined" && typeof prev !== "undefined" && level > prev) {
-        const inc = Number(level - prev).toFixed(5);
-        if (NOTIFICATIONS) GM_notification("Your racing skill has increased by " + inc + "!", "Torn: Racing enhancements");
-        GM_setValue('lastRSincrement', inc);
-    }
-    GM_setValue('racinglevel', level);
+    let guiInitialized = false;
+    let domCheckAttempts = 0;
+    const MAX_DOM_CHECK_ATTEMPTS = 100;
 
-    if ($('#racingMainContainer').find('div.skill').size() > 0) {
-        if ($("#sidebarroot").find("a[class^='menu-value']").size() > 0) {
-            // move the elements to the left a little bit to fit 5th decimal digit in desktop mode
-            $('#racingMainContainer').find('div.skill-desc').css('left', '5px');
-            $('#racingMainContainer').find('div.skill').css('left', '5px').text(skill);
-        } else {
-            $('#racingMainContainer').find('div.skill').text(skill);
+    const style = document.createElement('style');
+    style.textContent = `
+        #raceConfigGUI {
+            position: fixed;
+            top: 85px;
+            left: 20px;
+            background-color: #222;
+            color: #ddd;
+            border: 1px solid #555;
+            padding: 25px;
+            z-index: 999999 !important;
+            font-family: Arial, sans-serif;
+            border-radius: 10px;
+            max-width: 500px;  /* Increased from 450px */
+            max-height: 90vh;
+            overflow-y: auto;
+            display: none;
+            user-select: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+            scrollbar-width: thin;
+            scrollbar-color: #444 #222;
         }
 
-        const lastInc = GM_getValue('lastRSincrement');
-        if (lastInc) {
-            $('div.skill').append(`<div style="margin-top: 10px;">Last gain: ${lastInc}</div>`);
+        /* Webkit Scrollbar Styling */
+        #raceConfigGUI::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
         }
-    }
-}
 
-function updatePoints(pointsearned) {
-    const now = Date.now();
-    const lastDaysPoints = GM_getValue('lastDaysPoints');
-    const prev = GM_getValue('pointsearned');
-    if (lastDaysPoints && lastDaysPoints.includes(':')) {
-        const ts = lastDaysPoints.split(':')[0];
-        const dateTs = new Date();
-        dateTs.setTime(ts);
-        if (1 * (new Date(now).setUTCHours(0, 0, 0, 0)) - 1 * (dateTs.setUTCHours(0, 0, 0, 0)) >= 24*60*60*1000) {
-            GM_setValue('lastDaysPoints', `${now}:${prev ? prev : pointsearned}`);
+        #raceConfigGUI::-webkit-scrollbar-track {
+            background: #222;
+            border-radius: 4px;
         }
-    } else {
-        GM_setValue('lastDaysPoints', `${now}:${prev ? prev : pointsearned}`);
-    }
-    GM_setValue('pointsearned', pointsearned);
-}
 
-// Add detailed debug logging system
-const DEBUG = {
-    enabled: true,
-    raceData: true,
-    ajax: true,
-    timing: true,
-    errors: [],
-    requestLog: [],
-    log: function(type, ...args) {
-        if (!this.enabled || !this[type]) return;
-        const timestamp = new Date().toISOString();
-        console.log(`[Racing Debug ${type}] ${timestamp}:`, ...args);
-        
-        // Track racing requests
-        if (type === 'request') {
-            this.requestLog.push({timestamp, ...args[0]});
+        #raceConfigGUI::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 4px;
+            border: 2px solid #222;
         }
-    },
-    error: function(type, ...args) {
-        if (!this.enabled) return;
-        const timestamp = new Date().toISOString();
-        console.error(`[Racing Error ${type}] ${timestamp}:`, ...args);
-        this.errors.push({timestamp, type, args});
-    },
-    state: {
-        lastRaceId: null,
-        processAttempts: 0,
-        lastSuccess: null
-    }
-};
 
-// Add request validation
-const RaceRequestValidator = {
-    validateRacingUrl(url) {
-        return url.includes('sid=racing') || 
-               url.includes('loader.php?sid=racing') || 
-               url.includes('buildrace.js');
-    },
-    
-    trackRequest(url, data) {
-        if (this.validateRacingUrl(url)) {
-            DEBUG.log('request', {
-                url,
-                time: new Date().toISOString(),
-                hasData: !!data
+        #raceConfigGUI::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        #raceConfigGUI::-webkit-scrollbar-corner {
+            background: #222;
+        }
+
+        #raceConfigGUI .api-key-section,
+        #raceConfigGUI .config-section,
+        #raceConfigGUI .car-select-section,
+        #raceConfigGUI .presets-section {
+            margin-bottom: 25px;
+            padding: 15px;
+            background-color: #2a2a2a;
+            border-radius: 8px;
+            border: 1px solid #444;
+            position: relative;
+            z-index: 999999 !important;
+        }
+
+        #raceConfigGUI h2,
+        #raceConfigGUI h3,
+        #raceConfigGUI h4 {
+            color: #fff;
+            font-size: 1.2em;
+            margin: 0 0 15px 0;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #444;
+            text-align: center;
+        }
+
+        #raceConfigGUI input[type="text"],
+        #raceConfigGUI input[type="number"],
+        #raceConfigGUI input[type="password"],
+        #raceConfigGUI input[type="date"],
+        #raceConfigGUI input[type="time"],
+        #raceConfigGUI select {
+            padding: 8px 12px;
+            margin: 5px 0;
+            border: 1px solid #555;
+            background-color: #333 !important;
+            color: #eee !important;
+            border-radius: 5px;
+            width: calc(100% - 26px);
+            font-size: 14px;
+            -webkit-text-fill-color: #eee !important;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+            box-shadow: 0 0 0 1000px #333 inset !important;
+        }
+
+        #raceConfigGUI input:-webkit-autofill,
+        #raceConfigGUI input:-webkit-autofill:hover,
+        #raceConfigGUI input:-webkit-autofill:focus,
+        #raceConfigGUI input:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 1000px #333 inset !important;
+            -webkit-text-fill-color: #eee !important;
+            transition: background-color 0s 50000s;
+            caret-color: #eee !important;
+        }
+
+        #raceConfigGUI input:focus,
+        #raceConfigGUI select:focus {
+            border-color: #666;
+            outline: none;
+            box-shadow: 0 0 5px rgba(85, 85, 85, 0.5);
+        }
+
+        #raceConfigGUI label {
+            display: block;
+            margin-bottom: 5px;
+            color: #ccc;
+            font-size: 14px;
+        }
+
+        .gui-button,
+        .preset-button,
+        #toggleRaceGUIButton,
+        #createRaceButton,
+        #closeGUIButton,
+        #setNowButton {
+            color: #ddd;
+            background-color: #555;
+            border: 1px solid #777;
+            border-radius: 3px;
+            padding: 8px 15px;
+            cursor: pointer;
+            margin: 5px;
+            transition: background-color 0.3s ease;
+            font-size: 0.9em;
+            display: inline-block;
+            text-decoration: none;
+        }
+
+        .gui-button:hover,
+        .preset-button:hover,
+        .remove-preset:hover,
+        #toggleRaceGUIButton:hover,
+        #createRaceButton:hover,
+        #closeGUIButton:hover,
+        #setNowButton:hover {
+            background-color: #777;
+        }
+
+        #createRaceButton {
+            background-color: #2d5a3f !important;
+            border-color: #3d7a5f !important;
+            font-size: 16px !important;
+            padding: 12px 24px !important;
+            margin: 15px auto !important;
+            display: block !important;
+            width: 80% !important;
+        }
+
+        #createRaceButton:hover {
+            background-color: #3d7a5f !important;
+        }
+
+        .preset-buttons-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 8px;
+            margin-bottom: 15px;
+            padding: 5px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .preset-button-container {
+            position: relative;
+            display: inline-flex;
+            flex-direction: column;
+            align-items: stretch;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .remove-preset {
+            background-color: #955;
+            color: #eee;
+            padding: 0;
+            border-radius: 50%;
+            font-size: 14px;
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            text-decoration: none;  /* Remove underline */
+        }
+
+        .remove-preset:hover {
+            background-color: #c77;
+            transform: scale(1.1);
+            transition: all 0.2s ease;
+            text-decoration: none;  /* Keep underline removed on hover */
+        }
+
+        #statusMessageBox {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 5px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        #statusMessageBox.success {
+            background-color: #1a472a;
+            border: 1px solid #2d5a3f;
+        }
+
+        #statusMessageBox.error {
+            background-color: #5c1e1e;
+            border: 1px solid #8b2e2e;
+        }
+
+        .driver-inputs-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .driver-input-wrapper {
+            flex: 1;
+            min-width: 0;
+            margin-right: 5px;
+        }
+
+        .driver-input-wrapper:last-child {
+            margin-right: 0;
+        }
+
+        .preset-actions {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .api-key-wrapper {
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            gap: 10px;
+            margin: 0 auto;
+            max-width: 400px;
+            position: relative;
+        }
+
+        .api-key-wrapper label {
+            display: inline;
+            margin-bottom: 0;
+            white-space: nowrap;
+            min-width: 65px;
+        }
+
+        #closeGUIButton {
+            position: absolute;
+            top: -15px;
+            right: -15px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: #555;
+            color: #ddd;
+            border: 1px solid #777;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 0;
+            z-index: 1000000;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        #closeGUIButton:hover {
+            background-color: #777;
+            transform: scale(1.1);
+            transition: all 0.2s ease;
+        }
+
+        .banner-container {
+            position: relative;
+            margin-bottom: 25px; /* Increased from 15px */
+            padding-top: 5px;
+        }
+
+        #raceBanner {
+            width: 100%;
+            height: auto;
+            border-radius: 5px;
+            display: block;
+            margin-bottom: 15px; /* Added margin below banner */
+        }
+
+        #raceConfigGUI h2 {
+            margin-top: 10px; /* Added margin above the heading */
+        }
+
+        .show-password-btn {
+            background: none;
+            border: none;
+            color: #777;
+            cursor: pointer;
+            padding: 5px;
+            font-size: 14px;
+            position: absolute;
+            right: 80px;
+            top: 50%;
+            transform: translateY(-50%);
+            transition: color 0.3s ease;
+        }
+
+        .show-password-btn:hover {
+            color: #999;
+        }
+
+        .quick-launch-container {
+            display: none !important;
+            position: relative !important;
+            flex-direction: column !important;  /* Changed to column */
+            gap: 5px !important;
+            margin-top: 5px !important;
+            margin-bottom: 10px !important;
+            width: 100% !important;
+            max-width: 800px !important;
+            background-color: #2a2a2a !important;
+            padding: 5px !important;
+            border-radius: 5px !important;
+            border: 1px solid #444 !important;
+            z-index: 1 !important;
+        }
+
+        .quick-launch-container:not(:empty) {
+            display: flex !important;
+            justify-content: flex-start !important;
+        }
+
+        .quick-launch-button {
+            color: #fff !important;
+            background-color: #555 !important;
+            border: 1px solid #777 !important;
+            border-radius: 3px !important;
+            padding: 5px 10px !important;
+            cursor: pointer !important;
+            font-size: 0.9em !important;
+            white-space: nowrap !important;
+            width: auto !important;
+            display: inline-block !important;
+            transition: all 0.2s ease !important;
+            margin: 2px !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+            flex-shrink: 0 !important;
+        }
+
+        .quick-launch-button:hover {
+            background-color: #3d7a5f !important;
+            border-color: #777 !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3) !important;
+        }
+
+        .car-select-section .car-input-container {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .car-select-section .car-id-wrapper {
+            flex: 0 0 30%;
+        }
+
+        .car-select-section .car-dropdown-wrapper {
+            flex: 0 0 70%;
+        }
+
+        .car-select-section input,
+        .car-select-section select {
+            width: 100% !important;
+            box-sizing: border-box;
+        }
+
+        .quick-launch-status {
+            position: relative !important;
+            margin-top: 5px !important;
+            padding: 10px 15px !important;
+            border-radius: 5px !important;
+            color: #fff !important;
+            font-size: 14px !important;
+            opacity: 0 !important;
+            transition: opacity 0.3s ease !important;
+            text-align: center !important;
+            width: calc(100% - 30px) !important;
+            background-color: transparent !important;
+            z-index: 999999 !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
+            display: block !important;
+            min-height: 20px !important; /* Added to maintain space */
+        }
+
+        .quick-launch-status.success {
+            background-color: #1a472a !important;
+            border: 1px solid #2d5a3f !important;
+            opacity: 1 !important;
+        }
+
+        .quick-launch-status.error {
+            background-color: #5c1e1e !important;
+            border: 1px solid #8b2e2e !important;
+            opacity: 1 !important;
+        }
+
+        .quick-launch-status.show {
+            opacity: 1 !important;
+        }
+
+        .quick-launch-container .button-container {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            gap: 5px !important;
+            width: 100% !important;
+        }
+
+        .race-alert {
+            position: relative !important;
+            background-color: rgba(255, 68, 68, 0.8);
+            color: white;
+            text-align: center;
+            padding: 5px 10px;
+            font-weight: bold;
+            user-select: none;
+            margin: 0 0 0 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            display: inline-block;
+            cursor: pointer;
+            vertical-align: middle;
+        }
+
+        .quick-launch-popup {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background-color: #222;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 5px;
+            z-index: 999999;
+            min-width: 200px;
+            display: none;
+        }
+
+        .quick-launch-popup.show {
+            display: block;
+        }
+
+        .race-active {
+            background-color: #ff4444 !important;
+        }
+
+        .race-active .defaultIcon___iiNis {
+            position: relative;
+            z-index: 2;
+        }
+
+        .race-active .svgIconWrap___AMIqR {
+            position: relative;
+            z-index: 1;
+            background-color: #cc3333 !important;
+            border-radius: 4px;
+            padding: 2px;
+        }
+
+        .race-active .linkName___FoKha {
+            color: #cc3333 !important;
+        }
+
+        .race-active svg {
+            fill: #fff !important;
+        }
+
+        /* Remove old conflicting styles */
+        .race-active .defaultIcon___iiNis {
+            background-color: transparent !important;
+        }
+
+        #raceToggleRow {
+            display: flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+            width: 100% !important;
+            flex-direction: row !important;
+            position: relative !important;
+            z-index: 100 !important;
+            margin-bottom: 5px !important;
+        }
+
+        .button-container-wrapper {
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+            margin-right: auto !important;
+        }
+
+        .quick-launch-container {
+            display: flex !important;
+            flex-direction: column !important;
+            width: 100% !important;
+            background-color: #2a2a2a !important;
+            padding: 10px !important;
+            border-radius: 5px !important;
+            margin-top: 5px !important;
+        }
+
+        .quick-launch-container .button-container {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            gap: 5px !important;
+            width: 100% !important;
+        }
+
+        .race-alert {
+            display: inline-flex !important;
+            align-items: center !important;
+            margin-left: 10px !important;
+            background-color: rgba(255, 68, 68, 0.8) !important;
+            color: white !important;
+            padding: 5px 10px !important;
+            border-radius: 4px !important;
+            font-size: 12px !important;
+            font-weight: bold !important;
+            cursor: pointer !important;
+            user-select: none !important;
+        }
+
+        .time-config {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .time-selector {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .time-save-option {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 5px;
+            padding: 5px;
+            background: #333;
+            border-radius: 4px;
+        }
+
+        .time-save-option input[type="checkbox"] {
+            margin: 0;
+        }
+
+        .race-filter-section,
+        .auto-join-section {
+            margin-top: 15px;
+        }
+
+        .filter-options {
+            margin-bottom: 10px;
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .races-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .race-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            border-bottom: 1px solid #444;
+        }
+
+        .race-info {
+            display: flex;
+            gap: 15px;
+        }
+
+        .join-race-btn {
+            padding: 4px 8px;
+            background: #2d5a3f;
+            border: 1px solid #3d7a5f;
+            color: white;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+
+        .join-race-btn:hover {
+            background: #3d7a5f;
+        }
+
+        .quick-launch-status.info {
+            background-color: #2a2a2a !important;
+            border: 1px solid #444 !important;
+            opacity: 1 !important;
+        }
+
+        .filter-row {
+            display: flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: #2a2a2a;
+            border-radius: 5px;
+        }
+
+        .filter-row select {
+            min-width: 150px;
+        }
+
+        .filter-row .gui-button {
+            padding: 5px 10px;
+            height: 30px;
+            margin-left: auto;
+        }
+
+        .gui-button.active {
+            background-color: #2d5a3f !important;
+            border-color: #3d7a5f !important;
+        }
+
+        .filter-buttons {
+            margin-left: auto;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+    `;
+
+    style.textContent += `
+        .race-filter-controls {
+            background: #2a2a2a !important;
+            padding: 10px !important;
+            margin: 10px 0 !important;
+            border-radius: 5px !important;
+            border: 1px solid #444 !important;
+            position: relative !important;
+            z-index: 999999 !important;
+        }
+
+        .filter-row {
+            display: flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+            flex-wrap: wrap !important;
+            position: relative !important;
+            z-index: 999999 !important;
+        }
+
+        .filter-buttons {
+            margin-left: auto !important;
+            display: flex !important;
+            gap: 10px !important;
+            position: relative !important;
+            z-index: 999999 !important;
+        }
+
+        #filterSort {
+            min-width: 150px !important;
+            padding: 5px !important;
+            position: relative !important;
+            z-index: 999999 !important;
+        }
+
+        #toggleFilters, #refreshRaces {
+            position: relative !important;
+            z-index: 999999 !important;
+        }
+
+        #toggleFilters.active {
+            background-color: #2d5a3f !important;
+            border-color: #3d7a5f !important;
+            z-index: 999999 !important;
+        }
+    `;
+
+    document.head.appendChild(style);
+
+    function createRaceConfigGUI() {
+        let gui = document.createElement('div');
+        gui.id = 'raceConfigGUI';
+        gui.innerHTML = `
+            <div class="banner-container">
+                <button type="button" id="closeGUIButton" class="close-button" title="Close GUI">×</button>
+                <img id="raceBanner" src="https://www.torn.com/images/v2/racing/header/banners/976_classA.png" alt="Racing Banner">
+                <h2>Race Configuration</h2>
+            </div>
+
+            <div class="api-key-section">
+                <h4>Settings & API Key</h4>
+                <div class="api-key-wrapper">
+                    <label for="apiKeyInput">API Key:</label>
+                    <input type="password"
+                           id="apiKeyInput"
+                           placeholder="Enter your API Key"
+                           autocomplete="new-password"
+                           autocapitalize="off"
+                           autocorrect="off"
+                           spellcheck="false"
+                           style="flex: 1;">
+                    <button type="button" class="show-password-btn" id="showApiKey" title="Show/Hide API Key">👁️</button>
+                    <button id="saveApiKeyButton" class="gui-button">Save</button>
+                </div>
+                <div class="settings-toggle" style="margin-top: 10px;">
+                    <input type="checkbox" id="raceAlertEnabled" />
+                    <label for="raceAlertEnabled">Enable Race Status Alerts</label>
+                </div>
+            </div>
+
+            <div class="config-section">
+                <h4>Race Settings</h4>
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <div style="flex: 2;">
+                        <label for="trackSelect">Track:</label>
+                        <select id="trackSelect">
+                            <option value="6">6 - Uptown</option>
+                            <option value="7">7 - Withdrawal</option>
+                            <option value="8">8 - Underdog</option>
+                            <option value="9">9 - Parkland</option>
+                            <option value="10">10 - Docks</option>
+                            <option value="11">11 - Commerce</option>
+                            <option value="12">12 - Two Islands</option>
+                            <option value="15">15 - Industrial</option>
+                            <option value="16">16 - Vector</option>
+                            <option value="17">17 - Mudpit</option>
+                            <option value="18">18 - Hammerhead</option>
+                            <option value="19">19 - Sewage</option>
+                            <option value="20">20 - Meltdown</option>
+                            <option value="21">21 - Speedway</option>
+                            <option value="23">23 - Stone Park</option>
+                            <option value="24">24 - Convict</option>
+                        </select>
+                    </div>
+                    <div style="flex: 1;">
+                        <label for="lapsInput">Laps:</label>
+                        <input type="number" id="lapsInput" value="100" min="1" max="100">
+                    </div>
+                </div>
+
+                <div class="config-params-section">
+                    <div class="driver-inputs-container">
+                        <div class="driver-input-wrapper">
+                            <label for="minDriversInput">Min Drivers:</label>
+                            <input type="number" id="minDriversInput" value="2" min="2" max="10">
+                        </div>
+                        <div class="driver-input-wrapper">
+                            <label for="maxDriversInput">Max Drivers:</label>
+                            <input type="number" id="maxDriversInput" value="2" min="2" max="10">
+                        </div>
+                        <div class="driver-input-wrapper">
+                            <label for="betAmountInput">Bet: <span style="font-size: 0.8em; color: #ccc;">(Max 10M)</span></label>
+                            <input type="number" id="betAmountInput" value="0" min="0" max="10000000">
+                        </div>
+                    </div>
+                </div>
+
+                <div><label for="raceNameInput">Race Name: <span style="font-size: 0.8em; color: #ccc;">(Required)</span></label>
+                    <input type="text"
+                           id="raceNameInput"
+                           placeholder="Enter Race Name"
+                           pattern="[A-Za-z0-9 ]+"
+                           title="Only letters, numbers and spaces allowed"
+                           autocomplete="off"
+                           oninput="this.value = this.value.replace(/[^A-Za-z0-9 ]/g, '')"></div>
+
+                <div><label for="passwordInput">Password: <span style="font-size: 0.8em; color: #ccc;">(Optional)</span></label>
+                    <input type="text"
+                           id="passwordInput"
+                           placeholder="Race Password Optional"
+                           autocomplete="off"
+                           autocapitalize="off"
+                           autocorrect="off"
+                           spellcheck="false"></div>
+
+                <div class="time-config">
+                    <label>Race Start Time (TCT 24hr):</label>
+                    <div class="time-selector">
+                        <select id="hourSelect" style="width: auto; display: inline-block;"></select>
+                        <span style="margin: 0 5px;">:</span>
+                        <select id="minuteSelect" style="width: auto; display: inline-block;"></select>
+                        <button id="setNowButton" class="gui-button" style="padding: 5px 10px; font-size: 0.8em; margin-left: 5px; vertical-align: baseline;">NOW</button>
+                    </div>
+                    <div class="time-save-option">
+                        <input type="checkbox" id="saveTimeToPreset">
+                        <label for="saveTimeToPreset">Save time to preset</label>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="car-select-section config-section">
+                <h4>Car Selection</h4>
+                <div class="car-input-container">
+                    <div class="car-id-wrapper">
+                        <label for="carIdInput">Car ID:</label>
+                        <input type="text"
+                               id="carIdInput"
+                               placeholder="Enter Car ID"
+                               style="margin-right: 5px;">
+                    </div>
+                    <div class="car-dropdown-wrapper">
+                        <label for="carDropdown">Car:</label>
+                        <select id="carDropdown">
+                            <option value="">Select a car...</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="text-align: center; margin-top: 10px;">
+                    <button id="updateCarsButton" class="gui-button" style="width: 80%; max-width: 200px; display: block; margin: 0 auto;">Update Cars</button>
+                    <div id="carStatusMessage" style="font-size: 0.8em; color: #aaa; margin-top: 5px;"></div>
+                </div>
+            </div>
+
+
+            <div class="presets-section config-section">
+                <h4>Presets</h4>
+                <div id="presetButtonsContainer" class="preset-buttons-container">
+                </div>
+                <div class="preset-actions">
+                    <button id="savePresetButton" class="gui-button">Save Preset</button>
+                    <button id="clearPresetsButton" class="gui-button">Clear Presets</button>
+                </div>
+                <div id="statusMessageBox" style="display:none;">Status Message</div>
+            </div>
+
+            <div class="auto-join-section config-section">
+                <h4>Auto Join Settings</h4>
+                <div class="auto-join-config">
+                    <div class="track-filter">
+                        <label for="autoJoinTrack">Track:</label>
+                        <select id="autoJoinTrack" multiple>
+                            <option value="all" selected>All Tracks</option>
+                            <option value="6">Uptown</option>
+                            <option value="7">Withdrawal</option>
+                            <option value="8">Underdog</option>
+                            <option value="9">Parkland</option>
+                            <option value="10">Docks</option>
+                            <option value="11">Commerce</option>
+                            <option value="12">Two Islands</option>
+                            <option value="15">Industrial</option>
+                            <option value="16">Vector</option>
+                            <option value="17">Mudpit</option>
+                            <option value="18">Hammerhead</option>
+                            <option value="19">Sewage</option>
+                            <option value="20">Meltdown</option>
+                            <option value="21">Speedway</option>
+                            <option value="23">Stone Park</option>
+                            <option value="24">Convict</option>
+                        </select>
+                    </div>
+                    <div class="laps-filter">
+                        <label>Laps Range:</label>
+                        <input type="number" id="minLaps" placeholder="Min" min="1" max="100">
+                        <span>-</span>
+                        <input type="number" id="maxLaps" placeholder="Max" min="1" max="100">
+                    </div>
+                    <div class="car-filter">
+                        <label for="autoJoinCar">Car to Use:</label>
+                        <select id="autoJoinCar">
+                            <option value="">Select a car...</option>
+                        </select>
+                    </div>
+                    <div class="filters">
+                        <label><input type="checkbox" id="hidePassworded"> Hide Passworded Races</label>
+                        <label><input type="checkbox" id="hideBets"> Hide Races with Bets</label>
+                    </div>
+                    <button id="startAutoJoin" class="gui-button">Start Auto-Join</button>
+                </div>
+            </div>
+
+            <div class="race-filter-section config-section">
+                <h4>Race Filtering</h4>
+                <div class="filter-options">
+                    <div class="filter-row">
+                        <select id="filterSort" class="filter-select">
+                            <option value="time">Sort by Start Time</option>
+                            <option value="track">Sort by Track</option>
+                            <option value="laps">Sort by Laps</option>
+                            <option value="bets">Sort by Bet Amount</option>
+                        </select>
+                        <label><input type="checkbox" id="hidePassworded"> Hide Passworded</label>
+                    </div>
+                </div>
+                <div id="filteredRaces" class="races-list"></div>
+            </div>
+
+            <div class="action-buttons" style="text-align: center; margin-top: 15px;">
+                <button id="createRaceButton" class="gui-button">Create Race</button>
+            </div>
+
+            <div style="text-align: center; margin-top: 20px; color: #888; font-size: 1.2em;">
+                Script created by <a href="https://www.torn.com/profiles.php?XID=268863" target="_blank" style="color: #888; text-decoration: none;">GNSC4 \[268863\]</a><br>
+                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.1.6 Official Forum Link</a>
+            </div>
+        `;
+
+        gui.addEventListener('touchstart', function(e) {
+            e.stopPropagation();
+        }, { passive: true });
+
+        return gui;
+    }
+
+    function initializeGUI(gui) {
+        loadApiKey();
+        populateTimeDropdowns();
+        updateCarDropdown();
+        loadPresets();
+
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        const saveApiKeyButton = document.getElementById('saveApiKeyButton');
+        const trackSelect = document.getElementById('trackSelect');
+        const lapsInput = document.getElementById('lapsInput');
+        const minDriversInput = document.getElementById('minDriversInput');
+        const maxDriversInput = document.getElementById('maxDriversInput');
+        const raceNameInput = document.getElementById('raceNameInput');
+        const passwordInput = document.getElementById('passwordInput');
+        const betAmountInput = document.getElementById('betAmountInput');
+        const hourSelect = document.getElementById('hourSelect');
+        const minuteSelect = document.getElementById('minuteSelect');
+        const setNowButton = document.getElementById('setNowButton');
+        const carIdInput = document.getElementById('carIdInput');
+        const changeCarButton = document.getElementById('changeCarButton');
+        const carDropdown = document.getElementById('carDropdown');
+        const updateCarsButton = document.getElementById('updateCarsButton');
+        const carStatusMessage = document.getElementById('carStatusMessage');
+        const savePresetButton = document.getElementById('savePresetButton');
+        const clearPresetsButton = document.getElementById('clearPresetsButton');
+        const presetButtonsContainer = document.getElementById('presetButtonsContainer');
+        const statusMessageBox = document.getElementById('statusMessageBox');
+        const createRaceButton = document.getElementById('createRaceButton');
+        const closeGUIButton = document.getElementById('closeGUIButton');
+
+        if (saveApiKeyButton) {
+            saveApiKeyButton.addEventListener('click', () => {
+                saveApiKey();
             });
+        } else {
+            console.error("Error: saveApiKeyButton element not found in initializeGUI");
+        }
+
+        if (setNowButton) {
+            setNowButton.addEventListener('click', () => {
+                setTimeToNow();
+            });
+        } else {
+             console.error("Error: setNowButton element not found in initializeGUI");
+        }
+
+        if (updateCarsButton) {
+            updateCarsButton.addEventListener('click', () => {
+                updateCarList();
+            });
+        } else {
+            console.error("Error: updateCarsButton element not found in initializeGUI");
+        }
+
+        if (carDropdown) {
+            carDropdown.addEventListener('change', () => {
+                carIdInput.value = carDropdown.value;
+            });
+        }  else {
+            console.error("Error: carDropdown element not found in initializeGUI");
+        }
+
+        if (savePresetButton) {
+            savePresetButton.addEventListener('click', () => {
+                savePreset();
+            });
+        } else {
+            console.error("Error: savePresetButton element not found in initializeGUI");
+        }
+
+        if (clearPresetsButton) {
+            clearPresetsButton.addEventListener('click', () => {
+                clearPresets();
+            });
+        } else {
+            console.error("Error: clearPresetsButton element not found in initializeGUI");
+        }
+
+        if (createRaceButton) {
+            createRaceButton.addEventListener('click', () => {
+                createRace();
+            });
+        } else {
+            console.error("Error: createRaceButton element not found in initializeGUI");
+        }
+
+        if (closeGUIButton) {
+            closeGUIButton.addEventListener('click', () => {
+                toggleRaceGUI();
+            });
+        } else {
+            console.error("Error: closeGUIButton element not found in initializeGUI");
+        }
+
+        if (carDropdown && carIdInput) {
+            carDropdown.addEventListener('change', () => {
+                carIdInput.value = carDropdown.value;
+            });
+
+            carIdInput.addEventListener('input', () => {
+                const value = carIdInput.value.trim();
+                if (value && carDropdown.querySelector(`option[value="${value}"]`)) {
+                    carDropdown.value = value;
+                } else {
+                    carDropdown.value = '';
+                }
+            });
+        }
+
+        if (document.getElementById('showApiKey')) {
+            document.getElementById('showApiKey').addEventListener('click', function() {
+                const apiKeyInput = document.getElementById('apiKeyInput');
+                const type = apiKeyInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                apiKeyInput.setAttribute('type', type);
+                this.textContent = type === 'password' ? '👁️' : '👁️‍🗨️';
+            });
+        }
+
+        // Initialize race alert checkbox
+        const raceAlertCheckbox = document.getElementById('raceAlertEnabled');
+        if (raceAlertCheckbox) {
+            raceAlertCheckbox.checked = GM_getValue('raceAlertEnabled', false);
+        }
+
+        // Add car dropdown sync
+        const mainCarDropdown = document.getElementById('carDropdown');
+        const autoJoinCarDropdown = document.getElementById('autoJoinCar');
+
+        if (mainCarDropdown && autoJoinCarDropdown) {
+            mainCarDropdown.addEventListener('change', () => {
+                // Sync options from main dropdown to auto-join dropdown
+                autoJoinCarDropdown.innerHTML = mainCarDropdown.innerHTML;
+                autoJoinCarDropdown.value = mainCarDropdown.value;
+            });
+        }
+
+        // Modify updateCarList to update both dropdowns
+        const originalUpdateCarList = updateCarList;
+        updateCarList = async function() {
+            await originalUpdateCarList();
+            if (autoJoinCarDropdown && mainCarDropdown) {
+                autoJoinCarDropdown.innerHTML = mainCarDropdown.innerHTML;
+            }
+        };
+
+        dragElement(gui);
+
+        displayPresets();
+        updateQuickPresetsDisplay();
+        updateQuickLaunchButtons();
+
+        displayStatusMessage('GUI Loaded', 'success');
+        setTimeout(() => displayStatusMessage('', ''), 3000);
+    }
+
+    function createToggleButton() {
+        const existingButton = document.getElementById('toggleRaceGUIButton');
+        if (existingButton) {
+            console.log('Toggle button already exists');
+            return existingButton;
+        }
+
+        const titleElement = document.querySelector('div.content-title > h4');
+        if (!titleElement) {
+            console.error('Title element not found');
+            return null;
+        }
+
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = `
+            display: flex !important;
+            flex-direction: column !important;
+            width: 100% !important;
+            margin-bottom: 10px !important;
+        `;
+
+        const topRow = document.createElement('div');
+        topRow.id = 'raceToggleRow';
+
+        const buttonContainer = document.createElement('div');
+        buttonContainer.className = 'button-container-wrapper';
+
+        const button = document.createElement('button');
+        button.id = 'toggleRaceGUIButton';
+        button.className = 'gui-button';
+        button.textContent = 'Race Config';
+
+        const quickLaunchContainer = document.createElement('div');
+        quickLaunchContainer.id = 'quickLaunchContainer';
+        quickLaunchContainer.className = 'quick-launch-container';
+
+        buttonContainer.appendChild(button);
+        topRow.appendChild(buttonContainer);
+        wrapper.appendChild(topRow);
+        wrapper.appendChild(quickLaunchContainer);
+
+        titleElement.parentNode.insertBefore(wrapper, titleElement.nextSibling);
+
+        button.addEventListener('click', () => {
+            console.log('Toggle button clicked');
+            toggleRaceGUI();
+        });
+
+        updateQuickLaunchButtons();
+        return button;
+    }
+
+    function setBodyScroll(disable) {
+        document.body.style.overflow = disable ? 'hidden' : '';
+        document.body.style.position = disable ? 'fixed' : '';
+        document.body.style.width = disable ? '100%' : '';
+    }
+
+    function toggleRaceGUI() {
+        let gui = document.getElementById('raceConfigGUI');
+        if (gui) {
+            const isVisible = gui.style.display === 'none';
+            gui.style.display = isVisible ? 'block' : 'none';
+            setBodyScroll(isVisible);
+            console.log('Toggling existing GUI:', gui.style.display);
+        } else {
+            console.log('Creating new GUI');
+            gui = createRaceConfigGUI();
+            document.body.appendChild(gui);
+            initializeGUI(gui);
+            gui.style.display = 'block';
+            setBodyScroll(true);
+        }
+    }
+
+    function dragElement(elmnt) {
+        const dragHandle = document.createElement('div');
+        dragHandle.className = 'drag-handle';
+        dragHandle.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 40px;
+            height: 40px;
+            cursor: move;
+            background: transparent;
+            pointer-events: all;
+        `;
+        elmnt.insertBefore(dragHandle, elmnt.firstChild);
+
+        const style = document.createElement('style');
+        style.textContent = `
+            #closeGUIButton {
+                z-index: 1001;
+                pointer-events: all !important;
+            }
+            .drag-handle {
+                z-index: 1000;
+            }
+        `;
+        document.head.appendChild(style);
+
+        let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+        dragHandle.onmousedown = dragMouseDown;
+
+        function dragMouseDown(e) {
+            e = e || window.event;
+            e.preventDefault();
+            pos3 = e.clientX;
+            pos4 = e.clientY;
+            document.onmouseup = closeDragElement;
+            document.onmousemove = elementDrag;
+        }
+
+        function elementDrag(e) {
+            e = e || window.event;
+            e.preventDefault();
+            pos1 = pos3 - e.clientX;
+            pos2 = pos4 - e.clientY;
+            pos3 = e.clientX;
+            pos4 = e.clientY;
+
+            // Calculate new position
+            let newTop = elmnt.offsetTop - pos2;
+            let newLeft = elmnt.offsetLeft - pos1;
+
+            // Get window dimensions and element dimensions
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            const elmntWidth = elmnt.offsetWidth;
+            const elmntHeight = elmnt.offsetHeight;
+
+            // Calculate boundaries with padding
+            const padding = 10;
+            const minLeft = padding;
+            const maxLeft = windowWidth - elmntWidth - padding;
+            const minTop = padding;
+            const maxTop = windowHeight - elmntHeight - padding;
+
+            // Apply boundaries
+            newLeft = Math.max(minLeft, Math.min(maxLeft, newLeft));
+            newTop = Math.max(minTop, Math.min(maxTop, newTop));
+
+            // Update position
+            elmnt.style.top = newTop + "px";
+            elmnt.style.left = newLeft + "px";
+        }
+
+        function closeDragElement() {
+            // Keep existing code
+            document.onmouseup = null;
+            document.onmousemove = null;
+
+            // Add boundary check after drag ends
+            enforceWindowBoundaries(elmnt);
+        }
+
+        function enforceWindowBoundaries(element) {
+            const windowWidth = document.documentElement.clientWidth;
+            const windowHeight = document.documentElement.clientHeight;
+            const elmntWidth = element.offsetWidth;
+            const elmntHeight = element.offsetHeight;
+            const padding = 10;
+
+            let { top, left } = element.getBoundingClientRect();
+
+            // Enforce boundaries
+            if (left < padding) element.style.left = padding + "px";
+            if (top < padding) element.style.top = padding + "px";
+            if (left + elmntWidth > windowWidth - padding) {
+                element.style.left = (windowWidth - elmntWidth - padding) + "px";
+            }
+            if (top + elmntHeight > windowHeight - padding) {
+                element.style.top = (windowHeight - elmntHeight - padding) + "px";
+            }
+        }
+
+        // Add window resize handler
+        window.addEventListener('resize', () => enforceWindowBoundaries(elmnt));
+    }
+
+    const STORAGE_API_KEY = 'raceConfigAPIKey_release_NoGMf';
+
+    function saveApiKey() {
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        if (!apiKeyInput) return;
+
+        const apiKey = apiKeyInput.value.trim();
+        if (!apiKey) {
+            displayStatusMessage('Please enter a valid API key', 'error');
+            return;
+        }
+
+        try {
+            GM_setValue(STORAGE_API_KEY, apiKey);
+            displayStatusMessage('API Key Saved', 'success');
+            setTimeout(() => displayStatusMessage('', ''), 3000);
+            updateCarList();
+        } catch (e) {
+            console.error('Error saving API key:', e);
+            displayStatusMessage('Failed to save API key', 'error');
+        }
+    }
+
+    function loadApiKey() {
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        if (!apiKeyInput) return;
+
+        try {
+            const savedKey = GM_getValue(STORAGE_API_KEY, '');
+            apiKeyInput.value = savedKey || '';
+        } catch (e) {
+            console.error('Error loading API key:', e);
+        }
+    }
+
+    function displayStatusMessage(message, type = '') {
+        const statusMessageBox = document.getElementById('statusMessageBox');
+        if (!statusMessageBox) return;
+
+        statusMessageBox.textContent = message;
+        statusMessageBox.style.display = message ? 'block' : 'none';
+
+        statusMessageBox.className = ' ';
+        if (type === 'error' || type === 'success') {
+            statusMessageBox.classList.add(type);
+        }
+    }
+
+    function savePreset() {
+        const carDropdown = document.getElementById('carDropdown');
+        const carId = document.getElementById('carIdInput').value;
+        const raceName = document.getElementById('raceNameInput').value.trim();
+
+        if (!raceName) {
+            displayStatusMessage('Please enter a race name before saving preset.', 'error');
+            setTimeout(() => displayStatusMessage('', ''), 3000);
+            return;
+        }
+
+        if (!carId || carDropdown.value === '') {
+            displayStatusMessage('Please select a car before creating a preset.', 'error');
+            setTimeout(() => displayStatusMessage('', ''), 3000);
+            return;
+        }
+
+        const presetName = prompt("Enter a name for this preset:");
+        if (!presetName) {
+            displayStatusMessage('Preset name cannot be empty.', 'error');
+            setTimeout(() => displayStatusMessage('', ''), 3000);
+            return;
+        }
+
+        const carOption = carDropdown.querySelector(`option[value="${carId}"]`);
+        const carName = carOption ? carOption.textContent.split(' (ID:')[0] : null;
+
+        const saveTime = document.getElementById('saveTimeToPreset').checked;
+        const presetData = {
+            track: document.getElementById('trackSelect').value,
+            laps: document.getElementById('lapsInput').value,
+            minDrivers: document.getElementById('minDriversInput').value,
+            maxDrivers: document.getElementById('maxDriversInput').value,
+            raceName: document.getElementById('raceNameInput').value,
+            password: document.getElementById('passwordInput').value,
+            betAmount: document.getElementById('betAmountInput').value,
+            hour: saveTime ? document.getElementById('hourSelect').value : null,
+            minute: saveTime ? document.getElementById('minuteSelect').value : null,
+            carId: carId,
+            carName: carName,
+            selectedCar: carDropdown.value,
+            saveTime: saveTime
+        };
+        let presets = loadPresets();
+        presets[presetName] = presetData;
+        set_value('race_presets', presets);
+        displayPresets();
+        updateQuickPresetsDisplay();
+        updateQuickLaunchButtons();
+        displayStatusMessage(`Preset "${presetName}" saved.`, 'success');
+        setTimeout(() => displayStatusMessage('', ''), 3000);
+    }
+
+    function getNextAvailableTime(hour, minute) {
+        if (!hour || !minute) return null;
+
+        const now = moment.utc();
+        let targetTime = moment.utc().set({
+            hour: parseInt(hour),
+            minute: parseInt(minute),
+            second: 0,
+            millisecond: 0
+        });
+
+        // If the target time has already passed today, set it for tomorrow
+        if (targetTime.isSameOrBefore(now)) {
+            targetTime = targetTime.add(1, 'day');
+        }
+
+        return targetTime;
+    }
+
+    function applyPreset(presetName) {
+        const presets = loadPresets();
+        const preset = presets[presetName];
+        if (preset) {
+            const trackSelect = document.getElementById('trackSelect');
+            const lapsInput = document.getElementById('lapsInput');
+            const minDriversInput = document.getElementById('minDriversInput');
+            const maxDriversInput = document.getElementById('maxDriversInput');
+            const raceNameInput = document.getElementById('raceNameInput');
+            const passwordInput = document.getElementById('passwordInput');
+            const betAmountInput = document.getElementById('betAmountInput');
+            const hourSelect = document.getElementById('hourSelect');
+            const minuteSelect = document.getElementById('minuteSelect');
+            const carDropdown = document.getElementById('carDropdown');
+            const carIdInput = document.getElementById('carIdInput');
+
+            if (trackSelect) trackSelect.value = preset.track;
+            if (lapsInput) lapsInput.value = preset.laps;
+            if (minDriversInput) minDriversInput.value = preset.minDrivers;
+            if (maxDriversInput) maxDriversInput.value = preset.maxDrivers;
+            if (raceNameInput) raceNameInput.value = preset.raceName;
+            if (passwordInput) passwordInput.value = preset.password;
+            if (betAmountInput) betAmountInput.value = preset.betAmount;
+
+            if (preset.saveTime && preset.hour && preset.minute) {
+                const nextTime = getNextAvailableTime(preset.hour, preset.minute);
+                if (nextTime) {
+                    if (hourSelect) hourSelect.value = preset.hour;
+                    if (minuteSelect) minuteSelect.value = preset.minute;
+                }
+            } else {
+                if (hourSelect) hourSelect.value = '00';
+                if (minuteSelect) minuteSelect.value = '00';
+            }
+
+            document.getElementById('saveTimeToPreset').checked = preset.saveTime || false;
+
+            if (carDropdown && preset.selectedCar) {
+                carDropdown.value = preset.selectedCar;
+            }
+            if (carIdInput) {
+                carIdInput.value = preset.carId || preset.selectedCar || '';
+            }
+
+            displayStatusMessage(`Preset "${presetName}" applied.`, 'success');
+            setTimeout(() => displayStatusMessage('', ''), 3000);
+        } else {
+            displayStatusMessage(`Preset "${presetName}" not found.`, 'error');
+            setTimeout(() => displayStatusMessage('', ''), 3000);
+        }
+    }
+
+    function loadPresets() {
+        return get_value('race_presets') || {};
+    }
+
+    function loadAllPresets() {
+        return loadPresets() || {};
+    }
+
+    function displayPresets() {
+        const presets = loadPresets();
+        const container = document.getElementById('presetButtonsContainer');
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        if (Object.keys(presets).length === 0) {
+            container.textContent = 'No presets saved yet.';
+            return;
+        }
+
+        const trackNames = {
+            '6': 'Uptown', '7': 'Withdrawal', '8': 'Underdog', '9': 'Parkland',
+            '10': 'Docks', '11': 'Commerce', '12': 'Two Islands', '15': 'Industrial',
+            '16': 'Vector', '17': 'Mudpit', '18': 'Hammerhead', '19': 'Sewage',
+            '20': 'Meltdown', '21': 'Speedway', '23': 'Stone Park', '24': 'Convict'
+        };
+
+        Object.keys(presets).forEach(presetName => {
+            const preset = presets[presetName];
+            const presetButtonContainer = document.createElement('div');
+            presetButtonContainer.className = 'preset-button-container';
+
+            const presetButton = document.createElement('button');
+            presetButton.className = 'preset-button';
+
+            const carName = preset.carName || 'Unknown Car';
+
+            presetButton.innerHTML = `
+                <div class="preset-title">${presetName}</div>
+                <div class="preset-info">
+                    ${trackNames[preset.track] || 'Unknown Track'}<br>
+                    Laps: ${preset.laps}<br>
+                    ${carName}
+                </div>
+            `;
+
+            presetButton.title = `Apply preset: ${presetName}`;
+            presetButton.addEventListener('click', () => applyPreset(presetName));
+            presetButtonContainer.appendChild(presetButton);
+
+            const removeButton = document.createElement('a');
+            removeButton.className = 'remove-preset';
+            removeButton.href = '#';
+            removeButton.textContent = '×';
+            removeButton.title = `Remove preset: ${presetName}`;
+            removeButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                removePreset(presetName);
+            });
+            presetButtonContainer.appendChild(removeButton);
+
+            container.appendChild(presetButtonContainer);
+        });
+    }
+
+    function applyPreset(presetName) {
+        const presets = loadPresets();
+        const preset = presets[presetName];
+        if (preset) {
+            document.getElementById('trackSelect').value = preset.track;
+            document.getElementById('lapsInput').value = preset.laps;
+            document.getElementById('minDriversInput').value = preset.minDrivers;
+            document.getElementById('maxDriversInput').value = preset.maxDrivers;
+            document.getElementById('raceNameInput').value = preset.raceName;
+            document.getElementById('passwordInput').value = preset.password;
+            document.getElementById('betAmountInput').value = preset.betAmount;
+            document.getElementById('hourSelect').value = preset.hour;
+            document.getElementById('minuteSelect').value = preset.minute;
+
+            const carDropdown = document.getElementById('carDropdown');
+            const carIdInput = document.getElementById('carIdInput');
+
+            if (preset.selectedCar && carDropdown) {
+                carDropdown.value = preset.selectedCar;
+            }
+
+            if (carIdInput) {
+                carIdInput.value = preset.carId || preset.selectedCar || '';
+            }
+
+            displayStatusMessage(`Preset "${presetName}" applied.`, 'success');
+            setTimeout(() => displayStatusMessage('', ''), 3000);
+
+        } else {
+            displayStatusMessage(`Preset "${presetName}" not found.`, 'error');
+            setTimeout(() => displayStatusMessage('', ''), 3000);
+        }
+    }
+
+    function removePreset(presetName) {
+        if (!confirm(`Are you sure you want to remove preset "${presetName}"?`)) {
+            return;
+        }
+        let presets = loadPresets();
+        delete presets[presetName];
+        set_value('race_presets', presets);
+        displayPresets();
+        updateQuickPresetsDisplay();
+        updateQuickLaunchButtons();
+        displayStatusMessage(`Preset "${presetName}" removed.`, 'success');
+        setTimeout(() => displayStatusMessage('', ''), 3000);
+    }
+
+    function clearPresets() {
+        if (confirm("Are you sure you want to clear ALL saved presets?")) {
+            set_value('race_presets', {});
+            displayPresets();
+            updateQuickPresetsDisplay();
+            updateQuickLaunchButtons();
+            displayStatusMessage('All presets cleared.', 'success');
+            setTimeout(() => displayStatusMessage('', ''), 3000);
+        }
+    }
+
+    function updateQuickPresetsDisplay() {
+        const presets = loadAllPresets();
+        const quickPresetsContainer = document.getElementById('quickPresetButtonsContainer');
+
+        if (!quickPresetsContainer) return;
+
+        quickPresetsContainer.innerHTML = '';
+
+        const quickPresets = [
+            { name: "Quick Uptown 10 Laps", config: { track: '6', laps: '10' } },
+            { name: "Quick Speedway 50 Laps", config: { track: '5', laps: '50' } },
+        ];
+
+        if (quickPresets.length > 0) {
+            quickPresets.forEach(quickPreset => {
+                const button = document.createElement('button');
+                button.className = 'gui-button quick-race-button';
+                button.textContent = quickPreset.name;
+                button.title = `Quick Race: ${quickPreset.name}`;
+                button.addEventListener('click', () => applyQuickPreset(quickPreset.config));
+                quickPresetsContainer.appendChild(button);
+            });
+        } else {
+            quickPresetsContainer.textContent = 'No quick presets defined.';
+        }
+    }
+
+    function applyQuickPreset(config) {
+        if (config) {
+            document.getElementById('trackSelect').value = config.track || document.getElementById('trackSelect').options[0].value;
+            document.getElementById('lapsInput').value = config.laps || 100;
+
+            displayStatusMessage('Quick preset applied.', 'success');
+            setTimeout(() => displayStatusMessage('', ''), 3000);
+        } else {
+            displayStatusMessage('Quick preset config error.', 'error');
+            setTimeout(() => displayStatusMessage('', ''), 3000);
+        }
+    }
+
+    function updateQuickLaunchButtons() {
+        const container = document.getElementById('quickLaunchContainer');
+        if (!container) return;
+
+        container.innerHTML = '';
+        const presets = loadPresets();
+
+        if (Object.keys(presets).length === 0) {
+            container.style.display = 'none';
+            return;
+        }
+
+        // Create button container and status div
+        const buttonContainer = document.createElement('div');
+        buttonContainer.className = 'button-container';
+        const statusDiv = document.createElement('div');
+        statusDiv.className = 'quick-launch-status';
+
+        // Add them to the container in the right order
+        container.appendChild(buttonContainer);
+        container.appendChild(statusDiv);
+
+        const trackNames = {
+            '6': 'Uptown', '7': 'Withdrawal', '8': 'Underdog', '9': 'Parkland',
+            '10': 'Docks', '11': 'Commerce', '12': 'Two Islands', '15': 'Industrial',
+            '16': 'Vector', '17': 'Mudpit', '18': 'Hammerhead', '19': 'Sewage',
+            '20': 'Meltdown', '21': 'Speedway', '23': 'Stone Park', '24': 'Convict'
+        };
+
+        container.style.display = 'flex';
+        Object.entries(presets).forEach(([name, preset]) => {
+            const button = document.createElement('button');
+            button.className = 'quick-launch-button';
+            button.textContent = name;
+
+            const carName = preset.carName || `Car ID: ${preset.carId}`;
+
+            const tooltipInfo = [
+                `${name}`,
+                `Track: ${trackNames[preset.track] || 'Unknown Track'}`,
+                `Car: ${carName}`,
+                `Laps: ${preset.laps}`,
+                `Drivers: ${preset.minDrivers}-${preset.maxDrivers}`,
+                `Password: ${preset.password ? 'Yes' : 'No'}`,
+                preset.betAmount > 0 ? `Bet: $${Number(preset.betAmount).toLocaleString()}` : null
+            ].filter(Boolean).join('\n');
+
+            button.title = tooltipInfo;
+
+            button.addEventListener('click', async () => {
+                await createRaceFromPreset(preset);
+            });
+            buttonContainer.appendChild(button); // Append to buttonContainer instead of container
+        });
+    }
+
+    async function createRaceFromPreset(preset) {
+        const apiKey = GM_getValue(STORAGE_API_KEY, '');
+        if (!apiKey) {
+            displayStatusMessage('API Key is required to create race.', 'error');
+            setTimeout(() => displayStatusMessage('', ''), 3000);
+            return;
+        }
+
+        const trackId = preset.track;
+        const laps = preset.laps;
+        const minDrivers = preset.minDrivers;
+        const maxDrivers = preset.maxDrivers;
+        const raceName = preset.raceName;
+        const password = preset.password;
+        const betAmount = preset.betAmount;
+        const raceHour = preset.hour;
+        const raceMinute = preset.minute;
+        const carId = preset.carId;
+
+        let waitTime = Math.floor(Date.now() / 1000);
+        if (preset.saveTime && preset.hour && preset.minute) {
+            const nextTime = getNextAvailableTime(preset.hour, preset.minute);
+            if (nextTime) {
+                waitTime = Math.floor(nextTime.valueOf() / 1000);
+            }
+        } else {
+            // Default to current time if no time is saved in preset
+            const now = moment.utc();
+            waitTime = Math.floor(now.valueOf() / 1000);
+        }
+
+        const rfcValue = getRFC();
+
+        const params = new URLSearchParams();
+        params.append('carID', carId);
+        params.append('password', password);
+        params.append('createRace', 'true');
+        params.append('title', raceName);
+        params.append('minDrivers', minDrivers);
+        params.append('maxDrivers', maxDrivers);
+        params.append('trackID', trackId);
+        params.append('laps', laps);
+        params.append('minClass', '5');
+        params.append('carsTypeAllowed', '1');
+        params.append('carsAllowed', '5');
+        params.append('betAmount', betAmount);
+        params.append('waitTime', waitTime);
+        params.append('rfcv', rfcValue);
+
+        const raceLink = `https://www.torn.com/loader.php?sid=racing&tab=customrace&section=getInRace&step=getInRace&id=&${params.toString()}`;
+
+        displayStatusMessage('Creating Race...', 'info');
+
+        try {
+            const response = await fetch(raceLink);
+            const data = await response.text();
+
+            const quickLaunchStatus = document.querySelector('.quick-launch-status');
+            if (quickLaunchStatus) {
+                if (data.includes('success') || response.ok) {
+                    quickLaunchStatus.textContent = 'Race Created Successfully!';
+                    quickLaunchStatus.className = 'quick-launch-status success show';
+                    // Navigate to racing page after successful race creation
+                    setTimeout(() => window.location.href = 'https://www.torn.com/loader.php?sid=racing', 1500);
+                } else {
+                    quickLaunchStatus.textContent = 'Error creating race. Please try again.';
+                    quickLaunchStatus.className = 'quick-launch-status error show';
+                }
+                // Removed the setTimeout that was hiding the status
+            }
+
+            // Regular status message for the GUI
+            if (data.includes('success') || response.ok) {
+                displayStatusMessage('Race Created Successfully!', 'success');
+                // Navigate to racing page after successful race creation
+                setTimeout(() => window.location.href = 'https://www.torn.com/loader.php?sid=racing', 1500);
+            } else {
+                displayStatusMessage('Error creating race. Please try again.', 'error');
+            }
+            setTimeout(() => displayStatusMessage('', ''), 3000);
+        } catch (error) {
+            const quickLaunchStatus = document.querySelector('.quick-launch-status');
+            if (quickLaunchStatus) {
+                quickLaunchStatus.textContent = `Error creating race: ${error.message}`;
+                quickLaunchStatus.className = 'quick-launch-status error show';
+                // Removed the setTimeout that was hiding the status
+            }
+
+            displayStatusMessage(`Error creating race: ${error.message}`, 'error');
+            setTimeout(() => displayStatusMessage('', ''), 5000);
+        }
+    }
+
+    function populateTimeDropdowns() {
+        const hourSelect = document.getElementById('hourSelect');
+        const minuteSelect = document.getElementById('minuteSelect');
+
+        if (!hourSelect || !minuteSelect) return;
+
+        for (let i = 0; i <= 23; i++) {
+            const option = document.createElement('option');
+            option.value = String(i).padStart(2, '0');
+            option.textContent = String(i).padStart(2, '0');
+            hourSelect.appendChild(option);
+        }
+
+        const minutes = ['00', '15', '30', '45'];
+        minutes.forEach(minute => {
+            const option = document.createElement('option');
+            option.value = minute;
+            option.textContent = minute;
+            minuteSelect.appendChild(option);
+        });
+    }
+
+    function setTimeToNow() {
+        const hourSelect = document.getElementById('hourSelect');
+        const minuteSelect = document.getElementById('minuteSelect');
+
+        if (!hourSelect || !minuteSelect) return;
+
+        const now = moment.utc();
+        const currentHour = now.hour();
+        const currentMinute = now.minute();
+
+        // Set hour
+        hourSelect.value = String(currentHour).padStart(2, '0');
+
+        // Handle minutes - round to nearest 15 if not using exact time
+        let roundedMinute = Math.round(currentMinute / 15) * 15;
+        if (roundedMinute === 60) {
+            roundedMinute = 0;
+        }
+
+        // Remove any existing temporary minute option
+        const tempOption = minuteSelect.querySelector('.temp-minute');
+        if (tempOption) {
+            tempOption.remove();
+        }
+
+        // Add current minute as option if it's not one of the standard intervals
+        if (![0, 15, 30, 45].includes(currentMinute)) {
+            const option = document.createElement('option');
+            option.value = String(currentMinute).padStart(2, '0');
+            option.textContent = String(currentMinute).padStart(2, '0');
+            option.className = 'temp-minute';
+            minuteSelect.appendChild(option);
+            minuteSelect.value = String(currentMinute).padStart(2, '0');
+        } else {
+            minuteSelect.value = String(roundedMinute).padStart(2, '0');
+        }
+    }
+
+    async function updateCarList() {
+        // Wait for elements to be available
+        const waitForElements = () => {
+            return new Promise((resolve) => {
+                const checkElements = () => {
+                    const carDropdown = document.getElementById('carDropdown');
+                    const carStatusMessage = document.getElementById('carStatusMessage');
+                    const updateCarsButton = document.getElementById('updateCarsButton');
+
+                    if (carDropdown && carStatusMessage && updateCarsButton) {
+                        resolve({ carDropdown, carStatusMessage, updateCarsButton });
+                    } else if (domCheckAttempts < MAX_DOM_CHECK_ATTEMPTS) {
+                        domCheckAttempts++;
+                        setTimeout(checkElements, 100);
+                    } else {
+                        resolve(null);
+                    }
+                };
+                checkElements();
+            });
+        };
+
+        const elements = await waitForElements();
+        if (!elements) {
+            console.error('Required elements not found for updateCarList');
+            return;
+        }
+
+        const { carDropdown, carStatusMessage, updateCarsButton } = elements;
+        const apiKey = GM_getValue(STORAGE_API_KEY, '');
+
+        if (!apiKey) {
+            carStatusMessage.textContent = 'API Key Required';
+            carStatusMessage.style.color = 'red';
+            return;
+        }
+
+        if (carStatusMessage) {
+            carStatusMessage.textContent = 'Updating Cars...';
+            carStatusMessage.style.color = '#aaa';
+        }
+
+        if (carDropdown) {
+            carDropdown.disabled = true;
+        }
+
+        if (updateCarsButton) {
+            updateCarsButton.disabled = true;
+        }
+
+        try {
+            const response = await GM.xmlHttpRequest({
+                url: `https://api.torn.com/v2/user/?selections=enlistedcars&key=${apiKey}`,
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                onload: function(response) {
+                    try {
+                        if (response.status === 200) {
+                            const data = JSON.parse(response.responseText);
+                            if (data.error) {
+                                if (carStatusMessage) {
+                                    carStatusMessage.textContent = `API Error: ${data.error.error}`;
+                                    carStatusMessage.style.color = 'red';
+                                }
+                            } else if (data.enlistedcars) {
+                                populateCarDropdown(data.enlistedcars);
+                                if (carStatusMessage) {
+                                    carStatusMessage.textContent = 'Cars Updated';
+                                    carStatusMessage.style.color = '#efe';
+                                }
+                            } else {
+                                if (carStatusMessage) {
+                                    carStatusMessage.textContent = 'No car data received';
+                                    carStatusMessage.style.color = 'orange';
+                                }
+                            }
+                        } else {
+                            if (carStatusMessage) {
+                                carStatusMessage.textContent = `HTTP Error: ${response.status}`;
+                                carStatusMessage.style.color = 'red';
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error parsing response:', e);
+                        if (carStatusMessage) {
+                            carStatusMessage.textContent = 'Error parsing car data';
+                            carStatusMessage.style.color = 'red';
+                        }
+                    }
+                    if (carDropdown) carDropdown.disabled = false;
+                    if (updateCarsButton) updateCarsButton.disabled = false;
+                    if (carStatusMessage) {
+                        setTimeout(() => {
+                            if (carStatusMessage) carStatusMessage.textContent = '';
+                        }, 3000);
+                    }
+                },
+                onerror: function(error) {
+                    console.error('Request failed:', error);
+                    if (carStatusMessage) {
+                        carStatusMessage.textContent = 'Request failed';
+                        carStatusMessage.style.color = 'red';
+                    }
+                    if (carDropdown) carDropdown.disabled = false;
+                    if (updateCarsButton) updateCarsButton.disabled = false;
+                    if (carStatusMessage) {
+                        setTimeout(() => {
+                            if (carStatusMessage) carStatusMessage.textContent = '';
+                        }, 5000);
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Error updating cars:', error);
+            if (carStatusMessage) {
+                carStatusMessage.textContent = `Error: ${error.message}`;
+                carStatusMessage.style.color = 'red';
+            }
+            if (carDropdown) carDropdown.disabled = false;
+            if (updateCarsButton) updateCarsButton.disabled = false;
+            if (carStatusMessage) {
+                setTimeout(() => {
+                    if (carStatusMessage) carStatusMessage.textContent = '';
+                }, 5000);
+            }
+        }
+    }
+
+    function populateCarDropdown(cars) {
+        const carDropdown = document.getElementById('carDropdown');
+        if (!carDropdown) return;
+
+        carDropdown.innerHTML = '<option value="">Select a car...</option>';
+
+        const sortedCars = Object.values(cars)
+            .filter(car => car.leased !== '1')
+            .sort((a, b) => {
+                const nameA = a.name || a.item_name;
+                const nameB = b.name || b.item_name;
+                return nameA.localeCompare(nameB);
+            });
+
+        sortedCars.forEach(car => {
+            const carName = car.name || car.item_name;
+            const option = document.createElement('option');
+            option.value = car.id;
+            option.textContent = `${carName} (ID: ${car.id})`;
+            carDropdown.appendChild(option);
+        });
+    }
+
+    function updateCarDropdown() {
+        updateCarList();
+    }
+
+    function getRFC() {
+        if (typeof $.cookie !== 'function') {
+            console.error("Error: jQuery Cookie plugin is not loaded correctly!");
+            console.log("Attempting fallback cookie parsing for rfc_v...");
+            let rfc = null;
+            const cookies = document.cookie.split("; ");
+            for (let i in cookies) {
+                let cookie = cookies[i].split("=");
+                if (cookie[0] && cookie[0].trim() === "rfc_v") {
+                    rfc = decodeURIComponent(cookie[1]);
+                    console.log("Fallback cookie parsing successful. rfc_v value:", rfc);
+                    return rfc;
+                }
+            }
+            console.warn("Fallback cookie parsing failed to find rfc_v cookie.");
+            return '';
+        }
+
+        let rfcValue = $.cookie('rfc_v');
+        if (rfcValue) {
+            return rfcValue;
+        } else {
+            console.log("jQuery.cookie failed to get rfc_v, attempting fallback parsing...");
+            let rfc = null;
+            const cookies = document.cookie.split("; ");
+            for (let i in cookies) {
+                let cookie = cookies[i].split("=");
+                if (cookie[0] && cookie[0].trim() === "rfc_v") {
+                    rfc = decodeURIComponent(cookie[1]);
+                    console.log("Fallback cookie parsing successful. rfc_v value:", rfc);
+                    return rfc;
+                }
+            }
+            console.warn("Fallback cookie parsing failed to find rfc_v cookie.");
+            return '';
+        }
+    }
+
+    async function createRace() {
+        const apiKey = GM_getValue(STORAGE_API_KEY, '');
+        const raceName = document.getElementById('raceNameInput').value.trim();
+
+        if (!apiKey) {
+            displayStatusMessage('API Key is required to create race.', 'error');
+            setTimeout(() => displayStatusMessage('', ''), 3000);
+            return;
+        }
+
+        if (!raceName) {
+            displayStatusMessage('Please enter a race name.', 'error');
+            setTimeout(() => displayStatusMessage('', ''), 3000);
+            return;
+        }
+
+        const trackId = document.getElementById('trackSelect').value;
+        const laps = document.getElementById('lapsInput').value;
+        const minDrivers = document.getElementById('minDriversInput').value;
+        const maxDrivers = document.getElementById('maxDriversInput').value;
+        const password = document.getElementById('passwordInput').value;
+        const betAmount = document.getElementById('betAmountInput').value;
+        let raceHour = document.getElementById('hourSelect').value;
+        let raceMinute = document.getElementById('minuteSelect').value;
+        const saveTime = document.getElementById('saveTimeToPreset').checked;
+        const carId = document.getElementById('carIdInput').value;
+
+        // Default to current time if no time is set
+        if (!raceHour || !raceMinute) {
+            const now = moment.utc();
+            raceHour = String(now.hour()).padStart(2, '0');
+            raceMinute = String(now.minute()).padStart(2, '0');
+            document.getElementById('hourSelect').value = raceHour;
+            document.getElementById('minuteSelect').value = raceMinute;
+        }
+
+        let waitTime = Math.floor(Date.now() / 1000);
+        if (saveTime) {
+            const nextTime = getNextAvailableTime(raceHour, raceMinute);
+            if (nextTime) {
+                waitTime = Math.floor(nextTime.valueOf() / 1000);
+            }
+        }
+
+        const rfcValue = getRFC();
+
+        const params = new URLSearchParams();
+        params.append('carID', carId);
+        params.append('password', password);
+        params.append('createRace', 'true');
+        params.append('title', raceName);
+        params.append('minDrivers', minDrivers);
+        params.append('maxDrivers', maxDrivers);
+        params.append('trackID', trackId);
+        params.append('laps', laps);
+        params.append('minClass', '5');
+        params.append('carsTypeAllowed', '1');
+        params.append('carsAllowed', '5');
+        params.append('betAmount', betAmount);
+        params.append('waitTime', waitTime);
+        params.append('rfcv', rfcValue);
+
+        const raceLink = `https://www.torn.com/loader.php?sid=racing&tab=customrace&section=getInRace&step=getInRace&id=&${params.toString()}`;
+
+        displayStatusMessage('Creating Race...', 'info');
+
+        try {
+            const response = await fetch(raceLink);
+            const data = await response.text();
+
+            if (data.includes('success') || response.ok) {
+                displayStatusMessage('Race Created Successfully!', 'success');
+                // Navigate to racing page after successful race creation
+                setTimeout(() => window.location.href = 'https://www.torn.com/loader.php?sid=racing', 1500);
+            } else {
+                displayStatusMessage('Error creating race. Please try again.', 'error');
+            }
+            setTimeout(() => displayStatusMessage('', ''), 3000);
+        } catch (error) {
+            displayStatusMessage(`Error creating race: ${error.message}`, 'error');
+            setTimeout(() => displayStatusMessage('', ''), 5000);
+        }
+    }
+
+    async function createRaceFromPreset(preset) {
+        const apiKey = GM_getValue(STORAGE_API_KEY, '');
+        if (!apiKey) {
+            displayStatusMessage('API Key is required to create race.', 'error');
+            setTimeout(() => displayStatusMessage('', ''), 3000);
+            return;
+        }
+
+        const trackId = preset.track;
+        const laps = preset.laps;
+        const minDrivers = preset.minDrivers;
+        const maxDrivers = preset.maxDrivers;
+        const raceName = preset.raceName;
+        const password = preset.password;
+        const betAmount = preset.betAmount;
+        const raceHour = preset.hour;
+        const raceMinute = preset.minute;
+        const carId = preset.carId;
+
+        let waitTime = Math.floor(Date.now() / 1000);
+        if (preset.saveTime && preset.hour && preset.minute) {
+            const nextTime = getNextAvailableTime(preset.hour, preset.minute);
+            if (nextTime) {
+                waitTime = Math.floor(nextTime.valueOf() / 1000);
+            }
+        } else {
+            // Default to current time if no time is saved in preset
+            const now = moment.utc();
+            waitTime = Math.floor(now.valueOf() / 1000);
+        }
+
+        const rfcValue = getRFC();
+
+        const params = new URLSearchParams();
+        params.append('carID', carId);
+        params.append('password', password);
+        params.append('createRace', 'true');
+        params.append('title', raceName);
+        params.append('minDrivers', minDrivers);
+        params.append('maxDrivers', maxDrivers);
+        params.append('trackID', trackId);
+        params.append('laps', laps);
+        params.append('minClass', '5');
+        params.append('carsTypeAllowed', '1');
+        params.append('carsAllowed', '5');
+        params.append('betAmount', betAmount);
+        params.append('waitTime', waitTime);
+        params.append('rfcv', rfcValue);
+
+        const raceLink = `https://www.torn.com/loader.php?sid=racing&tab=customrace&section=getInRace&step=getInRace&id=&${params.toString()}`;
+
+        displayStatusMessage('Creating Race...', 'info');
+
+        try {
+            const response = await fetch(raceLink);
+            const data = await response.text();
+
+            const quickLaunchStatus = document.querySelector('.quick-launch-status');
+            if (quickLaunchStatus) {
+                if (data.includes('success') || response.ok) {
+                    quickLaunchStatus.textContent = 'Race Created Successfully!';
+                    quickLaunchStatus.className = 'quick-launch-status success show';
+                    // Navigate to racing page after successful race creation
+                    setTimeout(() => window.location.href = 'https://www.torn.com/loader.php?sid=racing', 1500);
+                } else {
+                    quickLaunchStatus.textContent = 'Error creating race. Please try again.';
+                    quickLaunchStatus.className = 'quick-launch-status error show';
+                }
+                // Removed the setTimeout that was hiding the status
+            }
+
+            // Regular status message for the GUI
+            if (data.includes('success') || response.ok) {
+                displayStatusMessage('Race Created Successfully!', 'success');
+                // Navigate to racing page after successful race creation
+                setTimeout(() => window.location.href = 'https://www.torn.com/loader.php?sid=racing', 1500);
+            } else {
+                displayStatusMessage('Error creating race. Please try again.', 'error');
+            }
+            setTimeout(() => displayStatusMessage('', ''), 3000);
+        } catch (error) {
+            const quickLaunchStatus = document.querySelector('.quick-launch-status');
+            if (quickLaunchStatus) {
+                quickLaunchStatus.textContent = `Error creating race: ${error.message}`;
+                quickLaunchStatus.className = 'quick-launch-status error show';
+                // Removed the setTimeout that was hiding the status
+            }
+
+            displayStatusMessage(`Error creating race: ${error.message}`, 'error');
+            setTimeout(() => displayStatusMessage('', ''), 5000);
+        }
+    }
+
+    function set_value(key, value) {
+        try {
+            if (key === STORAGE_API_KEY) {
+                GM_setValue(key, value);
+            } else {
+                GM_setValue(key, JSON.stringify(value));
+            }
+        } catch (e) {
+            console.error('Error saving value:', e);
+        }
+    }
+
+    function get_value(key, defaultValue) {
+        try {
+            if (key === STORAGE_API_KEY) {
+                return GM_getValue(key, defaultValue);
+            }
+            const value = GM_getValue(key);
+            return value ? JSON.parse(value) : defaultValue;
+        } catch (e) {
+            console.error('Error reading value:', e);
+            return defaultValue;
+        }
+    }
+
+    function checkRaceStatus() {
+        const raceLink = document.querySelector('a[href="/page.php?sid=racing"]');
+        if (!raceLink) return false;
+
+        const ariaLabel = raceLink.getAttribute('aria-label');
+        if (!ariaLabel) return false;
+
+        // Check if currently racing or waiting
+        if (ariaLabel === 'Racing: Currently racing' || ariaLabel === 'Racing: Waiting for a race to start') {
             return true;
         }
+
+        // Check if race finished (will match any position)
+        if (ariaLabel.match(/Racing: You finished \d+[a-z]{2} in the .+ race/)) {
+            return false;
+        }
+
+        // Any other racing status should return false
         return false;
     }
-};
 
-// Move compare function before it's used
-function compare(a, b) {
-    if (!a || !b) return 0;
-    try {
-        if (a[2] > b[2]) return 1;
-        if (b[2] > a[2]) return -1;
-        return 0;
-    } catch (e) {
-        DEBUG.error('compare', 'Error comparing race times:', e, {a, b});
-        return 0;
+    function updateRaceAlert() {
+        const alertEnabled = GM_getValue('raceAlertEnabled', false);
+        if (!alertEnabled) {
+            removeRaceAlert();
+            return;
+        }
+
+        const isInRace = checkRaceStatus();
+        const existingAlert = document.getElementById('raceAlert');
+
+        if (!isInRace) {
+            // Only create alert if it doesn't exist or is not properly attached
+            if (!existingAlert || !document.body.contains(existingAlert)) {
+                showRaceAlert();
+            }
+        } else {
+            removeRaceAlert();
+        }
     }
-}
 
-// Add validation helpers
-const RaceDataValidator = {
-    isValidRaceData(data) {
-        if (!data) return false;
-        const required = ['timeData', 'raceData', 'raceID', 'laps'];
-        const missing = required.filter(key => !data[key]);
-        if (missing.length) {
-            DEBUG.error('validation', 'Missing required race data fields:', missing);
-            return false;
-        }
-        return true;
-    },
+    function showRaceAlert() {
+        let alert = document.getElementById('raceAlert');
 
-    isValidDriverData(carsData, carInfo) {
-        if (!carsData || !carInfo) {
-            DEBUG.error('validation', 'Missing cars data or car info');
-            return false;
-        }
-        const drivers = Object.keys(carsData);
-        const valid = drivers.every(name => carInfo[name]?.userID);
-        if (!valid) {
-            DEBUG.error('validation', 'Invalid driver data structure');
-        }
-        return valid;
-    },
+        if (!alert) {
+            alert = document.createElement('div');
+            alert.id = 'raceAlert';
+            alert.className = 'race-alert';
+            alert.textContent = 'No Race';
+            alert.style.cssText = `
+                display: inline-flex !important;
+                align-items: center !important;
+                margin-left: 10px !important;
+                order: 2 !important;
+            `;
 
-    logRaceState(data) {
-        DEBUG.log('state', {
-            currentRaceId: data?.raceID,
-            lastRaceId: DEBUG.state.lastRaceId,
-            attempts: DEBUG.state.processAttempts,
-            lastSuccess: DEBUG.state.lastSuccess
-        });
-    },
-    
-    validateResponse(xhr) {
-        if (!xhr?.responseText) {
-            DEBUG.error('validation', 'No response text in XHR');
-            return false;
-        }
-        
-        try {
-            const data = JSON.parse(xhr.responseText);
-            DEBUG.log('response', {
-                hasData: !!data,
-                topLevelKeys: Object.keys(data || {})
+            const popup = document.createElement('div');
+            popup.className = 'quick-launch-popup';
+            popup.id = 'quickLaunchPopup';
+            alert.appendChild(popup);
+
+            alert.addEventListener('click', (e) => {
+                e.stopPropagation();
+                popup.classList.toggle('show');
+                updateQuickLaunchPopup(popup);
             });
-            return true;
-        } catch (e) {
-            DEBUG.error('validation', 'Failed to parse response JSON:', e);
-            return false;
-        }
-    }
-};
 
-// Enhance race data parsing with debugging
-function parseRacingData(data) {
-    DEBUG.state.processAttempts++;
-    RaceDataValidator.logRaceState(data);
-    
-    if (!data) {
-        DEBUG.error('raceData', 'No data received', {
-            attempts: DEBUG.state.processAttempts,
-            errors: DEBUG.errors
-        });
-        return;
-    }
+            document.addEventListener('click', () => {
+                popup.classList.remove('show');
+            });
 
-    try {
-        // Track timing of data processing
-        const startTime = performance.now();
-
-        // Track data structure
-        DEBUG.log('raceData', 'Data structure:', {
-            hasUser: !!data.user,
-            hasRaceID: !!data.raceID,
-            hasTimeData: !!data.timeData,
-            hasRaceData: !!data.raceData
-        });
-
-        // no sidebar in phone mode
-        const my_name = $("#sidebarroot").find("a[class^='menu-value']").html() || data.user?.playername;
-        DEBUG.log('raceData', 'Player name:', my_name);
-
-        if (data.user?.racinglevel) {
-            updateSkill(data.user.racinglevel);
-        } else {
-            DEBUG.error('raceData', 'Missing racing level data');
-        }
-
-        if (data.user?.pointsearned) {
-            updatePoints(data.user.pointsearned);
-        } else {
-            DEBUG.error('raceData', 'Missing points earned data');
-        }
-
-        if (data.user?.leavepenalty) {
-            const leavepenalty = data.user.leavepenalty;
-            GM_setValue('leavepenalty', leavepenalty);
-            checkPenalty();
-            DEBUG.log('raceData', 'Leave penalty updated:', leavepenalty);
-        }
-
-        // display race link
-        if ($('#raceLink').size() < 1 && data.raceID) {
-            RACE_ID = data.raceID;
-            DEBUG.log('raceData', 'Setting race ID:', RACE_ID);
-            const raceLink = `<a id="raceLink" href="https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${RACE_ID}" style="float: right; margin-left: 12px;">Link to the race</a>`;
-            $(raceLink).insertAfter('#racingEnhSettings');
-        }
-
-        // Process race results with detailed tracking
-        if (data.timeData?.status >= 3) {
-            DEBUG.log('raceData', 'Processing race results');
-            processRaceResults(data, my_name);
-        }
-
-        const endTime = performance.now();
-        DEBUG.log('timing', `Race data processing took ${endTime - startTime}ms`);
-
-    } catch (error) {
-        DEBUG.error('raceData', 'Error processing race data:', error);
-        console.error('Race data that caused error:', data);
-    }
-}
-
-// Enhance processRaceResults with validation
-function processRaceResults(data, my_name) {
-    try {
-        if (!RaceDataValidator.isValidRaceData(data)) {
-            DEBUG.error('raceData', 'Invalid race data structure');
-            return;
-        }
-
-        const carsData = data.raceData.cars;
-        const carInfo = data.raceData.carInfo;
-        
-        if (!RaceDataValidator.isValidDriverData(carsData, carInfo)) {
-            return;
-        }
-
-        const trackIntervals = data.raceData.trackData?.intervals?.length;
-        if (!trackIntervals) {
-            DEBUG.error('raceData', 'Missing track intervals');
-            return;
-        }
-        
-        DEBUG.log('raceData', 'Race results data:', {
-            carsCount: Object.keys(carsData).length,
-            trackIntervals,
-            laps: data.laps
-        });
-
-        let results = [], crashes = [];
-
-        for (const playername in carsData) {
-            try {
-                if (!carInfo[playername]) {
-                    DEBUG.error('raceData', `Missing car info for player ${playername}`);
-                    continue;
+            // Special handling for racing page
+            if (window.location.href.includes('sid=racing')) {
+                const raceToggleRow = document.getElementById('raceToggleRow');
+                if (raceToggleRow) {
+                    raceToggleRow.appendChild(alert);
+                    return;
                 }
+            }
 
-                const userId = carInfo[playername].userID;
-                const intervals = decode64(carsData[playername]);
-                
-                if (!intervals) {
-                    DEBUG.error('raceData', `Invalid intervals data for player ${playername}`);
-                    continue;
-                }
+            // Default handling for other pages
+            const titleSelectors = [
+                '#mainContainer > div.content-wrapper.winter > div.content-title.m-bottom10 h4',
+                '.titleContainer___QrlWP .title___rhtB4',
+                'div.content-title h4',
+                '.title-black',
+                '.clearfix .t-black',
+                '.page-head > h4',
+                '#react-root > div > div.appHeader___gUnYC.crimes-app-header > h4',
+                'div.appHeader___gUnYC h4',
+                '#skip-to-content'
+            ];
 
-                const intervalArray = intervals.split(',');
-                
-                DEBUG.log('raceData', `Processing player ${playername}`, {
-                    userId,
-                    intervalCount: intervalArray.length,
-                    expectedIntervals: trackIntervals * data.laps
-                });
-
-                if (intervalArray.length / trackIntervals == data.laps) {
-                    let raceData = calculateRaceTimes(intervalArray, trackIntervals, data.laps);
-                    if (raceData.raceTime > 0) {
-                        results.push([playername, userId, raceData.raceTime, raceData.bestLap]);
+            for (const selector of titleSelectors) {
+                const titleElement = document.querySelector(selector);
+                if (titleElement) {
+                    if (titleElement.parentNode.style.position !== 'relative') {
+                        titleElement.parentNode.style.position = 'relative';
                     }
+                    titleElement.insertAdjacentElement('beforeend', alert);
+                    break;
+                }
+            }
+        }
+    }
+
+    function updateQuickLaunchPopup(popup) {
+        if (!popup) return;
+
+        const presets = loadPresets();
+        popup.innerHTML = '';
+
+        if (Object.keys(presets).length === 0) {
+            popup.innerHTML = '<div style="padding: 10px; color: #aaa;">No presets available</div>';
+            return;
+        }
+
+        Object.entries(presets).forEach(([name, preset]) => {
+            const button = document.createElement('button');
+            button.className = 'quick-launch-button';
+            button.textContent = name;
+            button.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                await createRaceFromPreset(preset);
+            });
+            popup.appendChild(button);
+        });
+    }
+
+    function removeRaceAlert() {
+        const alert = document.getElementById('raceAlert');
+        if (alert) {
+            alert.remove();
+        }
+    }
+
+    function initializeRaceFiltering() {
+        console.log('[DEBUG] Starting race filtering initialization');
+
+        if (!window.location.href.includes('sid=racing')) {
+            console.log('[DEBUG] Not on racing page, filter init aborted');
+            return;
+        }
+
+        // Setup one-time initialization flag
+        window.raceFiltersInitialized = window.raceFiltersInitialized || false;
+
+        // Add tab change listener
+        document.addEventListener('click', (e) => {
+            if (e.target && e.target.matches('.categories .link')) {
+                const tabValue = e.target.getAttribute('tab-value');
+                if (tabValue === 'customrace') {
+                    // Clear initialization flag when switching to custom race tab
+                    window.raceFiltersInitialized = false;
+                    // Small delay to allow content to load
+                    setTimeout(checkAndSetupFilters, 100);
+                }
+            }
+        });
+
+        // Setup mutation observer for dynamic content changes
+        const observer = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                checkAndSetupFilters();
+            }
+        });
+
+        observer.observe(document.getElementById('racingMainContainer') || document.body, {
+            childList: true,
+            subtree: true
+        });
+
+        // Initial check
+        checkAndSetupFilters();
+    }
+
+    function checkAndSetupFilters() {
+        // Only proceed if not already initialized
+        if (window.raceFiltersInitialized) {
+            return;
+        }
+
+        const raceList = document.querySelector('.custom_events, .events-list, .races-list');
+        if (!raceList || raceList.querySelector('.race-filter-section')) {
+            return;
+        }
+
+        // Set flag before initializing to prevent multiple initializations
+        window.raceFiltersInitialized = true;
+
+        setupFilterControls();
+    }
+
+    function setupFilterControls() {
+        const raceList = document.querySelector('.custom_events, .events-list, .races-list');
+        if (!raceList) {
+            console.log('[DEBUG] Race list not found');
+            return;
+        }
+
+        console.log('[DEBUG] Creating filter controls');
+
+        // Check if filters already exist and remove them if they do
+        const existingFilters = document.querySelector('.race-filter-section');
+        if (existingFilters) {
+            existingFilters.remove();
+        }
+
+        // Create and add new filter controls
+        const filterContainer = document.createElement('div');
+        filterContainer.className = 'race-filter-section';
+        raceList.parentNode.insertBefore(filterContainer, raceList);
+
+        const controls = document.createElement('div');
+        controls.className = 'race-filter-controls';
+        controls.innerHTML = `
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label>Track:</label>
+                    <select id="filterTrack">
+                        <option value="">All Tracks</option>
+                        <option value="6">Uptown</option>
+                        <option value="7">Withdrawal</option>
+                        <option value="8">Underdog</option>
+                        <option value="9">Parkland</option>
+                        <option value="10">Docks</option>
+                        <option value="11">Commerce</option>
+                        <option value="12">Two Islands</option>
+                        <option value="15">Industrial</option>
+                        <option value="16">Vector</option>
+                        <option value="17">Mudpit</option>
+                        <option value="18">Hammerhead</option>
+                        <option value="19">Sewage</option>
+                        <option value="20">Meltdown</option>
+                        <option value="21">Speedway</option>
+                        <option value="23">Stone Park</option>
+                        <option value="24">Convict</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Laps:</label>
+                    <input type="number" id="filterMinLaps" placeholder="Min" min="1" max="100">
+                    <input type="number" id="filterMaxLaps" placeholder="Max" min="1" max="100">
+                </div>
+                <div class="filter-group">
+                    <label>Sort By:</label>
+                    <select id="filterSort">
+                        <option value="time">Start Time</option>
+                        <option value="track">Track</option>
+                        <option value="laps">Laps</option>
+                        <option value="bets">Bet Amount</option>
+                    </select>
+                </div>
+                <div class="filter-group checkboxes">
+                    <div class="checkbox-option">
+                        <label><input type="checkbox" id="hidePassworded"> Hide Passworded</label>
+                    </div>
+                    <div class="checkbox-option">
+                        <label><input type="checkbox" id="showSuitableCarsOnly"> Show Suitable Cars Only</label>
+                    </div>
+                </div>
+                <div class="filter-buttons">
+                    <button id="toggleFilters" class="gui-button active">Disable Filters</button>
+                    <button id="refreshRaces" class="gui-button">Refresh List</button>
+                </div>
+            </div>
+        `;
+
+        filterContainer.appendChild(controls);
+
+        // Add filter event listeners
+        const filterElements = [
+            'filterTrack',
+            'filterMinLaps',
+            'filterMaxLaps',
+            'filterSort',
+            'hidePassworded',
+            'showSuitableCarsOnly'
+        ];
+
+        filterElements.forEach(id => {
+            document.getElementById(id)?.addEventListener('change', () => {
+                if (document.getElementById('toggleFilters')?.classList.contains('active')) {
+                    window.RaceFiltering.filterRacesList();
+                }
+            });
+        });
+
+        // Add button listeners with filters enabled by default
+        const toggleBtn = document.getElementById('toggleFilters');
+        const refreshBtn = document.getElementById('refreshRaces');
+
+        if (toggleBtn) {
+            toggleBtn.classList.add('active'); // Enable by default
+            window.RaceFiltering.filterRacesList(); // Apply filters immediately
+
+            toggleBtn.addEventListener('click', function() {
+                const isEnabled = this.classList.toggle('active');
+                this.textContent = isEnabled ? 'Disable Filters' : 'Enable Filters';
+                if (isEnabled) {
+                    window.RaceFiltering.filterRacesList();
                 } else {
-                    crashes.push([playername, userId, 'crashed']);
-                    DEBUG.log('raceData', `Player ${playername} crashed`);
+                    window.location.reload();
                 }
-            } catch (playerError) {
-                DEBUG.error('raceData', `Error processing player ${playername}:`, playerError);
-            }
+            });
         }
 
-        if (results.length > 0) {
-            results.sort(compare);
-            addExportButton(results, crashes, my_name, data.raceID, data.timeData.timeEnded);
-
-            if (SHOW_RESULTS) {
-                showResults(results);
-                showResults(crashes, results.length);
-            }
-        } else {
-            DEBUG.error('raceData', 'No valid race results to display');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => window.location.reload());
         }
-
-    } catch (error) {
-        DEBUG.error('raceData', 'Error processing race results:', error);
-    }
-}
-
-// Helper function to calculate race times
-function calculateRaceTimes(intervals, trackIntervals, laps) {
-    try {
-        let raceTime = 0;
-        let bestLap = 9999999999;
-
-        for (let i = 0; i < laps; i++) {
-            let lapTime = 0;
-            for (let j = 0; j < trackIntervals; j++) {
-                const time = Number(intervals[i * trackIntervals + j]);
-                if (isNaN(time)) {
-                    throw new Error(`Invalid interval time at lap ${i} interval ${j}`);
-                }
-                lapTime += time;
-            }
-            bestLap = Math.min(bestLap, lapTime);
-            raceTime += lapTime;
-        }
-
-        if (raceTime <= 0) {
-            throw new Error('Invalid race time calculated');
-        }
-
-        return { raceTime, bestLap };
-    } catch (error) {
-        DEBUG.error('timing', 'Error calculating race times:', error);
-        return { raceTime: 0, bestLap: 0 };
-    }
-}
-
-GM_addStyle(`
-.rs-display {
-    position: absolute;
-    right: 5px;
-}
-ul.driver-item > li.name {
-  overflow: auto;
-}
-li.name .race_position {
-  background:url(/images/v2/racing/car_status.svg) 0 0 no-repeat;
-  display:inline-block;
-  width:20px;
-  height:18px;
-  vertical-align:text-bottom;
-}
-li.name .race_position.gold {
-  background-position:0 0;
-}
-li.name .race_position.silver {
-  background-position:0 -22px;
-}
-li.name .race_position.bronze {
-  background-position:0 -44px;
-}`);
-
-function showResults(results, start = 0) {
-    for (let i = 0; i < results.length; i++) {
-        $('#leaderBoard').children('li').each(function() {
-            const name = $(this).find('li.name').text().trim();
-            if (name == results[i][0]) {
-                const p = i + start + 1;
-                const position = p === 1 ? 'gold' : (p === 2 ? 'silver' : (p === 3 ? 'bronze' : ''));
-                let place;
-                if (p != 11 && (p%10) == 1)
-                    place = p + 'st';
-                else if (p != 12 && (p%10) == 2)
-                    place = p + 'nd';
-                else if (p != 13 && (p%10) == 3)
-                    place = p + 'rd';
-                else
-                    place = p + 'th';
-
-                const result = typeof results[i][2] === 'number' ? formatTimeMsec(results[i][2] * 1000) : results[i][2];
-                const bestLap = results[i][3] ? formatTimeMsec(results[i][3] * 1000) : null;
-                $(this).find('li.name').html($(this).find('li.name').html().replace(name, ((SHOW_POSITION_ICONS && position) ? `<i class="race_position ${position}"></i>` : '') + `${name} ${place} ${result}` + (bestLap ? ` (best: ${bestLap})` : '')));
-                return false;
-            }
-        });
-    }
-}
-
-function addSettingsDiv() {
-    if ($("#racingupdatesnew").size() > 0 && $('#racingEnhSettings').size() < 1) {
-        const div = '<div style="font-size: 12px; line-height: 24px; padding-left: 10px; padding-right: 10px; background: repeating-linear-gradient(90deg,#242424,#242424 2px,#2e2e2e 0,#2e2e2e 4px); border-radius: 5px;">' +
-              '<a id="racingEnhSettings" style="text-align: right; cursor: pointer;">Settings</a>' +
-              '<div id="racingEnhSettingsContainer" style="display: none;"><ul style="color: #ddd;">' +
-              '<li><input type="checkbox" style="margin-left: 5px; margin-right: 5px" id="showSpeedChk"><label>Show current speed</label></li>' +
-              '<li><input type="checkbox" style="margin-left: 5px; margin-right: 5px" id="showNotifChk"><label>Show notifications</label></li>' +
-              '<li><input type="checkbox" style="margin-left: 5px; margin-right: 5px" id="showResultsChk"><label>Show results</label></li>' +
-              '<li><input type="checkbox" style="margin-left: 5px; margin-right: 5px" id="showSkinsChk"><label>Show racing skins</label></li>' +
-              '<li><input type="checkbox" style="margin-left: 5px; margin-right: 5px" id="showPositionIconChk"><label>Show position icons</label></li>' +
-              '<li><label>Fetch racing skill from the API (<a href="https://www.torn.com/preferences.php#tab=api">link to your API key</a>)</label><span class="input-wrap" style="margin: 0px 5px 5px;">' +
-              '<input type="text" autocomplete="off" data-lpignore="true" id="apiKey"></span>' +
-              '<a href="#" id="saveApiKey" class="link btn-action-tab tt-modified"><i style="display: inline-block; background: url(/images/v2/racing/car_enlist.png) 0 0 no-repeat; vertical-align: middle; height: 15px; width: 15px;"></i>Save</a></li></ul></div></div>';
-        $('#racingupdatesnew').prepend(div);
-
-        $('#racingEnhSettingsContainer').find('input[type=checkbox]').each(function() {
-            $(this).prop('checked', GM_getValue($(this).attr('id')) != 0);
-        });
-        $('#apiKey').val(GM_getValue('apiKey'));
-
-        $('#racingEnhSettings').on('click', () => $('#racingEnhSettingsContainer').toggle());
-        $('#racingEnhSettingsContainer').on('click', 'input', function() {
-            const id = $(this).attr('id');
-            const checked = $(this).prop('checked');
-            GM_setValue(id, checked ? 1 : 0);
-        });
-        $('#saveApiKey').click(event => {
-            event.preventDefault();
-            event.stopPropagation();
-            GM_setValue('apiKey', $('#apiKey').val());
-            updateDriversList();
-        });
-    }
-}
-
-function addExportButton(results, crashes, my_name, race_id, time_ended) {
-    if ($("#racingupdatesnew").size() > 0 && $('#downloadAsCsv').size() < 1) {
-        let csv = 'position,name,id,time,best_lap,rs\n';
-        for (let i = 0; i < results.length; i++) {
-            const timeStr = formatTimeMsec(results[i][2] * 1000, true);
-            const bestLap = formatTimeMsec(results[i][3] * 1000);
-            csv += [i+1, results[i][0], results[i][1], timeStr, bestLap, (results[i][0] === my_name ? GM_getValue('racinglevel') : '')].join(',') + '\n';
-        }
-        for (let i = 0; i < crashes.length; i++) {
-            csv += [results.length + i + 1, crashes[i][0], crashes[i][1], crashes[i][2], '', (results[i][0] === my_name ? GM_getValue('racinglevel') : '')].join(',') + '\n';
-        }
-
-        const timeE = new Date();
-        timeE.setTime(time_ended * 1000);
-        const fileName = `${timeE.getUTCFullYear()}${pad(timeE.getUTCMonth() + 1, 2)}${pad(timeE.getUTCDate(), 2)}-race_${race_id}.csv`;
-
-        const myblob = new Blob([csv], {type: 'application/octet-stream'});
-        const myurl = window.URL.createObjectURL(myblob);
-        const exportBtn = `<a id="downloadAsCsv" href="${myurl}" style="float: right; margin-left: 12px;" download="${fileName}">Download results as CSV</a>`;
-        $(exportBtn).insertAfter('#racingEnhSettings');
-    }
-}
-
-function addPlaybackButton() {
-    if ($("#racingupdatesnew").size() > 0 && $('div.race-player-container').size() < 1) {
-        $('div.drivers-list > div.cont-black').prepend(`<div class="race-player-container"><button id="play-pause-btn" class="play"></button>
-<div id="speed-slider"><span id="prev-speed" class="disabled"></span><span id="speed-value">x1</span><span id="next-speed" class="enabled"></span></div>
-<div id="replay-bar-container"><span id="progress-active"></span><span id="progress-inactive"></span></div>
-<div id="race-timer-container"><span id="race-timer">00:00:00</span></div></div>`);
-    }
-}
-
-function displayDailyGains() {
-    $('#mainContainer').find('div.content').find('span.label').each((i, el) => {
-        if ($(el).text().includes('Racing')) {
-            const racingLi = $(el).parent().parent();
-
-            // RS gain
-            const desc = $(racingLi).find('span.desc');
-            if ($(desc).size() > 0) {
-                const rsText = $(desc).text();
-                const currentRs = GM_getValue('racinglevel');
-                const lastDaysRs = GM_getValue('lastDaysRs');
-                const oldRs = lastDaysRs && lastDaysRs.includes(':') ? lastDaysRs.split(':')[1] : undefined;
-                $(desc).text(`${rsText} / Daily gain: ${currentRs && oldRs ? (1*currentRs - 1*oldRs).toFixed(5) : 'N/A'}`);
-                $(desc).attr('title', 'Daily gain: How much your racing skill has increased since yesterday.');
-            }
-
-            // points gain
-            const lastDaysPoints = GM_getValue('lastDaysPoints');
-            const currentPoints = GM_getValue('pointsearned');
-            const oldPoints = lastDaysPoints && lastDaysPoints.includes(':') ? lastDaysPoints.split(':')[1] : undefined;
-            let pointsTitle = 'Racing points earned: How many points you have earned throughout your career.';
-            for (const x of [ {points: 25, class: 'D'}, {points: 100, class: 'C'}, {points: 250, class: 'B'}, {points: 475, class: 'A'} ]) {
-                if (currentPoints && currentPoints < x.points) pointsTitle += `<br>Till <b>class ${x.class}</b>: ${1*x.points - 1*currentPoints}`;
-            }
-            const pointsLi = `<li role="row"><span class="divider"><span class="label" title="${pointsTitle}">Racing points earned</span></span>
-<span class="desc" title="Daily gain: How many racing points you've earned since yesterday.">
-${currentPoints ? currentPoints : 'N/A'} / Daily gain: ${currentPoints && oldPoints ? 1*currentPoints - 1*oldPoints : 'N/A'}
-</span>
-</li>`;
-            $(pointsLi).insertAfter(racingLi);
-
-            return false;
-        }
-    });
-}
-
-'use strict';
-
-// Your code here...
-console.log('[Racing Enhancement] Script initializing');
-
-ajax((page, xhr) => {
-    if (page != "loader") return;
-
-    DEBUG.log('page', `Processing ${page} page`);
-    
-    // Validate racing request
-    if (RaceRequestValidator.trackRequest(xhr.responseURL, xhr.responseText)) {
-        DEBUG.log('racing-request', {
-            url: xhr.responseURL,
-            status: xhr.status,
-            size: xhr.responseText?.length
-        });
     }
 
-    if (!RaceDataValidator.validateResponse(xhr)) {
-        DEBUG.error('ajax', 'Invalid AJAX response structure');
-        return;
-    }
-
-    try {
-        const data = JSON.parse(xhr.responseText);
-        parseRacingData(data);
-    } catch (e) {
-        DEBUG.error('ajax', 'Failed to process race data:', e);
-    }
-
-    $("#racingupdatesnew").ready(addSettingsDiv);
-    $("#racingupdatesnew").ready(showSpeed);
-    $('#racingAdditionalContainer').ready(showPenalty);
-    if ($(location).attr('href').includes('sid=racing&tab=log&raceID=')) {
-        $('#racingupdatesnew').ready(addPlaybackButton);
-    }
-    try {
-        parseRacingData(JSON.parse(xhr.responseText));
-    } catch (e) {}
-
-    const JltColor = '#fff200';
-    if ($('#racingAdditionalContainer').size() > 0 && $('#racingAdditionalContainer').find('div.custom-events-wrap').size() > 0) {
-        $('#racingAdditionalContainer').find('div.custom-events-wrap').find('ul.events-list > li').each((i, li) => {
-            if ($(li).find('li.name').size() > 0 && $(li).find('li.name').text().trim().startsWith('JLT-')) {
-                $(li).addClass('gold');
-                $(li).css('color', JltColor).css('text-shadow', `0 0 1px ${JltColor}`);
-                $(li).find('span.laps').css('color', JltColor);
-            }
-        });
-    }
-});
-
-$("#racingupdatesnew").ready(addSettingsDiv);
-$("#racingupdatesnew").ready(showSpeed);
-$('#racingAdditionalContainer').ready(showPenalty);
-
-if ($(location).attr('href').includes('index.php')) {
-    $('#mainContainer').ready(displayDailyGains);
-}
-
-if ($(location).attr('href').includes('sid=racing&tab=log&raceID=')) {
-    $('#racingupdatesnew').ready(addPlaybackButton);
-}
-
-// hide playback button when not showing a race log
-$('#racingupdatesnew').ready(function() {
-    $('div.racing-main-wrap').find('ul.categories > li > a').on('click', function() {
-        $('#racingupdatesnew').find('div.race-player-container').hide();
-    });
-});
-
-checkPenalty();
-
-if ((FETCH_RS || SHOW_SKINS) && $(location).attr('href').includes('sid=racing')) {
-    $("#racingupdatesnew").ready(function() {
-        updateDriversList();
-        // On change race tab, (re-)insert the racing skills if applicable:
-        new MutationObserver(updateDriversList).observe(document.getElementById('racingAdditionalContainer'), {childList: true});
-    });
-}
+    init();
+})();

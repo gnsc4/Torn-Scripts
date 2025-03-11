@@ -1,0 +1,654 @@
+function Ajax(options) {
+    // AjaxHandler always returns a JSON object
+    this.dataType = null;
+}
+
+Ajax.prototype.getCallerName = function(mapFile, line, column) {
+    var map = new sourceMap.SourceMapConsumer(mapFile);
+    var info = null;
+
+    $.each(map['_generatedMappings'], function () {
+        var el = this;
+        if (el.generatedLine == line && el.generatedColumn == column - 1) {
+            info = (el.name ? "name: "  + el.name + ", " : "") + "source: /min/js/" + el.source + ", line: " + el.originalLine + ", column: " + el.originalColumn;
+
+            return false;
+        }
+
+        if (!info) {
+            info = "No info was found for line: " + line + ", and column: " + column + ", in " + map.file
+        }
+    });
+
+    return info;
+};
+
+Ajax.prototype.getStack = function(msg, additionalInfo) {
+    var that = this,
+        stack = [],
+        currentMinFileName,
+        caller_line = (new Error).stack.split("\n"),
+        minimizedLinesColumns = [],
+        tempArr;
+
+    for (var i = 1, length = caller_line.length; i < length; i++) {
+        tempArr = caller_line[i].match(/\/min\/js\/(.*)\?v=.*:(.*):(\d*)/);
+        if (tempArr) {
+            tempArr.shift();
+
+            if (tempArr[0] != "header.min.js") {
+                currentMinFileName = tempArr[0];
+            }
+
+        } else {
+            tempArr = caller_line[i]
+        }
+        minimizedLinesColumns.push(tempArr);
+    }
+
+    $.ajax({
+        url: that.addRFC("ajaxhandler.php"),
+        type: 'POST',
+        data: {map: currentMinFileName, action: "getSourceMaps"},
+        success: function (maps) {
+            var m = JSON.parse(maps);
+
+            for (var i = 0, length = minimizedLinesColumns.length; i < length; i++) {
+                if (minimizedLinesColumns[i].length > 1) {
+                    if (minimizedLinesColumns[i][0] == "header.min.js") {
+                        stack.push(that.getCallerName(m.header, minimizedLinesColumns[i][1], minimizedLinesColumns[i][2]));
+                    } else if (m.current) {
+                        stack.push(that.getCallerName(m.current, minimizedLinesColumns[i][1], minimizedLinesColumns[i][2]));
+                    }
+                } else {
+                    stack.push(minimizedLinesColumns[i]);
+                }
+            }
+            stack.reverse();
+            that.setLog(stack, msg, additionalInfo);
+        },
+        error: function(jqXHR, textStatus, errorThrown) {
+            that.setLog("jqXHR: " + jqXHR + ", textStatus: " + textStatus + ", errorThrown: " + errorThrown, "AJAX error. Stack can't be processed.");
+        }
+    });
+};
+
+Ajax.prototype.dateRun = new Date();
+
+Ajax.prototype.updateDate = function() {
+    this.dateRun = new Date();
+};
+
+Ajax.prototype.sendLog = function(data) {
+    $.ajax({
+        url: "loader.php?sid=setClientLog",
+        type: "post",
+        data: data
+    });
+};
+
+Ajax.prototype.setLog = function(stackLog, msg, additionalInfo) {
+    var that = this,
+        dataLog = {
+        message: msg,
+        stack: stackLog,
+        urlPage: location.href,
+        ajaxOptions: that.options,
+        server: $('.footer-menu .server a').text(), // this works if sidebar exists. Would be better to change this implementation
+        clientDate: that.dateRun,
+        serverDate: $('.footer-menu .date .server-time').text().trim() + " " + $('.footer-menu .date .server-date').text().trim(), // if sidebar exists, would be better to change this implementation
+        userID: $.cookie().uid,
+        userstate: {
+            isFederalJail: that.userstate.isFederalJail() ? 'true' : 'false',
+            isHospital: that.userstate.isHospital() ? 'true' : 'false',
+            isJail: that.userstate.isJail() ? 'true' : 'false',
+            isRequiredRefreshSidebar: that.userstate.isRequiredRefreshSidebar() ? 'true' : 'false',
+            isTravel: that.userstate.isTravel() ? 'true' : 'false'
+        },
+        additional: additionalInfo || "No additional information"
+    };
+
+    console.log('Ajax.log: ');
+    console.log(dataLog);
+
+    try {
+        that.sendLog(dataLog);
+    } catch (e) {
+        
+    }
+};
+
+Ajax.prototype.log = function(msg, additionalInfo) {
+    this.updateDate();
+    this.getStack(msg, additionalInfo);
+};
+
+Ajax.prototype.userstate = (function () {
+    var travel = null,
+        hospital = null,
+        jail = null,
+        federalJail = null,
+        refreshSidebar = null;
+
+    return {
+        'setTravel' : function (state) {
+            if (typeof state === "boolean") {
+                travel = state;
+            } else {
+                Ajax.prototype.log.call(this, 'Error during execution Ajax.setTravel method can take only boolean variable');
+            }
+        },
+        'setHospital' : function (state) {
+            if (typeof state === "boolean") {
+                hospital = state;
+            } else {
+                Ajax.prototype.log.call(this, 'Error during execution Ajax.setHospital method can take only boolean variable');
+            }
+        },
+        'setJail' : function (state) {
+            if (typeof state === "boolean") {
+                jail = state;
+            } else {
+                Ajax.prototype.log.call(this, 'Error during execution Ajax.setJail method can take only boolean variable');
+            }
+        },
+        'setFederalJail' : function (state) {
+            if (typeof state === "boolean") {
+                federalJail = state;
+            } else {
+                Ajax.prototype.log.call(this, 'Error during execution Ajax.setFederalJail method can take only boolean variable');
+            }
+        },
+        'setRefreshSidebar' : function (state) {
+            if (typeof state === "boolean") {
+                refreshSidebar = state;
+            } else {
+                Ajax.prototype.log.call(this, 'Error during execution Ajax.setRefreshSidebar method can take only boolean variable');
+            }
+        },
+        'isTravel': function () {
+            return travel;
+        },
+        'isHospital': function () {
+            return hospital;
+        },
+        'isJail': function () {
+            return jail;
+        },
+        'isFederalJail': function () {
+            return federalJail;
+        },
+        'isRequiredRefreshSidebar': function () {
+            return refreshSidebar;
+        }
+    }
+}());
+
+Ajax.prototype.setOptions = function(options) {
+    var that = this;
+    options.data = (options.data == undefined) ? {} : options.data;
+    that.options = {
+        url: that.addRFC(options.url),
+        //accepts: options.accepts,
+        //async: options.async,                     // used for ajaxWrapper, did not find usage
+        cache: options.cache,                       // used for getAction. Used for ajaxWrapper, did not find usage
+        //contents: options.contents,
+        contentType: options.contentType,           // used for getAction. Used for ajaxWrapper, did not find usage
+        //context: options.context,
+        //converters: options.converters,
+        //crossDomain: options.crossDomain,
+        data: options.data,
+        dataType: options.dataType,
+        //global: options.global,
+        //headers: options.headers,
+        //ifModified: options.ifModified,
+        //isLocal: options.isLocal,
+        //jsonp: options.jsonp,
+        //jsonpCallback: options.jsonpCallback,
+        //mimeType: options.mimeType,
+        //password: options.password,
+        processData: options.processData,           // used for getAction. Used for ajaxWrapper, did not find usage
+        //scriptCharset: options.scriptCharset,
+        //statusCode: options.statusCode,
+        timeout: options.timeout,                 // uses for ajaxWrapper, this parameter exists only in base.js -> onExpiry method for refreshenergy action
+        //traditional: options.traditional,
+        type: options.type,
+        //username: options.username,
+        //xhr: options.xhr,
+        //xhrFields: options.xhrFields,
+        // functions
+        beforeSend: function() {
+            if (typeof options.beforeSend === "function") {
+
+                options.beforeSend();
+
+            }
+        },
+        complete: function() {
+            if (typeof options.complete === "function") {
+                options.complete();
+            }
+
+            if (that.userstate.isRequiredRefreshSidebar()) {
+                refreshTopOfSidebar();
+            }
+        },
+        dataFilter: function(resp, type) {
+
+            if (typeof options.dataFilter === "function") {
+
+                try {
+                    options.dataFilter(resp, type);
+                } catch (e) {
+                    options.dataFilterError(e);
+                }
+
+
+            } else {
+
+                var data = resp;
+                try { // all AJAX cases have to go throw the main controller, in other way we temporary use try/catch
+
+                    var jsonData = JSON.parse(data);
+                                       
+                    if (jsonData.dataType == undefined) {
+                        console.warn("AJAX works separately"); // AJAX does not goes throw the main controller
+                    } else {
+
+                        that.userstate.setTravel(jsonData.travel);
+                        that.userstate.setHospital(jsonData.hospital);
+                        that.userstate.setJail(jsonData.jail);
+                        that.userstate.setFederalJail(jsonData.federalJail);
+                        that.userstate.setRefreshSidebar(jsonData.refreshSidebar);
+                        that.dataType = jsonData.dataType;
+
+                        delete jsonData.travel;
+                        delete jsonData.hospital;
+                        delete jsonData.jail;
+                        delete jsonData.federalJail;
+                        delete jsonData.refreshSidebar;
+                        delete jsonData.dataType;
+
+                        data = jsonData.data;
+
+                        if (that.dataType == 'json') {
+                            data = JSON.stringify(data);
+                        }
+                        
+                    }
+
+                } catch (e) {
+                    //that.log(e);
+                }
+                return data;
+            }
+        },
+        error: function(jqXHR, textStatus, errorThrown) {
+            //if (typeof options.error === "function") options.error(jqXHR, textStatus, errorThrown);
+        },
+        success: function(resp, textStatus, jqXHR) {
+            if (typeof options.success === "function") options.success(resp, textStatus, jqXHR);
+        }
+    };
+
+    options.data.ajaxHandler = true;
+};
+
+Ajax.prototype.getRFC = function() {
+    var rfc = $.cookie('rfc_v');
+    if (!rfc) {
+        var cookies = document.cookie.split('; ');
+        for (var i in cookies) {
+            if (cookies.hasOwnProperty(i)) {
+                var cookie = cookies[i].split('=');
+                if (cookie[0] == 'rfc_v')
+                    return cookie[1];
+            }
+        }
+    }
+    return rfc;
+};
+
+Ajax.prototype.addRFC = function (url) {
+    var URL = url || '';
+    URL += ((URL.split('?').length > 1) ? '&' : '?') + 'rfcv=' + this.getRFC();
+    return URL;
+};
+
+Ajax.prototype.checkPageStatus = function(result) {
+    var $contentWrapper = $('.content-wrapper');
+    try {
+        var data = (typeof result == 'string') ? JSON.parse(result) : result;
+        if (data.redirect != undefined) {
+            if (data.redirect === true) {
+                location.href = location.protocol + '//' + location.hostname + '/' + data.url;
+            } else if (data.redirect === false) {
+                $contentWrapper.html(data.content);
+            }
+            return false;
+        } else {
+            return true;
+        }
+    } catch (e) {
+        if(result == 'Wrong RFC. '){
+            $contentWrapper.html(result);
+            return false;
+        }
+        return true;
+    }
+};
+
+testRun = false;
+
+Ajax.prototype.run = function() {
+    var that = this;
+    $.ajax(that.options);
+};
+
+/* --- AjaxUtil --- */
+
+function AjaxUtil() {
+    Ajax.apply(this, arguments);
+}
+
+AjaxUtil.prototype = Object.create(Ajax.prototype);
+AjaxUtil.prototype.constructor = AjaxUtil;
+
+/**
+ *
+ * @param url
+ * @returns {string}
+ *
+ */
+AjaxUtil.prototype.getPlaceholder = function() {
+    return '<span class="ajax-preloader"></span>';
+};
+
+/**
+ * @param options = {}
+ *
+ * selector - jQuery object
+ * method - you can set a method for inserting the info box, by default it is 'append'
+ *
+ */
+
+AjaxUtil.prototype.addPlaceholder = function(options) {
+    var method = (typeof options.method === "string" && options.method != undefined && options.method != '') ? options.method : 'append';
+    options.selector[method](this.util.getPlaceholder(options.url));
+};
+
+AjaxUtil.prototype.getDelimiter = function() {
+    return '<hr class="delimiter-999 m-top10 m-bottom10">';
+};
+
+AjaxUtil.prototype.getMsgIfExist = function(options) {
+    return (options.message == false) ? '' : ((options.message == true || options.message == undefined) ? this.getPlaceholder(options.url) : options.message)
+};
+
+/**
+ *
+ * @param options = {}
+ * @returns {string}
+ *
+ * message - if it is set in false - a 'bubbles' (ajax loader) wont be added,
+ *          if it is set in true or undefined - a 'bubbles' (ajax loader) will be added,
+ *          in other case - message will be added like a string.
+ * url - url to the ajax loader, by default - '/images/v2/main/ajax-loader.gif' -> rebuild to <span class="ajax-preloader"></span>
+ * infoBoxSelector - an id for new info message container. If this variable exists, new info message container
+ *          will be added on a page (in case if this container with the id was not added earlie)
+ * color - color of info box, by default color is gray. It can be set to: 'green', 'red', 'blue'.
+ */
+
+AjaxUtil.prototype.getInfoMsgTemplate = function(options) {
+    var placeholder = this.getMsgIfExist(options);
+    return '<div id="' + (options.infoBoxSelector || "") + '" class="info-msg-cont ' + ' ' + (options.color || "") + ' border-round">' +
+                '<div class="info-msg border-round">' +
+                    '<i class="info-icon"></i>' +
+                    '<div class="delimiter">' +
+                        '<div class="msg right-round" role="alert" aria-live="polite">' +
+                            placeholder +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+};
+
+/**
+ * @param options = {}
+ *
+ * Variables:
+ * selector - jQuery object,
+ * color - color of info box, by default color is gray. It can be set to: 'green', 'red', 'blue'.
+ * delimiter - position relatively to info box. It can be set to: 'top', 'bottom', 'both'
+ * method - you can set a method for inserting the info box, by default it is 'append'
+ * infoBoxSelector - String, without "#". We use this selector for checking info box container. If this container exist on the page,
+ *              then new container doesn't be appended on the page. By default selector is ".info-msg-cont"
+ */
+
+AjaxUtil.prototype.addInfoMsgTemplate = function(options) {
+    /* Sets default method if it's not customized */
+    var $infoMsgCont = ( typeof options.infoBoxSelector === "string" && options.infoBoxSelector != undefined && options.infoBoxSelector != '' ) ? $('#' + options.infoBoxSelector) : $('.info-msg-cont');
+
+    if ( $infoMsgCont.length == 0 ) {
+        var template = '',
+            infoMsgTemplateOptions = {color: options.color, infoBoxSelector: options.infoBoxSelector, url: options.url, message: options.message};
+        if (options.delimiter == 'top') {
+            template = this.getDelimiter() + this.getInfoMsgTemplate(infoMsgTemplateOptions);
+        } else if (options.delimiter == 'bottom') {
+            template = this.getInfoMsgTemplate(infoMsgTemplateOptions) + this.getDelimiter();
+        } else if (options.delimiter == 'both') {
+            template = this.getDelimiter() + this.getInfoMsgTemplate(infoMsgTemplateOptions) + this.getDelimiter();
+        } else {
+            template = this.getInfoMsgTemplate(infoMsgTemplateOptions);
+        }
+
+        /* Sets default method if it's not customized */
+        var method = (
+        typeof options.method === "string"
+        && options.method != undefined
+        && options.method != ''
+        ) ? options.method : 'append';
+
+        if (typeof options.selector === "object") {
+            if (options.selector.length > 0) {
+                options.selector[method](template);
+            } else {
+                this.log('Error during execution AjaxUtil.addInfoMsgTemplate method: ' + options.selector.selector + ' selector does not exist on a page');
+            }
+
+        } else {
+            this.log('Error during execution AjaxUtil.addInfoMsgTemplate method takes selector variable which has to be an object');
+        }
+    } else {
+        $infoMsgCont
+            .removeClass('red green blue')
+            .addClass(options.color || "")
+            .find('.msg')
+            .html(this.getMsgIfExist(options));
+    }
+};
+
+/* --- AjaxHandler --- */
+
+function AjaxHandler() {
+    AjaxUtil.apply(this, arguments);
+    //this.setOptions({error: this.getError}); // uses default method for error which can be overridden.
+}
+
+AjaxHandler.prototype = Object.create(AjaxUtil.prototype);
+AjaxHandler.prototype.constructor = AjaxHandler;
+
+AjaxHandler.prototype.getError = function(jqXHR, textStatus, errorThrown) {
+    if (jqXHR.status > 0) {
+
+        var $obj = $('.content-title');
+
+        if ($obj.length) {
+            $obj.nextAll().remove();
+        } else {
+            $obj = $('.content-wrapper').html('');
+        }
+
+        if ($obj.length) {
+            this.addInfoMsgTemplate({
+                selector: $obj,
+                infoBoxSelector: 'common-action-error',
+                method: 'html',
+                color: 'red',
+                message: (jqXHR.status + ' ' + errorThrown)
+            });
+        }
+
+        setTimeout(function () {
+            location.reload();
+        }, 5000);
+    }
+};
+
+AjaxHandler.prototype.ajaxWrapper = function(options, infoBoxOptions) {
+    var that = this;
+    var infoBoxOpt = infoBoxOptions;
+
+    if (typeof infoBoxOpt === "object") {
+        var delimiter = (infoBoxOpt.isTopDelimiterRequired && infoBoxOpt.isBottomDelimiterRequired) ? 'both' :
+            (infoBoxOpt.isTopDelimiterRequired ? 'top' :
+                (infoBoxOpt.isBottomDelimiterRequired ? 'bottom' : ''));
+
+        that.addInfoMsgTemplate({selector: infoBoxOpt.elementIn, delimiter: delimiter, color: infoBoxOpt.color});
+    }
+
+    function success(resp) {
+        if (!that.checkPageStatus(resp)) return;
+
+        if (typeof options.oncomplete === "function") {
+            options.oncomplete({responseText: resp});
+        }
+
+        if (typeof infoBoxOpt === "object") {
+            var text;
+            if (that.dataType == "json") {
+                var responseData = JSON.parse(resp);
+                infoBoxOpt.color = responseData.color || "";
+                text = responseData.msg;
+            } else {
+                text = resp;
+            }
+
+            var msg = '<div class="ajax-action">' + text + '</div>';
+
+            that.addInfoMsgTemplate({selector: infoBoxOpt.elementIn, delimiter: delimiter, color: infoBoxOpt.color, message: msg});
+        }
+
+
+        if (typeof options.onsuccess === "function") {
+            options.onsuccess(resp);
+        }
+    }
+
+    function error(xhr, textStatus, thrownError) {
+        if (typeof options.onerror === "function") {
+            options.onerror(resp);
+        }
+
+        if (typeof infoBoxOptions === "object") {
+            var msg = '<div class="ajax-action">Request error. Please try again.</div>';
+            that.addInfoMsgTemplate({selector: infoBoxOpt.elementIn, delimiter: delimiter, color: 'red', message: msg});
+        }
+
+        var additional = { XHR: xhr, status: textStatus };
+        that.log(thrownError, additional);
+    }
+
+    that.setOptions({
+        url: options.url,
+        cache: options.cache,
+        contentType: options.contentType,
+        data: options.data,
+        dataType: options.dataType,
+        processData: options.processData,
+        type: options.type,
+        success: function(resp) {success(resp);}
+    });
+
+    if (options.onerror) {
+        $.extend(that.options, {
+            error: function(xhr, textStatus, thrownError) {
+                error(xhr, textStatus, thrownError);
+            }
+        });
+    }
+};
+
+AjaxHandler.prototype.getAction = function(options) {
+    var that = this;
+    var url = options.action || (document.location.protocol + '//' + document.location.hostname + location.pathname);
+
+    that.setOptions({
+        url: url,
+        type: options.type,
+        data: options.data,
+        beforeSend: options.before,
+        success: function (msg) {
+
+            var data = msg;
+
+            if (!that.checkPageStatus(data)) return;
+
+            if (typeof options.success === "function") {
+                options.success(data);
+            }
+        },
+        error: function (xhr, textStatus, thrownError) {
+            if (typeof (options.error) === "function") {
+                options.error(xhr, textStatus, thrownError);
+            } else {
+                that.addInfoMsgTemplate({selector: xhr.error, delimiter: 'top', color: 'red', message: 'Request error. Please try again.'});
+            }
+
+            var additional = { XHR: xhr, status: textStatus };
+            that.log(thrownError, additional);
+        },
+        complete: options.complete
+    });
+
+    if (options.file) {
+        $.extend(that.options, {cache: false, contentType: false, processData: false});
+    }
+};
+
+AjaxHandler.prototype.ajaxAction = function(options) {
+    var that = this,
+        $el = $(options.selector),
+        $parent = $el.closest(options.parent),  // parent method was replaced with closest method
+        $msgCont = $parent.find(options.msgContSelector);
+
+    $msgCont.html(that.getPlaceholder(options.placeholderUrl));
+    $parent.find('.ajax-action').remove();  // probably this should be removed
+
+    that.setOptions({
+        url: document.location.protocol + '//' + document.location.hostname + '/' + $el.attr('href'),
+        dataType: "text",
+        success: function (resp) {
+
+            if (!that.checkPageStatus(resp)) return;
+            $msgCont.find('.ajax-preloader').remove();
+            var html;
+            if (that.dataType == 'json') {
+                var response = JSON.parse(resp);
+                html = '<div class="ajax-action">' + response.msg + '</div>';
+                $msgCont.append(html)
+                    .parents('.info-msg-cont')
+                    .removeClass('green red blue')
+                    .addClass(response.color);
+            } else {
+                html = '<div class="ajax-action">' + resp + '</div>';
+                $msgCont.append(html);
+            }
+        },
+        error: function(xhr, textStatus, thrownError) {
+            var additional = { XHR: xhr, status: textStatus };
+            that.log(thrownError, additional);
+        },
+        complete: (typeof  options.complete === "function") ? options.complete : function() {}
+    });
+};

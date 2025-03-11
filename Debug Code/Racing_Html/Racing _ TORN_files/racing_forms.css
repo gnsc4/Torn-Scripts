@@ -1,0 +1,195 @@
+.d .racing-main-wrap .input-wrap,
+.d .racing-main-wrap .select-wrap {
+    height: 24px;
+    position: relative;
+    top: 0;
+    left: 0;
+    display: inline-block;
+    margin: 10px 5px;
+    padding: 0 5px;
+    border: 1px solid #434343;
+    border-radius: 5px;
+    background: linear-gradient(0deg, rgba(42,42,42,1) 0%, rgba(28,27,28,1) 100%);
+}
+
+.d .racing-main-wrap .input-wrap input,
+.d .racing-main-wrap .select-wrap select {
+    height: 24px;
+    line-height: 24px;
+    width: 278px;
+    color: #ddd;
+    background: none;
+    border: none;
+    display: inline;
+    outline: none;
+}
+
+.d .racing-main-wrap .input-wrap.error {
+    background: url(/images/v2/racing/input_24px_middle_error.png) 0 0 repeat;
+}
+
+/* Dropdowns */
+
+.d .racing-main-wrap .select-wrap.dropdown-new {
+    position: relative;
+    margin-top: 8px;
+}
+
+.d .racing-main-wrap .select-wrap.dropdown-new.s-open {
+    border-radius: 5px 5px 0 0;
+}
+
+.d .racing-main-wrap .select-wrap.dropdown-new .ui-selectmenu {
+    border-radius: 0;
+    border: none;
+    display: inline-block;
+    box-shadow: none;
+    outline: none;
+    margin-left: -9px;
+    color: #000;
+    background: none transparent;
+}
+
+
+.d .racing-main-wrap .select-wrap.dropdown-new .ui-selectmenu,
+.d .racing-main-wrap .select-wrap.dropdown-new .ui-selectmenu-menu li a {
+    color: #ddd;
+}
+
+.d .racing-main-wrap .select-wrap.dropdown-new .ui-selectmenu-menu li a {
+    padding: 0 5px;
+}
+
+.d .racing-main-wrap .select-wrap.dropdown-new.disable .ui-selectmenu-status {
+    color: #999;
+	color: var(--default-gray-9-color);
+}
+
+.d .racing-main-wrap .select-wrap.dropdown-new .ui-selectmenu-menu li.ui-corner-bottom a {
+	border-radius: 0 0 5px 5px;
+}
+
+.d .racing-main-wrap .class-wrap .select-wrap.dropdown-new .ui-selectmenu-menu li.ui-corner-bottom a {
+	border-radius: 0;
+}
+
+.d .racing-main-wrap .select-wrap.dropdown-new .ui-selectmenu-status {
+    line-height: 24px;
+    color: #ddd;
+}
+
+.d .select-wrap.dropdown-new .ui-selectmenu-status,
+.d .select-wrap.dropdown-new .ui-selectmenu-menu li a,
+.d .select-wrap.dropdown-new .ui-selectmenu-item-focus {
+    height: 24px;
+    line-height: 24px;
+}
+
+.d .racing-main-wrap .select-wrap.dropdown-new .ui-selectmenu-item-focus a {
+    background-color: #171717;
+}
+
+.d .racing-main-wrap .select-wrap.dropdown-new .select-racing-list {
+    position: absolute;
+    left: -1px;
+    width: calc(100% + 2px) !important;
+}
+
+.d .racing-main-wrap .select-wrap.dropdown-new .ui-selectmenu,
+.d .racing-main-wrap .select-wrap.dropdown-new .ui-selectmenu-status,
+.d .racing-main-wrap .select-wrap.dropdown-new .ui-selectmenu-menu li a {
+    color: #ddd;
+}
+
+.d .racing-main-wrap .select-wrap.dropdown-new::after {
+    filter: none;
+}
+
+.d .racing-main-wrap .select-wrap.dropdown-new .dropdown-content {
+    border: 1px solid #434343;
+    background: #2e2e2e;
+}
+
+.d .racing-main-wrap .select-racing-list .list {
+    padding: 0;
+    border-radius: 0;
+    background: url(/images/v2/items/dropdown_bottom_middle_24px_dark.png) left top repeat-x;
+    border-style: none;
+}
+
+.d .racing-main-wrap .select-racing-list .r {
+    background-position: right top;
+    float: right;
+    margin-right: -7px;
+}
+
+.d .racing-main-wrap .select-racing-list .scrollbar {
+    top: 2px;
+}
+
+.d .racing-main-wrap .select-wrap.dropdown-new .select-racing-list {
+    z-index: 999;
+}
+
+.d .racing-main-wrap .select-racing-list .viewport {
+    border-radius: 0 0 5px 5px;
+}
+
+.d .racing-main-wrap .select-racing-list .scrollbar.disable + .viewport {
+    width: 172px;
+    left: -3px;
+}
+
+@media screen and (max-width: 784px) {
+    .r .racing-main-wrap .select-wrap.dropdown-new {
+        width: 342px !important;
+    }
+
+    .r .racing-main-wrap .input-wrap,
+    .r .racing-main-wrap .select-wrap.dropdown-new {
+        height: 34px;
+    }
+
+    .r .racing-main-wrap .input-wrap input,
+    .r .racing-main-wrap .select-wrap select {
+        height: 34px;
+    }
+
+    .r .racing-main-wrap .input-wrap.error {
+        border: 1px solid #CA3823;
+    }
+
+    .r .racing-main-wrap .select-wrap.dropdown-new .ui-selectmenu-status {
+        line-height: 34px;
+    }
+
+    .r .racing-main-wrap .select-wrap.dropdown-new .ui-selectmenu-icon {
+        margin-top: -2px;
+    }
+
+    .r .racing-main-wrap .select-wrap.dropdown-new .select-racing-list {
+        top: 30px;
+    }
+
+    .r .select-wrap.dropdown-new .ui-selectmenu-status,
+    .r .select-wrap.dropdown-new .ui-selectmenu-menu li a,
+    .r .select-wrap.dropdown-new .ui-selectmenu-item-focus {
+        height: 34px;
+        line-height: 32px;
+    }
+
+    .r .racing-main-wrap .select-racing-list .r {
+        background-position: right top;
+    }
+
+    .r .racing-main-wrap .select-wrap.dropdown-new .select-racing-list .ui-selectmenu-menu li {
+        width: 360px;
+    }
+}
+
+@media screen and (max-width: 386px) {
+
+    .r .racing-main-wrap .select-wrap.dropdown-new {
+        width: 278px !important;
+    }
+}

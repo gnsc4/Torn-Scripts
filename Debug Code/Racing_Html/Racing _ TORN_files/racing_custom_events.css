@@ -1,0 +1,1118 @@
+.d .racing-main-wrap .custom-events-wrap .title > li.clear,
+.d .racing-main-wrap .custom-events-wrap .events-list .event-info > li.clear,
+.d .racing-main-wrap .custom-events-wrap .clear {
+    padding: 0;
+    margin: 0;
+    font-size: 0;
+    height: 0;
+    border: 0;
+    width: 0;
+    line-height: 0;
+    float: none;
+}
+
+.d .racing-main-wrap .custom-events-wrap .title > li {
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 0;
+    border-right: 1px solid #444;
+    border-bottom: 1px solid #000;
+    padding: 0 10px;
+    height: 31px;
+    margin: 0 0 -2px 0;
+    float: left;
+}
+
+.d .racing-main-wrap .custom-events-wrap .title > li.t-title {
+    display: none;
+}
+
+.d .racing-main-wrap .custom-events-wrap .title > li.name {
+    width: 169px;
+    padding-left: 0;
+}
+
+.d .racing-main-wrap .custom-events-wrap .title > li.track,
+.d .racing-main-wrap .custom-events-wrap .events-list .event-info > li.track {
+    width: 128px;
+}
+
+.d .racing-main-wrap .custom-events-wrap .title > li.car,
+.d .racing-main-wrap .custom-events-wrap .events-list .event-info > li.car {
+    width: 154px;
+}
+
+.d .racing-main-wrap .custom-events-wrap .title > li.startTime,
+.d .racing-main-wrap .custom-events-wrap .events-list .event-info > li.startTime {
+    width: 80px;
+    box-sizing: border-box;
+}
+
+.d .racing-main-wrap .custom-events-wrap .title > li.drivers,
+.d .racing-main-wrap .custom-events-wrap .events-list .event-info > li.drivers {
+    width: 48px;
+    text-align: center;
+}
+
+.d .racing-main-wrap .custom-events-wrap .title > li.fee,
+.d .racing-main-wrap .custom-events-wrap .events-list .event-info > li.fee {
+    text-align: right;
+    width: 72px;
+    box-sizing: border-box;
+}
+
+.d .racing-main-wrap .custom-events-wrap .title > li.join,
+.d .racing-main-wrap .custom-events-wrap .events-list .event-info > li.join {
+    width: 27px;
+    text-align: center;
+    border-right: 0;
+}
+
+.d .racing-main-wrap .custom-events-wrap .title > li.watch,
+.d .racing-main-wrap .custom-events-wrap .events-list .event-info > li.watch {
+    width: 29px;
+    text-align: center;
+    border-right: 0;
+}
+
+.d .racing-main-wrap .custom-events-wrap .cont-black {
+    border-top: 0;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list > li {
+    position: relative;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list > li.active-row {
+    background-color: #202020;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list > li:hover {
+    background-color: #202020;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list .event-info {
+    border-top: 1px solid #444;
+    border-bottom: 1px solid #000;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list .event-info > li {
+    height: 30px;
+    border-left: 1px solid #444;
+    line-height: 30px;
+    float: left;
+    padding:  1px 10px;
+    margin: 0 0 -2px 0;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list > li .laps.long-time {
+    color:#FF462C;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list .event-info > li.password {
+    width: 7px;
+    padding: 0;
+    background-color: #555555;
+    border-right: 1px solid #000;
+    border-left: 0;
+    margin-top: 0;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list > li .event-info > li.password.protected {
+    background-color: #973a2d;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list > li.successful .event-info > li.password {
+    background-color: #5A7017;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list > li.gold {
+    color: #f7b800;
+    text-shadow: 0px 0px 1px #f7b800;
+    background: #f7b80114;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list > li.gold .event-info > li.password {
+    background-color: #b28502;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list > li.current .event-info > li.password,
+.d .racing-main-wrap .custom-events-wrap .events-list > li.protected.current .event-info > li.password {
+    background-color: #5A7017;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list .event-info .icon-join {
+    display: inline-block;
+    vertical-align: middle;
+    height: 18px;
+    width: 18px;
+    font-size: 0;
+    background: url(/images/v2/racing/enter_event.svg) left top no-repeat;
+    filter: drop-shadow(0px 0px 1px #11111194);
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list li.gold .event-info > li.name::before {
+    content: '';
+    display: inline-block;
+    position: relative;
+    margin: 0;
+    padding: 0;
+    top: 40%;
+    transform: translateY(-50%);
+    left: -3px;
+    width: 20px;
+    height: 20px;
+    background: url(/images/v2/racing/star.svg) center top no-repeat;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list > li:hover .event-info .icon-join {
+    background-position: 0 -18px;
+}
+
+.d .racing-main-wrap .custom-events-wrap.disabled .events-list .event-info .icon-join,
+.d .racing-main-wrap .custom-events-wrap.disabled .events-list > li:hover .event-info .icon-join,
+.d .racing-main-wrap .custom-events-wrap.disabled .events-list > li .event-info .join a {
+    cursor: text;
+    color: #999;
+	color: var(--default-gray-9-color);
+    background-position: 0 -36px;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list .event-info .join.disabled .icon-join {
+    background-position: 0 -36px;
+    cursor: text;
+}
+
+
+.d .racing-main-wrap .custom-events-wrap .events-list > li.gold .event-info .icon-join {
+    background-position: -18px 0;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list > li.gold:hover .event-info .icon-join {
+    background-position: -18px -18px;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list .event-info .icon-watch {
+    display: inline-block;
+    vertical-align: middle;
+    height: 18px;
+    width: 18px;
+    font-size: 0;
+    background: url(/images/v2/racing/watch_event.png) center top no-repeat;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list > li:hover .event-info .icon-watch {
+    background-position: 0 -18px;
+}
+
+.d .racing-main-wrap .custom-events-wrap.disabled .events-list .event-info .icon-watch,
+.d .racing-main-wrap .custom-events-wrap.disabled .events-list > li:hover .event-info .icon-watch,
+.d .racing-main-wrap .custom-events-wrap.disabled .events-list > li .event-info .watch a {
+    cursor: text;
+    color: #999;
+	color: var(--default-gray-9-color);
+    background-position: 0 -36px;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list .event-info .watch.disabled .icon-watch {
+    background-position: 0 -36px;
+    cursor: text;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list > li .event-info.watch {
+    color: #CCC;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list .event-info > li.name {
+    margin-top: 0;
+    position: absolute;
+    width: 160px;
+    top: 0;
+    left: 8px;
+    z-index: 3;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list .event-info > li.gold li.name::before {
+    content: '';
+    display: inline-block;
+    position: relative;
+    margin: 0;
+    padding: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    left: -3px;
+    width: 20px;
+    height: 20px;
+    background: url(/images/v2/racing/star.svg) center top no-repeat;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list .event-info > li.track {
+    margin-left: 181px;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list .event-info > li.car {
+    padding-left: 5px;
+    width: 159px;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list .event-info > li.startTime {
+    width: 80px;
+    text-align: center;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list .event-info > li {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list .event-info > li.car .icon-class {
+    background: url(/images/v2/racing/car_class.png) 0 -65px no-repeat;
+    display: inline-block;
+    vertical-align: middle;
+    margin-bottom: 2px;
+    height: 13px;
+    width: 13px;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list .event-info > li.car.class-A .icon-class {
+    background-position: 0 0;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list .event-info > li.car.class-B .icon-class {
+    background-position: 0 -13px;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list .event-info > li.car.class-C .icon-class {
+    background-position: 0 -26px;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list .event-info > li.car.class-D .icon-class {
+    background-position: 0 -39px;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list .event-info > li.car.class-E .icon-class {
+    background-position: 0 -52px;
+}
+
+.d .racing-main-wrap .custom-events-wrap .custom-btn-wrap {
+    padding: 10px;
+    border-top: 1px solid #444;
+}
+
+.d .racing-main-wrap .custom-events-wrap .custom-btn-wrap .btn-wrap {
+    width: 182px;
+}
+
+.d .racing-main-wrap .custom-events-wrap .custom-btn-wrap .btn-wrap.disable-d .btn {
+    line-height: 28px;
+}
+
+.d .racing-main-wrap .form-custom-wrap .sep {
+    border-top: 1px solid #000;
+    border-bottom: 1px solid #444;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list > li .race-warning,
+.d .racing-main-wrap .custom-events-wrap .events-list > li .race-confidence,
+.d .racing-main-wrap .custom-events-wrap .events-list > li .race-view-cars,
+.d .racing-main-wrap .custom-events-wrap .events-list > li .race-password {
+    display: none;
+    padding: 10px 20px;
+    border-top: 1px solid #444;
+    border-bottom: 1px solid #000;
+    background-color: #202020;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list > li .race-warning .msg,
+.d .racing-main-wrap .custom-events-wrap .events-list > li .race-confidence .msg,
+.d .racing-main-wrap .custom-events-wrap .events-list > li .race-password .msg,
+.d .racing-main-wrap .custom-events-wrap .events-list > li .race-view-cars {
+    padding-right: 10px;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list > li .race-warning .cancel,
+.d .racing-main-wrap .custom-events-wrap .events-list > li .race-confidence .cancel,
+.d .racing-main-wrap .custom-events-wrap .events-list > li .race-password .cancel {
+    padding-left: 10px;
+    cursor: pointer;
+}
+
+.d .icon-watch {
+    background: url(/images/v2/racing/icon_watch.png) 0 0 no-repeat;
+    height: 28px;
+    width: 28px;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list > li .race-view-cars .icon-close {
+    float: right;
+    background: url(/images/v2/racing/car_remove.png) 0 0 no-repeat;
+    height: 14px;
+    width: 14px;
+    padding-right: 7px;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list > li .race-view-cars .icon-close:hover {
+    background-position: 0 -14px;
+}
+
+
+
+.d .racing-main-wrap .custom-events-wrap .events-list > li .race-warning .btn-wrap,
+.d .racing-main-wrap .custom-events-wrap .events-list > li .race-confidence .btn-wrap,
+.d .racing-main-wrap .custom-events-wrap .events-list > li .race-password .btn-wrap {
+    width: 50px;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list > li .join-password-form {
+    display: flex;
+    align-items: center;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list > li .join-password-form .input-wrapper {
+    margin-top: 2px;
+    padding-top: 2px;
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list > li .race-password .join-btn-wrap {
+    padding-left: 10px;
+}
+
+.d .racing-main-wrap .custom-events-wrap .notification-wrap .race-password .input-wrapper {
+    display: inline-block;
+    position: relative;
+}
+
+.d .racing-main-wrap .custom-events-wrap .notification-wrap .race-password .input-wrapper input.pass {
+    width: 230px;
+}
+
+.d .racing-main-wrap .custom-events-wrap .notification-wrap .race-password .input-wrapper .section-l,
+.d .racing-main-wrap .custom-events-wrap .notification-wrap .race-password .input-wrapper .section-r {
+    top: 0;
+    position: absolute;
+    width: 6px;
+}
+
+.d .racing-main-wrap .custom-events-wrap .notification-wrap .race-password .input-wrapper .section-l {
+    left: -6px;
+}
+
+.d .racing-main-wrap .custom-events-wrap .notification-wrap .race-password .input-wrapper .section-r {
+    left: 100%;
+}
+
+.d .racing-main-wrap .custom-events-wrap .notification-wrap .race-password .input-wrapper {
+    background: url(/images/v2/racing/input_34px_middle.png) 0 0 repeat;
+    height: 35px;
+}
+
+.d .racing-main-wrap .custom-events-wrap .notification-wrap .race-password .input-wrapper .section-l,
+.d .racing-main-wrap .custom-events-wrap .notification-wrap .race-password .input-wrapper .section-r {
+    background: url(/images/v2/racing/input_34px_ends.png) 0 0 no-repeat;
+    height: 34px;
+}
+
+.d .racing-main-wrap .custom-events-wrap .notification-wrap .race-password .input-wrapper input.pass {
+    height: 30px;
+}
+
+.d .racing-main-wrap .custom-events-wrap .notification-wrap .race-password .input-wrapper .section-r {
+    background-position: -6px 0;
+}
+
+.d .racing-main-wrap .custom-events-wrap span.t-hide {
+    display: inline;
+}
+
+.d .racing-main-wrap .custom-events-wrap div.t-hide,
+.d .racing-main-wrap .custom-events-wrap i.t-hide {
+    display: block;
+}
+
+.d .racing-main-wrap .custom-events-wrap .t-delimiter,
+.d .racing-main-wrap .custom-events-wrap .b-delimiter {
+    left: -2px;
+    height: 18px;
+    z-index: 10;
+}
+
+.d .racing-main-wrap .custom-events-wrap .t-delimiter {
+    top: 0;
+}
+
+.d .racing-main-wrap .form-custom-wrap .title-black {
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 0;
+}
+
+.d .racing-main-wrap .form-custom-wrap .form-custom {
+    color: #FFF;
+    overflow: hidden;
+}
+
+.d .racing-main-wrap .form-custom-wrap .form-custom .column > li {
+    border-top: 1px solid #444;
+    border-bottom: 1px solid #000;
+    position: relative;
+    top: 0;
+    left: 0;
+}
+
+.d .racing-main-wrap .form-custom-wrap .form-custom .column > li:first-child {
+    border-top: 0;
+}
+
+.d .racing-main-wrap .form-custom-wrap .form-custom .column > li.track-wrap,
+.d .racing-main-wrap .form-custom-wrap .form-custom .column > li.password-wrap {
+    border-bottom: 0;
+}
+
+.d .racing-main-wrap .form-custom-wrap .form-custom .column {
+    margin-bottom: -1000px;
+    padding: 0 10px 1010px 10px;
+    width: 392px;
+    box-sizing: border-box;
+}
+
+.d .racing-main-wrap .form-custom-wrap .form-custom .column.left {
+    border-right: 1px solid #000;
+}
+
+.d .racing-main-wrap .form-custom-wrap .form-custom .column.right {
+    border-left: 1px solid #444;
+}
+
+.d .racing-main-wrap .form-custom-wrap .form-custom .label-wrap {
+    padding-top: 10px;
+}
+
+.d .racing-main-wrap .form-custom-wrap .form-custom .label {
+    display: block;
+    font-weight: bold;
+    padding-bottom: 2px;
+}
+
+.d .racing-main-wrap .form-custom-wrap .form-custom .desc {
+    color: #ddd;
+    line-height: 16px;
+}
+
+.d .racing-main-wrap .form-custom-wrap .l-delimiter,
+.d .racing-main-wrap .form-custom-wrap .r-delimiter {
+    display: block;
+    position: absolute;
+    bottom: -3px;
+    height: 4px;
+    width: 185px;
+    z-index: 1;
+}
+
+.d .racing-main-wrap .form-custom-wrap .l-delimiter.d-hide,
+.d .racing-main-wrap .form-custom-wrap .r-delimiter.d-hide {
+    display: none;
+}
+
+.d .racing-main-wrap .form-custom-wrap .form-custom input,
+.d .racing-main-wrap .custom-events-wrap input {
+    line-height: 24px;
+}
+
+.d .racing-main-wrap .form-custom-wrap .form-custom .drivers-wrap .input-wrap input,
+.d .racing-main-wrap .form-custom-wrap .form-custom .drivers-max-wrap .input-wrap input,
+.d .racing-main-wrap .form-custom-wrap .form-custom .laps-wrap .input-wrap input {
+    width: 22px;
+}
+
+.d .racing-main-wrap .form-custom-wrap .form-custom .time-wrap .input-wrap input {
+    width: 30px;
+}
+
+.d .racing-main-wrap .form-custom-wrap .form-custom .bet-wrap .input-wrap input {
+    width: 93px;
+}
+
+.d .racing-main-wrap .form-custom-wrap .form-custom .password-wrap .input-wrap input {
+    width: 278px;
+}
+
+.d .racing-main-wrap .form-custom-wrap .form-custom .track-wrap .select-wrap select {
+    width: 152px;
+}
+
+.d .racing-main-wrap .form-custom-wrap .custom-btn-wrap {
+    padding: 10px;
+}
+
+.d .racing-main-wrap .form-custom-wrap .form-custom .tracks-wrap {
+    height: 245px;
+    overflow: hidden;
+    position: relative;
+    top: 0;
+    left: 0;
+    -moz-box-shadow: 0 1px 2px rgba(0, 0, 0, 1);
+    -webkit-box-shadow: 0 1px 2px #000;
+    box-shadow: 0 1px 2px #000;
+}
+
+.d .racing-main-wrap .form-custom-wrap .form-custom .slider-wrap > li {
+    max-width: 372px;
+    overflow: hidden;
+}
+
+.d .racing-main-wrap .form-custom-wrap .form-custom .slider-wrap .img-track {
+    margin-left: -67px;
+}
+
+.d .racing-main-wrap .form-custom-wrap .form-custom .slider-wrap > li.offset .img-track {
+    margin-left: -139px;
+}
+
+.d .racing-main-wrap .form-custom-wrap .custom-btn-wrap .form-reset {
+    margin-left: 10px;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.d .racing-main-wrap .form-custom-wrap .flex-control-nav {
+    display: none;
+}
+
+.d .racing-main-wrap .form-custom-wrap .flex-direction-nav a {
+    width: 26px;
+    height: 39px;
+    background: url(/images/v2/racing/choose_track_arrows.png) no-repeat;
+}
+
+.d .racing-main-wrap .form-custom-wrap .flex-direction-nav .flex-prev {
+    left: 0;
+}
+
+.d .racing-main-wrap .form-custom-wrap .flex-direction-nav a.flex-prev:hover {
+    background-position: left bottom;
+}
+
+.d .racing-main-wrap .form-custom-wrap .flex-direction-nav .flex-next {
+    right: 0;
+    background-position: 100% 0;
+}
+
+.d .racing-main-wrap .form-custom-wrap .flex-direction-nav a.flex-next:hover {
+    background-position: right bottom;
+}
+
+.d .flex-direction-nav .flex-disabled,
+.d .flex-direction-nav .flex-disabled:hover {
+    display: none;
+}
+
+.d .racing-main-wrap .form-custom-wrap .form-custom .bet-wrap .input-wrap {
+    padding: 0;
+    margin-left: 0;
+    margin-right: 0;
+    margin-left: 5px;
+}
+
+.d .racing-main-wrap .form-custom-wrap .form-custom .bet-wrap .input-wrap .input-money-group {
+    border: 1px solid transparent;
+    border-radius: 5px;
+}
+
+.d .racing-main-wrap .form-custom-wrap .form-custom .bet-wrap .input-wrap .input-money-group.error {
+    border: 1px solid #db412b;
+}
+
+
+.d .racing-main-wrap .form-custom-wrap .form-custom .bet-wrap .input-wrap .input-money-group input {
+    padding: 0 5px;
+    background: transparent;
+    border: 0;
+    border-radius: 5px;
+    color: #ddd;
+    box-shadow: none;
+}
+
+@media screen and (max-width: 784px) {
+    .r .racing-main-wrap .events-list > li.gold .event-header {
+        background: #f7b80114;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list > li {
+        position: static;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list > li .event-info.watch {
+        color: #CCC;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .arrow-999 {
+        display: block;
+        position: relative;
+        height: 33px;
+        width: 32px;
+        margin: 1px 0 0 0;
+        border-left: 1px solid #444;
+        background-position: center center;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.name {
+        position: relative;
+        font-weight: bold;
+        left: 0;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .title > li {
+        display: none;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .title > li.t-title {
+        display: block;
+        padding: 0;
+        float: none;
+        border-right: 0;
+        height: auto;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info {
+        width: 386px;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li {
+        height: 31px;
+        margin: 0;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.password {
+        height: 33px;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.car,
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.track {
+        border-right: 1px solid #000;
+        position: relative;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.track {
+        margin-left: 0;
+        width: 120px;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.car {
+        width: 184px;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.name,
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.fee {
+        width: 171px;
+        text-align: left;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.fee {
+        width: 193px;
+        border-bottom: 1px solid #000;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.drivers,
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.join {
+        width: 172px;
+        text-align: left;
+        position: relative;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.drivers {
+        height: 27px;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.join {
+        width: 364px;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.startTime {
+        width: 159px;
+        height: 34px;
+        border-bottom: 1px solid #000;
+        text-align: left;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.drivers {
+        float: right;
+        border-top: 1px solid #444;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.drivers,
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.watch {
+        width: 171px;
+        text-align: left;
+        position: relative;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.name {
+        border-right: 1px solid #000;
+        border-bottom: 1px solid #000;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.drivers {
+        border-left: 1px solid #444;
+        border-bottom: 1px solid #000;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.fee {
+        border-top: 1px solid #444;
+        border-right: 1px solid #000;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.join {
+        border-top: 1px solid #444;
+        border-left: 1px solid #444;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.watch {
+        border-top: 1px solid #444;
+        border-left: 1px solid #444;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.join.disabled a {
+        color: #999;
+    	color: var(--default-gray-9-color);
+        cursor: text;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list > li .event-info > li.join.disabled .icon-join {
+        background-position: 0 -36px;
+    }
+
+
+    .r .racing-main-wrap .custom-events-wrap .events-list > li.gold .event-info > li.join.disabled .icon-join {
+        background-position: -18px -36px;
+
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list > li.gold .event-info .icon-join {
+        background-position: -18px 0;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list > li.gold:hover .event-info .icon-join {
+        background-position: -18px -18px;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.watch.disabled a {
+        color: #999;
+    	color: var(--default-gray-9-color);
+        cursor: text;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list > li .event-info > li.watch.disabled .icon-watch {
+        background-position: 0 -36px;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list > li.active-row {
+        background-color: transparent;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-header.ui-state-active,
+    .r .racing-main-wrap .custom-events-wrap .events-list .acc-body {
+        background-color: #202020;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .gold .event-header,
+    .r .racing-main-wrap .custom-events-wrap .events-list .gold .event-header.ui-state-active {
+        background-color: #f7b80114;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap span.t-hide,
+    .r .racing-main-wrap .custom-events-wrap div.t-hide,
+    .r .racing-main-wrap .custom-events-wrap i.t-hide {
+        display: none;
+    }
+
+    .r .racing-main-wrap .form-custom-wrap .l-delimiter.d-hide,
+    .r .racing-main-wrap .form-custom-wrap .r-delimiter.d-hide {
+        display: block;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .notification-wrap .race-password .input-wrapper input.pass {
+        width: 150px;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list > li .race-password .join-btn-wrap {
+        float: right;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list > li .race-warning .cancel,
+    .r .racing-main-wrap .custom-events-wrap .events-list > li .race-confidence .cancel,
+    .r .racing-main-wrap .custom-events-wrap .events-list > li .race-password .cancel {
+        display: none;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list > li .race-warning .msg,
+    .r .racing-main-wrap .custom-events-wrap .events-list > li .race-confidence .msg,
+    .r .racing-main-wrap .custom-events-wrap .events-list > li .race-password .msg {
+        padding: 0 10px 0 0;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list > li .race-password .msg {
+        display: block;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list > li .race-warning,
+    .r .racing-main-wrap .custom-events-wrap .events-list > li .race-confidence,
+    .r .racing-main-wrap .custom-events-wrap .events-list > li .race-view-cars,
+    .r .racing-main-wrap .custom-events-wrap .events-list > li .race-password {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .custom-btn-wrap .btn-wrap.disable-d .btn {
+        line-height: 39px;
+    }
+
+    .r .racing-main-wrap .form-custom-wrap .form-custom .column {
+        width: 366px;
+        float: none;
+        margin-bottom: 0;
+        padding: 0 10px;
+    }
+
+    .r .racing-main-wrap .form-custom-wrap .form-custom .column.left {
+        border-right: 0;
+    }
+
+    .r .racing-main-wrap .form-custom-wrap .form-custom .column.right {
+        border-left: 0;
+    }
+
+    .r .racing-main-wrap .form-custom-wrap .form-custom .race-wrap .input-wrap input,
+    .r .racing-main-wrap .form-custom-wrap .form-custom .password-wrap .input-wrap input,
+    .r .racing-main-wrap .form-custom-wrap .form-custom .bet-wrap .input-wrap input,
+    .r .racing-main-wrap .form-custom-wrap .form-custom .select-wrap select {
+        width: 344px;
+    }
+
+    .r .racing-main-wrap .form-custom-wrap .form-custom .password-wrap .input-wrap input {
+        width: 352px;
+    }
+
+    .r .racing-main-wrap .form-custom-wrap .form-custom .race-wrap .label,
+    .r .racing-main-wrap .form-custom-wrap .form-custom .class-wrap .label,
+    .r .racing-main-wrap .form-custom-wrap .form-custom .track-wrap .label,
+    .r .racing-main-wrap .form-custom-wrap .form-custom .cars-wrap .label,
+    .r .racing-main-wrap .form-custom-wrap .form-custom .time-wrap .label,
+    .r .racing-main-wrap .form-custom-wrap .form-custom .password-wrap .label {
+        display: inline;
+    }
+
+    .r .racing-main-wrap .form-custom-wrap .form-custom .drivers-wrap .label-wrap,
+    .r .racing-main-wrap .form-custom-wrap .form-custom .drivers-max-wrap .label-wrap,
+    .r .racing-main-wrap .form-custom-wrap .form-custom .laps-wrap .label-wrap {
+        padding-top: 14px;
+        width: 310px;
+        float: right;
+    }
+
+    .r .racing-main-wrap .form-custom-wrap .form-custom .time-wrap .label-wrap {
+        width: 302px;
+    }
+
+    .r .racing-main-wrap .form-custom-wrap .form-custom .column {
+        height: auto;
+    }
+
+    .r .racing-main-wrap .form-custom-wrap .form-custom .column > li.track-wrap {
+        padding-bottom: 10px;
+        border-bottom: 1px solid #000;
+    }
+
+    .r .racing-main-wrap .form-custom-wrap .form-custom .column > li.laps-wrap {
+        border-bottom: 1px solid #000;
+        border-top: 1px solid #444;
+    }
+
+    .r .racing-main-wrap .form-custom-wrap .form-custom .column > li.class-wrap {
+        border-top: 1px solid #444;
+    }
+
+    .r .racing-main-wrap .form-custom-wrap .form-custom input,
+    .r .racing-main-wrap .custom-events-wrap input {
+        line-height: 1em;
+    }
+
+    .r .racing-main-wrap .form-custom-wrap .custom-btn-wrap .btn-wrap {
+        display: inline-block;
+    }
+
+    .r .racing-main-wrap .form-custom-wrap .form-custom .slider-wrap > li.offset .img-track {
+        margin-left: -154px;
+    }
+
+    .r .racing-main-wrap .form-custom-wrap .form-custom {
+        overflow: visible;
+    }
+
+    .r .racing-main-wrap .body-container .join a {
+        display: block;
+        width: inherit;
+        height: inherit;
+    }
+}
+
+@media screen and (max-width: 386px) {
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.car {
+        position: relative;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.car .icon-class {
+        position: relative;
+        top: -55%;
+        transform: translateY(50%);
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list > li {
+        position: static;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-header.ui-state-active,
+    .r .racing-main-wrap .custom-events-wrap .events-list .acc-body {
+        background-color: #202020;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .gold .event-header,
+    .r .racing-main-wrap .custom-events-wrap .events-list .gold .event-header.ui-state-active {
+        background-color: #f7b80114;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .acc-body {
+        /*height: 0px;*/
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list > li .event-info.watch {
+        color: #CCC;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info {
+        width: 320px;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.track {
+        width: 131px;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.car {
+        width: 114px;
+        padding-right: 5px;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.name,
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.fee {
+        width: 161px;
+        height: 35px;
+        border-bottom: 1px solid #000;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.name {
+        width: 139px;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.fee {
+        width: 161px;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.drivers,
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.join {
+        width: 138px;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.join {
+        width: 299px;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.startTime {
+        width: 159px;
+        height: 38px;
+        border-bottom: 1px solid #000;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.drivers,
+    .r .racing-main-wrap .custom-events-wrap .events-list .event-info > li.watch {
+        width: 138px;
+        height: 31px;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .notification-wrap .race-password .input-wrapper input.pass {
+        width: 150px;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .notification-wrap {
+        text-align: center;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .notification-wrap .race-password {
+        text-align: left;
+    }
+
+    .r .racing-main-wrap .custom-events-wrap .events-list > li .race-warning .msg,
+    .r .racing-main-wrap .custom-events-wrap .events-list > li .race-confidence .msg,
+    .r .racing-main-wrap .custom-events-wrap .events-list > li .race-password .msg,
+    .r .racing-main-wrap .custom-events-wrap .events-list > li .race-view-cars .msg {
+        display: block;
+        padding: 0 10px 0 0;
+    }
+
+    .r .racing-main-wrap .form-custom-wrap .form-custom .column {
+        width: 300px;
+    }
+
+    .r .racing-main-wrap .form-custom-wrap .form-custom .cars-wrap .label,
+    .r .racing-main-wrap .form-custom-wrap .form-custom .password-wrap .label {
+        display: block;
+    }
+
+    .r .racing-main-wrap .form-custom-wrap .form-custom .drivers-wrap .label,
+    .r .racing-main-wrap .form-custom-wrap .form-custom .laps-wrap .label,
+    .r .racing-main-wrap .form-custom-wrap .form-custom .bet-wrap .label {
+        display: inline;
+    }
+
+    .r .racing-main-wrap .form-custom-wrap .form-custom .drivers-wrap .label-wrap,
+    .r .racing-main-wrap .form-custom-wrap .form-custom .drivers-max-wrap .label-wrap,
+    .r .racing-main-wrap .form-custom-wrap .form-custom .laps-wrap .label-wrap {
+        width: 248px;
+    }
+
+
+    .r .racing-main-wrap .form-custom-wrap .form-custom .race-wrap .input-wrap input,
+    .r .racing-main-wrap .form-custom-wrap .form-custom .password-wrap .input-wrap input,
+    .r .racing-main-wrap .form-custom-wrap .form-custom .bet-wrap .input-wrap input,
+    .r .racing-main-wrap .form-custom-wrap .form-custom .select-wrap select {
+        width: 278px;
+    }
+
+    .r .racing-main-wrap .form-custom-wrap .form-custom .bet-wrap .input-wrap input {
+        width: 286px;
+    }
+
+    .r .racing-main-wrap .form-custom-wrap .l-delimiter,
+    .r .racing-main-wrap .form-custom-wrap .r-delimiter {
+        width: 150px;
+    }
+
+    .r .racing-main-wrap .form-custom-wrap .form-custom .slider-wrap .img-track {
+        margin-left: -100px;
+    }
+
+    .r .racing-main-wrap .form-custom-wrap .form-custom .slider-wrap > li.offset .img-track {
+        margin-left: -220px;
+    }
+
+    .r .racing-main-wrap .events-list > li .car .d-hide {
+        /* color: #111; */
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        width: 97px;
+        background: inherit;
+    }
+}

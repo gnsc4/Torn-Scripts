@@ -1,0 +1,1217 @@
+// http://paulirish.com/2011/requestanimationframe-for-smart-animating/
+// http://my.opera.com/emoller/blog/2011/12/20/requestanimationframe-for-smart-er-animating
+
+// requestAnimationFrame polyfill by Erik Möller. fixes from Paul Irish and Tino Zijdel
+
+// MIT license
+
+(function () {
+    var lastTime = 0;
+    var vendors = ['ms', 'moz', 'webkit', 'o'];
+    for (var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
+        window.requestAnimationFrame = window[vendors[x] + 'RequestAnimationFrame'];
+        window.cancelAnimationFrame = window[vendors[x] + 'CancelAnimationFrame']
+            || window[vendors[x] + 'CancelRequestAnimationFrame'];
+    }
+
+    if (!window.requestAnimationFrame)
+        window.requestAnimationFrame = function (callback, element) {
+            var currTime = new Date().getTime();
+            var timeToCall = Math.max(0, 16 - (currTime - lastTime));
+            var id = window.setTimeout(function () { callback(currTime + timeToCall); },
+                timeToCall);
+            lastTime = currTime + timeToCall;
+            return id;
+        };
+
+    if (!window.cancelAnimationFrame)
+        window.cancelAnimationFrame = function (id) {
+            clearTimeout(id);
+        };
+}());
+
+
+var RACE = (function () {
+    "use strict";
+
+    var path,
+        pathMap,
+        cars = [],
+        reqID,
+        totalPathLen,
+        trackLength,
+        startTime,
+        trackData,
+        carsData,
+        carInfo,
+        mask,
+        carGroup,
+        interval,
+        trackPieces,
+        activePilotID,
+        ownerPilotID,
+        hub,
+        Car,
+        raceId,
+        racingTime = 0,
+        originRacingTime = 0,
+        currentTime = 0,
+        replaySpeed = 1,
+        showLog = true,
+        dataParsed,
+        mediaType = null,
+        creatorID = null;
+
+    function changeOnResize() {
+        var browserWidth = getBrowserWidth();
+
+        if (browserWidth > getMaxTabletSize() && mediaType !== DESKTOP) {
+            mediaType = DESKTOP;
+        } else if ((browserWidth > getMinTabletSize() && browserWidth <= getMaxTabletSize()) && mediaType !== TABLET) {
+            mediaType = TABLET;
+        } else if (browserWidth <= getMinTabletSize() && mediaType !== MOBILE) {
+            mediaType = MOBILE;
+        }
+    }
+
+    $(window).resize(() => {
+        changeOnResize();
+    });
+
+    setTimeout(() => {
+        $(window).resize();
+    })
+
+    Car = function (conf) {
+        this.userID = conf.userID;
+        this.playername = conf.playername;
+        this.color = conf.color ? conf.color : "#" + ((1 << 24) * Math.random() | 0).toString(16);
+        this.finished = false;
+        this.lap = 1;
+        this.lapTime = 0;
+        this.crashed = false;
+        this.intervals = conf.intervals.length > 1 ? conf.intervals.map(function (el) { return parseFloat(el, 10) }) : [];
+        this.$time = $("#lbr-" + this.userID + " .time");
+        this.setAvatar(activePilotID == this.playername);
+    };
+
+    Car.prototype.avatarSmall = '<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px"  y="0px" width="11px" height="14px" viewBox="0 0 11 14" enable-background="new 0 0 11 14" xml:space="preserve"><g opacity="0.1"> <g>      <g>         <path d="M5.5,0C2.467,0,0,2.467,0,5.5c0,1.84,1.597,4.854,2.937,7.059C3.474,13.445,4.457,14,5.5,14s2.025-0.555,2.564-1.445           C9.402,10.354,11,7.339,11,5.5C11,2.467,8.533,0,5.5,0L5.5,0z"/>    </g>  </g></g><g opacity="0.1">  <g>      <path d="M5.5,1C3.019,1,1,3.019,1,5.5c0,1.691,1.748,4.822,2.791,6.538C4.149,12.631,4.805,13,5.5,13       c0.695,0,1.352-0.369,1.71-0.963C8.252,10.322,10,7.191,10,5.5C10,3.019,7.98,1,5.5,1L5.5,1z"/> </g></g><g opacity="0.2">  <path d="M5.5,2C3.57,2,2,3.57,2,5.5c0,1.541,2.024,4.996,2.646,6.02C4.826,11.816,5.15,12,5.5,12s0.674-0.184,0.854-0.48      C6.977,10.496,9,7.041,9,5.5C9,3.57,7.43,2,5.5,2L5.5,2z"/></g><path id="pin" fill="#8CC63F" d="M8,5.5C8,6.881,5.5,11,5.5,11S3,6.881,3,5.5S4.119,3,5.5,3S8,4.119,8,5.5z"/><path opacity="0.25" fill="#FFFFFF" enable-background="new    " d="M5.5,4c1.191,0,2.184,0.834,2.436,1.95 C7.973,5.782,8,5.626,8,5.5C8,4.119,6.881,3,5.5,3S3,4.119,3,5.5c0,0.126,0.027,0.282,0.065,0.45C3.316,4.834,4.309,4,5.5,4z"/></svg>';
+    Car.prototype.avatarSelected = '<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px"    y="0px" width="15px" height="21px" viewBox="0 0 15 21" enable-background="new 0 0 15 21" xml:space="preserve"><g opacity="0.1"> <g>      <path d="M7.5,0C3.364,0,0,3.364,0,7.5c0,2.948,3.415,9.352,4.884,11.969C5.414,20.413,6.416,21,7.5,21         c1.083,0,2.086-0.586,2.616-1.529C11.585,16.852,15,10.445,15,7.5C15,3.364,11.636,0,7.5,0L7.5,0z"/>  </g></g><g opacity="0.1">  <path d="M7.5,1C3.916,1,1,3.916,1,7.5c0,2.791,3.641,9.492,4.756,11.479C6.109,19.609,6.778,20,7.5,20      c0.723,0,1.391-0.391,1.744-1.02C10.359,16.992,14,10.291,14,7.5C14,3.916,11.084,1,7.5,1L7.5,1z"/></g><path opacity="0.2" enable-background="new    " d="M7.5,2C4.467,2,2,4.467,2,7.5c0,2.67,4.154,10.146,4.628,10.99  C6.805,18.805,7.139,19,7.5,19s0.695-0.195,0.872-0.51C8.846,17.646,13,10.17,13,7.5C13,4.467,10.533,2,7.5,2L7.5,2z"/><path id="pin" fill="#8CC63F" d="M12,7.5C12,9.985,7.5,18,7.5,18S3,9.985,3,7.5S5.015,3,7.5,3C9.984,3,12,5.015,12,7.5z"/><linearGradient id="SVGID_1_" gradientUnits="userSpaceOnUse" x1="-377" y1="-250.501" x2="-372.0005" y2="-250.501" gradientTransform="matrix(-4.371139e-008 -1 -1 4.371139e-008 -243 -366.0005)">   <stop  offset="0" style="stop-color:#000000;stop-opacity:0.05"/>  <stop  offset="1" style="stop-color:#000000;stop-opacity:0.25"/></linearGradient><circle fill="url(#SVGID_1_)" cx="7.5" cy="8.5" r="2.5"/><path opacity="0.2" fill="#FFFFFF" enable-background="new    " d="M7.5,11c-1.21,0-2.218-0.859-2.449-2C5.018,9.162,5,9.328,5,9.5  C5,10.881,6.119,12,7.5,12S10,10.881,10,9.5C10,9.328,9.982,9.162,9.949,9C9.718,10.141,8.71,11,7.5,11z"/><path opacity="0.3" fill="#FFFFFF" enable-background="new    " d="M7.5,4c2.318,0,4.205,1.76,4.451,4.013 C11.982,7.824,12,7.651,12,7.5C12,5.015,9.984,3,7.5,3C5.015,3,3,5.015,3,7.5c0,0.151,0.018,0.324,0.049,0.513  C3.295,5.76,5.182,4,7.5,4z"/></svg>';
+    Car.prototype.avatarCrashed = '<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="11px" height="12px" viewBox="0 0 11 12" enable-background="new 0 0 11 12" xml:space="preserve"><g opacity="0.2"><g><path d="M4.487,0.479c-1.166,0-1.412,0.907-1.459,1.186L2.222,6.177L1.264,6.518C1.243,6.523,1.221,6.533,1.199,6.543C0.441,6.873-0.007,7.541,0,8.33c0.007,0.771,0.45,1.439,1.162,1.768l2.747,1.838c0.134,0.276,3.038,0.293,3.175,0.006l2.725-1.485c0.773-0.347,1.187-1.293,1.191-2c0.007-0.828-0.475-1.628-1.199-1.942L8.783,6.028L7.969,1.672C7.924,1.406,7.675,0.487,6.48,0.487C6.396,0.487,4.578,0.479,4.487,0.479L4.487,0.479z"/></g></g><g opacity="0.3"><path d="M6,1H5C4.513,1,4.096,1.102,4.014,1.582L3.104,6.8L1.599,7.396C1.232,7.557,0.997,7.891,1,8.29s0.246,0.744,0.615,0.897l2.999,1.492c0.122,0.051,1.647,0.043,1.771-0.008l3-1.375C9.754,9.145,9.996,8.723,10,8.32c0.004-0.4-0.232-0.795-0.6-0.955L7.896,6.689l-0.91-5.1C6.904,1.109,6.486,1,6,1L6,1z"/></g><polygon opacity="0.5" enable-background="new    " points="9,8 6,9 4.999,9 2,8 4,7 5,1 6,1 7,7 "/><g id="pin"><polygon fill="#8CC63F" points="6,3 6.32,2.92 6,1 5,1 4.685,2.895 4.999,3 "/><polygon fill="#8CC63F" points="7,7 6.96,6.76 6,7 4.999,7 4.053,6.686 4,7 2,8 4.999,9 6,9 9,8 "/><polygon fill="#8CC63F" points="6,6 6.8,5.8 6.48,3.88 6,4 4.999,4 4.526,3.843 4.211,5.737 4.999,6 "/></g></svg>';
+
+    Car.prototype.setAvatar = function (selected) {
+        if (this.avatar == undefined) {
+            this.getLocation(0);
+            var pos = getPoint(this.location);
+        }
+        else {
+            pos = this.avatar.position;
+            this.avatar.remove();
+        }
+        var path = paper.project.importSVG(this.crashed ? Car.prototype.avatarCrashed : selected ? Car.prototype.avatarSelected : Car.prototype.avatarSmall);
+        path.children['pin'].fillColor = this.color;
+        var balance = new paper.Path.Circle({
+            center: this.crashed ? [10, 20] : (selected ? [10, 36] : [8, 20]),
+            radius: 1
+        });
+        this.avatar = new paper.Group([path, balance]);
+        this.avatar.position = pos;
+        if (selected) {
+            carGroup.addChild(this.avatar);
+        } else {
+            carGroup.insertChild(0, this.avatar);
+        }
+    };
+
+    Car.prototype.getLocation = function (time) {
+        var i, t,
+            V1, V2, dV, dt,
+            ds, //transitions component
+            dss, //uniform speed component
+            timeStartSmooth = 0,
+            timeSmooth,
+            location = 0, //location in track units, miles or kilometres, whatever it is
+            raceTime,
+            locationPlus = 0;
+
+        if (this.finished) {
+            return;
+        }
+
+        for (i in this.intervals) {
+            t = i % trackPieces;
+            var trackDataInterval = trackData.intervals[t*1];
+            var currentInterval = this.intervals[i*1];
+            var nextInterval = this.intervals[i*1 + 1];
+            var prevInterval = this.intervals[i*1 - 1];
+            if (currentInterval > time / 1000) {
+                //smooth acceleration logic
+                if (currentInterval / 2 > time / 1000) //begining of interval
+                // if (currentInterval * replaySpeed / 2 > time / 1000) //begining of interval
+                {
+                    timeSmooth = time / 1000;
+                    timeStartSmooth = i == 0 ? 0 : Math.min(prevInterval, currentInterval) / 2;
+                }
+                else //ending of interval
+                {
+                    timeSmooth = currentInterval - time / 1000;
+                    timeStartSmooth = i == this.intervals.length - 1 ? 0 : Math.min(nextInterval, currentInterval) / 2;
+                }
+
+                if (timeStartSmooth > timeSmooth) {
+                    if (currentInterval / 2 > time / 1000) //begining of interval
+                    {
+                        V2 = trackDataInterval / currentInterval;
+                        V1 = prevInterval ? trackData.intervals[t - 1 < 0 ? trackPieces - 1 : t - 1] / prevInterval : V2;
+                        dt = timeStartSmooth + timeSmooth;
+                        dss = - V1 * timeStartSmooth;
+                    }
+                    else //ending of interval
+                    {
+                        V1 = trackDataInterval / currentInterval;
+                        V2 = nextInterval ? trackData.intervals[t + 1 >= trackPieces ? 1 : t + 1] / nextInterval : V1;
+                        dt = timeStartSmooth - timeSmooth;
+                        dss = trackDataInterval * ((currentInterval - timeStartSmooth) / currentInterval);
+                    }
+                    dV = V2 - V1;
+                    ds = V1 * dt + dV * dt * dt / (timeStartSmooth * 4);
+                    location += ds + dss;
+                    time -= currentInterval * 1000;
+                }
+                else {
+                    location += trackDataInterval * (time / (currentInterval * 1000));
+                    time -= currentInterval * 1000;
+                }
+
+                break;
+            } else {
+                location += trackDataInterval;
+                time -= currentInterval * 1000;
+            }
+        }
+
+        this.location = location * totalPathLen / trackLength;
+
+        this.completion = (this.location / (totalPathLen * trackData.laps) * 100).toFixed(2) + "%";
+
+        if (time > 0) {
+            this.finished = true;
+            if (i != trackPieces * trackData.laps - 1) {
+                this.crashed = true;
+            }
+            else {
+                // set race time instead of completion %
+                raceTime = 0;
+                for (i in this.intervals) {
+                    raceTime += 1 * this.intervals[i];
+                }
+
+                var racetimeHundrendsString = raceTime.toFixed(2)
+                var racetimeHundrends = parseFloat(racetimeHundrendsString)
+
+                this.raceTime = racetimeHundrends;
+                this.completion = formatTime(racetimeHundrendsString, false, true);
+
+                locationPlus = 1000 / raceTime;
+            }
+        }
+
+        this.updateLapTime();
+
+        this.orderingIndex = this.location + locationPlus;
+    };
+
+    Car.prototype.setStatus = function () {
+        var place, infoStr;
+        if (this.finished) {
+            if (this.crashed) {
+                setPilotStatus(this.userID, 'crash');
+                this.setAvatar()
+                infoStr = 'You crashed!';
+            } else {
+                if (cars[0].userID == this.userID) {
+                    setPilotStatus(this.userID, 'gold');
+                    place = '1st';
+                }
+                else if (cars[1].userID == this.userID) {
+                    setPilotStatus(this.userID, 'silver');
+                    place = '2nd';
+                }
+                else if (cars[2].userID == this.userID) {
+                    setPilotStatus(this.userID, 'bronze');
+                    place = '3rd';
+                }
+                else {
+                    cars.forEach((car, index) => {
+                        if (car.userID == this.userID) {
+                            setPilotStatus(this.userID, 'finished-' + (index + 1));
+                        }
+                    });
+                }
+                /*else {
+                    setPilotStatus(this.userID, 'success');
+                }*/
+                infoStr = place ? 'You finished in ' + place + ' place!' : 'Race finished';
+            }
+            if (this.userID == ownerPilotID) {
+                info(infoStr);
+            }
+        }
+        this.$time.html(this.completion);
+    }
+
+    Car.prototype.updateLapTime = function () {
+        var lap = Math.ceil((this.location / (totalPathLen)).toPrecision(5));
+        
+        if (lap != this.lap || this.finished) {
+            this.lap = lap;
+            if (this.lap > 1) {
+                this.lapTime = 0;
+
+                var startInterval = (this.lap - (this.finished ? 1 : 2)) * trackPieces;
+                var endInterval = startInterval + trackPieces;
+                
+                // in case of crash, show previous lap time
+                if (endInterval > this.intervals.length) {
+                    startInterval -= trackPieces;
+                    endInterval -= trackPieces;
+                }
+
+                for (var i = startInterval; i < endInterval; i++) {
+                    if (this.intervals[i]) {
+                        this.lapTime += this.intervals[i];
+                    }
+                }
+
+                this.lapTime = formatTime(Math.round(this.lapTime));
+            } else {
+                this.lapTime = '--:--';
+            }
+        }
+    }
+
+    function urlParam(name) {
+        var results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
+        if (results == null) {
+            return null;
+        }
+        else {
+            return decodeURI(results[1]) || 0;
+        }
+    }
+
+    // If clicked link tab and tab log in url do not show log, and show selected tab instead
+    $(document).on('ready', function() {
+        $('a').on('click', function(e) {
+            if (window.location.href.includes('tab=log')) {
+                showLog = false;
+            }
+        });
+    });
+
+    function renderTimeLeft(time) {
+        var normalizedTime = time  / 1000;
+        var timeClass = (normalizedTime < 60) ? 't-red' : '';
+
+        info(dataParsed.info.replace('{timeLeftToStart}', '<span class="' + timeClass + '">' + formatTime(normalizedTime, true) + "</span>"));
+    }
+
+    var timeLeftToStart;
+    var stopRacetimeUpdater;
+    var updateRacetime = false;
+    function raceTimeLeftUpdater() {
+        if (updateRacetime) {
+            return;
+        }
+
+        if (stopRacetimeUpdater) {
+            stopRacetimeUpdater();
+        }
+
+        var lastTimeLeftDate = Date.now();
+
+        updateRacetime = true;
+
+        function updateRaceTimeLeft_NEW() {
+            var now = Date.now();
+
+            var timeToEnd = startTime - now;
+
+            if (timeToEnd > 0) {
+                if (!updateRacetime || now - lastTimeLeftDate > 1000) {
+                    renderTimeLeft(timeToEnd);
+
+                    lastTimeLeftDate = now;
+                }
+
+                if (updateRacetime) {
+                    setTimeout(updateRaceTimeLeft_NEW, 100);
+                }
+            } else {
+                updateRacetime = false;
+
+                renderTimeLeft(0);
+
+                if (stopRacetimeUpdater) {
+                    stopRacetimeUpdater();
+                }
+
+                if (dataParsed.timeData.status == 3) {
+                    if (officialEventRacePlay) {
+                        stopRace();
+                    }
+                    // FIXME: It can be started multiple times, because it has request an fr request delay
+
+                    startRace();
+                } else {
+                    getRaceData();
+
+                    raceTimeLeftUpdaterDataUpdate = now;
+                }
+            }
+        }
+
+        updateRaceTimeLeft_NEW();
+
+        var interval = setInterval(getRaceData, 10000);
+
+        stopRacetimeUpdater = function() {
+            updateRacetime = false;
+
+            clearInterval(interval);
+        }
+    }
+
+    function initializeInfoTrackTooltip() {
+        var $dataTooltip = $('.track-info-wrap');
+
+        if (!$dataTooltip.data('tooltipInited')) {
+            $dataTooltip.tooltip({
+                track: true,
+                tooltipClass: "gray-tooltip",
+                hide: false,
+                show: false,
+                position: {
+                    my: 'right-22 center',
+                    at: 'left+18 center',
+                    using: function (position, feedback) {
+                        $(this).css(position);
+                        var $arrow = $('.tooltip-arrow');
+                        $arrow
+                            .removeClass('top')
+                            .removeClass('left')
+                            .addClass(feedback.vertical)
+                            .addClass(feedback.horizontal);
+                    }
+                },
+                content: function () {
+                    var nameTrack = "<span class='track-name'>" + $(this).attr('title') + "</span>";
+                    var titleTrack = "<div class='track-title'>" + nameTrack + " (" + $(this).attr('data-length') + ") " + "</div>";
+                    var descriptionTrack = "<div class='track-desc'>" + $(this).attr('data-desc') + "</div>";
+
+                    return "<div class='tooltip-arrow'></div><div class='track-tooltip-wrap'>" + titleTrack + descriptionTrack + "</div>";
+                }
+            });
+
+            $dataTooltip.data('tooltipInited', true);
+        }
+    };
+
+    function getRaceData() {
+        getAction({
+            type: "GET",
+            data: { sid: "raceData", carcount: $('#carcount').val(), raceID: showLog ? urlParam('raceID') : null },
+            success: function (data) {
+                dataParsed = JSON.parse(data);
+
+                raceId = dataParsed.raceID;
+                trackData = dataParsed.raceData.trackData;
+                carsData = dataParsed.raceData.cars;
+                carInfo = dataParsed.raceData.carInfo
+                var currentRaceTime = dataParsed.timeData.currentTime;
+                timeLeftToStart = dataParsed.timeData.timeLeftToStart;
+                creatorID = (typeof dataParsed.creatorID === 'number' || typeof dataParsed.creatorID === 'string') ? dataParsed.creatorID.toString() : '';
+
+                if (timeLeftToStart <= 0) {
+                    $('.race-player-container').css('display', 'block');
+                }
+
+                if (dataParsed.timeData.status != 3) {
+                    $('.model-wrap div.link-wrap').show()
+                } else {
+                    $('.model-wrap div.link-wrap').hide()
+                }
+                trackPieces = trackData.intervals.length;
+
+                initializeInfoTrackTooltip();
+
+                if (dataParsed.timeOutData) {
+                    if (stopRacetimeUpdater) {
+                        stopRacetimeUpdater();
+                    }
+                    var infoMsg = '<div class=\"info-msg-cont gray border-round m-top10\"><div class=\"info-msg border-round\"><i class=\"info-icon\"></i><div class=\"delimiter\"><div class=\"msg right-round\" role=\"alert\" aria-live=\"polite\">Your last race timed out at: ' + new Date(dataParsed.timeOutData * 1000).toLocaleTimeString() + '</div></div></div></div>';
+                    $('#racingupdates').slideUp('slow', function () {
+                        $(infoMsg).hide().appendTo('#racingAdditionalContainer').slideDown('slow');
+                    });
+                    return;
+                }
+                if (timeLeftToStart === undefined) {
+                    console.error("not provided timeLeftToStart")
+                    return;
+                }
+                else if (timeLeftToStart == null) {
+                    var leftTillCron = 62 - new Date(currentRaceTime * 1000).getSeconds();
+                    timeLeftToStart = leftTillCron + 60;
+                }
+
+                startTime = (new Date()).getTime() + (timeLeftToStart * 1000);
+
+                hub.init();
+                makeLiderBoard();
+                // FIXME: It canceling alredy active selected row
+                makeCars();
+
+                if (dataParsed.timeData.status == 3 && timeLeftToStart <= 0) {
+                    if (officialEventRacePlay) {
+                        stopRace();
+                    }
+                    // FIXME: It can be started multiple times, because it has request an fr request delay
+
+                    startRace();
+
+                    info(dataParsed.info);
+                } else {
+                    raceTimeLeftUpdater();
+                }
+
+                displayPilotData();
+            },
+            error: function (e) {
+                info('couldn\'t get race data');
+            }
+        });
+    }
+
+    var officialEventRacePlay = false;
+    function startRace() {
+        if (officialEventRacePlay) {
+            return;
+        }
+
+        officialEventRacePlay = true;
+
+        $('.model-wrap div.link-wrap').fadeOut(); //hide leave race link
+        info('Race started');
+
+        animateOfficialEvent();
+    }
+
+    function stopRace() {
+        officialEventRacePlay = false;
+
+        stopAnimateOfficialEvent();
+    }
+
+    function makeCars() {
+        destroyCars();
+        trackLength = 0;
+        for (var i in trackData.intervals) {
+            trackLength += trackData.intervals[i];
+        }
+        var colors = ['#4c6600', '#b20000', '#b28500', '#005b5b', '#003366', '#46008c', '#660066', '#000000', '#f28d8d', '#e1c919', '#a0cf17', '#18d9d9', '#6fafee', '#b072ef', '#f080f0', '#616161', '#400000', '#403000', '#204000', '#003040', '#000040', '#400040'];
+        for (var playername in carsData) {
+            var color = colors[carInfo[playername].color - 1];
+            var userID = carInfo[playername].userID;
+            var intervals = decode64(carsData[playername]).split(',');
+            var conf = { playername: playername, userID: userID, intervals: intervals, color: color };
+            var car = new Car(conf);
+            cars.push(car);
+            // FIXME
+            setPilotStatus(userID, 'racing');
+        }
+        selectPilotAvatar();
+        OLD_setRacingTime();
+        paper.view.draw();
+    }
+
+    function destroyCars() {
+        for (var i in cars) {
+            cars[i].avatar && cars[i].avatar.remove();
+        }
+        cars = [];
+    }
+
+    var activeLiderBoardRow = '';
+    function selectLiderBoardRow(id, id_OLD) {
+        activeLiderBoardRow = id;
+
+        $('#leaderBoard > li').removeClass('selected');
+
+        $('#leaderBoard > li').each(function() {
+            var pilotId = `${raceId}-${this.dataset.id}`;
+
+            if (activeLiderBoardRow === pilotId) {
+                $(this).addClass('selected');
+            }
+        });
+
+        activePilotID = id_OLD;
+
+        displayPilotData();
+        selectPilotAvatar();
+    }
+
+    function makeLiderBoard() {
+        $('#leaderBoard').html('');
+
+        for (var name in carInfo) {
+            var template = ['<li id="lbr-' + carInfo[name].userID + '" data-id="' + `${raceId}-${carInfo[name].userID}` + '">',
+                '<ul class="driver-item driver-item_NEXT">',
+            '<li class="color color-' + carInfo[name].color + '"></li>',
+                '<li class="status-wrap">',
+                '<div class="status waiting"></div>',
+                '</li>',
+                '<li class="car">',
+            '<img src="' + carInfo[name].carImage + '" width="38" height="19" title="' + carInfo[name].carTitle + '">',
+                '</li>',
+                '<li class="name">',
+            '<span>' + name + '</span>',
+                '</li>',
+                '<li class="time"></li>',
+                '<li class="clear"></li>',
+                '</ul>',
+                '</li>'].join('\n');
+
+            if (carInfo[name].userID === creatorID) {
+                $('#leaderBoard').prepend(template);
+            } else {
+                $('#leaderBoard').append(template);
+            }
+        }
+
+        selectLiderBoardRow(activeLiderBoardRow, activePilotID);
+
+        $('#leaderBoard > li').on('click', function (target) {
+            var pilotId = `${raceId}-${target.currentTarget.dataset.id}`;
+            var pilotId_OLD = $(this).attr('id').replace('lbr-', '');
+
+            selectLiderBoardRow(pilotId, pilotId_OLD);
+        });
+    };
+
+    function setPilotStatus(pilotID, status) {
+        $("#lbr-" + pilotID + " .status-wrap .status").removeClass().addClass('status ' + status);
+
+        var statusInt = parseInt(status.replace ( /[^\d.]/g, '' ));
+
+        if (!isNaN(statusInt)) {
+            $("#lbr-" + pilotID + " .status-wrap .status." + status).removeClass('status').addClass('finished').text(statusInt);
+        }
+    }
+
+    function timeToStringFormat(time) {
+        var sec_num = parseInt(time, 10);
+        var hours   = Math.floor(sec_num / 3600);
+        var minutes = Math.floor((sec_num - (hours * 3600)) / 60);
+        var seconds = sec_num - (hours * 3600) - (minutes * 60);
+
+        if (hours   < 10) {hours   = "0"+hours;}
+        if (minutes < 10) {minutes = "0"+minutes;}
+        if (seconds < 10) {seconds = "0"+seconds;}
+
+        return hours+':'+minutes+':'+seconds;
+    }
+
+    function setRaceTimeText(time) {
+        $('#race-timer').text(timeToStringFormat(time));
+    }
+
+    function OLD_setRacingTime(percentValue) {
+        var prevRacingTime = racingTime;
+
+        racingTime = 0;
+
+        cars.forEach(function(car) {
+            (function (car) {
+                if (racingTime < car.raceTime) {
+                    originRacingTime = car.raceTime;
+                    racingTime = (car.raceTime / replaySpeed);
+                }
+                car.finished = false;
+            }(car));
+        });
+
+        if (percentValue) {
+            currentTime = (racingTime / 0.001) * percentValue / 100;
+        } else {
+            if (prevRacingTime) {
+                currentTime = currentTime * racingTime / prevRacingTime;
+            }
+        }
+
+        setRaceTimeText(!isNaN(currentTime) ? currentTime * 0.001 : 0);
+    }
+
+    function setCurrentTime(ms) {
+        currentTime = ms;
+
+        cars.forEach(function(car) {
+            car.finished = false;
+        });
+
+        setRaceTimeText(currentTime / 1000);
+    }
+
+    var play_NEW = false;
+    // Processing replay player work
+    $(document).ready(function () {
+        var replaySpeedArray = [1, 2, 4, 8, 10, 20, 40, 80, 100];
+
+        replaySpeed = 1;
+        currentTime = 0;
+
+        if (timeLeftToStart <= 0) {
+            $('.race-player-container').css('display', 'block');
+        }
+
+        $('#play-pause-btn').on('click', function (e) {
+            setOriginRacingTime()
+            // FIXME: Should have original racing time when data ready, not now
+
+            if (play_NEW) {
+                $(this).addClass('play');
+                $(this).removeClass('pause');
+
+                info('Race paused');
+
+                stopAnimateReplay();
+            } else {
+                $(this).addClass('pause');
+                $(this).removeClass('play');
+
+                for (var i in cars) {
+                    cars[i].finished = false;
+                }
+
+                $('.model-wrap div.link-wrap').fadeOut(); //hide leave race link
+
+                if (currentTime === originRacingTime) {
+                    currentTime = 0;
+                }
+
+                animateReplay();
+
+                info('Race replaying');
+            }
+        });
+
+        $('#replay-bar-container').on('click', function (e) {
+            setOriginRacingTime()
+            // FIXME: Should have original racing time when data ready, not now
+
+            var x = e.pageX - $(this).offset().left;
+            var barWidth = $(this).width();
+
+            var normalizedX;
+            if (x < 0) {
+                normalizedX = 0
+            } else if (x > barWidth) {
+                normalizedX = barWidth
+            } else {
+                normalizedX = x
+            }
+
+            $('#progress-active').css('width', normalizedX);
+            $('#progress-inactive').css('width', barWidth - normalizedX);
+
+            var current = normalizedX / barWidth;
+
+            var updatedCurrentTime = Math.round(originRacingTime * current);
+            // FIXME: Racing time should be in ms(now in s)
+
+            setCurrentTime(updatedCurrentTime);
+
+            renderReplay();
+        });
+
+        $('#prev-speed').on('click', function (e) {
+            setOriginRacingTime()
+            // FIXME: Should have original racing time when data ready, not now
+
+            if ($(this).hasClass('disabled')) return;
+
+            var index = replaySpeedArray.indexOf(replaySpeed);
+
+            if (index - 1 === 0) {
+                $(this).addClass('disabled');
+                $(this).removeClass('enabled');
+            }
+
+            if (index < replaySpeedArray.length - 2) {
+                $('#next-speed').addClass('enabled');
+                $('#next-speed').removeClass('disabled');
+            }
+
+            changeReplaySpeed(replaySpeedArray[index - 1])
+
+            $('#speed-value').text('x' + replaySpeed);
+        });
+
+        $('#next-speed').on('click', function (e) {
+            setOriginRacingTime()
+            // FIXME: Should have original racing time when data ready, not now
+
+            if ($(this).hasClass('disabled')) return;
+
+            var index = replaySpeedArray.indexOf(replaySpeed);
+
+            if (index + 1 === replaySpeedArray.length - 1) {
+                $(this).addClass('disabled');
+                $(this).removeClass('enabled');
+            }
+
+            if (index + 1 > 0) {
+                $('#prev-speed').addClass('enabled');
+                $('#prev-speed').removeClass('disabled');
+            }
+
+            changeReplaySpeed(replaySpeedArray[index + 1])
+
+            $('#speed-value').text('x' + replaySpeed);
+        });
+    });
+
+    function setOriginRacingTime() {
+        cars.forEach(function(car) {
+            var carRaceTimeMs = car.raceTime * 1000;
+
+            if (originRacingTime < carRaceTimeMs) {
+                originRacingTime = carRaceTimeMs;
+            }
+        });
+    }
+
+    var defaultTimelineUpdateDelay = 1000 / 10;
+    var defaultTimerUpdateDelay = 1000 / 10;
+    var defaultCarsStatusUpdateDelay = 1000 / 8;
+    var minTimelineUpdateDelay = 1000 / 25;
+    var minTimerUpdateDelay = 1000 / 10;
+    var minCarsStatusUpdateDelay = 1000 / 15;
+    var timelineUpdateDelay = defaultTimelineUpdateDelay;
+    var timerUpdateDelay = defaultTimerUpdateDelay;
+    var carsStatusUpdateDelay = defaultCarsStatusUpdateDelay;
+    function changeReplaySpeed(speed) {
+        replaySpeed = speed;
+
+        var nextTimelineUpdateDelay = defaultTimelineUpdateDelay / speed;
+        timelineUpdateDelay = nextTimelineUpdateDelay < minTimelineUpdateDelay ? minTimelineUpdateDelay : nextTimelineUpdateDelay;
+
+        var nextTimerUpdateDelay = defaultTimerUpdateDelay / speed;
+        timerUpdateDelay = nextTimerUpdateDelay < minTimerUpdateDelay ? minTimerUpdateDelay : nextTimerUpdateDelay;
+
+        var nextCarsStatusUpdateDelay = defaultCarsStatusUpdateDelay / speed;
+        carsStatusUpdateDelay = nextCarsStatusUpdateDelay < minCarsStatusUpdateDelay ? minCarsStatusUpdateDelay : nextCarsStatusUpdateDelay;
+    }
+
+    function renderViewHandler(ms) {
+        for (var i in cars) {
+            if (!cars[i].finished) {
+                cars[i].getLocation(ms);
+                cars[i].avatar.position = getPoint(cars[i].location % totalPathLen);
+            }
+        }
+
+        paper.view.draw();
+        // FIXME: What is it?
+    }
+
+    function renderTimelineHandler() {
+        var progressActiveEl = $('#progress-active');
+        var progressInactiveEl = $('#progress-inactive');
+        var replayBarContainerEl = $('#replay-bar-container');
+        var totalWidth = replayBarContainerEl.width();
+
+        var percentTime =  currentTime / originRacingTime * 100;
+        var activeWidth = totalWidth * percentTime / 100;
+        var inactiveWidth = totalWidth - activeWidth;
+
+        progressActiveEl.css('width', activeWidth);
+        progressInactiveEl.css('width', inactiveWidth);
+
+        if (progressActiveEl.width() >= totalWidth) {
+            progressActiveEl.css('width', totalWidth);
+        }
+    }
+
+    function renderTimerHandler() {
+        setRaceTimeText(currentTime / 1000);
+        // FIXME: Shoul be in ms
+    }
+
+    function renderCarsStatusHandler() {
+        sortCars();
+        for (var i in cars) {
+            cars[i].setStatus();
+        }
+        displayPilotData();
+    }
+
+    function renderReplay() {
+        renderViewHandler(currentTime);
+        renderTimelineHandler();
+        renderTimerHandler();
+        renderCarsStatusHandler();
+    }
+
+    function renderOfficialEvent(ms) {
+        renderViewHandler(ms);
+        renderCarsStatusHandler();
+    }
+
+    var lastNow;
+    var lastTimelineDate;
+    var lastTimerDate;
+    var lastCarsStatusDate;
+    var animateReplayHandlerReqId;
+    function animateReplayHandler() {
+        if (!document.getElementById('raceCanvas')) {
+            //tab was swithced, need to stop script
+            removePrecedingProject();
+            if (play_NEW) {
+                play_NEW = false;
+            }
+            return;
+        }
+
+        var now = Date.now();
+
+        currentTime += (now - lastNow) * replaySpeed;
+
+        if (currentTime < originRacingTime) {
+            renderViewHandler(currentTime);
+
+            if (now - lastTimerDate > timerUpdateDelay) {
+                renderTimerHandler();
+
+                lastTimerDate = now;
+            }
+
+            if (now - lastTimelineDate > timelineUpdateDelay) {
+                renderTimelineHandler();
+
+                lastTimelineDate = now;
+            }
+
+            if (now - lastCarsStatusDate > carsStatusUpdateDelay) {
+                renderCarsStatusHandler();
+
+                lastCarsStatusDate = now;
+            }
+
+            lastNow = now;
+
+            if (play_NEW) {
+                animateReplayHandlerReqId = window.requestAnimationFrame(animateReplayHandler);
+            }
+        } else {
+            play_NEW = false;
+            currentTime = originRacingTime;
+
+            renderReplay();
+
+            $('#play-pause-btn').addClass('play');
+            $('#play-pause-btn').removeClass('pause');
+
+            info('Race finished');
+        }
+    }
+
+    var lastOfficialEventCarsStatusDate;
+    var animateOfficialEventReqId;
+    function animateOfficialEventHandler() {
+        if (!document.getElementById('raceCanvas')) {
+            //tab was swithced, need to stop script
+            removePrecedingProject();
+            return;
+        }
+
+        var now = Date.now();
+        var timeLeft = now - startTime;
+
+        var finished = true;
+        for (var i in cars) {
+            if (!cars[i].finished && finished) {
+                finished = false;
+
+                break;
+            }
+        }
+
+        if (!finished) {
+            renderViewHandler(timeLeft);
+
+            if (now - lastOfficialEventCarsStatusDate > carsStatusUpdateDelay) {
+                renderCarsStatusHandler();
+
+                lastOfficialEventCarsStatusDate = now;
+            }
+
+            if (officialEventAnimating) {
+                animateOfficialEventReqId = window.requestAnimationFrame(animateOfficialEventHandler);
+            }
+        } else {
+            renderOfficialEvent(timeLeft);
+
+            info('Race finished');
+        }
+    }
+
+    function animateReplay() {
+        play_NEW = true;
+
+        lastNow = Date.now();
+        lastTimelineDate = 0;
+        lastTimerDate = 0;
+        lastCarsStatusDate = 0;
+
+        renderReplay();
+
+        animateReplayHandler();
+    }
+
+    function stopAnimateReplay() {
+        play_NEW = false;
+
+        window.cancelAnimationFrame(animateReplayHandlerReqId);
+    }
+
+    var officialEventAnimating = false;
+    function animateOfficialEvent() {
+        officialEventAnimating = true;
+        lastOfficialEventCarsStatusDate = 0;
+
+        renderOfficialEvent();
+
+        animateOfficialEventHandler();
+    }
+
+    function stopAnimateOfficialEvent() {
+        officialEventAnimating = false;
+
+        window.cancelAnimationFrame(animateOfficialEventReqId);
+    }
+
+    function sortCars() {
+        cars.sort(function (a, b) {
+            // sort by time or userID if time is the same,
+            // older user goes first
+            return b.orderingIndex - a.orderingIndex || a.userID - b.userID
+        });
+
+        for (var i = 0; i < cars.length; i++) {
+            $("#lbr-" + cars[i].userID).attr('lorder', i);
+        }
+
+        var $li = $('#leaderBoard > li');
+        var n = $li.length;
+        for (var i = 1; i < n; i++) {
+            for (var j = 0; j < n - i; j++) {
+                if (Number($li.eq(j).attr('lorder')) > Number($li.eq(j + 1).attr('lorder'))) {
+                    $li.eq(j).insertAfter($li.eq(j + 1));
+                    $li = $('#leaderBoard > li');
+                }
+            }
+        }
+    }
+
+    hub = {
+        init: function () {
+            this.$name = $('.pd-pilotname');
+            this.$position = $('.pd-position');
+            this.$lap = $('.pd-lap');
+            this.$lapTime = $('.pd-laptime');
+            this.$completion = $('.pd-completion');
+        },
+        set: function (data) {
+            this.$name.html(data.name);
+            this.$position.html(data.position);
+            this.$lap.html(data.lap);
+            this.$lapTime.html(data.lapTime);
+            this.$completion.html(data.completion);
+        }
+    };
+
+
+    function displayPilotData() {
+        var currentCarIndex = cars.findIndex(function(car) {
+            return car.userID == activePilotID
+        })
+        var currentCar = cars[currentCarIndex > -1 ? currentCarIndex : 0]
+        currentCar && hub.set({ 
+            name: currentCar.playername,
+            position: (currentCarIndex + 1) + '/' + cars.length,
+            lap: currentCar.lap + '/' + trackData.laps,
+            lapTime: currentCar.lapTime,
+            completion: currentCar.completion
+        });
+    }
+
+    function selectPilotAvatar() {
+        for (var i in cars) {
+            cars[i].setAvatar(cars[i].userID == activePilotID);
+        }
+    }
+
+    function getPoint(location) {
+        location = Math.round(location * 10) / 10;
+        if (pathMap[location] == undefined) {
+            pathMap[location] = path.getPointAt(location);
+        }
+        return pathMap[location];
+    }
+
+    function info(msg) {
+        $('#infoSpot').html(msg);
+    }
+
+    function removePrecedingProject() {
+        for (var i in paper.projects) {
+            if (paper.projects[i].view._id == "raceCanvas") {
+                paper.projects[i].remove();
+            }
+        }
+        if (interval) {
+            clearInterval(interval);
+        }
+    }
+
+    function formatTime(seconds, amply, milliseconds) {
+        var h = Math.floor(seconds / (60 * 60));
+        var m = Math.floor((seconds - (h * 60 * 60)) / 60);
+        var s = Math.floor(seconds - (h * 60 * 60) - (m * 60));
+        var ss = milliseconds && (seconds).substr(-2, 2);
+
+        var hoursLabel;
+        var minutesLabel;
+        var secondsLabel;
+
+        if (mediaType === MOBILE) {
+            hoursLabel = 'h, ';
+            minutesLabel = 'm, ';
+            secondsLabel = 's ';
+        } else {
+            hoursLabel = " hours, ";
+            minutesLabel = (m == 1 ? " minute, " : " minutes, ");
+            secondsLabel = " seconds ";
+        }
+
+        var hStr;
+        var mStr;
+        var sStr;
+        if (amply) {
+            hStr = hoursLabel;
+            mStr = minutesLabel;
+            sStr = secondsLabel;
+        } else {
+            hStr = ":";
+            mStr = ":";
+            sStr = "";
+
+            h = h < 10 && h != 0 ? '0' + h : h;
+            m = m < 10 ? '0' + m : m;
+            s = s < 10 ? '0' + s : s;
+        }
+
+        var result = "";
+        if (h) {
+            result += h + hStr;
+        }
+        if (m) {
+            result += m + mStr;
+        }
+
+        result += s + sStr;
+
+        if (milliseconds) {
+            result += "." + ss;
+        }
+
+        return result;
+    }
+
+    function decode64(input) {
+        var output = "";
+        var chr1, chr2, chr3 = "";
+        var enc1, enc2, enc3, enc4 = "";
+        var i = 0;
+        var keyStr = "ABCDEFGHIJKLMNOP" +
+            "QRSTUVWXYZabcdef" +
+            "ghijklmnopqrstuv" +
+            "wxyz0123456789+/" +
+            "=";
+
+        // remove all characters that are not A-Z, a-z, 0-9, +, /, or =
+        var base64test = /[^A-Za-z0-9\+\/\=]/g;
+        if (base64test.exec(input)) {
+            console.log("There were invalid base64 characters in the input text.\n" +
+                "Valid base64 characters are A-Z, a-z, 0-9, '+', '/',and '='\n" +
+                "Expect errors in decoding.");
+        }
+        input = input.replace(/[^A-Za-z0-9\+\/\=]/g, "");
+        do {
+            enc1 = keyStr.indexOf(input.charAt(i++));
+            enc2 = keyStr.indexOf(input.charAt(i++));
+            enc3 = keyStr.indexOf(input.charAt(i++));
+            enc4 = keyStr.indexOf(input.charAt(i++));
+
+            chr1 = (enc1 << 2) | (enc2 >> 4);
+            chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
+            chr3 = ((enc3 & 3) << 6) | enc4;
+
+            output = output + String.fromCharCode(chr1);
+
+            if (enc3 != 64) {
+                output = output + String.fromCharCode(chr2);
+            }
+            if (enc4 != 64) {
+                output = output + String.fromCharCode(chr3);
+            }
+
+            chr1 = chr2 = chr3 = "";
+            enc1 = enc2 = enc3 = enc4 = "";
+
+        } while (i < input.length);
+
+        return decodeURI(output);
+    }
+
+    return {
+        buildRace: function (pilot) {
+            removePrecedingProject();
+            ownerPilotID = activePilotID = pilot;
+            paper.setup(document.getElementById('raceCanvas'));
+            var svgObject = paper.project.importSVG(document.getElementById('Layer_1'));
+            if (document.getElementById('mask')) {
+                mask = paper.project.importSVG(document.getElementById('mask'));
+                carGroup = new paper.Group(mask);
+                carGroup.clipped = true;
+            } else {
+                carGroup = new paper.Group();
+            }
+            pathMap = {};
+            if (svgObject) {
+                path = svgObject.children.find(function (child) { return child instanceof paper.Path });
+                totalPathLen = path.length;
+                getRaceData();
+            }
+            else {
+                info('couldn\'t get track data');
+            }
+        },
+
+        stop: function () {
+            cancelAnimationFrame(reqID);
+        }
+
+    }
+})();

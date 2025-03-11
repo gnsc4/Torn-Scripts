@@ -1,0 +1,610 @@
+/* CLASS A */
+
+.d .racing-main-wrap .header-wrap {
+    background-color: #2E2E2E;
+    color: #00BFFF;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 1);
+}
+
+.d .racing-main-wrap .header-wrap .banner {
+    background: url(/images/v2/racing/header/banners/976_classA.png) 0 0 no-repeat;
+    height: 149px;
+    width: 784px;
+    position: relative;
+    border-bottom: 1px solid #000;
+    display: block;
+}
+
+.d .racing-main-wrap .header-wrap .banner .skill,
+.d .racing-main-wrap .header-wrap .banner:hover .skill {
+    color: #00BFFF;
+}
+
+.d .racing-main-wrap .header-wrap .banner .skill {
+    font-family: Audiowide;
+    font-weight: bold;
+    font-size: 13px;
+    top: 82px;
+    left: 13px;
+    position: absolute;
+}
+
+.d .racing-main-wrap .header-wrap .categories {
+    border-top: 1px solid #444;
+}
+
+.d .racing-main-wrap .header-wrap .categories > li {
+    border-right: 1px solid #000;
+    border-left: 1px solid #444;
+    float: left;
+    width: 157px;
+    height: 138px;
+    position: relative;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.d .racing-main-wrap .header-wrap .categories > li:first-child {
+    border-left: none;
+}
+
+.d .racing-main-wrap .header-wrap .categories > li.last {
+    border-right: none;
+    width: 156px;
+}
+
+.d .racing-main-wrap .header-wrap .categories .icons {
+    background: url(/images/v2/racing/header/stripy_bg.png) 0 0 repeat;
+    border-bottom: 1px solid #000;
+    height: 102px;
+    width: 100%;
+}
+
+.d .racing-main-wrap .header-wrap .categories .title {
+    border-top: 1px solid #444;
+    text-align: center;
+    line-height: 32px;
+    height: 35px;
+    width: 100%;
+}
+.d .racing-main-wrap .header-wrap .categories > li a.link {
+    display: block;
+    text-decoration: none;
+    color: #00BFFF;
+    width: 100%;
+    height: auto;
+}
+
+.d .racing-main-wrap .header-wrap .categories > li.active .bg-selected,
+.d .racing-main-wrap .header-wrap .categories > li.active .title {
+    width: 100%;
+    background: url(/images/v2/racing/header/selected_section_bg.png) 0 0 repeat;
+}
+
+.d .racing-main-wrap .header-wrap .categories > li.active .title {
+    height: 34px;
+    color: #ddd;
+}
+
+.d .racing-main-wrap .header-wrap .categories > li.active:first-child .title {
+    border-radius: 0 0 0 5px;
+}
+
+.d .racing-main-wrap .header-wrap .categories > li.last.active .title {
+    border-radius: 0 0 5px 0;
+}
+
+.d .racing-main-wrap .header-wrap .categories > li:hover .title {
+    color: #ddd;
+}
+
+.d .racing-main-wrap .header-wrap .categories .icon {
+    background: url(/images/v2/racing/header/icons/sections_classA_976.png) 0 0 no-repeat;
+    height: 102px;
+    width: 155px;
+}
+
+.d .racing-main-wrap .header-wrap .categories > li:first-child .t-delimiter,
+.d .racing-main-wrap .header-wrap .categories > li:first-child .b-delimiter {
+    display: none;
+}
+
+.d .racing-main-wrap .header-wrap .categories > li.clear {
+    font-size: 0;
+    margin: 0;
+    padding: 0;
+    height: 0;
+    width: 0;
+    line-height: 0;
+    float: none;
+    clear: both;
+    border: 0;
+}
+
+/* CLASS B */
+
+.d .racing-main-wrap.class-B .header-wrap,
+.d .racing-main-wrap.class-B .header-wrap .categories > li a.link,
+.d .racing-main-wrap.class-B .header-wrap .banner .skill,
+.d .racing-main-wrap.class-B .header-wrap .banner:hover .skill {
+    color: #FF3F00;
+}
+
+.d .racing-main-wrap.class-B .header-wrap .banner {
+    background: url(/images/v2/racing/header/banners/976_classB.png) 0 0 no-repeat;
+}
+
+.d .racing-main-wrap.class-B .header-wrap .categories .icon {
+    background: url(/images/v2/racing/header/icons/sections_classB_976.png) 0 0 no-repeat;
+}
+
+
+/* CLASS C */
+
+.d .racing-main-wrap.class-C .header-wrap,
+.d .racing-main-wrap.class-C .header-wrap .categories > li a.link,
+.d .racing-main-wrap.class-C .header-wrap .banner .skill,
+.d .racing-main-wrap.class-C .header-wrap .banner:hover .skill {
+    color: #85B200;
+}
+
+.d .racing-main-wrap.class-C .header-wrap .banner {
+    background: url(/images/v2/racing/header/banners/976_classC.png) 0 0 no-repeat;
+}
+
+.d .racing-main-wrap.class-C .header-wrap .categories .icon {
+    background: url(/images/v2/racing/header/icons/sections_classC_976.png) 0 0 no-repeat;
+}
+
+/* CLASS D */
+
+.d .racing-main-wrap.class-D .header-wrap,
+.d .racing-main-wrap.class-D .header-wrap .banner .skill,
+.d .racing-main-wrap.class-D .header-wrap .banner:hover .skill {
+    color: #D80098;
+}
+
+.d .racing-main-wrap.class-D .header-wrap .categories > li a.link {
+    color: #BE50C1;
+}
+
+.d .racing-main-wrap.class-D .header-wrap .banner {
+    background: url(/images/v2/racing/header/banners/976_classD.png) 0 0 no-repeat;
+}
+
+.d .racing-main-wrap.class-D .header-wrap .categories .icon {
+    background: url(/images/v2/racing/header/icons/sections_classD_976.png) 0 0 no-repeat;
+}
+
+/* CLASS E */
+
+.d .racing-main-wrap.class-E .header-wrap,
+.d .racing-main-wrap.class-E .header-wrap .categories > li a.link,
+.d .racing-main-wrap.class-E .header-wrap .banner .skill,
+.d .racing-main-wrap.class-E .header-wrap .banner:hover .skill {
+    color: #FFBF00;
+}
+
+.d .racing-main-wrap.class-E .header-wrap .banner {
+    background: url(/images/v2/racing/header/banners/976_classE.png) 0 0 no-repeat;
+}
+
+.d .racing-main-wrap.class-E .header-wrap .categories .icon {
+    background: url(/images/v2/racing/header/icons/sections_classE_976.png) 0 0 no-repeat;
+}
+
+
+.d .racing-main-wrap .header-wrap .banner {
+    font-family : Audiowide;
+    font-size : 14px;
+    line-height : 13px;
+    text-shadow : 0 1px 1px rgba(0, 0, 0, 0.65);
+}
+
+.d .racing-main-wrap .header-wrap .banner .class-letter,
+.d .racing-main-wrap .header-wrap .banner .skill-desc,
+.d .racing-main-wrap .header-wrap .banner .class-desc {
+    position: absolute;
+}
+
+.d .racing-main-wrap .header-wrap .banner .class-letter {
+    font-size: 32px;
+    right: 28px;
+    top: 76px;
+}
+
+.d .racing-main-wrap .header-wrap .banner .class-desc {
+    right: 12px;
+    top: 52px;
+}
+
+.d .racing-main-wrap .header-wrap .banner .skill-desc {
+    width: 70px;
+    top: 52px;
+    left: 12px;
+}
+
+.d .racing-main-wrap.class-A .header-wrap .banner .skill-desc,
+.d .racing-main-wrap.class-A .header-wrap .banner .class-desc {
+    color: #0085B2;
+}
+
+.d .racing-main-wrap.class-A .header-wrap .banner .skill,
+.d .racing-main-wrap.class-A .header-wrap .banner .class-letter {
+    color: #00BFFF;
+}
+
+.d .racing-main-wrap.class-B .header-wrap .banner .skill-desc,
+.d .racing-main-wrap.class-B .header-wrap .banner .class-desc {
+    color: #D93131;
+}
+
+.d .racing-main-wrap.class-B .header-wrap .banner .skill,
+.d .racing-main-wrap.class-B .header-wrap .banner .class-letter {
+    color: #FF3F00;
+}
+
+.d .racing-main-wrap.class-C .header-wrap .banner .skill-desc,
+.d .racing-main-wrap.class-C .header-wrap .banner .class-desc {
+    color: #688C00;
+}
+
+.d .racing-main-wrap.class-C .header-wrap .banner .skill,
+.d .racing-main-wrap.class-C .header-wrap .banner .class-letter {
+    color: #85B200;
+}
+
+.d .racing-main-wrap.class-D .header-wrap .banner .skill-desc,
+.d .racing-main-wrap.class-D .header-wrap .banner .class-desc {
+    color: #C500C5;
+}
+
+.d .racing-main-wrap.class-D .header-wrap .banner .skill,
+.d .racing-main-wrap.class-D .header-wrap .banner .class-letter {
+    color: #D80098;
+}
+
+.d .racing-main-wrap.class-E .header-wrap .banner .skill-desc,
+.d .racing-main-wrap.class-E .header-wrap .banner .class-desc {
+    color: #D86C00;
+}
+
+.d .racing-main-wrap.class-E .header-wrap .banner .skill,
+.d .racing-main-wrap.class-E .header-wrap .banner .class-letter {
+    color: #FFBF00;
+}
+
+/* Icons positions for all classes */
+
+.d .racing-main-wrap .header-wrap .categories .icon.cars {
+    background-position: 0 0;
+}
+
+.d .racing-main-wrap .header-wrap .categories > li.active .icon.cars,
+.d .racing-main-wrap .header-wrap .categories > li:hover .icon.cars {
+    background-position: 0 -104px;
+}
+
+.d .racing-main-wrap .header-wrap .categories .icon.modification {
+    background-position: -157px 0;
+}
+
+.d .racing-main-wrap .header-wrap .categories > li.active .icon.modification,
+.d .racing-main-wrap .header-wrap .categories > li:hover .icon.modification {
+    background-position: -157px -104px;
+}
+
+.d .racing-main-wrap .header-wrap .categories .icon.official-events {
+    background-position: -314px 0;
+}
+
+.d .racing-main-wrap .header-wrap .categories > li.active .icon.official-events,
+.d .racing-main-wrap .header-wrap .categories > li:hover .icon.official-events {
+    background-position: -314px -104px;
+}
+
+.d .racing-main-wrap .header-wrap .categories .icon.custom-events {
+    background-position: -471px 0;
+}
+
+.d .racing-main-wrap .header-wrap .categories > li.active .icon.custom-events,
+.d .racing-main-wrap .header-wrap .categories > li:hover .icon.custom-events {
+    background-position: -471px -104px;
+}
+
+.d .racing-main-wrap .header-wrap .categories .icon.statistics {
+    background-position: -623px 0;
+}
+
+.d .racing-main-wrap .header-wrap .categories > li.active .icon.statistics,
+.d .racing-main-wrap .header-wrap .categories > li:hover .icon.statistics {
+    background-position: -623px -104px;
+}
+
+
+@media screen and (max-width: 784px) {
+    .r .racing-main-wrap .header-wrap {
+        width: 386px;
+    }
+
+    .r .racing-main-wrap .header-wrap .banner {
+        background: url(/images/v2/racing/header/banners/578_classA.png) 0 0 no-repeat;
+        height: 140px;
+        width: 386px;
+    }
+
+    .r .racing-main-wrap .header-wrap .banner .skill {
+        top: 10px;
+        left: 131px;
+        font-size: 14px;
+    }
+
+    .r .racing-main-wrap .header-wrap .categories .icons {
+        border-bottom: 0;
+        height: 53px;
+    }
+
+    .r .racing-main-wrap .header-wrap .categories .icon {
+        background: url(/images/v2/racing/header/icons/sections_classA_320.png) 0 0 no-repeat;
+        height: 53px;
+        width: 75px;
+    }
+
+    .r .racing-main-wrap .header-wrap .categories > li {
+        height: 53px;
+        width: 77px;
+    }
+
+    .r .racing-main-wrap .header-wrap .categories {
+        border-bottom: 5px;
+    }
+
+    .r .racing-main-wrap .header-wrap .categories > li:first-child,
+    .r .racing-main-wrap .header-wrap .categories > li:first-child .icon,
+    .r .racing-main-wrap .header-wrap .categories > li:first-child a.link,
+    .r .racing-main-wrap .header-wrap .categories > li:first-child .icons,
+    .r .racing-main-wrap .header-wrap .categories > li.active:first-child .bg-selected,
+    .r .racing-main-wrap .header-wrap .categories > li.active:first-child .title {
+        border-bottom-left-radius: 5px;
+    }
+
+    .r .racing-main-wrap .header-wrap .categories > li.last,
+    .r .racing-main-wrap .header-wrap .categories > li.last .icon,
+    .r .racing-main-wrap .header-wrap .categories > li.last a.link,
+    .r .racing-main-wrap .header-wrap .categories > li.last .icons,
+    .r .racing-main-wrap .header-wrap .categories > li.active.last .bg-selected,
+    .r .racing-main-wrap .header-wrap .categories > li.active.last .title {
+        border-bottom-right-radius: 5px;
+    }
+
+    .r .racing-main-wrap .header-wrap .categories > li.last,
+    .r .racing-main-wrap .header-wrap .categories > li.last .icon {
+        width: 78px;
+    }
+
+    .r .racing-main-wrap .header-wrap .categories .title {
+        display: none;
+    }
+
+    .r .racing-main-wrap .t-delimiter,
+    .r .racing-main-wrap .b-delimiter {
+        height: 27px;
+    }
+
+    .r .racing-main-wrap .t-delimiter {
+        height: 28px;
+        top: -1px;
+    }
+
+
+    /* CLASS B */
+
+    .r .racing-main-wrap.class-B .header-wrap .banner {
+        background: url(/images/v2/racing/header/banners/578_classB.png) 0 0 no-repeat;
+    }
+
+    .r .racing-main-wrap.class-B .header-wrap .categories .icon {
+        background: url(/images/v2/racing/header/icons/sections_classB_320.png) 0 0 no-repeat;
+    }
+
+
+    /* CLASS C */
+
+    .r .racing-main-wrap.class-C .header-wrap .banner {
+        background: url(/images/v2/racing/header/banners/578_classC.png) 0 0 no-repeat;
+    }
+
+    .r .racing-main-wrap.class-C .header-wrap .categories .icon {
+        background: url(/images/v2/racing/header/icons/sections_classC_320.png) 0 0 no-repeat;
+    }
+
+    /* CLASS D */
+
+    .r .racing-main-wrap.class-D .header-wrap .banner {
+        background: url(/images/v2/racing/header/banners/578_classD.png) 0 0 no-repeat;
+    }
+
+    .r .racing-main-wrap.class-D .header-wrap .categories .icon {
+        background: url(/images/v2/racing/header/icons/sections_classD_320.png) 0 0 no-repeat;
+    }
+
+    /* CLASS E */
+
+    .r .racing-main-wrap.class-E .header-wrap .banner {
+        background: url(/images/v2/racing/header/banners/578_classE.png) 0 0 no-repeat;
+    }
+
+    .r .racing-main-wrap.class-E .header-wrap .categories .icon {
+        background: url(/images/v2/racing/header/icons/sections_classE_320.png) 0 0 no-repeat;
+    }
+
+    /* Icons positions for all classes */
+
+    .r .racing-main-wrap .header-wrap .categories .icon.cars {
+        background-position: 6px 0;
+    }
+
+    .r .racing-main-wrap .header-wrap .categories > li.active .icon.cars,
+    .r .racing-main-wrap .header-wrap .categories > li:hover .icon.cars {
+        background-position: 6px -55px;
+    }
+
+    .r .racing-main-wrap .header-wrap .categories .icon.modification {
+        background-position: -57px 0;
+    }
+
+    .r .racing-main-wrap .header-wrap .categories > li.active .icon.modification,
+    .r .racing-main-wrap .header-wrap .categories > li:hover .icon.modification {
+        background-position: -57px -55px;
+    }
+
+    .r .racing-main-wrap .header-wrap .categories .icon.official-events {
+        background-position: -122px 0;
+    }
+
+    .r .racing-main-wrap .header-wrap .categories > li.active .icon.official-events,
+    .r .racing-main-wrap .header-wrap .categories > li:hover .icon.official-events {
+        background-position: -122px -55px;
+    }
+
+    .r .racing-main-wrap .header-wrap .categories .icon.custom-events {
+        background-position: -186px 0;
+    }
+
+    .r .racing-main-wrap .header-wrap .categories > li.active .icon.custom-events,
+    .r .racing-main-wrap .header-wrap .categories > li:hover .icon.custom-events {
+        background-position: -186px -55px;
+    }
+
+    .r .racing-main-wrap .header-wrap .categories .icon.statistics {
+        background-position: -250px 0;
+    }
+
+    .r .racing-main-wrap .header-wrap .categories > li.active .icon.statistics,
+    .r .racing-main-wrap .header-wrap .categories > li:hover .icon.statistics {
+        background-position: -250px -55px;
+    }
+
+    .r .racing-main-wrap .header-wrap .banner .class-letter {
+        font-size: 20px;
+        right: 13px;
+        top: 10px;
+    }
+
+    .r .racing-main-wrap .header-wrap .banner .class-desc {
+        right: 36px;
+        top: 10px;
+    }
+
+    .r .racing-main-wrap .header-wrap .banner .skill-desc {
+        width: auto;
+        top: 10px;
+        left: 13px;
+    }
+
+
+}
+
+@media screen and (max-width: 386px) {
+
+    .r .racing-main-wrap .header-wrap {
+        width: 320px;
+    }
+
+    .r .racing-main-wrap .header-wrap .banner {
+        background: url(/images/v2/racing/header/banners/320_classA.png) 0 0 no-repeat;
+        height: 140px;
+        width: 320px;
+    }
+
+    .r .racing-main-wrap .header-wrap .categories > li,
+    .r .racing-main-wrap .header-wrap .categories .icon {
+        width: 62px;
+    }
+
+    .r .racing-main-wrap .header-wrap .categories > li.last,
+    .r .racing-main-wrap .header-wrap .categories > li.last .icon {
+        width: 64px;
+    }
+
+    .r .racing-main-wrap .header-wrap .categories > li:first-child,
+    .r .racing-main-wrap .header-wrap .categories > li:first-child .icon,
+    .r .racing-main-wrap .header-wrap .categories > li:first-child a.link,
+    .r .racing-main-wrap .header-wrap .categories > li:first-child .icons,
+    .r .racing-main-wrap .header-wrap .categories > li.active:first-child .bg-selected,
+    .r .racing-main-wrap .header-wrap .categories > li.active:first-child .title {
+        border-radius: 0;
+    }
+
+    /* CLASS B */
+
+    .r .racing-main-wrap.class-B .header-wrap .banner {
+        background: url(/images/v2/racing/header/banners/320_classB.png) 0 0 no-repeat;
+    }
+
+    /* CLASS C */
+
+    .r .racing-main-wrap.class-C .header-wrap .banner {
+        background: url(/images/v2/racing/header/banners/320_classC.png) 0 0 no-repeat;
+    }
+
+    /* CLASS D */
+
+    .r .racing-main-wrap.class-D .header-wrap .banner {
+        background: url(/images/v2/racing/header/banners/320_classD.png) 0 0 no-repeat;
+    }
+
+    /* CLASS E */
+
+    .r .racing-main-wrap.class-E .header-wrap .banner {
+        background: url(/images/v2/racing/header/banners/320_classE.png) 0 0 no-repeat;
+    }
+
+    /* Icons positions for all classes */
+
+    .r .racing-main-wrap .header-wrap .categories .icon.cars{
+        background-position: 0 0;
+    }
+
+    .r .racing-main-wrap .header-wrap .categories > li:hover .icon.cars,
+    .r .racing-main-wrap .header-wrap .categories > li.active .icon.cars {
+        background-position: 0 -55px;
+    }
+
+    .r .racing-main-wrap .header-wrap .categories .icon.modification {
+        background-position: -62px 0;
+    }
+
+    .r .racing-main-wrap .header-wrap .categories > li:hover .icon.modification,
+    .r .racing-main-wrap .header-wrap .categories > li.active .icon.modification {
+        background-position: -62px -55px;
+    }
+
+    .r .racing-main-wrap .header-wrap .categories .icon.official-events {
+        background-position: -129px 0;
+    }
+
+    .r .racing-main-wrap .header-wrap .categories > li:hover .icon.official-events,
+    .r .racing-main-wrap .header-wrap .categories > li.active .icon.official-events {
+        background-position: -129px -55px;
+    }
+
+    .r .racing-main-wrap .header-wrap .categories .icon.custom-events{
+        background-position: -193px 0;
+    }
+
+    .r .racing-main-wrap .header-wrap .categories > li:hover .icon.custom-events,
+    .r .racing-main-wrap .header-wrap .categories > li.active .icon.custom-events  {
+        background-position: -193px -55px;
+    }
+
+    .r .racing-main-wrap .header-wrap .categories .icon.statistics {
+        background-position: -257px 0;
+    }
+
+    .r .racing-main-wrap .header-wrap .categories > li:hover .icon.statistics,
+    .r .racing-main-wrap .header-wrap .categories > li.active .icon.statistics {
+        background-position: -257px -55px;
+    }
+
+}

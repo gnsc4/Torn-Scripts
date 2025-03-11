@@ -1,0 +1,695 @@
+jQuery(function () {
+    var isEnlistedRemoveBlock,
+        isInitTabsStatisticsPage,
+        isCustomEventsAccordion,
+        $statisticsTabs,
+        $statisticsWrapper,
+        $customEventsListingsWrap;
+
+    function makeHrefAjaxRequest(container, href) {
+        getAction({
+            type: "GET",
+            action: href,
+            cache: false,
+            success:function (html) {
+                setTimeout(function() {
+                    var getCookieValue = function(a) {
+                        var b = document.cookie.match('(^|;)\\s*' + a + '\\s*=\\s*([^;]+)');
+                        return b ? b.pop() : '';
+                    };
+
+                    var uid = getCookieValue('uid');
+                    RACE.buildRace(uid);
+                }, 100);
+
+                $("#" + container).html(html);
+                init();
+            }
+        });
+        showPreloader();
+    }
+
+    function makeAjaxFormRequest(container, sid, formID) {
+        getAction({
+            action: "loader.php?sid=" + sid,
+            type: "POST",
+            data: $("#" + formID).serialize(),
+            cache: false,
+            success: function (html) {
+                setTimeout(function() {
+                    var getCookieValue = function(a) {
+                        var b = document.cookie.match('(^|;)\\s*' + a + '\\s*=\\s*([^;]+)');
+
+                        return b ? b.pop() : '';
+                    };
+
+                    var uid = getCookieValue('uid');
+
+                    RACE.buildRace(uid);
+                }, 100);
+
+                try {
+                    $("#" + container).html(html);
+                    init();
+                } catch(e){
+                    console.error(e);
+                }
+            }
+        });
+
+        showPreloader();
+    }
+
+    function showPreloader() {
+        $('#racingAdditionalContainer').html('<span class="ajax-preloader m-top10"></span>');
+    }
+
+    function blockForRemoveShow(element) {
+        var $enlistInfo = element.parents('.enlist-info');
+        var $removeInfo = $enlistInfo.find('.remove-info');
+        var $enlistedStat = $enlistInfo.find('.enlisted-stat');
+        var $removeBlock = $enlistInfo.find('.remove-wrap');
+
+        if (getBrowserWidth() >= getMaxTabletSize()) {
+            $removeInfo.toggle();
+            $enlistedStat.toggle();
+            $removeBlock.toggle();
+        }
+        else {
+
+            $removeBlock.toggle();
+            var $removeBlockVisible = $enlistInfo.find('.remove-wrap').is(':visible');
+
+            if ($removeBlockVisible) {
+                $enlistInfo.addClass('disabled');
+            }
+            else {
+                $enlistInfo.removeClass('disabled');
+            }
+        }
+    }
+
+    function blockForRemoveDefaultState() {
+        var $removeWrap = $('.remove-wrap');
+        var $enlistInfo = $removeWrap.parents('.enlist-info');
+        var $removeInfo = $enlistInfo.find('.remove-info');
+        var $enlistedStat = $enlistInfo.find('.enlisted-stat');
+
+        $removeWrap.hide();
+        $enlistedStat.show();
+        $removeInfo.show();
+        $enlistInfo.removeClass('disabled');
+    }
+
+    $('#racingAdditionalContainer').on('click', '.enlisted-wrap .enlist-link.remove', function (event) {
+        event.preventDefault();
+        blockForRemoveShow($(this));
+    });
+
+    $('#racingAdditionalContainer').on('click', '.enlisted-wrap .remove-wrap .cancel',   function (event) {
+        event.preventDefault();
+        blockForRemoveShow($(this));
+    });
+
+    function blockRecordsSwitcher(element) {
+        element.hide();
+        element.parents('.item-wrap').find('.records-wrap').toggle();
+        element.parents('.item-wrap').find('.placeholder').toggle();
+    }
+
+    var points = {
+        set: function (point) {
+            $('.pm-categories-wrap').attr('points', point);
+            return point;
+        },
+        get: function () {
+            return $('.pm-categories-wrap').attr('points');
+        }
+    };
+
+    $('#racingAdditionalContainer').on('click', '.pm-items-wrap .pm-items .buy-link', function (event) {
+        event.preventDefault();
+
+        var $boxWrap = $(this).parents('.box-wrap');
+        var $messagesBox = $boxWrap.next('.messages-box');
+        var $buyBox = $messagesBox.find('.buy-box');
+        var $costBox = $messagesBox.find('.cost-box');
+        var $noPointsBox = $messagesBox.find('.no-points-box');
+
+        var $liWrap = $(this).closest('li');
+        $liWrap.closest('.pm-items-wrap').find('.messages-box .cancel').trigger('click');
+        $liWrap.addClass("active");
+        $liWrap.closest('.pm-items-wrap').find('li.unlock.bought[data-part="' + $liWrap.attr('data-part') + '"]').addClass('be-replaced');
+        $messagesBox.show();
+
+        $boxWrap.hide();
+        $costBox.hide();
+        $noPointsBox.hide();
+        $buyBox.show();
+    });
+
+    $('#racingAdditionalContainer').on('click', '.pm-items-wrap .messages-box .buy-box .buy', function (event) {
+        event.preventDefault();
+
+        var $messagesBox = $(this).parents('.messages-box');
+        var $buyBox = $messagesBox.find('.buy-box');
+        var $costBox = $messagesBox.find('.cost-box');
+        var $noPointsBox = $messagesBox.find('.no-points-box');
+        var action = $(this).attr('href');
+
+        getAction({
+            type: "post",
+            action: action,
+            data: {
+                ajax: "racing"
+            },
+            success: function (str) {
+                setTimeout(function() {
+                    var getCookieValue = function(a) {
+                        var b = document.cookie.match('(^|;)\\s*' + a + '\\s*=\\s*([^;]+)');
+                        return b ? b.pop() : '';
+                    };
+                    var uid = getCookieValue('uid');
+                    RACE.buildRace(uid);
+                }, 100);
+                var msg = JSON.parse(str);
+                $buyBox.hide();
+                if (!msg.confirm) {
+                    $noPointsBox.empty().show().append(msg.text);
+                }
+                else {
+                    $costBox.empty().show().append(msg.text);
+                }
+            }
+        });
+    });
+
+    $('#racingAdditionalContainer').on('click', '.pm-items-wrap .messages-box .cost-box .buy', function (event) {
+        event.preventDefault();
+
+        var $buyResult = $('.pm-buy-result');
+        var totalPoints = parseInt($('#racing-points').text());
+        var itemCost = parseInt($(this).parents('.messages-box').find('.points-price').text());
+
+        let decResPoints = totalPoints - itemCost;
+        decResPoints = decResPoints > 0 ? decResPoints : 0;
+
+        $('#racing-points').text(decResPoints);
+
+        var $this = $(this);
+        var action = $(this).attr('href');
+
+        getAction({
+            type: "post",
+            action: action,
+            data: {
+                ajax: "racing"
+            },
+            success: function (str) {
+                setTimeout(function() {
+                    var getCookieValue = function(a) {
+                        var b = document.cookie.match('(^|;)\\s*' + a + '\\s*=\\s*([^;]+)');
+                        return b ? b.pop() : '';
+                    };
+                    var uid = getCookieValue('uid');
+                    RACE.buildRace(uid);
+                }, 100);
+                var msg = JSON.parse(str),
+                    $liWrap;
+
+                if (msg['class'] == 'green' || true) {
+                    $liWrap = $this.closest('li');
+                    $liWrap.closest('.pm-items-wrap').find('li.be-replaced').removeClass('bought be-replaced').find('.box-wrap .info, .box-wrap .desc').toggleClass('hide');
+                    $liWrap.removeClass('active').addClass('bought');
+                    $liWrap.find('.box-wrap .info').text('Upgrade is already fitted to this car');
+                    $liWrap.find('.box-wrap .info, .box-wrap .desc').toggleClass('hide');
+                    $liWrap.find('.messages-box .cancel').trigger('click');
+                }
+
+                informationMessageTemplateIn($buyResult.empty(), false, false, msg['class']);
+                $buyResult.find('.msg').empty().append(msg.text);
+                refreshTopOfSidebar();
+
+            },
+            before: function () {
+                informationMessageTemplateIn($buyResult.empty(), false, false);
+            }
+        });
+    });
+
+
+    $('#racingAdditionalContainer').on('click', '.pm-items-wrap .messages-box .cancel', function () {
+
+        var $messagesBox = $(this).parents('.messages-box');
+        var $boxWrap = $messagesBox.prev('.box-wrap');
+        var $liWrap = $(this).closest('li');
+        $liWrap.removeClass("active");
+        $liWrap.closest('.pm-items-wrap').find('li.unlock.bought').removeClass('be-replaced');
+        $messagesBox.hide();
+        $boxWrap.show();
+    });
+
+    $(".content-wrapper").on('click', '.btn-action-tab', function (event) {
+        event.preventDefault();
+
+        if ($(this).hasClass("need-confirmation"))
+        {
+            var $linksWrap = $(this).closest(".link-wrap");
+            var $confirmationText = ''
+
+            if ($(this).parent().hasClass("leave-link")) {
+                $confirmationText = 'Leave this Race? '
+            } else if ($(this).parent().hasClass("change-link")) {
+                $confirmationText = 'Change this Car? '
+            }
+
+            $linksWrap.children().hide();
+            $linksWrap.append('<div class="race-confirmation"></div>');
+            $(".race-confirmation").html($confirmationText + '<a class="btn-action-tab" href="' + $(this).attr("href") + '">Yes</a> <a class="btn-action-tab confirmarion-no"  href="#" >No</a></div>');
+            return;
+        }
+        else if ($(this).hasClass("confirmarion-no"))
+        {
+            $(this).closest(".link-wrap").children().show();
+            $(this).parent().remove();
+            return;
+        }
+
+        var url = $(this).attr("href");
+        var $li = $(this).closest('li');
+        showPreloader();
+        getAction({
+            type: "GET",
+            action: url,
+            cache: false,
+            success:function (html) {
+                setTimeout(function() {
+                    var getCookieValue = function(a) {
+                        var b = document.cookie.match('(^|;)\\s*' + a + '\\s*=\\s*([^;]+)');
+                        return b ? b.pop() : '';
+                    };
+                    var uid = getCookieValue('uid');
+                    RACE.buildRace(uid);
+                }, 100);
+                try {
+                    $("#racingAdditionalContainer").html(html);
+                    $('.categories li').removeClass('active');
+                    $li.addClass('active');
+
+                    init();
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+        });
+    });
+
+    $("#racingAdditionalContainer").on('click', '.btn-action-joinRace', function (event) {
+        event.preventDefault();
+        makeHrefAjaxRequest('racingAdditionalContainer', $(this).attr("href"));
+    });
+
+    $("#racingAdditionalContainer").on('click', '.pager-link', function (event) {
+        event.preventDefault();
+
+        var url = $(this).attr("href");
+        if (url !== '#') {
+            makeHrefAjaxRequest('racingAdditionalContainer', url);
+        }
+    });
+
+    function initializeInfoTrackTooltip() {
+        var $dataTooltip = $('.track-info-wrap');
+        $dataTooltip.tooltip({
+            track: true,
+            tooltipClass: "gray-tooltip",
+            hide: false,
+            show: false,
+            position: {
+                my: 'right-22 center',
+                at: 'left+18 center',
+                using: function (position, feedback) {
+                    $(this).css(position);
+                    var $arrow = $('.tooltip-arrow');
+                    $arrow
+                        .removeClass('top')
+                        .removeClass('left')
+                        .addClass(feedback.vertical)
+                        .addClass(feedback.horizontal);
+                }
+            },
+            content: function () {
+                var nameTrack = "<span class='track-name'>" + $(this).attr('title') + "</span>";
+                var titleTrack = "<div class='track-title'>" + nameTrack + " (" + $(this).attr('data-length') + ") " + "</div>";
+                var descriptionTrack = "<div class='track-desc'>" + $(this).attr('data-desc') + "</div>";
+
+                return "<div class='tooltip-arrow'></div><div class='track-tooltip-wrap'>" + titleTrack + descriptionTrack + "</div>";
+            }
+        });
+    }
+
+    function changeTrackDropdown(sliderIndex) {
+        var $racingTracksSelect = $("#select-racing-track");
+        $racingTracksSelect.find('option').eq(sliderIndex).attr('selected', 'selected');
+        if (!isTouchDevice()) {
+            $racingTracksSelect.selectmenu();
+        }
+    }
+
+    // fix number validation
+    jQuery.validator.addMethod("notZeroleadingNumber", function(value, element) {
+        if (this.optional(element)) {
+            return true;
+        }
+        if (value.charAt(0) === '0') {
+            return false;
+        }
+
+        return /^-?(?:\d+|\d{1,3}(?:,\d{3})+)?(?:\.\d+)?$/.test(value);
+    }, "Please enter a valid number.");
+
+    jQuery.validator.addMethod("validRaceName", function(value) {
+        // We need to reverse boolean to engage the validator, that's why we have ! sign.
+        return !isInputNameInvalid({ name: value });
+    }, "Please enter a valid race name.");
+
+    // join password protected race
+    $('#racingAdditionalContainer').on('click', '#joinPasswordFrom' ,function(event){
+        event.preventDefault();
+        makeAjaxFormRequest('racingAdditionalContainer', 'racing', $(this).attr('form-value'));
+    });
+
+    function init() {
+
+        isEnlistedRemoveBlock = false;
+        isInitTabsStatisticsPage = false;
+        isCustomEventsAccordion = false;
+        // official events
+
+        if ($('#select-racing-track').length > 0) {
+            initDropdown($('#select-racing-track'), 'select-racing-track-list', { width: '166', isDefault: false, scrollbarClass: 'scrollbar-black' });
+            initDropdown($('#select-racing-class'), 'select-racing-class-list', { width: '166', isDefault: false, scrollbarClass: 'scrollbar-black' });
+            initDropdown($('#select-racing-cars'), 'select-racing-cars-list', { width: '166', isDefault: false, scrollbarClass: 'scrollbar-black' });
+            initDropdown($('#select-allow-upgrades'), 'select-allow-upgrades-list', { width: '166', isDefault: false, scrollbarClass: 'scrollbar-black' });
+            initDropdown($('#wait-time'), 'wait-time-list', { width: '166', isDefault: false, scrollbarClass: 'scrollbar-black' });
+
+            $('#racingAdditionalContainer .select-wrap').fadeIn(1500);
+
+            var $formTracks = $('.form-custom-wrap .tracks-wrap');
+            if ($formTracks.length !== 0) {
+                $formTracks.flexslider({
+                    selector: ".slider-wrap > li",
+                    animation: "slide",
+                    slideshow: false,
+                    animationLoop: false,
+                    minItems: 1,
+                    maxItems: 1,
+                    after: function (slider) {
+                        changeTrackDropdown(slider.currentSlide);
+                    }
+                });
+            }
+
+            $("#select-racing-track").change(function () {
+                var optionIndex = isTouchDevice() ? $(this).find(':selected').index() : $(this).parent('.select-wrap').find('.ui-selectmenu-item-selected').index();
+                $formTracks.flexslider(optionIndex);
+            }).change();
+
+            $('#createCustomRace .bet-wrap .input-wrap input').tornInputMoney({
+                strictMode: false,
+                buttonElement: $('.btn'),
+                showSymbolButton: false,
+                ajaxAction: "inputMoneyAction.php"
+            })
+
+            //  race form validation
+            var validator = $('#createCustomRace').validate({
+                submitHandler: function (form) {
+                    const passcodeField = form.elements.passcode_temp;
+                    if (passcodeField) {
+                        // Change the field name to "password" right before submit. This prevents LastPass from offering to auto-fill the field. More info: https://github.com/torncity/torn/pull/4644
+                        passcodeField.name = 'password';
+                    }
+                    makeAjaxFormRequest('racingAdditionalContainer', 'racing', 'createCustomRace');
+                },
+                onkeyup: function (element) {
+                    $(element).valid();
+                },
+                onfocusout: function (element) {
+                    $(element).valid();
+                },
+                errorClass: "error",
+                validClass: "",
+                errorPlacement: function (error, element) {
+                    return true;
+                },
+                highlight: function (element, errorClass) {
+                    $(element).parents(".input-wrap").addClass(errorClass);
+                },
+                unhighlight: function (element, errorClass) {
+                    $(element).parents(".input-wrap").removeClass(errorClass);
+                },
+                rules: {
+                    title: {
+                        required: true,
+                        validRaceName: true,
+                        maxlength: 25
+                    },
+                    minDrivers: {
+                        required: true,
+                        maxlength: 3,
+                        notZeroleadingNumber: true,
+                        digits: true,
+                        range: [1, 6]
+                    },
+                    maxDrivers: {
+                        required: true,
+                        maxlength: 3,
+                        notZeroleadingNumber: true,
+                        digits: true,
+                        range: [1, 100]
+                    },
+                    laps: {
+                        required: true,
+                        maxlength: 3,
+                        notZeroleadingNumber: true,
+                        digits: true,
+                        range: [1, 100]
+                    },
+                    betAmount: {
+                        maxlength: 25,
+                        digits: true
+                    },
+                    passcode_temp: {
+                        maxlength: 25
+                    }
+                }
+            });
+
+            $('#racingAdditionalContainer').on('click', '.form-reset', function (event) {
+                event.preventDefault();
+                resetForm();
+            });
+
+            function resetForm() {
+                var $form = $('.custom-race-form');
+
+                $form.find('select').each(function () {
+                    $(this).selectmenu('index', 0);
+                });
+
+                $form.find('input[type="text"]').each( function () {
+                    $(this).val( $(this).attr('data-default-value'));
+                    validator.element(this);
+                });
+            }
+        }
+
+        $customEventsListingsWrap = $('#racingAdditionalContainer .events-list');
+
+        //    Statistics page
+        $statisticsWrapper = $('.racing-main-wrap .statistics-wrap');
+        if ($statisticsWrapper.length > 0) {
+            $statisticsTabs = $statisticsWrapper.find('.records-wrap');
+            $statisticsTabs.find('.tabs-title a').on('click', function (event) {
+                event.preventDefault();
+            })
+            $statisticsWrapper.find('.view-track').on('click', function (event) {
+                event.preventDefault();
+                blockRecordsSwitcher($(this));
+                $(this).parents('.item-wrap').find('.view-records').show();
+            });
+
+            $statisticsWrapper.find('.view-records').on('click', function (event) {
+                event.preventDefault();
+                blockRecordsSwitcher($(this));
+                $(this).parents('.item-wrap').find('.view-track').show();
+            });
+        }
+
+        //    Custom Events page
+        var $customEventsWrapper = $('.racing-main-wrap .custom-events-wrap');
+        if ($customEventsWrapper.length > 0) {
+            var $joinButton = $customEventsWrapper.find('.join a');
+            var $startButton = $customEventsWrapper.find('.custom-btn-wrap .btn');
+            var $startButtonWrap = $customEventsWrapper.find('.custom-btn-wrap .btn-wrap');
+            var $allNotificationBlocks = $('.race-view-cars, .race-warning, .race-confidence, .race-password');
+
+            if ($customEventsWrapper.hasClass('disabled')) {
+                $startButtonWrap.addClass('disable-d');
+            }
+
+            $startButton.on('click', function (event) {
+                var $isDisable = $(this).parents('.custom-events-wrap').hasClass('disabled');
+
+                if ($isDisable) {
+                    event.preventDefault();
+                }
+            });
+
+            $customEventsWrapper.find('.cancel').on('click', function (event) {
+                event.preventDefault();
+                var $raceList = $('.events-list > li');
+                $raceList.removeClass('active-row');
+                $raceList.find('.join').removeClass('disabled');
+                $allNotificationBlocks.hide();
+            });
+
+            $customEventsWrapper.find('.protected.long-time .race-warning .join-wrap a').on('click', function (event) {
+                event.preventDefault();
+
+                var $notificationWrap = $(this).parents('.notification-wrap');
+
+                $notificationWrap.find('.race-warning').hide();
+                $notificationWrap.find('.race-password').show();
+
+            });
+
+            $joinButton.on('click', function (event) {
+                event.preventDefault();
+                var $isDisable = $(this).parents('.custom-events-wrap').hasClass('disabled');
+                if (!$isDisable) {
+
+                    $allNotificationBlocks.hide();
+
+                    var $raceList = $('.events-list > li');
+                    var $itemRace = $(this).parents('.events-list > li');
+                    var $viewCarsBlock = $itemRace.find('.race-view-cars');
+                    var $longRaceBlock = $itemRace.find('.race-warning');
+                    var $confidenceRaceBlock = $itemRace.find('.race-confidence');
+                    var $passwordBlock = $itemRace.find('.race-password');
+
+                    $raceList.removeClass('active-row');
+                    $raceList.find('.join').removeClass('disabled');
+                    $itemRace.addClass('active-row');
+
+                    if ($itemRace.hasClass('gold')) {
+                        if ($itemRace.hasClass('no-suitable')) {
+                            $viewCarsBlock.show();
+                        }
+                        else if ($itemRace.hasClass('long-time')) {
+                            $longRaceBlock.show();
+                            //$longRaceBlock.hide();
+                        }
+                        else if ($itemRace.hasClass('protected')) {
+                            $passwordBlock.show();
+                        }
+                        else {
+                            $confidenceRaceBlock.show();
+                        }
+                    }
+                    else if ($itemRace.hasClass('no-suitable')) {
+                        $viewCarsBlock.show();
+                    }
+                    else if ($itemRace.hasClass('long-time')) {
+                        $longRaceBlock.show();
+                        //$longRaceBlock.hide();
+                    }
+                    else if ($itemRace.hasClass('protected')) {
+                        $passwordBlock.show();
+                    }
+                    else {
+                        $confidenceRaceBlock.show();
+                    }
+
+                    var $joinBlocksVisible = $viewCarsBlock.is(':visible') ||
+                        $longRaceBlock.is(':visible') ||
+                        $confidenceRaceBlock.is(':visible') ||
+                        $passwordBlock.is(':visible');
+
+
+                    if ($joinBlocksVisible) {
+                        $itemRace.find('.join').addClass('disabled');
+                    }
+
+                }
+            });
+        }
+
+        initializeInfoTrackTooltip();
+        $(window).resize();
+    }
+
+    $("#racingAdditionalContainer").on("click", ".pm-categories li a", function(e) {
+        e.preventDefault();
+    });
+
+    $("#racingAdditionalContainer").on("click", ".pm-categories li", function(e) {
+        var category = $(this).data("category");
+        if (category) {
+            $('.pm-items-wrap[category]').hide();
+            $('.pm-categories > li').removeClass('active');
+            $target = $('.pm-items-wrap[category=' + category + ']').show();
+            $('.pm-categories > li[data-category=' + category + ']').addClass('active');
+            $('html, body').animate({
+                'scrollTop': $target.offset().top
+            }, 900, 'swing');
+        }
+    });
+
+    $(window).resize(function () {
+        if ((getBrowserWidth() <= getMaxTabletSize() && !isEnlistedRemoveBlock) ||
+            (getBrowserWidth() > getMaxTabletSize() && isEnlistedRemoveBlock)) {
+            isEnlistedRemoveBlock = !isEnlistedRemoveBlock;
+            blockForRemoveDefaultState();
+        }
+
+        if ($statisticsWrapper.length > 0) {
+            if (getBrowserWidth() <= getMaxTabletSize() && !isInitTabsStatisticsPage) {
+                $statisticsTabs.tabs({active: 0});
+                isInitTabsStatisticsPage = true;
+
+                $statisticsWrapper.find('.view-track').show();
+                $statisticsWrapper.find('.view-records').hide();
+                $statisticsWrapper.find('.placeholder').hide();
+            }
+
+            if (getBrowserWidth() > getMaxTabletSize() && isInitTabsStatisticsPage) {
+                $statisticsTabs.tabs('destroy');
+                $statisticsTabs.show();
+                $statisticsTabs.find('.records').show();
+
+                isInitTabsStatisticsPage = false;
+
+                $statisticsWrapper.find('.view-track').hide();
+                $statisticsWrapper.find('.view-records').hide();
+                $statisticsWrapper.find('.placeholder').show();
+            }
+        }
+
+        if ($customEventsListingsWrap.length > 0) {
+            if (getBrowserWidth() <= getMaxTabletSize() && !isCustomEventsAccordion) {
+                initializeAccordion($customEventsListingsWrap);
+                isCustomEventsAccordion = true;
+            }
+
+            if (getBrowserWidth() > getMaxTabletSize() && isCustomEventsAccordion) {
+                $customEventsListingsWrap.accordion('destroy');
+                isCustomEventsAccordion = false;
+            }
+        }
+
+    });
+
+    init();
+});

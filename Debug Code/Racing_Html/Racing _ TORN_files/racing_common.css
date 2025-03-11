@@ -1,0 +1,1600 @@
+.d .racing-main-wrap #thecanvas {
+  top: 0;
+}
+
+.d .racing-main-wrap :not(.pagination) > a:not(.torn-btn) {
+  color: #74c0fc;
+  text-decoration: none;
+}
+
+.d .racing-main-wrap :not(.pagination) > a:not(.torn-btn):hover,
+.d .racing-main-wrap :not(.pagination) > a:not(.torn-btn):focus {
+  color: #a5d8ff;
+}
+
+.d .racing-main-wrap .title-black {
+  border-bottom: 1px solid #000;
+}
+
+.d .racing-main-wrap .cont-black,
+.d .racing-main-wrap .cont-black10 {
+  border-top: 1px solid #444;
+}
+
+.d .racing-main-wrap .t-delimiter,
+.d .racing-main-wrap .b-delimiter {
+  width: 2px;
+  height: 68px;
+  position: absolute;
+  left: -2px;
+}
+
+.d .racing-main-wrap .t-delimiter {
+  top: 0;
+  background: -moz-linear-gradient(top, rgba(46, 46, 46, 1) 0%, rgba(46, 46, 46, 0) 100%); /* FF3.6+ */
+  background: -webkit-gradient(
+    linear,
+    left top,
+    left bottom,
+    color-stop(0%, rgba(46, 46, 46, 1)),
+    color-stop(100%, rgba(46, 46, 46, 0))
+  ); /* Chrome,Safari4+ */
+  background: -webkit-linear-gradient(top, rgba(46, 46, 46, 1) 0%, rgba(46, 46, 46, 0) 100%); /* Chrome10+,Safari5.1+ */
+  background: -o-linear-gradient(top, rgba(46, 46, 46, 1) 0%, rgba(46, 46, 46, 0) 100%); /* Opera 11.10+ */
+  background: -ms-linear-gradient(top, rgba(46, 46, 46, 1) 0%, rgba(46, 46, 46, 0) 100%); /* IE10+ */
+  background: linear-gradient(to bottom, rgba(46, 46, 46, 1) 0%, rgba(46, 46, 46, 0) 100%); /* W3C */
+  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#2e2e2e', endColorstr='#002e2e2e',GradientType=0 ); /* IE6-9 */
+}
+
+.d .racing-main-wrap .b-delimiter {
+  bottom: 0;
+  background: -moz-linear-gradient(top, rgba(46, 46, 46, 0) 0%, rgba(46, 46, 46, 1) 100%); /* FF3.6+ */
+  background: -webkit-gradient(
+    linear,
+    left top,
+    left bottom,
+    color-stop(0%, rgba(46, 46, 46, 0)),
+    color-stop(100%, rgba(46, 46, 46, 1))
+  ); /* Chrome,Safari4+ */
+  background: -webkit-linear-gradient(top, rgba(46, 46, 46, 0) 0%, rgba(46, 46, 46, 1) 100%); /* Chrome10+,Safari5.1+ */
+  background: -o-linear-gradient(top, rgba(46, 46, 46, 0) 0%, rgba(46, 46, 46, 1) 100%); /* Opera 11.10+ */
+  background: -ms-linear-gradient(top, rgba(46, 46, 46, 0) 0%, rgba(46, 46, 46, 1) 100%); /* IE10+ */
+  background: linear-gradient(to bottom, rgba(46, 46, 46, 0) 0%, rgba(46, 46, 46, 1) 100%); /* W3C */
+  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#002e2e2e', endColorstr='#2e2e2e',GradientType=0 ); /* IE6-9 */
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list .event-header.ui-state-active .t-delimiter,
+.d .racing-main-wrap .custom-events-wrap .events-list .acc-body .t-delimiter,
+.d .racing-main-wrap .custom-events-wrap .events-list > li:hover .t-delimiter {
+  top: 0;
+  background: -moz-linear-gradient(top, rgba(32, 32, 32, 1) 0%, rgba(32, 32, 32, 0) 100%); /* FF3.6+ */
+  background: -webkit-gradient(
+    linear,
+    left top,
+    left bottom,
+    color-stop(0%, rgba(32, 32, 32, 1)),
+    color-stop(100%, rgba(32, 32, 32, 0))
+  ); /* Chrome,Safari4+ */
+  background: -webkit-linear-gradient(top, rgba(32, 32, 32, 1) 0%, rgba(32, 32, 32, 0) 100%); /* Chrome10+,Safari5.1+ */
+  background: -o-linear-gradient(top, rgba(32, 32, 32, 1) 0%, rgba(32, 32, 32, 0) 100%); /* Opera 11.10+ */
+  background: -ms-linear-gradient(top, rgba(32, 32, 32, 1) 0%, rgba(32, 32, 32, 0) 100%); /* IE10+ */
+  background: linear-gradient(to bottom, rgba(32, 32, 32, 1) 0%, rgba(32, 32, 32, 0) 100%); /* W3C */
+  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#202020', endColorstr='#00202020',GradientType=0 ); /* IE6-9 */
+}
+
+.d .racing-main-wrap .custom-events-wrap .events-list .event-header.ui-state-active .b-delimiter,
+.d .racing-main-wrap .custom-events-wrap .events-list .acc-body .b-delimiter,
+.d .racing-main-wrap .custom-events-wrap .events-list > li:hover .b-delimiter {
+  bottom: 0;
+  background: -moz-linear-gradient(top, rgba(32, 32, 32, 0) 0%, rgba(32, 32, 32, 1) 100%); /* FF3.6+ */
+  background: -webkit-gradient(
+    linear,
+    left top,
+    left bottom,
+    color-stop(0%, rgba(32, 32, 32, 0)),
+    color-stop(100%, rgba(32, 32, 32, 1))
+  ); /* Chrome,Safari4+ */
+  background: -webkit-linear-gradient(top, rgba(32, 32, 32, 0) 0%, rgba(32, 32, 32, 1) 100%); /* Chrome10+,Safari5.1+ */
+  background: -o-linear-gradient(top, rgba(32, 32, 32, 0) 0%, rgba(32, 32, 32, 1) 100%); /* Opera 11.10+ */
+  background: -ms-linear-gradient(top, rgba(32, 32, 32, 0) 0%, rgba(32, 32, 32, 1) 100%); /* IE10+ */
+  background: linear-gradient(to bottom, rgba(32, 32, 32, 0) 0%, rgba(32, 32, 32, 1) 100%); /* W3C */
+  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#00202020', endColorstr='#202020',GradientType=0 ); /* IE6-9 */
+}
+
+.d .racing-main-wrap .l-delimiter {
+  left: 0;
+  background: -moz-linear-gradient(left, rgba(46, 46, 46, 1) 0%, rgba(46, 46, 46, 0) 100%); /* FF3.6+ */
+  background: -webkit-gradient(
+    linear,
+    left top,
+    right top,
+    color-stop(0%, rgba(46, 46, 46, 1)),
+    color-stop(100%, rgba(46, 46, 46, 0))
+  ); /* Chrome,Safari4+ */
+  background: -webkit-linear-gradient(
+    left,
+    rgba(46, 46, 46, 1) 0%,
+    rgba(46, 46, 46, 0) 100%
+  ); /* Chrome10+,Safari5.1+ */
+  background: -o-linear-gradient(left, rgba(46, 46, 46, 1) 0%, rgba(46, 46, 46, 0) 100%); /* Opera 11.10+ */
+  background: -ms-linear-gradient(left, rgba(46, 46, 46, 1) 0%, rgba(46, 46, 46, 0) 100%); /* IE10+ */
+  background: linear-gradient(to right, rgba(46, 46, 46, 1) 0%, rgba(46, 46, 46, 0) 100%); /* W3C */
+  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#2e2e2e', endColorstr='#002e2e2e',GradientType=1 ); /* IE6-9 */
+}
+
+.d .racing-main-wrap .r-delimiter {
+  right: 0;
+  background: -moz-linear-gradient(left, rgba(46, 46, 46, 0) 0%, rgba(46, 46, 46, 1) 100%); /* FF3.6+ */
+  background: -webkit-gradient(
+    linear,
+    left top,
+    right top,
+    color-stop(0%, rgba(46, 46, 46, 0)),
+    color-stop(100%, rgba(46, 46, 46, 1))
+  ); /* Chrome,Safari4+ */
+  background: -webkit-linear-gradient(
+    left,
+    rgba(46, 46, 46, 0) 0%,
+    rgba(46, 46, 46, 1) 100%
+  ); /* Chrome10+,Safari5.1+ */
+  background: -o-linear-gradient(left, rgba(46, 46, 46, 0) 0%, rgba(46, 46, 46, 1) 100%); /* Opera 11.10+ */
+  background: -ms-linear-gradient(left, rgba(46, 46, 46, 0) 0%, rgba(46, 46, 46, 1) 100%); /* IE10+ */
+  background: linear-gradient(to right, rgba(46, 46, 46, 0) 0%, rgba(46, 46, 46, 1) 100%); /* W3C */
+  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#002e2e2e', endColorstr='#2e2e2e',GradientType=1 ); /* IE6-9 */
+}
+
+.d .racing-main-wrap .pm-items-wrap .pm-items > li.active .b-delimiter {
+  bottom: 0;
+  background: -moz-linear-gradient(top, rgba(42, 55, 60, 0) 0%, rgba(42, 55, 60, 1) 100%); /* FF3.6+ */
+  background: -webkit-gradient(
+    linear,
+    left top,
+    left bottom,
+    color-stop(0%, rgba(42, 55, 60, 0)),
+    color-stop(100%, rgba(42, 55, 60, 1))
+  ); /* Chrome,Safari4+ */
+  background: -webkit-linear-gradient(top, rgba(42, 55, 60, 0) 0%, rgba(42, 55, 60, 1) 100%); /* Chrome10+,Safari5.1+ */
+  background: -o-linear-gradient(top, rgba(42, 55, 60, 0) 0%, rgba(42, 55, 60, 1) 100%); /* Opera 11.10+ */
+  background: -ms-linear-gradient(top, rgba(42, 55, 60, 0) 0%, rgba(42, 55, 60, 1) 100%); /* IE10+ */
+  background: linear-gradient(to bottom, rgba(42, 55, 60, 0) 0%, rgba(42, 55, 60, 1) 100%); /* W3C */
+  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#002A373C', endColorstr='#2A373C',GradientType=0 ); /* IE6-9 */
+}
+
+.d .racing-main-wrap .pm-items-wrap .pm-items > li.bought .b-delimiter {
+  bottom: 0;
+  background: -moz-linear-gradient(top, rgba(51, 54, 42, 0) 0%, rgba(51, 54, 42, 1) 100%); /* FF3.6+ */
+  background: -webkit-gradient(
+    linear,
+    left top,
+    left bottom,
+    color-stop(0%, rgba(51, 54, 42, 0)),
+    color-stop(100%, rgba(51, 54, 42, 1))
+  ); /* Chrome,Safari4+ */
+  background: -webkit-linear-gradient(top, rgba(51, 54, 42, 0) 0%, rgba(51, 54, 42, 1) 100%); /* Chrome10+,Safari5.1+ */
+  background: -o-linear-gradient(top, rgba(51, 54, 42, 0) 0%, rgba(51, 54, 42, 1) 100%); /* Opera 11.10+ */
+  background: -ms-linear-gradient(top, rgba(51, 54, 42, 0) 0%, rgba(51, 54, 42, 1) 100%); /* IE10+ */
+  background: linear-gradient(to bottom, rgba(51, 54, 42, 0) 0%, rgba(51, 54, 42, 1) 100%); /* W3C */
+  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#0033362A', endColorstr='#33362A',GradientType=0 ); /* IE6-9 */
+}
+
+.d .racing-main-wrap .pm-items-wrap .pm-items > li.be-replaced .b-delimiter {
+  bottom: 0;
+  background: -moz-linear-gradient(top, rgba(60, 46, 45, 0) 0%, rgba(60, 46, 45, 1) 100%); /* FF3.6+ */
+  background: -webkit-gradient(
+    linear,
+    left top,
+    left bottom,
+    color-stop(0%, rgba(60, 46, 45, 0)),
+    color-stop(100%, rgba(60, 46, 45, 1))
+  ); /* Chrome,Safari4+ */
+  background: -webkit-linear-gradient(top, rgba(60, 46, 45, 0) 0%, rgba(60, 46, 45, 1) 100%); /* Chrome10+,Safari5.1+ */
+  background: -o-linear-gradient(top, rgba(60, 46, 45, 0) 0%, rgba(60, 46, 45, 1) 100%); /* Opera 11.10+ */
+  background: -ms-linear-gradient(top, rgba(60, 46, 45, 0) 0%, rgba(60, 46, 45, 1) 100%); /* IE10+ */
+  background: linear-gradient(to bottom, rgba(60, 46, 45, 0) 0%, rgba(60, 46, 45, 1) 100%); /* W3C */
+  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#003C2E2D', endColorstr='#3C2E2D',GradientType=0 ); /* IE6-9 */
+}
+
+.d .racing-main-wrap .t-show {
+  display: none;
+}
+
+.d .racing-main-wrap .d-hide {
+  display: none;
+}
+
+.d .racing-main-wrap .t-hide {
+  display: inline-block;
+}
+
+.d .racing-main-wrap .car-selected-wrap,
+.d .racing-main-wrap .your-cars-wrap,
+.d .racing-main-wrap .statistics-wrap,
+.d .racing-main-wrap .custom-events-wrap,
+.d .racing-main-wrap .select-cars-wrap,
+.d .racing-main-wrap .messages-race-wrap,
+.d .racing-main-wrap .pm-categories-wrap,
+.d .racing-main-wrap .pm-items-wrap {
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 1);
+  color: #fff;
+}
+
+.d .racing-main-wrap .car-selected-wrap .properties-wrap .t-delimiter,
+.d .racing-main-wrap .car-selected-wrap .properties-wrap .b-delimiter {
+  display: none;
+}
+
+.d .racing-main-wrap .car-selected-wrap .car-selected {
+  width: 233px;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list {
+  width: 540px;
+}
+
+.d .racing-main-wrap .car-selected-wrap .model-wrap {
+  background: url(/images/v2/racing/header/stripy_bg.png) 0 0 repeat;
+  border-bottom: 1px solid #000;
+  padding: 10px 10px 5px 10px;
+  height: 86px;
+  line-height: 59px;
+}
+
+.d .racing-main-wrap .car-selected-wrap .model-wrap .leave-link,
+.d .racing-main-wrap .car-selected-wrap .model-wrap .change-link {
+  margin-top: 7px;
+  line-height: 12px;
+  display: block;
+  float: left;
+  width: 110px;
+}
+
+.d .racing-main-wrap .car-selected-wrap .model-wrap .change-link {
+  margin-left: 0;
+  float: right;
+  text-align: right;
+  width: 94px;
+}
+
+.d .racing-main-wrap .car-selected-wrap .model-wrap .link-wrap {
+  background: url(/images/v2/racing/your_cars/divider_leave_race_change_car.png) 0 0 no-repeat;
+  filter: drop-shadow(0px 0px 1px #11111194);
+  display: none;
+}
+
+.d .racing-main-wrap .car-selected-wrap .model-wrap .leave-link .leave-icon,
+.d .racing-main-wrap .car-selected-wrap .model-wrap .change-link .change-icon {
+  vertical-align: middle;
+  display: inline-block;
+}
+
+.d .racing-main-wrap .car-selected-wrap .model-wrap .leave-link .leave-icon {
+  margin-right: 2px;
+  height: 18px;
+  width: 18px;
+  background: url(/images/v2/racing/your_cars/race_leave.svg) 0 0 no-repeat;
+  filter: drop-shadow(0px 0px 1px #11111194);
+}
+
+.d .racing-main-wrap .car-selected-wrap .model-wrap .leave-link a:hover .leave-icon {
+  background-position: 0 -18px;
+}
+
+.d .racing-main-wrap .car-selected-wrap .model-wrap .change-link .change-icon {
+  height: 20px;
+  width: 20px;
+  background: url(/images/v2/racing/your_cars/race_change_car.svg) 0 0 no-repeat;
+  filter: drop-shadow(0px 0px 1px #11111194);
+}
+
+.d .racing-main-wrap .car-selected-wrap .model-wrap .change-link a:hover .change-icon {
+  background-position: 0 -20px;
+}
+
+.d .racing-main-wrap .car-selected-wrap .model-wrap .model,
+.d .racing-main-wrap .car-selected-wrap .model-wrap .img {
+  display: inline-block;
+  vertical-align: middle;
+  line-height: 13px;
+}
+
+.d .racing-main-wrap .car-selected-wrap .model-wrap .model {
+  color: #ddd;
+  padding-bottom: 10px;
+  width: 90px;
+}
+
+.d .racing-main-wrap .car-selected-wrap .model-wrap .img {
+  float: right;
+  line-height: 55px;
+  padding-right: 15px;
+  width: 100px;
+}
+
+.d .racing-main-wrap .car-selected-wrap .model-wrap .img img,
+.d .racing-main-wrap .car-selected-wrap .model-wrap .img canvas.torn-item {
+  vertical-align: middle;
+  pointer-events: none;
+}
+
+.d .racing-main-wrap .car-selected-wrap .properties-wrap > li {
+  border-top: 1px solid #444;
+  border-bottom: 1px solid #000;
+  color: #ddd;
+}
+
+.d .racing-main-wrap .car-selected-wrap .properties-wrap > li:last-child {
+  border-bottom: none;
+}
+
+.d .racing-main-wrap .car-selected-wrap .properties-wrap .properties {
+  padding: 10px 10px 0 10px;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .track-wrap {
+  border-bottom: 1px solid #000;
+  padding: 10px;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .race-player-container {
+  display: none;
+  width: 100%;
+  height: 34px;
+  border-bottom: 1px solid #000;
+  background: -moz-linear-gradient(top, rgba(65, 64, 64, 1) 0%, rgba(46, 46, 46, 1)); /* FF3.6+ */
+  background: -webkit-gradient(
+    linear,
+    left top,
+    left bottom,
+    color-stop(0%, rgba(65, 64, 64, 1)),
+    color-stop(100%, rgba(46, 46, 46, 1))
+  ); /* Chrome,Safari4+ */
+  background: -webkit-linear-gradient(top, rgba(65, 64, 64, 1) 0%, rgba(46, 46, 46, 1) 100%); /* Chrome10+,Safari5.1+ */
+  background: -o-linear-gradient(top, rgba(65, 64, 64, 1) 0%, rgba(46, 46, 46, 1) 100%); /* Opera 11.10+ */
+  background: -ms-linear-gradient(top, rgba(65, 64, 64, 1) 0%, rgba(46, 46, 46, 1)); /* IE10+ */
+  background: linear-gradient(to bottom, rgba(65, 64, 64, 1) 0%, rgba(46, 46, 46, 1) 100%); /* W3C */
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .race-player-container #play-pause-btn {
+  width: 34px;
+  height: 34px;
+  border: none;
+  cursor: pointer;
+  float: left;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .race-player-container #speed-slider {
+  height: 34px;
+  float: left;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .race-player-container #prev-speed,
+.d .racing-main-wrap .car-selected-wrap .drivers-list .race-player-container #next-speed {
+  display: inline-block;
+  width: 34px;
+  height: 34px;
+  cursor: pointer;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .race-player-container #speed-value {
+  display: inline-block;
+  height: 34px;
+  width: 34px;
+  line-height: 34px;
+  text-align: center;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .race-player-container #play-pause-btn.play {
+  background: url(/images/v2/racing/race_player/play_pause.png) 0 0 no-repeat;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .race-player-container #play-pause-btn.play:hover {
+  background: url(/images/v2/racing/race_player/play_pause.png) 0 -34px no-repeat;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .race-player-container #play-pause-btn.pause {
+  background: url(/images/v2/racing/race_player/play_pause.png) -34px 0 no-repeat;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .race-player-container #play-pause-btn.pause:hover {
+  background: url(/images/v2/racing/race_player/play_pause.png) -34px -34px no-repeat;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .race-player-container #prev-speed.enabled:hover {
+  background: url(/images/v2/racing/race_player/speed_arrows.png) 0 0 no-repeat;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .race-player-container #prev-speed {
+  background: url(/images/v2/racing/race_player/speed_arrows.png) 0 -34px no-repeat;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .race-player-container #next-speed.enabled:hover {
+  background: url(/images/v2/racing/race_player/speed_arrows.png) -34px 0 no-repeat;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .race-player-container #next-speed {
+  background: url(/images/v2/racing/race_player/speed_arrows.png) -34px -34px no-repeat;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .race-player-container #replay-bar-container {
+  float: left;
+  display: inline-block;
+  height: 6px;
+  margin-top: 14px;
+  background-color: white;
+  position: relative;
+  cursor: pointer;
+  background: url(/images/v2/racing/race_player/progress_bg_middle.png) 0 0 repeat-x;
+}
+
+@media screen and (min-width: 784px) {
+  .d .racing-main-wrap .car-selected-wrap .drivers-list .race-player-container #replay-bar-container {
+    width: 340px;
+  }
+}
+
+@media screen and (max-width: 784px) and (min-width: 386px) {
+  .d .gray-tooltip .ui-tooltip-content {
+    max-width: 310px;
+  }
+
+  .d .racing-main-wrap .car-selected-wrap .drivers-list .race-player-container #replay-bar-container {
+    width: 184px;
+  }
+}
+
+@media screen and (max-width: 386px) {
+  .d .racing-main-wrap .car-selected-wrap .drivers-list .race-player-container #replay-bar-container {
+    width: 118px;
+  }
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .race-player-container #replay-bar-container:before {
+  content: '';
+  display: inline-block;
+  height: 6px;
+  width: 3px;
+  position: absolute;
+  top: 0px;
+  left: -3px;
+  background: url(/images/v2/racing/race_player/progress_start.png) 0 0 no-repeat;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .race-player-container #replay-bar-container:after {
+  content: '';
+  display: inline-block;
+  height: 6px;
+  width: 3px;
+  position: absolute;
+  top: 0px;
+  right: -2px;
+  background: url(/images/v2/racing/race_player/progress_end.png) right center no-repeat;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .race-player-container #replay-bar-container #progress-active {
+  display: inline-block;
+  float: left;
+  height: 2px;
+  width: 0px;
+  position: relative;
+  top: 2px;
+  background-color: white;
+  background: url(/images/v2/racing/race_player/progress_active.jpg) 0 0 repeat-x;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .race-player-container #replay-bar-container #progress-inactive {
+  display: inline-block;
+  float: left;
+  height: 2px;
+  width: 100%;
+  position: relative;
+  top: 2px;
+  background-color: white;
+  background: url(/images/v2/racing/race_player/progress_nactive.jpg) 0 0 repeat-x;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .race-player-container #race-timer-container {
+  display: inline-block;
+  float: left;
+  width: 54px;
+  padding-left: 8px;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .race-player-container #race-timer {
+  display: inline-block;
+  margin-top: 11px;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .tracks {
+  height: 245px;
+  top: 0;
+  left: 0;
+  position: relative;
+  overflow: hidden;
+  -moz-box-shadow: 0 1px 2px rgba(0, 0, 0, 1);
+  -webkit-box-shadow: 0 1px 2px rgba(0, 0, 0, 1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 1);
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .tracks .img-track {
+  position: absolute;
+  max-height: 245px;
+}
+
+.d #racingdetails {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 27px;
+  background-color: rgba(25, 25, 25, 0.5);
+}
+
+.d #racingdetails .pd-name,
+.d #racingdetails .pd-val {
+  float: left;
+  border-style: solid;
+  height: 10px;
+  cursor: pointer;
+  padding: 10px 4px;
+  list-style-type: none;
+}
+
+.d #racingdetails .pd-name {
+  border-width: 0 0 0 1px;
+  border-color: rgba(170, 170, 170, 0.5);
+}
+
+.d #racingdetails .pd-val {
+  border-width: 0 1px 0 0;
+  border-right-color: rgba(50, 50, 50, 0.5);
+}
+
+.d .racing-main-wrap .car-selected-wrap #drivers-scrollbar {
+  max-height: 192px;
+}
+
+.d .racing-main-wrap .car-selected-wrap #drivers-scrollbar .overview > li {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li {
+  float: left;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #444 #000 #000 #444;
+  height: 30px;
+  cursor: pointer;
+}
+
+.d #drivers-scrollbar .scrollbar.disable + .viewport .driver-item > li.time {
+  width: 66px;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li:first-child {
+  border-width: 0 0 1px 0;
+  height: 31px;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li:first-child + li {
+  border-left: 0;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .overview > li:hover .driver-item > li.status-wrap,
+.d .racing-main-wrap .car-selected-wrap .drivers-list .overview > li.selected .driver-item > li.status-wrap,
+.d .racing-main-wrap .car-selected-wrap .drivers-list .overview > li:hover .driver-item > li.car,
+.d .racing-main-wrap .car-selected-wrap .drivers-list .overview > li.selected .driver-item > li.car,
+.d .racing-main-wrap .car-selected-wrap .drivers-list .overview > li:hover .driver-item > li.name,
+.d .racing-main-wrap .car-selected-wrap .drivers-list .overview > li.selected .driver-item > li.name,
+.d .racing-main-wrap .car-selected-wrap .drivers-list .overview > li:hover .driver-item > li.time,
+.d .racing-main-wrap .car-selected-wrap .drivers-list .overview > li.selected .driver-item > li.time {
+  background: url(/images/v2/racing/selected_driver.png) 0 0 repeat-x;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.clear,
+.d .racing-main-wrap .car-selected-wrap .car-selected .clear,
+.d .racing-main-wrap .car-selected-wrap .model-wrap .clear {
+  padding: 0;
+  margin: 0;
+  width: 0;
+  height: 0;
+  line-height: 0;
+  font-size: 0;
+  float: none;
+  border: 0;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item.driver-item_NEXT {
+  display: flex;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.color {
+  width: 8px;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.status-wrap {
+  width: 31px;
+}
+
+.d .racing-main-wrap .car-selected-wrap .driver-item > li.status-wrap .status {
+  background: url(/images/v2/racing/car_status.svg) 0 0 no-repeat;
+  filter: drop-shadow(0px 0px 1px #11111194);
+  margin: 5px 0 0 5px;
+  width: 20px;
+  height: 22px;
+}
+
+.d .racing-main-wrap .car-selected-wrap .driver-item > li.status-wrap .status.gold {
+  background-position: 0 0;
+}
+
+.d .racing-main-wrap .car-selected-wrap .driver-item > li.status-wrap .status.silver {
+  background-position: 0 -22px;
+}
+
+.d .racing-main-wrap .car-selected-wrap .driver-item > li.status-wrap .status.bronze {
+  background-position: 0 -44px;
+}
+
+.d .racing-main-wrap .car-selected-wrap .driver-item > li.status-wrap .status.success {
+  background-position: 0 -66px;
+}
+
+.d .racing-main-wrap .car-selected-wrap .driver-item > li.status-wrap .finished {
+  text-align: center;
+  line-height: 32px;
+  height: 32px;
+  width: 32px;
+  display: inline-block;
+  font-size: 18px;
+}
+
+.d .racing-main-wrap .car-selected-wrap .driver-item > li.status-wrap .status.waiting {
+  background-position: 0 -88px;
+}
+
+.d .racing-main-wrap .car-selected-wrap .driver-item > li.status-wrap .status.crash {
+  background-position: 0 -110px;
+}
+
+.d .racing-main-wrap .car-selected-wrap .driver-item > li.status-wrap .status.racing {
+  background-position: 0 -132px;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.car {
+  width: 46px;
+  text-align: center;
+  line-height: 31px;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.car img,
+.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.car canvas.torn-item {
+  vertical-align: middle;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name {
+  width: 342px;
+  line-height: 30px;
+  padding: 0 5px;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.time {
+  width: 63px;
+  line-height: 30px;
+  padding: 0 10px;
+  border-right: 0;
+}
+
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item.driver-item_NEXT > li.time {
+  width: auto;
+  flex-grow: 1;
+}
+
+/* Progress bars */
+
+.d .racing-main-wrap .bar-wrap {
+  width: 207px;
+  position: relative;
+  top: 0;
+  left: 0;
+}
+
+.d .racing-main-wrap .bar-tpl-wrap.active .bar-border-wrap,
+.d .racing-main-wrap .bar-tpl-wrap.active .bar-border-wrap .bar-border {
+  width: 204px;
+}
+
+.d .racing-main-wrap .bar-tpl-wrap:not(.active) .progressbar-wrap {
+  background: none;
+  box-shadow: none;
+}
+
+.d .racing-main-wrap .progressbar-wrap.black-progressbar {
+  background: #000;
+}
+
+.d .racing-main-wrap .progressbar-wrap .progressbar-bg {
+  left: 4px;
+  right: 4px;
+}
+
+.d .racing-main-wrap .bar-color-d,
+.d .racing-main-wrap .bar-gray-d,
+.d .racing-main-wrap .bar-gray-light-d {
+  width: 202px;
+  margin-left: 5px;
+}
+
+.d .racing-main-wrap .bar-tpl-wrap.active .bar-border-wrap {
+  height: 12px;
+  padding-right: 2px;
+  margin-left: 2px;
+}
+
+.d .racing-main-wrap .bar-tpl-wrap.active .bar-border-wrap .bar-border {
+  height: 11px;
+  padding-top: 1px;
+  padding-left: 2px;
+  margin-left: -6px;
+  background-position: left 0;
+}
+
+.d .racing-main-wrap .bar-color-d,
+.d .racing-main-wrap .bar-gray-light-d {
+  margin-left: 3px;
+}
+
+.d .racing-main-wrap .bar-color-wrap-d,
+.d .racing-main-wrap .bar-gray-wrap-d,
+.d .racing-main-wrap .bar-gray-light-wrap-d {
+  width: 100%;
+}
+
+.d .racing-main-wrap .bar-gray-wrap-d,
+.d .racing-main-wrap .bar-gray-d {
+  background: url(/images/v2/racing/progress/progress_grey.png) left top no-repeat;
+}
+
+.d .racing-main-wrap .bar-tpl-wrap.positive .bar-color-wrap-d,
+.d .racing-main-wrap .bar-tpl-wrap.positive .bar-color-d {
+  background: url(/images/v2/racing/progress/progress_green.png) left top no-repeat;
+}
+
+.d .racing-main-wrap .bar-tpl-wrap.negative .bar-color-wrap-d,
+.d .racing-main-wrap .bar-tpl-wrap.negative .bar-color-d {
+  background: url(/images/v2/racing/progress/progress_red.png) left top no-repeat;
+}
+
+.d .racing-main-wrap .bar-gray-light-wrap-d,
+.d .racing-main-wrap .bar-gray-light-d {
+  background: url(/images/v2/racing/progress/progress_grey_light.png) left top no-repeat;
+}
+
+.d .racing-main-wrap .bar-color-wrap-d,
+.d .racing-main-wrap .bar-gray-wrap-d,
+.d .racing-main-wrap .bar-gray-light-wrap-d {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: hidden;
+}
+
+.d .racing-main-wrap .bar-color-wrap-d,
+.d .racing-main-wrap .bar-gray-light-wrap-d {
+  top: 2px;
+}
+
+.d .racing-main-wrap .bar-color-d,
+.d .racing-main-wrap .bar-gray-d,
+.d .racing-main-wrap .bar-gray-light-d {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.d .racing-main-wrap .bar-wrap,
+.d .racing-main-wrap .bar-gray-wrap-d,
+.d .racing-main-wrap .bar-gray-d {
+  height: 9px;
+}
+
+.d .racing-main-wrap .bar-color-wrap-d,
+.d .racing-main-wrap .bar-color-d,
+.d .racing-main-wrap .bar-gray-light-wrap-d,
+.d .racing-main-wrap .bar-gray-light-d {
+  height: 5px;
+}
+
+.d .racing-main-wrap .bar-tpl-wrap .bar-wrap .bar-gray-d {
+  background-position: right -9px;
+}
+
+.d .racing-main-wrap .bar-tpl-wrap .bar-wrap .bar-color-wrap-d,
+.d .racing-main-wrap .bar-tpl-wrap .bar-wrap .bar-gray-light-wrap-d {
+  background-position: 2px 0;
+}
+
+.d .racing-main-wrap .bar-tpl-wrap .bar-wrap .bar-color-d,
+.d .racing-main-wrap .bar-tpl-wrap .bar-wrap .bar-gray-light-d {
+  background-position: right -5px;
+}
+
+/* Racing your cars page (cars you own which can be enlisted) */
+
+.d .racing-main-wrap .enlist-wrap .enlist-list .bar-wrap {
+  width: 85px;
+}
+
+.d .racing-main-wrap .enlist-wrap .enlist-list .bar-tpl-wrap.active .bar-border-wrap,
+.d .racing-main-wrap .enlist-wrap .enlist-list .bar-tpl-wrap.active .bar-border-wrap .bar-border {
+  width: 81px;
+}
+
+.d .racing-main-wrap .enlist-wrap .enlist-list .bar-color-d,
+.d .racing-main-wrap .enlist-wrap .enlist-list .bar-gray-d {
+  width: 80px;
+}
+
+.d .racing-main-wrap .current-race-wrap {
+  color: #fff;
+}
+
+/* Custom events page/Official events pages (pick your car) */
+
+.d .racing-main-wrap .select-cars-wrap {
+  color: #fff;
+}
+
+.d .racing-main-wrap .select-cars-wrap .cont-black {
+  border-top: 0;
+}
+
+.d .racing-main-wrap .select-cars-wrap .select-car-list > li {
+  width: 391px;
+  border-right: 1px solid #000;
+  border-left: 1px solid #444;
+  border-top: 1px solid #444;
+  float: left;
+  height: 175px;
+}
+
+.d .racing-main-wrap .select-cars-wrap .select-car-list > li.first-item {
+  border-left: 0;
+}
+
+.d .racing-main-wrap .select-cars-wrap .select-car-list > li.last-row .select-bars,
+.d .racing-main-wrap .select-cars-wrap .select-car-list > li.last-row + li .select-bars {
+  border-bottom: 0;
+  border-radius: 0 0 5px 5px;
+}
+
+.d .racing-main-wrap .select-cars-wrap .select-car-list > li.second-item {
+  border-right: 0;
+}
+
+.d .racing-main-wrap .select-cars-wrap .select-info-wrap {
+  position: relative;
+  padding: 0;
+  font-size: 0;
+  background: url(/images/v2/racing/stripy_bg.png) 0 0 repeat;
+  border-bottom: 1px solid #000;
+}
+
+.d .racing-main-wrap .select-cars-wrap .select-car,
+.d .racing-main-wrap .select-cars-wrap .select-info {
+  display: inline-block;
+  vertical-align: middle;
+  margin: 0;
+  font-size: 12px;
+}
+
+.d .racing-main-wrap .select-cars-wrap .select-info-wrap .select-car {
+  padding: 0 10px;
+  margin: 0;
+  display: inline-block;
+  vertical-align: middle;
+  border-right: 1px solid #000;
+}
+
+.d .racing-main-wrap .select-cars-wrap .select-info-wrap .select-info {
+  padding: 10px 0 10px 10px;
+  border-left: 1px solid #444;
+  display: inline-block;
+  width: 258px;
+  line-height: 14px;
+  font-size: 12px;
+}
+
+.d .racing-main-wrap .select-cars-wrap .select-info-wrap .select-info .model,
+.d .racing-main-wrap .select-cars-wrap .select-info-wrap .select-info .car-class {
+  display: block;
+}
+
+.d .racing-main-wrap .select-cars-wrap .select-info-wrap .select-info .icon-select {
+  display: inline-block;
+  background: url(/images/v2/racing/car_enlist.png) 0 0 no-repeat;
+  vertical-align: middle;
+  height: 15px;
+  width: 15px;
+}
+
+.d .racing-main-wrap .select-cars-wrap .select-info-wrap .select-info .in-race-link {
+  margin-top: 11px;
+}
+
+.d .racing-main-wrap .select-cars-wrap .select-info-wrap .select-link:hover .icon-select {
+  background-position: 0 -15px;
+}
+
+.d .racing-main-wrap .select-cars-wrap .select-info-wrap .select-info .icon-in-race {
+  display: inline-block;
+  background: url(/images/v2/racing/currently_in_race.svg) 0 0 no-repeat;
+  filter: drop-shadow(0px 0px 1px #11111194);
+  vertical-align: middle;
+  height: 14px;
+  width: 19px;
+}
+
+.d .racing-main-wrap .select-cars-wrap .select-info-wrap .select-car-wrap {
+  display: inline-block;
+}
+
+.d .racing-main-wrap .select-cars-wrap .select-car-list .select-bars {
+  border-top: 1px solid #444;
+  border-bottom: 1px solid #000;
+  padding: 10px 0 0 0;
+}
+
+.d .racing-main-wrap .select-cars-wrap .select-car-list .bar-wrap {
+  width: 85px;
+}
+
+.d .racing-main-wrap .select-cars-wrap .select-car-list .bar-tpl-wrap.active .bar-border-wrap,
+.d .racing-main-wrap .select-cars-wrap .select-car-list .bar-tpl-wrap.active .bar-border-wrap .bar-border {
+  width: 82px;
+}
+
+.d .racing-main-wrap .select-cars-wrap .select-car-list .bar-color-d,
+.d .racing-main-wrap .select-cars-wrap .select-car-list .bar-gray-d {
+  width: 80px;
+}
+
+.d .racing-main-wrap .select-cars-wrap .select-car-list .select-bars .properties .title,
+.d .racing-main-wrap .select-cars-wrap .select-car-list .select-bars .bar-tpl-wrap {
+  width: 76px;
+  float: left;
+  margin: 0;
+  text-align: right;
+}
+
+.d .racing-main-wrap .select-cars-wrap .select-car-list .select-bars .bar-tpl-wrap {
+  margin-left: 10px;
+}
+
+.d .racing-main-wrap .select-cars-wrap .select-car-list .select-bars > li {
+  padding: 0 10px 10px 10px;
+  width: 164px;
+  float: left;
+}
+
+.d .racing-main-wrap .select-cars-wrap .select-info-wrap .t-delimiter,
+.d .racing-main-wrap .select-cars-wrap .select-info-wrap .b-delimiter {
+  height: 35px;
+  width: 2px;
+  position: absolute;
+  left: 120px;
+}
+
+.d .racing-main-wrap .select-cars-wrap .l-delimiter,
+.d .racing-main-wrap .select-cars-wrap .r-delimiter {
+  position: absolute;
+  bottom: -3px;
+  height: 4px;
+  width: 185px;
+  z-index: 1;
+}
+
+.d .racing-main-wrap .select-cars-wrap .select-car-list > li .clear,
+.d .racing-main-wrap .select-cars-wrap .select-car-list > li.clear,
+.d .racing-main-wrap .select-cars-wrap .select-car-list .select-bars > li.clear {
+  padding: 0;
+  margin: 0;
+  width: 0;
+  height: 0;
+  line-height: 0;
+  font-size: 0;
+  float: none;
+  border: 0;
+}
+
+.d .racing-main-wrap .select-cars-wrap .select-car-list .black-separator {
+  height: 8px;
+  width: 100%;
+  background-color: #202020;
+  border-top: 1px solid #444;
+  border-bottom: 1px solid #000;
+  border-left: 0;
+  border-right: 0;
+}
+
+.d .racing-main-wrap .messages-race-wrap {
+  color: #fff;
+}
+
+.d .racing-main-wrap .messages-race-wrap .d-hide {
+  display: none;
+}
+
+.d .racing-main-wrap .messages-race-wrap .desc {
+  line-height: 14px;
+  padding: 10px;
+  color: #ccc;
+}
+
+.d .racing-main-wrap .messages-race-wrap .btn-wrap {
+  margin: 10px 15px;
+}
+
+.d .racing-main-wrap .messages-race-wrap .sep {
+  border-top: 1px solid #000;
+  border-bottom: 1px solid #444;
+}
+
+.d .racing-main-wrap .pm-items-wrap .bar-wrap {
+  width: 85px;
+}
+
+.d .racing-main-wrap .pm-items-wrap .bar-tpl-wrap.active .bar-border-wrap,
+.d .racing-main-wrap .pm-items-wrap .bar-tpl-wrap.active .bar-border-wrap .bar-border {
+  width: 82px;
+}
+
+.d .racing-main-wrap .pm-items-wrap .bar-color-d,
+.d .racing-main-wrap .pm-items-wrap .bar-gray-d {
+  width: 80px;
+}
+
+.d .racing-main-wrap .track-info-wrap {
+  cursor: pointer;
+  float: right;
+}
+
+.d .racing-main-wrap .track-info-wrap .icon-track-info {
+  margin: 3px 10px;
+  height: 24px;
+  width: 16px;
+  float: right;
+  background: url(/images/v2/racing/track_info.svg) 0 0 no-repeat;
+  filter: drop-shadow(0px 0px 1px #11111194);
+}
+
+.d .racing-main-wrap .track-info-wrap:hover .icon-track-info {
+  background-position: top right;
+}
+
+.d .track-tooltip-wrap .track-name {
+  color: #00bfff;
+  font-weight: bold;
+}
+
+.d .track-tooltip-wrap .track-title {
+  background-color: #000;
+  padding-right: 12px;
+  margin-right: -8px;
+  padding-left: 12px;
+  margin-left: -8px;
+}
+
+.d .track-tooltip-wrap .track-desc {
+  padding: 10px 5px 5px 5px;
+}
+
+.d .racing-main-wrap .car-selected-wrap .drivers-list .title-black.t-overflow {
+  padding-right: 10px;
+}
+
+.d .racing-main-wrap .t-scroll {
+  width: 520px;
+  height: 243px;
+}
+
+.d .racing-main-wrap .race-confirmation {
+  line-height: 32px;
+}
+
+.d .racing-main-wrap .race-confirmation a {
+  margin: 10px;
+}
+
+.d .scrollbar-wrap {
+  position: relative;
+  top: 0;
+  left: 0;
+}
+
+.d .scroll-wrapper .scroll-element.scroll-y.scroll-scrolly_visible .scroll-element_track {
+  background: #000;
+}
+
+.d .scroll-wrapper .scroll-element.scroll-y.scroll-scrolly_visible .scroll-bar {
+  background: rgb(67, 67, 67);
+}
+
+@media screen and (max-width: 784px) {
+  .r .racing-main-wrap .t-show {
+    display: initial;
+  }
+
+  .r .racing-main-wrap .d-hide {
+    display: inline-block;
+  }
+
+  .r .racing-main-wrap .t-hide {
+    display: none;
+  }
+
+  .r .racing-main-wrap .car-selected-wrap .car-selected,
+  .r .racing-main-wrap .car-selected-wrap .drivers-list {
+    float: none;
+    width: 386px;
+  }
+
+  .r .racing-main-wrap .car-selected-wrap .model-wrap {
+    position: relative;
+    top: 0;
+    left: 0;
+    width: 172px;
+    height: 144px;
+    border-right: 1px solid #000;
+    border-bottom: 0;
+    float: left;
+    text-align: center;
+    border-bottom-left-radius: 5px;
+    line-height: 12px;
+  }
+
+  .r .racing-main-wrap .car-selected-wrap .model-wrap.option-hide .img {
+    padding-top: 20px;
+  }
+
+  .r .racing-main-wrap .car-selected-wrap .model-wrap .leave-link,
+  .r .racing-main-wrap .car-selected-wrap .model-wrap .change-link {
+    margin-top: 0;
+    float: none;
+    text-align: left;
+    width: 172px;
+  }
+
+  .r .racing-main-wrap .car-selected-wrap .model-wrap .link-wrap {
+    background-size: 100% 2px;
+    padding-top: 6px;
+  }
+
+  .r .racing-main-wrap .car-selected-wrap .model-wrap .model,
+  .r .racing-main-wrap .car-selected-wrap .model-wrap .img {
+    display: block;
+  }
+
+  .r .racing-main-wrap .car-selected-wrap .model-wrap .model {
+    width: 100%;
+  }
+
+  .r .racing-main-wrap .car-selected-wrap .model-wrap .img {
+    line-height: 0;
+    padding: 0 0 10px 0;
+    float: none;
+    margin: 0 auto;
+  }
+
+  .r .racing-main-wrap .car-selected-wrap .properties-wrap {
+    border-left: 1px solid #444;
+    padding: 10px 10px 0 10px;
+  }
+
+  @media screen and (min-width: 784px) {
+    .r .racing-main-wrap .car-selected-wrap .properties-wrap {
+      float: right;
+      width: 172px;
+    }
+  }
+
+  .r .racing-main-wrap .progressbar-wrap.black-progressbar {
+    background: transparent;
+  }
+
+  @media screen and (max-width: 784px) and (min-width: 386px) {
+    .r .racing-main-wrap .car-selected-wrap .properties-wrap {
+      float: left;
+      /* width: 100%; */
+    }
+  }
+
+  @media screen and (max-width: 386px) {
+    .d .racing-main-wrap .car-selected-wrap .properties-wrap {
+      float: left;
+      /* width: 100%; */
+    }
+
+    .d .racing-main-wrap .car-selected-wrap .properties-wrap .properties .title {
+      width: 100%;
+    }
+  }
+
+  .r .racing-main-wrap .car-selected-wrap .properties-wrap > li {
+    border: 0;
+    padding-bottom: 6px;
+  }
+
+  .r .racing-main-wrap .car-selected-wrap .properties-wrap .properties {
+    padding: 0;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .r .racing-main-wrap .bar-tpl-wrap {
+    margin: 0;
+    padding-left: 7px;
+  }
+
+  .r .racing-main-wrap .car-selected-wrap .model-wrap .t-delimiter,
+  .r .racing-main-wrap .car-selected-wrap .model-wrap .b-delimiter {
+    left: 192px;
+    height: 96px;
+  }
+
+  .r .racing-main-wrap .car-selected-wrap .drivers-list .track-wrap {
+    padding: 0;
+  }
+
+  .r .racing-main-wrap .car-selected-wrap .drivers-list .tracks {
+    -moz-box-shadow: none;
+    -webkit-box-shadow: none;
+    box-shadow: none;
+    margin: 0;
+  }
+
+  .r .racing-main-wrap .car-selected-wrap .drivers-list .tracks .img-track {
+    margin-left: -67px;
+  }
+
+  .r .racing-main-wrap .car-selected-wrap .drivers-list .tracks.offset .img-track {
+    margin-left: -134px;
+  }
+
+  .r .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name {
+    width: 202px;
+  }
+
+  /* Progress bars - CLASS A, CLASS B, CLASS C, CLASS D, CLASS E */
+
+  .r .racing-main-wrap .bar-tpl-wrap.active .bar-border-wrap,
+  .r .racing-main-wrap .bar-tpl-wrap.active .bar-border-wrap .bar-border {
+    background: transparent;
+  }
+
+  .r .racing-main-wrap .properties-wrap .bar-wrap {
+    width: 85px;
+  }
+
+  .r .racing-main-wrap .properties-wrap .bar-tpl-wrap.active .bar-border-wrap,
+  .r .racing-main-wrap .properties-wrap .bar-tpl-wrap.active .bar-border-wrap .bar-border {
+    width: 82px;
+  }
+
+  .r .racing-main-wrap .properties-wrap .bar-color-d,
+  .r .racing-main-wrap .properties-wrap .bar-gray-d,
+  .r .racing-main-wrap .properties-wrap .bar-gray-light-d {
+    width: 80px;
+  }
+
+  /* Racing your cars page (cars you own which can be enlisted) */
+
+  .r .racing-main-wrap .enlist-wrap .enlist-list .enlist-bars .properties {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .r .racing-main-wrap .enlist-wrap .enlist-list .enlist-bars .properties .title {
+    width: 76px;
+    text-align: right;
+  }
+
+  .r .racing-main-wrap .enlist-wrap .enlist-bars .bar-tpl-wrap {
+    margin: 0;
+  }
+
+  .r .racing-main-wrap .enlist-list .enlist-bars > li .t-delimiter,
+  .r .racing-main-wrap .enlist-list .enlist-bars > li .b-delimiter {
+    display: none;
+  }
+
+  .r .racing-main-wrap .enlist-list .properties .bar-wrap {
+    width: 150px;
+  }
+
+  .r .racing-main-wrap .enlist-list .properties .bar-tpl-wrap.active .bar-border-wrap,
+  .r .racing-main-wrap .enlist-list .properties .bar-tpl-wrap.active .bar-border-wrap .bar-border {
+    width: 147px;
+  }
+
+  .r .racing-main-wrap .enlist-list .properties .bar-color-d,
+  .r .racing-main-wrap .enlist-list .properties .bar-gray-d {
+    width: 145px;
+  }
+
+  /* Racing your cars page ( your enlisted cars ) */
+
+  .r .racing-main-wrap .enlisted-wrap .enlist-list .bar-wrap {
+    width: 85px;
+  }
+
+  .r .racing-main-wrap .enlisted-wrap .enlist-list .bar-tpl-wrap.active .bar-border-wrap,
+  .r .racing-main-wrap .enlisted-wrap .enlist-list .bar-tpl-wrap.active .bar-border-wrap .bar-border {
+    width: 82px;
+  }
+
+  .r .racing-main-wrap .enlisted-wrap .enlist-list .bar-color-d,
+  .r .racing-main-wrap .enlisted-wrap .enlist-list .bar-gray-d {
+    width: 80px;
+  }
+
+  /* Custom events page/Official events pages (pick your car) */
+
+  .r .racing-main-wrap .select-cars-wrap .select-info-wrap {
+    width: 190px;
+    float: left;
+    border-bottom: 0;
+    border-right: 1px solid #000;
+    height: 134px;
+    text-align: center;
+  }
+
+  .r .racing-main-wrap .select-cars-wrap .select-info-wrap .select-info {
+    padding: 0;
+    border-left: 0;
+    width: auto;
+  }
+
+  .r .racing-main-wrap .select-cars-wrap .select-car-list .select-bars {
+    width: 193px;
+    border-top: 0;
+    border-bottom: 0;
+    border-left: 1px solid #444;
+    padding-bottom: 5px;
+    float: left;
+  }
+
+  .r .racing-main-wrap .select-cars-wrap .select-car-list > li {
+    height: auto;
+    border-right: 0;
+    border-left: 0;
+    border-bottom: 1px solid #000;
+    width: 385px;
+  }
+
+  .r .racing-main-wrap .select-cars-wrap .select-car-list .select-bars > li {
+    width: 174px;
+    padding-bottom: 5px;
+    float: none;
+  }
+
+  .r .racing-main-wrap .select-cars-wrap .select-car-list > li.last-row,
+  .r .racing-main-wrap .select-cars-wrap .select-car-list > li.last-row + li {
+    border-bottom: 0;
+  }
+
+  .r .racing-main-wrap .select-cars-wrap .select-car-list .black-separator {
+    width: 386px;
+  }
+
+  .r .racing-main-wrap .select-cars-wrap .select-info-wrap .select-car {
+    border-right: 0;
+  }
+
+  .r .racing-main-wrap .select-cars-wrap .select-info-wrap .t-delimiter,
+  .r .racing-main-wrap .select-cars-wrap .select-info-wrap .b-delimiter {
+    height: 67px;
+    left: 190px;
+  }
+
+  .r .racing-main-wrap .select-cars-wrap .select-info-wrap .t-delimiter {
+    top: 0;
+  }
+
+  .r .racing-main-wrap .select-cars-wrap .select-info-wrap .select-car-wrap {
+    padding-top: 25px;
+  }
+
+  .r .racing-main-wrap .select-cars-wrap .select-info-wrap .select-info .model,
+  .r .racing-main-wrap .select-cars-wrap .select-info-wrap .select-info .car-class {
+    padding-top: 10px;
+  }
+
+  .r .racing-main-wrap .select-cars-wrap .select-car-list > li.second-item.empty {
+    display: none;
+  }
+
+  .r .racing-main-wrap .select-cars-wrap .select-car-list > li.last-row,
+  .r .racing-main-wrap .select-cars-wrap .select-car-list > li.last-row .select-info-wrap {
+    border-bottom-left-radius: 5px;
+  }
+
+  .r .racing-main-wrap .select-cars-wrap .select-car-list .select-bars .bar-tpl-wrap {
+    margin-left: 3px;
+  }
+
+  .r .racing-main-wrap .car-selected-wrap #drivers-scrollbar {
+    max-height: none;
+  }
+}
+
+@media screen and (max-width: 386px) {
+  .r .racing-main-wrap .car-selected-wrap .car-selected,
+  .r .racing-main-wrap .car-selected-wrap .drivers-list {
+    width: 320px;
+  }
+
+  .r .racing-main-wrap .car-selected-wrap .properties-wrap > li {
+    padding-bottom: 8px;
+  }
+
+  .r .racing-main-wrap .car-selected-wrap .model-wrap .leave-link,
+  .r .racing-main-wrap .car-selected-wrap .model-wrap .change-link {
+    width: 106px;
+  }
+
+  .r .racing-main-wrap .car-selected-wrap .model-wrap {
+    width: 106px;
+    min-height: 136px;
+    border-radius: 0;
+  }
+
+  .r .racing-main-wrap .car-selected-wrap .model-wrap .img {
+    padding-bottom: 11px;
+  }
+
+  .r .racing-main-wrap .car-selected-wrap .model-wrap .model p {
+    padding: 0 10px;
+  }
+
+  .r .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name {
+    width: 129px;
+    overflow: hidden;
+  }
+
+  .r .racing-main-wrap .car-selected-wrap .drivers-list .tracks .img-track {
+    margin-left: -100px;
+  }
+
+  .r .racing-main-wrap .car-selected-wrap .drivers-list .tracks.offset .img-track {
+    margin-left: -200px;
+  }
+
+  .r .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.time {
+    width: 69px;
+  }
+
+  .r #drivers-scrollbar .scrollbar.disable + .viewport .driver-item > li.time {
+    width: 76px;
+  }
+
+  .r .racing-main-wrap .car-selected-wrap .model-wrap .t-delimiter,
+  .r .racing-main-wrap .car-selected-wrap .model-wrap .b-delimiter {
+    left: 126px;
+  }
+
+  /* Racing your cars page (cars you own which can be enlisted) */
+
+  .r .racing-main-wrap .enlist-list .properties .bar-wrap {
+    width: 90px;
+  }
+
+  .r .racing-main-wrap .enlist-list .properties .bar-tpl-wrap.active .bar-border-wrap,
+  .r .racing-main-wrap .enlist-list .properties .bar-tpl-wrap.active .bar-border-wrap .bar-border {
+    width: 87px;
+  }
+
+  .r .racing-main-wrap .enlist-list .properties .bar-color-d,
+  .r .racing-main-wrap .enlist-list .properties .bar-gray-d {
+    width: 85px;
+  }
+
+  /* Your enlisted cars */
+
+  .r .racing-main-wrap .enlisted-wrap .enlist-list .enlist-bars .properties .title,
+  .r .racing-main-wrap .enlisted-wrap .enlist-list .enlist-bars .bar-tpl-wrap {
+    width: 70px;
+  }
+
+  .r .racing-main-wrap .enlisted-wrap .enlist-list .properties .bar-wrap {
+    width: 53px;
+  }
+
+  .r .racing-main-wrap .enlisted-wrap .enlist-list .properties .bar-tpl-wrap.active .bar-border-wrap,
+  .r .racing-main-wrap .enlisted-wrap .enlist-list .properties .bar-tpl-wrap.active .bar-border-wrap .bar-border {
+    width: 50px;
+  }
+
+  .r .racing-main-wrap .enlisted-wrap .enlist-list .properties .bar-color-d,
+  .r .racing-main-wrap .enlisted-wrap .enlist-list .properties .bar-gray-d {
+    width: 48px;
+  }
+
+  /* Custom events page/Official events pages (pick your car) */
+
+  .r .racing-main-wrap .select-cars-wrap .select-info-wrap {
+    width: 129px;
+  }
+
+  .r .racing-main-wrap .select-cars-wrap .select-car-list .select-bars .bar-tpl-wrap {
+    margin-left: 2px;
+  }
+
+  .r .racing-main-wrap .select-cars-wrap .select-car-list .select-bars {
+    width: 189px;
+  }
+
+  .r .racing-main-wrap .select-cars-wrap .select-car-list .select-bars > li {
+    width: 174px;
+    padding-left: 5px;
+  }
+
+  .r .racing-main-wrap .select-cars-wrap .select-info-wrap .t-delimiter,
+  .r .racing-main-wrap .select-cars-wrap .select-info-wrap .b-delimiter {
+    left: 129px;
+  }
+
+  .r .racing-main-wrap .select-cars-wrap .select-car-list .select-bars .properties .title,
+  .r .racing-main-wrap .select-cars-wrap .select-car-list .select-bars .bar-tpl-wrap {
+    width: 78px;
+  }
+
+  .r .racing-main-wrap .select-cars-wrap .select-car-list > li,
+  .r .racing-main-wrap .select-cars-wrap .select-car-list .black-separator {
+    width: 320px;
+  }
+
+  .r .racing-main-wrap .pm-items-wrap .bar-wrap {
+    width: 50px;
+  }
+
+  .r .racing-main-wrap .pm-items-wrap .bar-tpl-wrap.active .bar-border-wrap,
+  .r .racing-main-wrap .pm-items-wrap .bar-tpl-wrap.active .bar-border-wrap .bar-border {
+    width: 49px;
+  }
+
+  .r .racing-main-wrap .pm-items-wrap .bar-color-d,
+  .r .racing-main-wrap .pm-items-wrap .bar-gray-d {
+    width: 47px;
+  }
+
+  .r .racing-main-wrap .m-hide {
+    display: none;
+  }
+
+  .r .racing-main-wrap .car-selected-wrap .model-wrap {
+    height: 152px;
+  }
+
+  .r .racing-main-wrap .race-confirmation {
+    line-height: 24px;
+  }
+
+  .r .track-tooltip-wrap {
+    max-width: 240px;
+  }
+
+  .r .racing-main-wrap .custom-events-wrap .events-list > li.gold .car .d-hide {
+    background: transparent;
+  }
+
+  .r .racing-main-wrap .pm-items-wrap .pm-items .progressbar-wrap.black-progressbar,
+  .r .racing-main-wrap .enlist-list .progressbar-wrap.black-progressbar {
+    width: 57px;
+  }
+}

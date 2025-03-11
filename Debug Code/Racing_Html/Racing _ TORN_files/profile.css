@@ -1,0 +1,308 @@
+:root {
+    --mini-profile-border: 1px solid #fff;
+    --mini-profile-box-shadow: 1px 1px 2px #25252573;
+    --mini-profile-digits-blocks-bg-mobile: url(/images/v2/profile/svg/container_mobile.svg);
+    --mini-profile-arrow-filter: drop-shadow(0 -1px 0 #fff);
+    --mini-profile-buttons-bg-gradiend: linear-gradient(180deg, #ebebeb 0, #ddd);
+    --mini-profile-buttons-bg-gradient-hover: linear-gradient(to bottom, rgba(255, 255, 255, 1) 0%, rgba(238, 238, 238, 1) 100%);
+    --mini-profile-buttons-bg-gradient-disabled: linear-gradient(to bottom, rgba(235, 235, 235, 1) 0%, rgba(221, 221, 221, 1) 100%);
+    --mini-profile-buttons-bg: #ebebeb;
+    --mini-profile-buttons-border-color: #d4d4d4;
+    --mini-profile-buttons-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 1);
+    --mini-profile-buttons-icons: url('/images/v2/profile/profile_buttons/profile_action_icons_sprite_light.svg');
+    --mini-profile-digits-zero: url(/images/v2/profile/neutral/320_0_placeholder_neutral.png);
+
+    --profile-okay-gradient: linear-gradient(to right,  rgba(70,126,13,0.4) 0%,rgba(195,64,21,0) 100%);
+    --profile-npc-gradient: linear-gradient(to right,  rgba(217,164,31,0.8) 0%,rgba(217,164,31,0) 100%);
+    --profile-jail-hospital-gradient: linear-gradient(to right,  rgba(195,64,21,0.5) 50%,rgba(195,64,21,0) 100%);
+    --profile-federal-jail-gradient: linear-gradient(to right,  rgba(195,64,21,0.7) 50%,rgba(195,64,21,0) 100%);
+    --profile-dead-gradient: linear-gradient(to right,  rgba(255,255,255,0.5) 50%,rgba(255,255,255,0) 100%);
+    --profile-abroad-gradient: linear-gradient(to right,  rgba(65,130,151,0.5) 50%,rgba(65,130,151,0) 100%);
+    --profile-travelling-gradient: linear-gradient(to right,  rgba(30,163,205,0.5) 50%,rgba(30,163,205,0) 100%);
+    --profile-awoken-gradient: linear-gradient(90deg, #68487DCC 0%, #68487DCC 33%, #4A335900 100%);
+    --profile-dormant-gradient: linear-gradient(90deg, #242415CC 0%, #663300CC 33%, #46463700 100%);
+
+    --profile-awoken1-bg-image: url(/images/v2/profile/user_status/maol_status/light/386/1_awoken.png);
+    --profile-awoken2-bg-image: url(/images/v2/profile/user_status/maol_status/light/386/2_awoken.png);
+    --profile-dormant1-bg-image: url(/images/v2/profile/user_status/maol_status/light/386/1_dormant.png);
+    --profile-dormant2-bg-image: url(/images/v2/profile/user_status/maol_status/light/386/2_dormant.png);
+    --profile-dormant3-bg-image: url(/images/v2/profile/user_status/maol_status/light/386/3_dormant.png);
+    --profile-dormant4-bg-image: url(/images/v2/profile/user_status/maol_status/light/386/4_dormant.png);
+    --profile-dormant5-bg-image: url(/images/v2/profile/user_status/maol_status/light/386/5_dormant.png);
+
+    --profile-okay-bg-image: url(/images/v2/profile/user_status/386/main/light_mode/okay.jpg);
+    --profile-npc-bg-image: url(/images/v2/profile/user_status/386/main/light_mode/npc.jpg);
+    --profile-hospital-bg-image: url(/images/v2/profile/user_status/386/main/light_mode/hospital.jpg);
+    --profile-jail-bg-image: url(/images/v2/profile/user_status/386/main/light_mode/jail.jpg);
+    --profile-federal-jail-bg-image: url(/images/v2/profile/user_status/386/main/light_mode/federal_jail.jpg);
+    --profile-dead-bg-image: url(/images/v2/profile/user_status/386/main/light_mode/777.jpg);
+
+    --profile-abroad-mexico-bg-image: url(/images/v2/profile/user_status/386/countries/light_mode/1_mexico.jpg);
+    --profile-abroad-canada-bg-image: url(/images/v2/profile/user_status/386/countries/light_mode/2_canada.jpg);
+    --profile-abroad-cayman-islands-bg-image: url(/images/v2/profile/user_status/386/countries/light_mode/3_cayman_islands.jpg);
+    --profile-abroad-hawaii-bg-image: url(/images/v2/profile/user_status/386/countries/light_mode/4_hawaii.jpg);
+    --profile-abroad-united-kingdom-bg-image: url(/images/v2/profile/user_status/386/countries/light_mode/5_uk.jpg);
+    --profile-abroad-switzerland-bg-image: url(/images/v2/profile/user_status/386/countries/light_mode/6_switzerland.jpg);
+    --profile-abroad-argentina-bg-image: url(/images/v2/profile/user_status/386/countries/light_mode/7_argentina.jpg);
+    --profile-abroad-japan-bg-image: url(/images/v2/profile/user_status/386/countries/light_mode/8_japan.jpg);
+    --profile-abroad-china-bg-image: url(/images/v2/profile/user_status/386/countries/light_mode/9_china.jpg);
+    --profile-abroad-uae-bg-image: url(/images/v2/profile/user_status/386/countries/light_mode/10_uae.jpg);
+    --profile-abroad-south-africa-bg-image: url(/images/v2/profile/user_status/386/countries/light_mode/11_south_africa.jpg);
+
+    --profile-travelling-hidden-bg-image: url(/images/v2/profile/user_status/386/travelling/light_mode/12_traveling_status_hidden.jpg);
+    --profile-travelling-to-mexico-bg-image: url(/images/v2/profile/user_status/386/travelling/light_mode/1_to_mexico.jpg);
+    --profile-travelling-from-mexico-bg-image: url(/images/v2/profile/user_status/386/travelling/light_mode/1_from_mexico.jpg);
+    --profile-travelling-to-canada-bg-image: url(/images/v2/profile/user_status/386/travelling/light_mode/2_to_canada.jpg);
+    --profile-travelling-from-canada-bg-image: url(/images/v2/profile/user_status/386/travelling/light_mode/2_from_canada.jpg);
+    --profile-travelling-to-cayman-islands-bg-image: url(/images/v2/profile/user_status/386/travelling/light_mode/3_to_cayman_islands.jpg);
+    --profile-travelling-from-cayman-islands-bg-image: url(/images/v2/profile/user_status/386/travelling/light_mode/3_from_cayman_islands.jpg);
+    --profile-travelling-to-hawaii-bg-image: url(/images/v2/profile/user_status/386/travelling/light_mode/4_to_hawaii.jpg);
+    --profile-travelling-from-hawaii-bg-image: url(/images/v2/profile/user_status/386/travelling/light_mode/4_from_hawaii.jpg);
+    --profile-travelling-to-united-kingdom-bg-image: url(/images/v2/profile/user_status/386/travelling/light_mode/5_to_uk.jpg);
+    --profile-travelling-from-united-kingdom-bg-image: url(/images/v2/profile/user_status/386/travelling/light_mode/5_from_uk.jpg);
+    --profile-travelling-to-switzerland-bg-image: url(/images/v2/profile/user_status/386/travelling/light_mode/6_to_switzerland.jpg);
+    --profile-travelling-from-switzerland-bg-image: url(/images/v2/profile/user_status/386/travelling/light_mode/6_from_switzerland.jpg);
+    --profile-travelling-to-argentina-bg-image: url(/images/v2/profile/user_status/386/travelling/light_mode/7_to_argentina.jpg);
+    --profile-travelling-from-argentina-bg-image: url(/images/v2/profile/user_status/386/travelling/light_mode/7_from_argentina.jpg);
+    --profile-travelling-to-japan-bg-image: url(/images/v2/profile/user_status/386/travelling/light_mode/8_to_japan.jpg);
+    --profile-travelling-from-japan-bg-image: url(/images/v2/profile/user_status/386/travelling/light_mode/8_from_japan.jpg);
+    --profile-travelling-to-china-bg-image: url(/images/v2/profile/user_status/386/travelling/light_mode/9_to_china.jpg);
+    --profile-travelling-from-china-bg-image: url(/images/v2/profile/user_status/386/travelling/light_mode/9_from_china.jpg);
+    --profile-travelling-to-uae-bg-image: url(/images/v2/profile/user_status/386/travelling/light_mode/10_to_uae.jpg);
+    --profile-travelling-from-uae-bg-image: url(/images/v2/profile/user_status/386/travelling/light_mode/10_from_uae.jpg);
+    --profile-travelling-to-south-africa-bg-image: url(/images/v2/profile/user_status/386/travelling/light_mode/11_to_south_africa.jpg);
+    --profile-travelling-from-south-africa-bg-image: url(/images/v2/profile/user_status/386/travelling/light_mode/11_from_south_africa.jpg);
+    --profile-travelling-to-private-bg-image: url(/images/v2/profile/user_status/386/travelling/light_mode/private_plane_to.jpg);
+    --profile-travelling-from-private-bg-image: url(/images/v2/profile/user_status/386/travelling/light_mode/private_plane_from.jpg);
+    --profile-travelling-to-airstrip-bg-image: url(/images/v2/profile/user_status/386/travelling/light_mode/airstrip_plane_to.jpg);
+    --profile-travelling-from-airstrip-bg-image: url(/images/v2/profile/user_status/386/travelling/light_mode/airstrip_plane_from.jpg);
+
+    --profile-digits-blocks-bg-large: url(/images/v2/profile/svg/container_desktop.svg);
+    --profile-digits-blocks-bg-small: url(/images/v2/profile/svg/container_113x66.svg);
+    --profile-digits-radius: unset;
+    --profile-digits-divider-bg: url(/images/v2/profile/svg/divider.svg);
+    --profile-digits-divider: unset;
+    --profile-digits-divider-color: unset;
+    --profile-digits-reflections-bg: url(/images/v2/profile/svg/reflex.svg) 0 top repeat-x;
+    --profile-digits-zero: url(/images/v2/profile/neutral/976_0_placeholder_neutral.png);
+    --profile-digits-shadow: 0 1px 0 rgba(255, 255, 255, 0.65);
+    --profile-digits-color: #333;
+
+    --profile-hospital-jail-icon-fill: #c34015;
+    --profile-hospital-jail-icon-fill-opacity: 0.75;
+    --profile-federal-jail-icon-fill: #c34015;
+    --profile-federal-jail-icon-fill-opacity: 0.85;
+    --profile-travelling-icon-fill: #2b8dad;
+    --profile-travelling-icon-fill-opacity: 0.7;
+    --profile-npc-icon-fill: #d9a300;
+    --profile-npc-icon-fill-opacity: 0.8;
+
+    --profile-travelling-user-status-gradient: linear-gradient(to right, rgba(242,242,242,1) 0%,rgba(242,242,242,0) 100%);
+
+    --profile-tooltip-awards-title-bg-color: #cecece;
+    --profile-tooltip-awards-title-color: #ccc;
+    --profile-tooltip-awards-border-bottom-color: #ccc;
+    --profile-tooltip-awards-ui-content-border-bottom-color: #999;
+
+    --profile-buttons-clickable-disabled-opacity: 1;
+
+    --profile-dog-tags-competition-status-bg: url(/images/v2/dog_tags/main/competition_status_bg_light.jpg);
+    --profile-dog-tags-competition-status-score-bg: url(/images/v2/dog_tags/main/dog_tag_placeholder_light.svg);
+    --profile-dog-tags-competition-status-color: #333;
+    --profile-dog-tags-competition-status-zero-color: #ccc;
+    --profile-dog-tags-competition-status-text-shadow: none;
+    --profile-dog-tags-competition-status-msg-bg: rgba(255, 255, 255, .4);
+    --profile-dog-tags-competition-status-arrows: url(/images/v2/dog_tags/main/arrows_light.svg) no-repeat;
+
+    --profile-elimination-status-empty-logos: url("/images/v2/competition/elimination/banners/sigils/empty.png");
+    --profile-elimination-status-header-bar-befor: linear-gradient(to right, rgba(242,242,242,1) 0%,rgba(255,255,255,1) 50%,rgba(242,242,242,1) 100%);
+    --profile-elimination-status-header-bar-after: linear-gradient(to right, rgba(242,242,242,1) 0%,rgba(204,204,204,1) 50%,rgba(242,242,242,1) 100%);
+
+
+    --profile-rps-status-background-image: url(/images/v2/rps/rock_paper_scissors_bg_386px_light@2x.png);
+    --profile-rps-status-rock-image: url(/images/v2/rps/rock@2x.png);
+    --profile-rps-status-paper-image: url(/images/v2/rps/paper_light_v2@2x.png);
+    --profile-rps-status-scissors-image: url(/images/v2/rps/scissors_light_v2@2x.png);
+
+}
+
+@media screen and (-webkit-min-device-pixel-ratio:2){
+    :root{
+        --profile-rps-status-background-image: url(/images/v2/rps/rock_paper_scissors_bg_386px_light@2x.png);
+        --profile-rps-status-rock-image: url(/images/v2/rps/rock@2x.png);
+        --profile-rps-status-paper-image: url(/images/v2/rps/paper_light_v2@2x.png);
+        --profile-rps-status-scissors-image: url(/images/v2/rps/scissors_light_v2@2x.png);
+    }
+}
+
+@media screen and (-webkit-min-device-pixel-ratio:3){
+    :root{
+        --profile-rps-status-background-image: url(/images/v2/rps/rock_paper_scissors_bg_386px_light@3x.png);
+        --profile-rps-status-rock-image: url(/images/v2/rps/rock@3x.png);
+        --profile-rps-status-paper-image: url(/images/v2/rps/paper_light_v2@3x.png);
+        --profile-rps-status-scissors-image: url(/images/v2/rps/scissors_light_v2@3x.png);
+    }
+}
+
+@media screen and (-webkit-min-device-pixel-ratio:4){
+    :root{
+        --profile-rps-status-background-image: url(/images/v2/rps/rock_paper_scissors_bg_386px_light@4x.png);
+        --profile-rps-status-rock-image: url(/images/v2/rps/rock@4x.png);
+        --profile-rps-status-paper-image: url(/images/v2/rps/paper_light_v2@4x.png);
+        --profile-rps-status-scissors-image: url(/images/v2/rps/scissors_light_v2@4x.png);
+    }
+}
+
+@media screen and (max-width: 600px) {
+    :root .r .logged-out {
+        --profile-okay-bg-image: url(/images/v2/profile/user_status/320/main/light_mode/okay.jpg);
+        --profile-npc-bg-image: url(/images/v2/profile/user_status/320/main/light_mode/npc.jpg);
+        --profile-hospital-bg-image: url(/images/v2/profile/user_status/320/main/light_mode/hospital.jpg);
+        --profile-jail-bg-image: url(/images/v2/profile/user_status/320/main/light_mode/jail.jpg);
+        --profile-federal-jail-bg-image: url(/images/v2/profile/user_status/320/main/light_mode/federal_jail.jpg);
+        --profile-dead-bg-image: url(/images/v2/profile/user_status/320/main/light_mode/777.jpg);
+
+        --profile-awoken1-bg-image: url(/images/v2/profile/user_status/maol_status/light/320/1_awoken.png);
+        --profile-awoken2-bg-image: url(/images/v2/profile/user_status/maol_status/light/320/2_awoken.png);
+        --profile-dormant1-bg-image: url(/images/v2/profile/user_status/maol_status/light/320/1_dormant.png);
+        --profile-dormant2-bg-image: url(/images/v2/profile/user_status/maol_status/light/320/2_dormant.png);
+        --profile-dormant3-bg-image: url(/images/v2/profile/user_status/maol_status/light/320/3_dormant.png);
+        --profile-dormant4-bg-image: url(/images/v2/profile/user_status/maol_status/light/320/4_dormant.png);
+        --profile-dormant5-bg-image: url(/images/v2/profile/user_status/maol_status/light/320/5_dormant.png);
+
+        --profile-abroad-mexico-bg-image: url(/images/v2/profile/user_status/320/countries/light_mode/1_mexico.jpg);
+        --profile-abroad-canada-bg-image: url(/images/v2/profile/user_status/320/countries/light_mode/2_canada.jpg);
+        --profile-abroad-cayman-islands-bg-image: url(/images/v2/profile/user_status/320/countries/light_mode/3_cayman_islands.jpg);
+        --profile-abroad-hawaii-bg-image: url(/images/v2/profile/user_status/320/countries/light_mode/4_hawaii.jpg);
+        --profile-abroad-united-kingdom-bg-image: url(/images/v2/profile/user_status/320/countries/light_mode/5_uk.jpg);
+        --profile-abroad-switzerland-bg-image: url(/images/v2/profile/user_status/320/countries/light_mode/6_switzerland.jpg);
+        --profile-abroad-argentina-bg-image: url(/images/v2/profile/user_status/320/countries/light_mode/7_argentina.jpg);
+        --profile-abroad-japan-bg-image: url(/images/v2/profile/user_status/320/countries/light_mode/8_japan.jpg);
+        --profile-abroad-china-bg-image: url(/images/v2/profile/user_status/320/countries/light_mode/9_china.jpg);
+        --profile-abroad-uae-bg-image: url(/images/v2/profile/user_status/320/countries/light_mode/10_uae.jpg);
+        --profile-abroad-south-africa-bg-image: url(/images/v2/profile/user_status/320/countries/light_mode/11_south_africa.jpg);
+
+        --profile-travelling-hidden-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/12_traveling_status_hidden.jpg);
+        --profile-travelling-to-mexico-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/1_to_mexico.jpg);
+        --profile-travelling-from-mexico-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/1_from_mexico.jpg);
+        --profile-travelling-to-canada-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/2_to_canada.jpg);
+        --profile-travelling-from-canada-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/2_from_canada.jpg);
+        --profile-travelling-to-cayman-islands-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/3_to_cayman_islands.jpg);
+        --profile-travelling-from-cayman-islands-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/3_from_cayman_islands.jpg);
+        --profile-travelling-to-hawaii-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/4_to_hawaii.jpg);
+        --profile-travelling-from-hawaii-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/4_from_hawaii.jpg);
+        --profile-travelling-to-united-kingdom-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/5_to_uk.jpg);
+        --profile-travelling-from-united-kingdom-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/5_from_uk.jpg);
+        --profile-travelling-to-switzerland-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/6_to_switzerland.jpg);
+        --profile-travelling-from-switzerland-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/6_from_switzerland.jpg);
+        --profile-travelling-to-argentina-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/7_to_argentina.jpg);
+        --profile-travelling-from-argentina-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/7_from_argentina.jpg);
+        --profile-travelling-to-japan-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/8_to_japan.jpg);
+        --profile-travelling-from-japan-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/8_from_japan.jpg);
+        --profile-travelling-to-china-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/9_to_china.jpg);
+        --profile-travelling-from-china-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/9_from_china.jpg);
+        --profile-travelling-to-uae-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/10_to_uae.jpg);
+        --profile-travelling-from-uae-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/10_from_uae.jpg);
+        --profile-travelling-to-south-africa-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/11_to_south_africa.jpg);
+        --profile-travelling-from-south-africa-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/11_from_south_africa.jpg);
+        --profile-travelling-to-private-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/private_plane_to.jpg);
+        --profile-travelling-from-private-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/private_plane_from.jpg);
+        --profile-travelling-to-airstrip-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/airstrip_plane_to.jpg);
+        --profile-travelling-from-airstrip-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/airstrip_plane_from.jpg);
+
+        --profile-digits-blocks-bg-mobile: url(/images/v2/profile/svg/container_mobile.svg);
+        --profile-digits-blocks-height-mobile: 47px;
+        --profile-digits-blocks-zero-margin-mobile: 2px;
+        --profile-digits-zero: url(/images/v2/profile/neutral/320_0_placeholder_neutral.png);
+    }
+}
+
+@media screen and (max-width: 386px) {
+    :root .r {
+        --profile-okay-bg-image: url(/images/v2/profile/user_status/320/main/light_mode/okay.jpg);
+        --profile-npc-bg-image: url(/images/v2/profile/user_status/320/main/light_mode/npc.jpg);
+        --profile-hospital-bg-image: url(/images/v2/profile/user_status/320/main/light_mode/hospital.jpg);
+        --profile-jail-bg-image: url(/images/v2/profile/user_status/320/main/light_mode/jail.jpg);
+        --profile-federal-jail-bg-image: url(/images/v2/profile/user_status/320/main/light_mode/federal_jail.jpg);
+        --profile-dead-bg-image: url(/images/v2/profile/user_status/320/main/light_mode/777.jpg);
+
+        --profile-awoken1-bg-image: url(/images/v2/profile/user_status/maol_status/light/320/1_awoken.png);
+        --profile-awoken2-bg-image: url(/images/v2/profile/user_status/maol_status/light/320/2_awoken.png);
+        --profile-dormant1-bg-image: url(/images/v2/profile/user_status/maol_status/light/320/1_dormant.png);
+        --profile-dormant2-bg-image: url(/images/v2/profile/user_status/maol_status/light/320/2_dormant.png);
+        --profile-dormant3-bg-image: url(/images/v2/profile/user_status/maol_status/light/320/3_dormant.png);
+        --profile-dormant4-bg-image: url(/images/v2/profile/user_status/maol_status/light/320/4_dormant.png);
+        --profile-dormant5-bg-image: url(/images/v2/profile/user_status/maol_status/light/320/5_dormant.png);
+
+        --profile-abroad-mexico-bg-image: url(/images/v2/profile/user_status/320/countries/light_mode/1_mexico.jpg);
+        --profile-abroad-canada-bg-image: url(/images/v2/profile/user_status/320/countries/light_mode/2_canada.jpg);
+        --profile-abroad-cayman-islands-bg-image: url(/images/v2/profile/user_status/320/countries/light_mode/3_cayman_islands.jpg);
+        --profile-abroad-hawaii-bg-image: url(/images/v2/profile/user_status/320/countries/light_mode/4_hawaii.jpg);
+        --profile-abroad-united-kingdom-bg-image: url(/images/v2/profile/user_status/320/countries/light_mode/5_uk.jpg);
+        --profile-abroad-switzerland-bg-image: url(/images/v2/profile/user_status/320/countries/light_mode/6_switzerland.jpg);
+        --profile-abroad-argentina-bg-image: url(/images/v2/profile/user_status/320/countries/light_mode/7_argentina.jpg);
+        --profile-abroad-japan-bg-image: url(/images/v2/profile/user_status/320/countries/light_mode/8_japan.jpg);
+        --profile-abroad-china-bg-image: url(/images/v2/profile/user_status/320/countries/light_mode/9_china.jpg);
+        --profile-abroad-uae-bg-image: url(/images/v2/profile/user_status/320/countries/light_mode/10_uae.jpg);
+        --profile-abroad-south-africa-bg-image: url(/images/v2/profile/user_status/320/countries/light_mode/11_south_africa.jpg);
+
+        --profile-travelling-hidden-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/12_traveling_status_hidden.jpg);
+        --profile-travelling-to-mexico-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/1_to_mexico.jpg);
+        --profile-travelling-from-mexico-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/1_from_mexico.jpg);
+        --profile-travelling-to-canada-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/2_to_canada.jpg);
+        --profile-travelling-from-canada-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/2_from_canada.jpg);
+        --profile-travelling-to-cayman-islands-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/3_to_cayman_islands.jpg);
+        --profile-travelling-from-cayman-islands-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/3_from_cayman_islands.jpg);
+        --profile-travelling-to-hawaii-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/4_to_hawaii.jpg);
+        --profile-travelling-from-hawaii-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/4_from_hawaii.jpg);
+        --profile-travelling-to-united-kingdom-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/5_to_uk.jpg);
+        --profile-travelling-from-united-kingdom-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/5_from_uk.jpg);
+        --profile-travelling-to-switzerland-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/6_to_switzerland.jpg);
+        --profile-travelling-from-switzerland-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/6_from_switzerland.jpg);
+        --profile-travelling-to-argentina-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/7_to_argentina.jpg);
+        --profile-travelling-from-argentina-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/7_from_argentina.jpg);
+        --profile-travelling-to-japan-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/8_to_japan.jpg);
+        --profile-travelling-from-japan-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/8_from_japan.jpg);
+        --profile-travelling-to-china-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/9_to_china.jpg);
+        --profile-travelling-from-china-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/9_from_china.jpg);
+        --profile-travelling-to-uae-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/10_to_uae.jpg);
+        --profile-travelling-from-uae-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/10_from_uae.jpg);
+        --profile-travelling-to-south-africa-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/11_to_south_africa.jpg);
+        --profile-travelling-from-south-africa-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/11_from_south_africa.jpg);
+        --profile-travelling-to-private-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/private_plane_to.jpg);
+        --profile-travelling-from-private-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/private_plane_from.jpg);
+        --profile-travelling-to-airstrip-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/airstrip_plane_to.jpg);
+        --profile-travelling-from-airstrip-bg-image: url(/images/v2/profile/user_status/320/travelling/light_mode/airstrip_plane_from.jpg);
+
+        --profile-digits-blocks-bg-mobile: url(/images/v2/profile/svg/container_mobile.svg);
+        --profile-digits-blocks-height-mobile: 47px;
+        --profile-digits-blocks-zero-margin-mobile: 2px;
+        --profile-digits-zero: url(/images/v2/profile/neutral/320_0_placeholder_neutral.png);
+
+        --profile-rps-status-background-image: url(/images/v2/rps/rock_paper_scissors_bg_320px_light@2x.png);
+    }
+}
+
+/*@media screen and (max-width: 386px) and (-webkit-min-device-pixel-ratio:1){
+    :root .r{
+        --profile-rps-status-background-image: url(/images/v2/rps/rock_paper_scissors_bg_320px_light@2x.png);
+    }
+}*/
+
+@media screen and (max-width: 386px) and (-webkit-min-device-pixel-ratio:2){
+    :root .r{
+        --profile-rps-status-background-image: url(/images/v2/rps/rock_paper_scissors_bg_320px_light@2x.png);
+    }
+}
+
+@media screen and (max-width: 386px) and (-webkit-min-device-pixel-ratio:3){
+    :root .r{
+        --profile-rps-status-background-image: url(/images/v2/rps/rock_paper_scissors_bg_320px_light@3x.png);
+    }
+}
+
+@media screen and (max-width: 386px) and (-webkit-min-device-pixel-ratio:4){
+    :root .r{
+        --profile-rps-status-background-image: url(/images/v2/rps/rock_paper_scissors_bg_320px_light@4x.png);
+    }
+}

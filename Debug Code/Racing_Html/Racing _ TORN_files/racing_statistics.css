@@ -1,0 +1,354 @@
+.d .racing-main-wrap .statistics-wrap .cont-black10 {
+    border-top: 0;
+    padding: 0;
+}
+
+.d .racing-main-wrap .statistics-wrap .records-wrap .records > li .time {
+    color: #AAA;
+}
+
+.d .racing-main-wrap .statistics-wrap .track-wrap .name,
+.d .racing-main-wrap .statistics-wrap .records-wrap .tabs-title > li,
+.d .racing-main-wrap .statistics-wrap .track-wrap .placeholder {
+    width: 174px;
+    border-top: 1px solid #444;
+    border-right: 1px solid #000;
+    border-bottom: 1px solid #000;
+    padding: 11px 10px 10px 10px;
+}
+
+.d .racing-main-wrap .statistics-wrap .track-wrap .name {
+    padding: 0 10px 0 0;
+    width: 184px;
+    line-height: 33px;
+}
+
+.d .racing-main-wrap .statistics-wrap .track-info-wrap {
+    float: left;
+    border-right: 1px solid #444;
+    margin-right: 10px;
+    background: url(/images/v2/racing/stats_tab_middle.png) 0 0 repeat-x;
+}
+
+.d .racing-main-wrap .statistics-wrap .track-info-wrap .track-info {
+    height: 33px;
+    width: 37px;
+    border-right: 1px solid #000;
+}
+
+.d .racing-main-wrap .statistics-wrap .icon-track-info {
+    margin: 4px 10px 5px 10px;
+    float: left;
+    pointer-events: none;
+}
+
+.d .racing-main-wrap .statistics-wrap .track-wrap .name .track-length {
+    font-weight: normal;
+    display: none;
+}
+
+.d .racing-main-wrap .statistics-wrap .track-wrap .placeholder {
+    top: 0;
+    left: 0;
+    position: relative;
+    overflow: hidden;
+    width: 194px;
+    height: 158px;
+    padding: 0;
+}
+
+.d .racing-main-wrap .statistics-wrap .track-wrap .placeholder .img-track {
+    max-height: 194px;
+}
+
+.d .racing-main-wrap .statistics-wrap .track-wrap .view-track a,
+.d .racing-main-wrap .statistics-wrap .track-wrap .view-records a {
+    vertical-align: middle;
+}
+
+.d .racing-main-wrap .statistics-wrap .track-wrap .view-track .icon-track {
+    background: url(/images/v2/racing/view_track.svg) 0 0 no-repeat;
+    filter: drop-shadow(0px 0px 1px #11111194);
+    height: 11px;
+    width: 19px;
+}
+
+.d .racing-main-wrap .statistics-wrap .track-wrap .view-track a:hover .icon-track {
+    background-position: 0 -11px;
+}
+
+.d .racing-main-wrap .statistics-wrap .track-wrap .view-records .icon-records {
+    background: url(/images/v2/racing/view_records.svg) 0 0 no-repeat;
+    filter: drop-shadow(0px 0px 1px #11111194);
+    height: 19px;
+    width: 17px;
+}
+
+.d .racing-main-wrap .statistics-wrap .track-wrap .view-records a:hover .icon-records {
+    background-position: 0 -19px;
+}
+
+.d .racing-main-wrap .statistics-wrap .track-wrap .icon-track,
+.d .racing-main-wrap .statistics-wrap .track-wrap .icon-records {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.d .racing-main-wrap .statistics-wrap .track-wrap .view-track,
+.d .racing-main-wrap .statistics-wrap .track-wrap .view-records {
+    display: none;
+    float: right;
+    margin-top: -2px;
+}
+
+.d .racing-main-wrap .statistics-wrap .records-wrap .tabs-title > li {
+    border-left: 1px solid #444;
+    float: left;
+}
+
+.d .racing-main-wrap .statistics-wrap .records-wrap .tabs-title > li a {
+    color: #FFF;
+    cursor: text;
+}
+
+.d .racing-main-wrap .statistics-wrap .records-wrap .tabs-title > li.last {
+    width: 174px;
+    border-right: 0;
+}
+
+.d .racing-main-wrap .statistics-wrap .records-wrap .tabs-title > li.clear,
+.d .racing-main-wrap .statistics-wrap .records-wrap .records > li .clear {
+    padding: 0;
+    margin: 0;
+    font-size: 0;
+    height: 0;
+    border: 0;
+    width: 0;
+    line-height: 0;
+    float: none;
+}
+
+.d .racing-main-wrap .statistics-wrap .records-wrap .records > li {
+    width: 184px;
+    border-width: 1px;
+    border-style: solid;
+    border-color: #444 #000 #000 #444;
+    padding: 0 5px;
+    overflow: hidden;
+}
+
+.d .racing-main-wrap .statistics-wrap .records-wrap ul:last-of-type li {
+    border-right: none;
+}
+
+.d .racing-main-wrap .statistics-wrap .records-wrap .records.last > li {
+    width: 184px;
+}
+
+.d .racing-main-wrap .statistics-wrap .records-wrap .records > li .car,
+.d .racing-main-wrap .statistics-wrap .records-wrap .records > li .time,
+.d .racing-main-wrap .statistics-wrap .records-wrap .records > li .driver {
+    float: left;
+    padding-right: 5px;
+    line-height: 30px;
+    height: 30px;
+}
+
+.d .racing-main-wrap .statistics-wrap .records-wrap .records > li .driver {
+    width: 82px;
+}
+
+.d .racing-main-wrap .statistics-wrap .records-wrap .records > li .car img,
+.d .racing-main-wrap .statistics-wrap .records-wrap .records > li .car canvas.torn-item {
+    vertical-align: middle;
+}
+
+.d .racing-main-wrap .statistics-wrap .records-wrap .records.last > li {
+    border-right-color: transparent;
+}
+
+.d .racing-main-wrap .statistics-wrap .item-wrap .black-separator {
+    height: 8px;
+    background-color: #202020;
+    border-top: 1px solid #444;
+    border-bottom: 1px solid #000;
+}
+
+.d .racing-main-wrap .statistics-wrap .item-wrap.last .black-separator {
+    background-color: #333;
+    border-bottom: 0;
+    border-radius: 0 0 5px 5px;
+}
+
+.d .racing-main-wrap .statistics-wrap .m-hide {
+    display: inline;
+}
+
+@media screen and (max-width: 784px) {
+    .r .racing-main-wrap .statistics-wrap .track-wrap {
+        float: none;
+    }
+
+    .r .racing-main-wrap .statistics-wrap .track-wrap .name {
+        width: 366px;
+        border-right: 0;
+    }
+
+    .r .racing-main-wrap .statistics-wrap .track-wrap .placeholder {
+        height: 245px;
+        width: 386px;
+        border-right: 0;
+        display: none;
+    }
+
+    .r .racing-main-wrap .statistics-wrap .track-wrap .placeholder .img-track {
+        max-height: 245px;
+    }
+
+    .r .racing-main-wrap .statistics-wrap .track-wrap .placeholder .img-track {
+        margin-left: -67px;
+    }
+
+    .r .racing-main-wrap .statistics-wrap .track-wrap .placeholder.offset .img-track {
+        margin-left: -134px;
+    }
+
+    .r .racing-main-wrap .statistics-wrap .track-wrap .view-track {
+        display: block;
+    }
+
+    .r .racing-main-wrap .statistics-wrap .records-wrap .tabs-title > li,
+    .r .racing-main-wrap .statistics-wrap .records-wrap .tabs-title > li.last {
+        width: 128px;
+        padding-right: 5px;
+        padding-left: 5px;
+        text-align: center;
+        box-sizing: border-box;
+    }
+
+    .r .racing-main-wrap .statistics-wrap .records-wrap .tabs-title > li a {
+        cursor: pointer;
+    }
+
+    .r .racing-main-wrap .statistics-wrap .records-wrap .records > li,
+    .r .racing-main-wrap .statistics-wrap .records-wrap .records > li.last,
+    .r .racing-main-wrap .statistics-wrap .records-wrap .records.last > li {
+        width: 376px;
+        border-right: 0;
+        border-left: 0;
+    }
+
+    .r .racing-main-wrap .statistics-wrap .records-wrap .records > li .car,
+    .r .racing-main-wrap .statistics-wrap .records-wrap .records > li .time,
+    .r .racing-main-wrap .statistics-wrap .records-wrap .records > li .driver {
+        padding: 0 10px;
+        border-right: 1px solid #000;
+        border-left: 1px solid #444;
+        height: 32px;
+    }
+
+    .r .racing-main-wrap .statistics-wrap .records-wrap .records > li .car {
+        padding-left: 5px;
+        border-left: 0;
+        width: 34px;
+    }
+
+    .r .racing-main-wrap .statistics-wrap .records-wrap .records > li .time {
+        width: 52px;
+        text-align: center;
+    }
+
+    .r .racing-main-wrap .statistics-wrap .records-wrap .records > li .driver {
+        border-right: 0;
+        width: 234px;
+        padding-right: 5px;
+    }
+
+    .r .racing-main-wrap .statistics-wrap .records-wrap .tabs-title > li {
+        background: url(/images/v2/racing/stats_tab_middle.png) 0 -34px repeat-x;
+        position: relative;
+        top: 0;
+        left: 0;
+    }
+
+    .r .racing-main-wrap .statistics-wrap .records-wrap .tabs-title > li.ui-tabs-active.ui-state-active .shadow-left,
+    .r .racing-main-wrap .statistics-wrap .records-wrap .tabs-title > li.ui-tabs-active.ui-state-active .shadow-right {
+        background: url(/images/v2/racing/stats_tab_ends.png) 0 0 no-repeat;
+        top: 0;
+        width: 4px;
+        height: 34px;
+        position: absolute;
+    }
+
+    .r .racing-main-wrap .statistics-wrap .records-wrap .tabs-title > li.ui-tabs-active.ui-state-active .shadow-left {
+        left: -4px;
+
+    }
+
+    .r .racing-main-wrap .statistics-wrap .records-wrap .tabs-title > li.ui-tabs-active.ui-state-active .shadow-right {
+        right: -4px;
+        background-position: -4px 0;
+    }
+
+    .r .racing-main-wrap .statistics-wrap .m-hide {
+        display: inline;
+    }
+
+    .r .racing-main-wrap .statistics-wrap .records-wrap .tabs-title > li.ui-tabs-active.ui-state-active {
+        background-position: 0 0;
+        z-index: 10;
+    }
+
+    .r .racing-main-wrap .statistics-wrap .track-wrap .name {
+        padding: 11px 10px 10px 10px;
+        line-height: 14px;
+    }
+
+    .r .racing-main-wrap .statistics-wrap .track-wrap .name .track-length {
+        display: inline;
+    }
+
+}
+
+
+@media screen and (max-width: 386px) {
+
+    .r .racing-main-wrap .statistics-wrap .track-wrap .name {
+        width: 300px;
+    }
+
+    .r .racing-main-wrap .statistics-wrap .records-wrap .records > li,
+    .r .racing-main-wrap .statistics-wrap .records-wrap .records > li.last,
+    .r .racing-main-wrap .statistics-wrap .records-wrap .records.last > li {
+        width: 310px;
+    }
+
+    .r .racing-main-wrap .statistics-wrap .records-wrap .records > li .driver {
+        width: 168px;
+    }
+
+    .r .racing-main-wrap .statistics-wrap .track-wrap .placeholder {
+        height: 245px;
+        width: 320px;
+    }
+
+    .r .racing-main-wrap .statistics-wrap .track-wrap .placeholder .img-track {
+        margin-left: -100px;
+    }
+
+    .r .racing-main-wrap .statistics-wrap .track-wrap .placeholder.offset .img-track {
+        margin-left: -200px;
+    }
+
+    .r .racing-main-wrap .statistics-wrap .m-hide {
+        display: none;
+    }
+
+    .r .racing-main-wrap .statistics-wrap .records-wrap .tabs-title > li,
+    .r .racing-main-wrap .statistics-wrap .records-wrap .tabs-title > li.last {
+        width: 106px;
+        padding-left: 2px;
+        padding-right: 2px;
+    }
+
+}

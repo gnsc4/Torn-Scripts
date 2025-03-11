@@ -1,0 +1,229 @@
+function getCentrifugeCredentials() {
+  return new Promise(function (resolve) {
+    $(resolve)
+  }).then(function () {
+    var websocketConnectionDataElement = document.getElementById('websocketConnectionData');
+    if (websocketConnectionDataElement) {
+      var credentials = JSON.parse(websocketConnectionDataElement.innerText);
+      return credentials;
+    } else {
+      return new Promise(function (resolve) {
+        getAction({
+          type: 'post',
+          action: '/websocket.php',
+          data: { q: 'initWebsocketConnection' },
+          success: resolve,
+        });
+      });
+    }
+  })
+}
+
+function CoreWebsocketHandler(options) {
+  var self = this;
+  this.actions = {};
+  this.namespaces = {};
+  this.messageData = {};
+  this.options = options;
+  this.credentials = null;
+  this.eventListeners = [];
+  this.centrifuge = null;
+  this.readyHandlers = [];
+
+  this.init = function () {
+    (self.credentials ? Promise.resolve(self.credentials) : getCentrifugeCredentials())
+      .then(function (credentials) {
+        self.credentials = credentials
+        self.subscribe(credentials)
+      })
+  }
+
+  this.subscribe = function (credentials) {
+    if (!credentials || !credentials.url || !credentials.userID || !credentials.token) {
+      return false;
+    }
+
+    self.centrifuge = new Centrifuge(credentials.url + "/connection/websocket");
+    self.readyHandlers.forEach((cb) => {
+      cb(self.centrifuge);
+    });
+
+    self.centrifuge.setToken(credentials.token);
+
+    var channel = (self.options && self.options.channel) ? self.options.channel : credentials.channel
+
+    self.centrifuge.subscribe(channel, self.handleChannelResponse);
+
+    self.centrifuge.connect();
+  }
+
+  this.handleChannelResponse = function (resp) {
+    var data = resp.data.message;
+    if (!data) {
+      return false;
+    }
+
+    self.setMessageData(data);
+    self.checkAndRunActions();
+  }
+
+  this.checkAndRunActions = function () {
+    var data = self.getMessageData();
+    if (data.namespaces) {
+      self.runMultipleActions()
+    }
+    else if (data.namespace && self.namespaces[data.namespace] && self.namespaces[data.namespace][data.action]) {
+      self.namespaces[data.namespace][data.action](data);
+    }
+    else if (self.actions[data.action]) {
+      self.actions[data.action](data);
+    }
+    else {
+      console.warn && console.warn("Undefined action '" + data.action + "' in WebsocketHandler");
+    }
+
+    self.unsetMessageData();
+  }
+
+  this.runMultipleActions = function () {
+    var data = self.getMessageData();
+    var namespaces = data.namespaces;
+    if (!namespaces) {
+      return false;
+    }
+
+    for (var namespaceKey in namespaces) {
+      var namespace = namespaces[namespaceKey];
+
+      for (var actionKey in namespace.actions) {
+        var actionData = namespace.actions[actionKey];
+
+        if (self.namespaces[namespaceKey] && self.namespaces[namespaceKey][actionKey]) {
+          self.namespaces[namespaceKey][actionKey](actionData);
+        }
+
+        self.triggerEventListeners(namespaceKey, actionKey, actionData);
+      }
+    }
+  }
+
+  this.getMessageData = function () {
+    return self.messageData;
+  }
+
+  this.setMessageData = function (data) {
+    self.messageData = data;
+  }
+
+  this.unsetMessageData = function () {
+    self.messageData = {};
+  }
+
+  this.getCredentials = function () {
+    return self.credentials;
+  }
+
+  this.addEventListener = function (namespace, action, callback) {
+    self.eventListeners.push({
+      namespace: namespace,
+      action: action,
+      callback: callback
+    })
+  }
+
+  this.removeEventListener = function (namespace, action, callback) {
+    self.eventListeners = self.eventListeners.filter(function (listener) {
+      return listener.namespace !== namespace || listener.action !== action || listener.callback !== callback
+    });
+  }
+
+  this.triggerEventListeners = function (namespace, action, data) {
+    self.eventListeners.map(function (listener) {
+      if (listener.namespace === namespace && listener.action === action && typeof listener.callback === 'function') {
+        listener.callback(data);
+      }
+    });
+  }
+
+  this.setCentrifugeReadyHandler = function (cb) {
+    if (this.centrifuge) {
+      cb(this.centrifuge);
+    } else {
+      this.readyHandlers.push(cb);
+    }
+  }
+
+  this.init();
+}
+
+var commonCoreWebsocketHandler = new CoreWebsocketHandler();
+
+/**
+ *  @name WebsocketHandler
+ *  @author Torn's Devs, 3p-sviat
+ *  @version 1.0.1
+ *  @description main Torn's WebSocket core. Builded on top of the Centrifuge library to be able for connect throw GO-based service to PHP server.
+ *
+ *  @param {string} namespace - alias of the current running websocket.
+ *  @param {object} options - some extra configuration object.
+ *  @param {string} options.channel - explicetly set channel for websockets running throw some particular endpoint.
+ *  @param {string} options.subscribedHandler - function which will be called once centrifuge instance is ready.
+ *
+ *  @return {object} - WebSocket data config.
+ *
+ *  @copyright Copyright (c) Torn, LTD.
+ */
+function WebsocketHandler(namespace, options) {
+  const handler = (options && options.channel) ? new CoreWebsocketHandler({channel: options.channel}) : commonCoreWebsocketHandler;
+
+  if (options && options.subscribedHandler) {
+    handler.setCentrifugeReadyHandler(options.subscribedHandler);
+  }
+
+  var self = this;
+  this.namespace = namespace || 'default';
+  this.namespaces = handler.namespaces;
+  this.namespaces[this.namespace] = {};
+  this.actions = handler.actions;
+
+  /**
+   * Subscriber on websockets emits for any callbacks.
+   * @name WebsocketHandler#setActions
+   * @function
+   *
+   * @param {object} actions - an object with callbacks to subscribe.
+   * @param {object} actions.name - particular function for subscribtion.
+   *
+   * @readonly
+   */
+  this.setActions = function (actions) {
+    for (var name in actions) {
+      self.namespaces[self.namespace][name] = actions[name];
+    }
+  }
+
+  this.removeActions = function (actions) {
+    for (var name of actions) {
+      self.namespaces[self.namespace][name] = function() {};
+    }
+  }
+
+  /**
+   * Returns an object with current user credential data.
+   * @name WebsocketHandler#getCredentials
+   * @function
+   *
+   * @return {object} - an object with credentials.
+   */
+  this.getCredentials = function () {
+    return commonCoreWebsocketHandler.getCredentials();
+  }
+}
+
+WebsocketHandler.addEventListener = function (namespace, action, callback) {
+  commonCoreWebsocketHandler.addEventListener(namespace, action, callback);
+};
+
+WebsocketHandler.removeEventListener = function (namespace, action, callback) {
+  commonCoreWebsocketHandler.removeEventListener(namespace, action, callback);
+};

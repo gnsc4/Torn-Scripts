@@ -1,0 +1,859 @@
+.d .racing-main-wrap .pm-categories-wrap .cont-black10,
+.d .racing-main-wrap .pm-categories-wrap .cont-black {
+    border-top: 0;
+}
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories {
+    width: 100%;
+}
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories > li {
+    border-width: 1px;
+    border-style: solid;
+    border-color: #444 #000 #000 #444;
+    float: left;
+    width: 157px;
+    height: 123px;
+    position: relative;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories > li.fuel,
+.d .racing-main-wrap .pm-categories-wrap .pm-categories > li.wheels {
+    width: 156px;
+}
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories > li.empty {
+    display: none;
+}
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories > li.safety,
+.d .racing-main-wrap .pm-categories-wrap .pm-categories > li.safety .icons,
+.d .racing-main-wrap .pm-categories-wrap .pm-categories > li.safety .bg-selected {
+    border-bottom: 0;
+    border-bottom-left-radius: 5px;
+}
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories > li.safety ~ li {
+    border-bottom: 0;
+}
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories > li.wheels,
+.d .racing-main-wrap .pm-categories-wrap .pm-categories > li.wheels .icons,
+.d .racing-main-wrap .pm-categories-wrap .pm-categories > li.wheels .bg-selected {
+    border-bottom-right-radius: 5px;
+}
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories > li.wheels,
+.d .racing-main-wrap .pm-categories-wrap .pm-categories > li.fuel {
+    border-right: 0;
+}
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories > li.aerodynamics,
+.d .racing-main-wrap .pm-categories-wrap .pm-categories > li.safety {
+    border-left: 0;
+}
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories > li.aerodynamics .t-delimiter,
+.d .racing-main-wrap .pm-categories-wrap .pm-categories > li.aerodynamics .b-delimiter {
+    display: none;
+}
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories > li.safety .t-delimiter,
+.d .racing-main-wrap .pm-categories-wrap .pm-categories > li.safety .b-delimiter {
+    display: none;
+}
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories > li .title {
+    height: 28px;
+    border-bottom: 1px solid #000;
+    text-align: center;
+    line-height: 30px;
+    color: #FFF;
+}
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories > li.active .bg-selected,
+.d .racing-main-wrap .pm-categories-wrap .pm-categories > li.active .title {
+    width: 100%;
+    background: url(/images/v2/racing/selected_section.png) 0 0 repeat;
+}
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories > li .bg-hover {
+    width: 155px;
+    height: 90px;
+}
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories .icon {
+    height: 90px;
+    width: 60px;
+    margin: 0 auto;
+}
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories .aerodynamics .icon {
+    background-position: -180px center;
+}
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories .brakes .icon {
+    background-position: -180px center;
+}
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories .engine .icon {
+    background-position: -298px center;
+}
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories .exhaust .icon {
+    background-position: -58px center;
+}
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories .fuel .icon {
+    background-position: 0 center;
+}
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories .safety .icon {
+    background-position: -180px center;
+}
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories .suspension .icon {
+    background-position: 0 center;
+}
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories .transmission .icon {
+    background-position: 0 center;
+}
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories .reduction .icon {
+    background-position: 0 center;
+}
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories .wheels .icon {
+    background-position: 0 center;
+}
+
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories > li:hover .bg-hover {
+    background: url(/images/v2/racing/selected_category_classA.png) no-repeat;
+}
+
+.d .racing-main-wrap.class-B .pm-categories-wrap .pm-categories > li:hover .bg-hover {
+    background: url(/images/v2/racing/selected_category_classB.png) no-repeat;
+}
+
+.d .racing-main-wrap.class-C .pm-categories-wrap .pm-categories > li:hover .bg-hover {
+    background: url(/images/v2/racing/selected_category_classC.png) no-repeat;
+}
+
+.d .racing-main-wrap.class-D .pm-categories-wrap .pm-categories > li:hover .bg-hover {
+    background: url(/images/v2/racing/selected_category_classD.png) no-repeat;
+}
+
+.d .racing-main-wrap.class-E .pm-categories-wrap .pm-categories > li:hover .bg-hover {
+    background: url(/images/v2/racing/selected_category_classE.png) no-repeat;
+}
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories > li:hover .icons .bg-hover {
+    background-position: 28px 0;
+}
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories > li.clear,
+.d .racing-main-wrap .pm-items-wrap .pm-items > li.clear {
+    padding: 0;
+    margin: 0;
+    font-size: 0;
+    height: 0;
+    border: 0;
+    width: 0;
+    line-height: 0;
+    float: none;
+}
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories > li a.link {
+    display: block;
+    text-decoration: none;
+    color: #00BFFF;
+    width: 100%;
+    height: auto;
+}
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories .icons {
+    background: url(/images/v2/racing/header/stripy_bg.png) 0 0 repeat;
+    border-top: 1px solid #444;
+    height: 90px;
+    width: 100%;
+}
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories .t-delimiter,
+.d .racing-main-wrap .pm-categories-wrap .pm-categories .b-delimiter {
+    height: 60px;
+}
+
+.d .racing-main-wrap .pm-categories-wrap .pm-categories .t-delimiter {
+    top: 0;
+}
+
+.d .racing-main-wrap .pm-items-wrap .cont-black10,
+.d .racing-main-wrap .pm-items-wrap .cont-black {
+    border-top: 0;
+    overflow: hidden;
+}
+
+.d .racing-main-wrap .pm-items-wrap .title-black {
+    border-bottom: 0;
+}
+
+.d .racing-main-wrap .pm-items-wrap .d-wrap {
+    overflow: hidden;
+    position: relative;
+    top: 0;
+    left: 0;
+}
+
+.d .racing-main-wrap .pm-items-wrap .pm-items {
+    float: left;
+    border-top: 1px solid #000;
+}
+
+.d .racing-main-wrap .pm-items-wrap .pm-items > li {
+    width: 193px;
+    float: left;
+    padding-bottom: 20000px;
+    margin-bottom: -20000px;
+    border-left: 1px solid #444;
+    border-right: 1px solid #000;
+}
+
+.d .racing-main-wrap .pm-items-wrap .pm-items .properties-wrap {
+    font-size: 0;
+    border-top: 1px solid #444;
+    padding-bottom: 35px;
+}
+
+.d .racing-main-wrap .pm-items-wrap .t-row-empty .pm-items .properties-wrap {
+    border-top: 0;
+}
+
+.d .racing-main-wrap .pm-items-wrap .pm-items .properties-wrap > li .name,
+.d .racing-main-wrap .pm-items-wrap .pm-items .properties-wrap > li .progress-bar {
+    font-size: 12px;
+    width: 85px;
+    height: 15px;
+    padding: 0 5px;
+    display: inline-block;
+}
+
+.d .racing-main-wrap .pm-items-wrap .pm-items .properties-wrap > li:first-child .name,
+.d .racing-main-wrap .pm-items-wrap .pm-items .properties-wrap > li:first-child .progress-bar {
+    padding-top: 5px;
+    padding-bottom: 20000px;
+    margin-bottom: -20000px;
+}
+
+.d .racing-main-wrap .pm-items-wrap .pm-items .properties-wrap > li .name {
+    text-align: right;
+    line-height: 17px;
+    vertical-align: middle;
+    border-right: 1px solid #000;
+}
+
+.d .racing-main-wrap .pm-items-wrap .pm-items .properties-wrap > li .progress-bar {
+    vertical-align: middle;
+    border-left: 1px solid #444;
+}
+
+.d .racing-main-wrap .pm-items-wrap .pm-items .status {
+    height: 4px;
+    background: url(/images/v2/racing/parts_locked.png) 0 0 repeat;
+    border-top: 1px solid #444;
+    border-bottom: 1px solid #000;
+}
+
+.d .racing-main-wrap .pm-items-wrap .pm-items .bought .status {
+    background: url(/images/v2/racing/parts_bought.png) 0 0 repeat;
+}
+
+.d .racing-main-wrap .pm-items-wrap .pm-items .bought .title,
+.d .racing-main-wrap .pm-items-wrap .pm-items .bought .properties-wrap > li:first-child .name,
+.d .racing-main-wrap .pm-items-wrap .pm-items .bought .properties-wrap > li:first-child .progress-bar {
+    background: rgba(133, 178, 0, 0.07);
+}
+
+.d .racing-main-wrap .pm-items-wrap .pm-items .active .status {
+    background: url(/images/v2/racing/parts_active.png) 0 0 repeat;
+}
+
+.d .racing-main-wrap .pm-items-wrap .pm-items .active .title,
+.d .racing-main-wrap .pm-items-wrap .pm-items .active .properties-wrap > li .name,
+.d .racing-main-wrap .pm-items-wrap .pm-items .active .properties-wrap > li .progress-bar {
+    background: rgba(0, 191, 255, 0.07);
+}
+
+.d .racing-main-wrap .pm-items-wrap .pm-items .be-replaced .status {
+    background: url(/images/v2/racing/parts_to_be_replaced.png) 0 0 repeat;
+}
+
+.d .racing-main-wrap .pm-items-wrap .pm-items .be-replaced .title,
+.d .racing-main-wrap .pm-items-wrap .pm-items .be-replaced .properties-wrap > li:first-child .name,
+.d .racing-main-wrap .pm-items-wrap .pm-items .be-replaced .properties-wrap > li:first-child .progress-bar {
+    background: url(/images/v2/racing/parts_to_be_replaced_main.png) 0 0 repeat;
+}
+
+
+.d .racing-main-wrap .pm-items-wrap .pm-items .properties-wrap > li.last {
+    display: none
+}
+
+.d .racing-main-wrap .pm-items-wrap .pm-items .bg-wrap .part-wrap {
+    position: relative;
+    top: 0;
+    left: 0;
+    width: 100%;
+    border-top: 1px solid #444;
+    border-bottom: 1px solid #000;
+}
+
+.d .racing-main-wrap .pm-items-wrap .pm-items .title {
+    height: 28px;
+    border-top: 1px solid #444;
+    border-bottom: 1px solid #000;
+    padding: 0 5px;
+    text-align: left;
+    line-height: 30px;
+}
+
+.d .racing-main-wrap .pm-items-wrap .pm-items > li .b-delimiter {
+    height: 30px;
+    left: 97px;
+}
+
+.d .racing-main-wrap .pm-items-wrap .pm-items + .pm-items > li .b-delimiter {
+    height: 30px;
+    left: 489px;
+}
+
+.d .racing-main-wrap .pm-items-wrap .pm-items > li + li .b-delimiter {
+    height: 30px;
+    left: 293px;
+}
+
+.d .racing-main-wrap .pm-items-wrap .pm-items + .pm-items > li + li .b-delimiter {
+    height: 30px;
+    left: 685px;
+}
+
+.d .racing-main-wrap .pm-items-wrap .pm-items .bg-wrap {
+    background: url(/images/v2/racing/header/stripy_bg.png) 0 0 repeat;
+}
+
+.d .racing-main-wrap .pm-items-wrap .unlock .icon,
+.d .racing-main-wrap .pm-items-wrap .icon {
+    width: 50px;
+    margin: 5px 10px;
+    height: 50px;
+    vertical-align: middle;
+    display: inline-block;
+}
+
+.d .racing-main-wrap .pm-items-wrap .unlock .icon {
+    padding: 5px;
+    margin: 0 5px;
+}
+
+.d .racing-main-wrap .pm-items-wrap .desc,
+.d .racing-main-wrap .pm-items-wrap .info {
+    width: 117px;
+    line-height: 14px;
+    vertical-align: middle;
+    display: inline-block;
+}
+
+.d .racing-main-wrap .pm-items-wrap .pm-items .bought .desc {
+    color: #769D00;
+}
+
+.d .racing-main-wrap .pm-items-wrap .title,
+.d .racing-main-wrap .pm-items-wrap .info,
+.d .racing-main-wrap .pm-items-wrap .desc {
+    color: #999999;
+	color: var(--default-gray-9-color);
+}
+
+.d .racing-main-wrap .pm-items-wrap .unlock .title,
+.d .racing-main-wrap .pm-items-wrap .unlock .info,
+.d .racing-main-wrap .pm-items-wrap .unlock .desc {
+    color: #FFF;
+}
+
+.d .racing-main-wrap .pm-items-wrap .icon-buy {
+    display: inline-block;
+    background: url(/images/v2/racing/buy_parts.png) 0 0 no-repeat;
+    vertical-align: middle;
+    height: 18px;
+    width: 18px;
+}
+
+.d .racing-main-wrap .pm-items-wrap .buy-link {
+    display: inline-block;
+}
+
+.d .racing-main-wrap .pm-items-wrap .buy-link:hover .icon-buy {
+    background-position: 0 -17px;
+}
+
+.d .racing-main-wrap .pm-items-wrap .d-wrap ul + ul > li + li {
+    border-right: 0;
+    width: 195px;
+}
+
+.d .racing-main-wrap .pm-items-wrap .d-wrap.d-row-empty .part-wrap {
+    border-bottom: 0;
+}
+
+.d .racing-main-wrap .pm-items-wrap .part-wrap .l-delimiter,
+.d .racing-main-wrap .pm-items-wrap .part-wrap .r-delimiter {
+    position: absolute;
+    bottom: -2px;
+    height: 4px;
+    width: 96px;
+    z-index: 1;
+}
+
+.d .racing-main-wrap .pm-items-wrap .icon-wrap {
+    display: inline-block;
+}
+
+.d .racing-main-wrap .pm-items-wrap .messages-box {
+    background-color: #202020;
+    overflow: hidden;
+    padding-bottom: 20000px;
+    margin-bottom: -20000px;
+    display: none;
+}
+
+.d .racing-main-wrap .pm-items-wrap .messages-box .buy-box,
+.d .racing-main-wrap .pm-items-wrap .messages-box .no-points-box,
+.d .racing-main-wrap .pm-items-wrap .messages-box .cost-box {
+    border-top: 1px solid #444;
+    padding: 10px;
+    line-height: 14px;
+    text-align: center;
+    display: none;
+}
+
+.d .racing-main-wrap .pm-items-wrap .messages-box .cancel {
+    cursor: pointer;
+}
+
+.d .racing-main-wrap .pm-items-wrap .messages-box .link-wrap {
+    padding-top: 10px;
+}
+
+.d .racing-main-wrap .pm-items-wrap .messages-box .link-wrap .cancel {
+    padding-left: 10px;
+}
+
+@media screen and (max-width: 784px) {
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.empty {
+        display: block;
+    }
+
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.empty .icons,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.empty ~ li .icons {
+        background-image: none;
+    }
+
+    .r .racing-main-wrap .pm-categories-wrap .cont-black .pm-categories > li,
+    .r .racing-main-wrap .pm-categories-wrap .cont-black .pm-categories > li .bg-hover {
+        width: 127px;
+    }
+
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li:hover .icons .bg-hover {
+        background-position: 18px 0;
+    }
+
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.wheels,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.fuel {
+        border-right: 1px solid #000;
+    }
+
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.safety,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.reduction,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.engine {
+        width: 132px;
+        border-right: 0;
+        border-left: 1px solid #444;
+        border-bottom: 1px solid #000;
+    }
+
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.exhaust,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.suspension,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.wheels {
+        border-left: 0;
+    }
+
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.empty + li {
+        border-right: 0;
+    }
+
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.safety,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.safety .icons,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.safety .bg-selected {
+        border-radius: 0;
+    }
+
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.wheels,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.wheels .icons,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.wheels .bg-selected {
+        border-bottom-right-radius: 0;
+        border-bottom-left-radius: 5px;
+    }
+
+
+    .r .racing-main-wrap .pm-categories-wrap .cont-black .pm-categories > li .t-delimiter,
+    .r .racing-main-wrap .pm-categories-wrap .cont-black .pm-categories > li .b-delimiter {
+        display: block;
+    }
+
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.aerodynamics .t-delimiter,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.aerodynamics .b-delimiter,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.exhaust .t-delimiter,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.exhaust .b-delimiter,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.suspension .t-delimiter,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.suspension .b-delimiter,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.wheels .t-delimiter,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.wheels .b-delimiter {
+        display: none;
+    }
+
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.safety ~ li {
+        border-bottom: 1px solid #000;
+    }
+
+    .r .racing-main-wrap .pm-categories-wrap .cont-black .pm-categories > li.wheels,
+    .r .racing-main-wrap .pm-categories-wrap .cont-black .pm-categories > li.wheels ~ li {
+        border-bottom: 0;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .d-wrap .pm-items {
+        overflow: hidden;
+        position: relative;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .d-wrap ul + ul > li + li,
+    .r .racing-main-wrap .pm-items-wrap .pm-items > li {
+        width: 191px;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .pm-items .properties-wrap > li .name {
+        width: 70px;
+        padding: 0 10px;
+    }
+
+
+    .r .racing-main-wrap .pm-items-wrap .pm-items .properties-wrap > li .progress-bar {
+        width: 98px;
+        padding: 0;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .pm-items > li .b-delimiter,
+    .r .racing-main-wrap .pm-items-wrap .pm-items + .pm-items > li .b-delimiter {
+        left: 90px;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .pm-items > li + li .b-delimiter,
+    .r .racing-main-wrap .pm-items-wrap .pm-items + .pm-items > li + li .b-delimiter {
+        left: 284px;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .pm-items .properties-wrap > li:first-child .name,
+    .r .racing-main-wrap .pm-items-wrap .pm-items .properties-wrap > li:first-child .progress-bar {
+        padding-top: 10px;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .pm-items .properties-wrap > li .name {
+        line-height: 7px;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .pm-items > li {
+        border-left: 0;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .pm-items > li + li {
+        border-left: 1px solid #444;
+        border-right: 0;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .d-wrap.d-row-empty .part-wrap {
+        border-bottom: 1px solid #000;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .d-wrap.d-row-empty.t-row-empty .part-wrap {
+        border-bottom: 0;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .t-row-empty .l-delimiter,
+    .r .racing-main-wrap .pm-items-wrap .t-row-empty .r-delimiter,
+    .r .racing-main-wrap .pm-items-wrap .t-row-empty .properties-wrap {
+        display: none;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .tt-hide {
+        display: none;
+    }
+
+
+}
+
+
+@media screen and (max-width: 386px) {
+
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.empty {
+        display: none;
+    }
+
+    .r .racing-main-wrap .pm-categories-wrap .cont-black .pm-categories > li,
+    .r .racing-main-wrap .pm-categories-wrap .cont-black .pm-categories > li .bg-hover {
+        width: 159px;
+    }
+
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li:hover .icons .bg-hover {
+        background-position: 31px 0;
+    }
+
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.engine,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.reduction {
+        border-right: 1px solid #000;
+    }
+
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.exhaust,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.wheels {
+        border-left: 1px solid #444;
+    }
+
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.brakes,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.exhaust,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.transmission,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.wheels {
+        border-right: 0;
+    }
+
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.engine,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.fuel,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.reduction {
+        border-left: 0;
+    }
+
+    .r .racing-main-wrap .pm-categories-wrap .cont-black .pm-categories > li.reduction {
+        border-bottom: 0;
+    }
+
+    .r .racing-main-wrap .pm-categories-wrap .cont-black .pm-categories > li .t-delimiter,
+    .r .racing-main-wrap .pm-categories-wrap .cont-black .pm-categories > li .b-delimiter {
+        display: block;
+    }
+
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.aerodynamics .t-delimiter,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.aerodynamics .b-delimiter,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.engine .t-delimiter,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.engine .b-delimiter,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.fuel .t-delimiter,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.fuel .b-delimiter,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.suspension .t-delimiter,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.suspension .b-delimiter,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.reduction .t-delimiter,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.reduction .b-delimiter {
+        display: none;
+    }
+
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.wheels,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.wheels .icons,
+    .r .racing-main-wrap .pm-categories-wrap .pm-categories > li.wheels .bg-selected {
+        border-radius: 0;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .pm-items > li,
+    .r .racing-main-wrap .pm-items-wrap .pm-items > li + li,
+    .r .racing-main-wrap .pm-items-wrap .d-wrap ul + ul > li + li,
+    .r .racing-main-wrap .pm-items-wrap .pm-items > li {
+        width: 320px;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .pm-items .title {
+        padding: 0 10px;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .pm-items > li,
+    .r .racing-main-wrap .pm-items-wrap .pm-items .box-wrap .properties-wrap > li .name,
+    .r .racing-main-wrap .pm-items-wrap .pm-items .box-wrap .properties-wrap > li .progress-bar {
+        padding-bottom: 0;
+        margin-bottom: 0;
+        border-left: 0;
+        border-right: 0;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .d-wrap .pm-items {
+        overflow: visible;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .m-row-empty .l-delimiter,
+    .r .racing-main-wrap .pm-items-wrap .m-row-empty .r-delimiter,
+    .r .racing-main-wrap .pm-items-wrap .m-row-empty .b-delimiter,
+    .r .racing-main-wrap .pm-items-wrap .m-row-empty .properties-wrap {
+        display: none;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .m-row-empty .box-wrap .part-wrap {
+        border-bottom: 0;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .unlock i.icon,
+    .r .racing-main-wrap .pm-items-wrap i.icon {
+        margin: 0 48px;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .pm-items .bg-wrap .part-wrap {
+        font-size: 0;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .part-wrap .buy-link {
+        display: block;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .icon-wrap {
+        width: 159px;
+        border-right: 1px solid #000;
+        display: block;
+        float: left;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .unlock .desc,
+    .r .racing-main-wrap .pm-items-wrap .desc,
+    .r .racing-main-wrap .pm-items-wrap .unlock .info,
+    .r .racing-main-wrap .pm-items-wrap .info {
+        font-size: 12px;
+        width: 149px;
+        padding-top: 5px;
+        border-left: 1px solid #444;
+        padding-left: 10px;
+        display: block;
+        height: 55px;
+        float: left;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .desc,
+    .r .racing-main-wrap .pm-items-wrap .unlock.bought .desc,
+    .r .racing-main-wrap .pm-items-wrap .info,
+    .r .racing-main-wrap .pm-items-wrap .unlock.bought .info {
+        width: 118px;
+        padding-top: 15px;
+        height: 45px;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .icon-wrap {
+        padding-top: 5px;
+        height: 55px;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .unlock .icon-wrap {
+        padding-top: 0;
+        height: 60px;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .pm-items .properties-wrap {
+        overflow: hidden;
+        padding-bottom: 10px;
+        background-color: #2e2e2e;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .pm-items .properties-wrap > li {
+        float: left;
+        width: 159px;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .pm-items .properties-wrap > li:first-child,
+    .r .racing-main-wrap .pm-items-wrap .pm-items .properties-wrap > li:first-child + li {
+        padding-bottom: 20000px;
+        margin-bottom: -20000px;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .pm-items .properties-wrap > li:first-child {
+        border-right: 1px solid #000;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .pm-items .properties-wrap > li:first-child + li {
+        border-left: 1px solid #444;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .pm-items .box-wrap .properties-wrap > li .progress-bar,
+    .r .racing-main-wrap .pm-items-wrap .pm-items .box-wrap .properties-wrap > li:first-child .progress-bar {
+        padding: 9px 0 0 0;
+        width: 70px;
+        height: auto;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .pm-items .box-wrap .properties-wrap > li .name,
+    .r .racing-main-wrap .pm-items-wrap .pm-items .box-wrap .properties-wrap > li:first-child .name {
+        text-align: left;
+        padding: 9px 0 0 10px;
+        width: 68px;
+        height: auto;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .pm-items .box-wrap .properties-wrap > li .progress-bar {
+        float: right;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .pm-items > li + li .b-delimiter,
+    .r .racing-main-wrap .pm-items-wrap .pm-items + .pm-items > li + li .b-delimiter,
+    .r .racing-main-wrap .pm-items-wrap .pm-items > li .b-delimiter,
+    .r .racing-main-wrap .pm-items-wrap .pm-items + .pm-items > li .b-delimiter {
+        display: none;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .bar-tpl-wrap {
+        width: 63px;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .m-hide {
+        display: none;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .pm-items .active .box-wrap .properties-wrap > li .name,
+    .r .racing-main-wrap .pm-items-wrap .pm-items .active .box-wrap .properties-wrap > li .progress-bar,
+    .r .racing-main-wrap .pm-items-wrap .pm-items .bought .box-wrap .properties-wrap > li .name,
+    .r .racing-main-wrap .pm-items-wrap .pm-items .bought .box-wrap .properties-wrap > li .progress-bar,
+    .r .racing-main-wrap .pm-items-wrap .pm-items .be-replaced .box-wrap .properties-wrap > li .name,
+    .r .racing-main-wrap .pm-items-wrap .pm-items .be-replaced .box-wrap .properties-wrap > li .progress-bar {
+        background: transparent;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .pm-items .active .properties-wrap>li:first-child,
+    .r .racing-main-wrap .pm-items-wrap .pm-items .active .properties-wrap>li:first-child+li {
+        background: rgba(0, 191, 255, 0.07);
+    }
+
+     .r .racing-main-wrap .pm-items-wrap .pm-items .bought .properties-wrap>li:first-child,
+    .r .racing-main-wrap .pm-items-wrap .pm-items .bought .properties-wrap>li:first-child+li {
+        background: rgba(133, 178, 0, 0.07);
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .pm-items .be-replaced .properties-wrap > li:first-child,
+    .r .racing-main-wrap .pm-items-wrap .pm-items .be-replaced .properties-wrap > li:first-child + li {
+        background: rgba(255, 105, 105, 0.07);
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .pm-items .status {
+        border-top: 1px solid #000;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .pm-items {
+        border-top: 0;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .pm-items .properties-wrap>li:nth-child(2n) {
+        float: right;
+    }
+
+    .r .racing-main-wrap .pm-items-wrap .pm-items .properties-wrap > li.last {
+        display: list-item;
+    }
+}

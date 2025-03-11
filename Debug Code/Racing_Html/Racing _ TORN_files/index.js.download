@@ -1,0 +1,199 @@
+$(function() {
+
+    var runTracking = function () {
+
+        var $mainContainer = $('#mainContainer');
+        // var $mainContainer = $('#body');
+        var delimiter = '_'
+        var sendAmount = 10
+        var pool = {}
+        var currentHref = location.href.split('#')[0]
+
+        var getId = function (target) {
+            var iData = target.getAttribute('i-data')
+            if (iData) {
+                return iData
+            }
+            var parentBox = $mainContainer[0].getBoundingClientRect()
+            var box = target.getBoundingClientRect()
+            var idArr = ['i', box.x - parentBox.x, box.y - parentBox.y, box.width, box.height]
+            var id = idArr.map(function (item) {
+                return (typeof item === 'number' ? Math.round(item) : item)
+            }).join(delimiter)
+            target.setAttribute('i-data', id)
+            return id
+        }
+
+        $mainContainer.on('mouseenter', 'button, a', function (event) {
+            if (event.isTrigger) {
+                return;
+            }
+
+            var $this = $(this);
+
+            if ($this.find('button, a').length) {
+                return;
+            }
+
+            var id = getId(event.currentTarget)
+            pool[id] = {
+                me: Date.now()
+            }
+        });
+
+        $mainContainer.on('mouseleave', 'button, a', function (event) {
+            if (event.isTrigger) {
+                return;
+            }
+            var $this = $(this);
+
+            if ($this.find('button, a').length) {
+                return;
+            }
+
+            var id = getId(event.currentTarget)
+            delete pool[id]
+        });
+
+        $mainContainer.on('mousedown', 'button, a', function (event) {
+            if (event.isTrigger) {
+                return;
+            }
+
+            var $this = $(this);
+
+            if ($this.find('button, a').length) {
+                return;
+            }
+
+            var id = getId(event.currentTarget)
+            var item = pool[id] || {
+                me: false
+            }
+
+            item['md'] = Date.now();
+
+            item['offset'] = $this.offset();
+
+            pool[id] = item;
+        });
+
+        $mainContainer.on('keypress', 'button, a', function (event) {
+            if (event.key != 'Enter') {
+                return;
+            }
+
+            var $this = $(this);
+
+            if ($this.find('button, a').length) {
+                return;
+            }
+
+            var id = getId(event.currentTarget)
+            var item = pool[id] || {}
+
+            item['kp'] = Date.now();
+            item['md'] = 0;
+
+            pool[id] = item;
+        });
+
+        $mainContainer.on('click', 'button, a', function (event) {
+            try {
+                if (event.isTrigger) {
+                    return;
+                }
+                var $this = $(this);
+
+                if ($this.find('button, a').length) {
+                    return;
+                }
+
+                var id = getId(event.currentTarget)
+                var item = $.extend({}, pool[id]) || {
+                    me: false,
+                    md: false
+                }
+
+                var x, y;
+                var offset = $this.offset();
+
+                if (!$this.is(':visible')) {
+                    offset = item.offset;
+                }
+
+                delete item.offset;
+
+                if (event.isTrigger) {
+                    x = Math.round(-offset.left);
+                    y = Math.round(-offset.top);
+                } else {
+                    x = Math.round(event.pageX - offset.left);
+                    y = Math.round(event.pageY - offset.top);
+                }
+
+                var boxSize = id.split('_');
+
+                if (Array.map && window.Number) {
+                    boxSize = boxSize.map(Number);
+                }
+
+                item['kp'] = item['kp'] || 0;
+                item['pr_c'] = item['pr_c'] || 0;
+
+                item['c'] = {
+                    i: boxSize
+                        .slice(3)
+                        .concat([x, y]),
+                    tm: Date.now()
+                }
+
+                item['isTouch'] = event && event.originalEvent && event.originalEvent.pointerType === 'touch' ? 1 : 0;
+                item['tr'] = event && event.originalEvent && event.originalEvent.isTrusted ? 1 : 0;
+                item['text'] = event.currentTarget.innerText;
+                item['label'] = event.currentTarget.getAttribute('aria-label');
+                item['href'] = event.currentTarget.getAttribute('href');
+                item['path'] = location.pathname + location.search;
+                item['node'] = event.currentTarget.localName;
+
+                var poolArr = JSON.parse(localStorage.getItem("poolArr")) || [];
+                poolArr.push(item);
+
+                // delete pool[id]
+                if (pool[id]) {
+                    pool[id].pr_c = Date.now()
+                    delete pool[id].kp;
+                } else {
+                    pool[id] = {
+                        pr_c: Date.now()
+                    }
+                }
+
+                if (poolArr.length >= sendAmount && !(item['node'] === 'a' && currentHref != this.href.split('#')[0])) {
+                    sendPool(poolArr)
+                } else {
+                    localStorage.setItem("poolArr", JSON.stringify(poolArr));
+                }
+            } catch (e) {}
+        });
+
+        var sendPool = function (sendPoolArr) {
+            if (sendPoolArr.length === 0) {
+                return
+            }
+            localStorage.setItem("poolArr", JSON.stringify([]));
+            fetch('page.php?sid=bhc&step=send', {
+                method: 'POST',
+                body: JSON.stringify({
+                    pool: sendPoolArr
+                })
+            })
+        }
+
+        sendPool(JSON.parse(localStorage.getItem("poolArr")) || [])
+    }
+
+    try {
+        runTracking()    
+    } catch (e) {}
+});

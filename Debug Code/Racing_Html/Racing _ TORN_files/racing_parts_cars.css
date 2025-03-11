@@ -1,0 +1,493 @@
+/* Aerodynamics */
+
+.d .racing-main-wrap .unlock.aerodynamics .icon {
+    background: url(/images/v2/racing/parts_mods/aerodynamics_default.png) no-repeat;
+}
+
+.d .racing-main-wrap .aerodynamics .icon {
+    background: url(/images/v2/racing/parts_mods/aerodynamics_blank.png) no-repeat;
+}
+
+.d .racing-main-wrap .unlock.aerodynamics.reardiffuser .icon {
+    background-position: 0 center;
+}
+
+.d .racing-main-wrap .aerodynamics.reardiffuser .icon {
+    background-position: 0 center;
+}
+
+.d .racing-main-wrap .unlock.aerodynamics.frontdiffuser .icon {
+    background-position: -60px center;
+}
+
+.d .racing-main-wrap .aerodynamics.frontdiffuser .icon {
+    background-position: -50px center;
+}
+
+.d .racing-main-wrap .unlock.aerodynamics.enginevent .icon {
+    background-position: -120px center;
+}
+
+.d .racing-main-wrap .aerodynamics.enginevent .icon {
+    background-position: -100px center;
+}
+
+.d .racing-main-wrap .unlock.aerodynamics.spoiler .icon {
+    background-position: -180px center;
+}
+
+.d .racing-main-wrap .aerodynamics.spoiler .icon {
+    background-position: -150px center;
+}
+
+.d .racing-main-wrap .unlock.aerodynamics.brakevent .icon {
+    background-position: -240px center;
+}
+
+.d .racing-main-wrap .aerodynamics.brakevent .icon {
+    background-position: -200px center;
+}
+
+/* Brakes */
+
+.d .racing-main-wrap .unlock.brakes .icon {
+    background: url(/images/v2/racing/parts_mods/brakes_default.png) no-repeat;
+}
+
+.d .racing-main-wrap .brakes .icon {
+    background: url(/images/v2/racing/parts_mods/brakes_blank.png) no-repeat;
+}
+
+.d .racing-main-wrap .unlock.brakes.control .icon {
+    background-position: 0 center;
+}
+
+.d .racing-main-wrap .brakes.control .icon {
+    background-position: 0 center;
+}
+
+.d .racing-main-wrap .unlock.brakes.caliper .icon {
+    background-position: -60px center;
+}
+
+.d .racing-main-wrap .brakes.caliper .icon {
+    background-position: -50px center;
+}
+
+.d .racing-main-wrap .unlock.brakes.pad .icon {
+    background-position: -120px center;
+}
+
+.d .racing-main-wrap .brakes.pad .icon {
+    background-position: -100px center;
+}
+
+.d .racing-main-wrap .unlock.brakes.disk .icon {
+    background-position: -180px center;
+}
+
+.d .racing-main-wrap .brakes.disk .icon {
+    background-position: -150px center;
+}
+
+.d .racing-main-wrap .unlock.brakes.hose .icon {
+    background-position: -240px center;
+}
+
+.d .racing-main-wrap .brakes.hose .icon {
+    background-position: -200px center;
+}
+
+.d .racing-main-wrap .unlock.brakes.fluid .icon {
+    background-position: -300px center;
+}
+
+.d .racing-main-wrap .brakes.fluid .icon {
+    background-position: -250px center;
+}
+
+/* Engine */
+
+.d .racing-main-wrap .unlock.engine .icon {
+    background: url(/images/v2/racing/parts_mods/engine_default.png) no-repeat;
+}
+
+.d .racing-main-wrap .engine .icon {
+    background: url(/images/v2/racing/parts_mods/engine_blank.png) no-repeat;
+}
+
+.d .racing-main-wrap .unlock.engine.intercooler .icon {
+    background-position: 0 center;
+}
+
+.d .racing-main-wrap .engine.intercooler .icon {
+    background-position: 0 center;
+}
+
+.d .racing-main-wrap .unlock.engine.gasket .icon {
+    background-position: -60px center;
+}
+
+.d .racing-main-wrap .engine.gasket .icon {
+    background-position: -50px center;
+}
+
+.d .racing-main-wrap .unlock.engine.enginecleaning .icon {
+    background-position: -120px center;
+}
+
+.d .racing-main-wrap .engine.enginecleaning .icon {
+    background-position: -100px center;
+}
+
+.d .racing-main-wrap .unlock.engine.computer .icon {
+    background-position: -180px center;
+}
+
+.d .racing-main-wrap .engine.computer .icon {
+    background-position: -150px center;
+}
+
+.d .racing-main-wrap .unlock.engine.camshaft .icon {
+    background-position: -240px center;
+}
+
+.d .racing-main-wrap .engine.camshaft .icon {
+    background-position: -200px center;
+}
+
+.d .racing-main-wrap .unlock.engine.turbocharger .icon {
+    background-position: -300px center;
+}
+
+.d .racing-main-wrap .engine.turbocharger .icon {
+    background-position: -250px center;
+}
+
+.d .racing-main-wrap .unlock.engine.fuelpump .icon {
+    background-position: -360px center;
+}
+
+.d .racing-main-wrap .engine.fuelpump .icon {
+    background-position: -300px center;
+}
+
+.d .racing-main-wrap .unlock.engine.piston .icon {
+    background-position: -420px center;
+}
+
+.d .racing-main-wrap .engine.piston .icon {
+    background-position: -350px center;
+}
+
+/* Exhaust */
+
+.d .racing-main-wrap .unlock.exhaust .icon {
+    background: url(/images/v2/racing/parts_mods/exhaust_default.png) no-repeat;
+}
+
+.d .racing-main-wrap .exhaust .icon {
+    background: url(/images/v2/racing/parts_mods/exhaust_blank.png) no-repeat;
+}
+
+.d .racing-main-wrap .unlock.exhaust.inductionkit .icon {
+    background-position: 0 center;
+}
+
+.d .racing-main-wrap .exhaust.inductionkit .icon {
+    background-position: 0 center;
+}
+
+.d .racing-main-wrap .unlock.exhaust.exhaust .icon {
+    background-position: -60px center;
+}
+
+.d .racing-main-wrap .exhaust.exhaust .icon {
+    background-position: -50px center;
+}
+
+.d .racing-main-wrap .unlock.exhaust.airfilter .icon {
+    background-position: -120px center;
+}
+
+.d .racing-main-wrap .exhaust.airfilter .icon {
+    background-position: -100px center;
+}
+
+.d .racing-main-wrap .unlock.exhaust.manifold .icon {
+    background-position: -180px center;
+}
+
+.d .racing-main-wrap .exhaust.manifold .icon {
+    background-position: -150px center;
+}
+
+/* Fuel */
+
+.d .racing-main-wrap .unlock.fuel .icon {
+    background: url(/images/v2/racing/parts_mods/fuel_default.png) no-repeat;
+}
+
+.d .racing-main-wrap .fuel .icon {
+    background: url(/images/v2/racing/parts_mods/fuel_blank.png) no-repeat;
+}
+
+.d .racing-main-wrap .unlock.fuel.jerrycan .icon {
+    background-position: 0 center;
+}
+
+.d .racing-main-wrap .fuel.jerrycan .icon {
+    background-position: 0 center;
+}
+
+/* Safety */
+
+.d .racing-main-wrap .unlock.safety .icon {
+    background: url(/images/v2/racing/parts_mods/safety_default.png) no-repeat;
+}
+
+.d .racing-main-wrap .safety .icon {
+    background: url(/images/v2/racing/parts_mods/safety_blank.png) no-repeat;
+}
+
+.d .racing-main-wrap .unlock.safety.rollcage .icon {
+    background-position: 0 center;
+}
+
+.d .racing-main-wrap .safety.rollcage .icon {
+    background-position: 0 center;
+}
+
+.d .racing-main-wrap .unlock.safety.overalls .icon {
+    background-position: -60px center;
+}
+
+.d .racing-main-wrap .safety.overalls .icon {
+    background-position: -50px center;
+}
+
+.d .racing-main-wrap .unlock.safety.accessories .icon {
+    background-position: -120px center;
+}
+
+.d .racing-main-wrap .safety.accessories .icon {
+    background-position: -100px center;
+}
+
+.d .racing-main-wrap .unlock.safety.helmet .icon {
+    background-position: -180px center;
+}
+
+.d .racing-main-wrap .safety.helmet .icon {
+    background-position: -150px center;
+}
+
+.d .racing-main-wrap .unlock.safety.safetyswitch .icon {
+    background-position: -240px center;
+}
+
+.d .racing-main-wrap .safety.safetyswitch .icon {
+    background-position: -200px center;
+}
+
+.d .racing-main-wrap .unlock.safety.seat .icon {
+    background-position: -300px center;
+}
+
+.d .racing-main-wrap .safety.seat .icon {
+    background-position: -250px center;
+}
+
+.d .racing-main-wrap .unlock.safety.fireextinguisher .icon {
+    background-position: -360px center;
+}
+
+.d .racing-main-wrap .safety.fireextinguisher .icon {
+    background-position: -310px center;
+}
+
+/* Suspension */
+
+.d .racing-main-wrap .unlock.suspension .icon {
+    background: url(/images/v2/racing/parts_mods/suspension_default.png) no-repeat;
+}
+
+.d .racing-main-wrap .suspension .icon {
+    background: url(/images/v2/racing/parts_mods/suspension_blank.png) no-repeat;
+}
+
+.d .racing-main-wrap .unlock.suspension.spring .icon {
+    background-position: 0 center;
+}
+
+.d .racing-main-wrap .suspension.spring .icon {
+    background-position: 0 center;
+}
+
+.d .racing-main-wrap .unlock.suspension.bushes .icon {
+    background-position: -60px center;
+}
+
+.d .racing-main-wrap .suspension.bushes .icon {
+    background-position: -50px center;
+}
+
+.d .racing-main-wrap .unlock.suspension.brace .icon {
+    background-position: -120px center;
+}
+
+.d .racing-main-wrap .suspension.brace .icon {
+    background-position: -100px center;
+}
+
+.d .racing-main-wrap .unlock.suspension.tierods .icon {
+    background-position: -180px center;
+}
+
+.d .racing-main-wrap .suspension.tierods .icon {
+    background-position: -150px center;
+}
+
+/* Transmission */
+
+
+.d .racing-main-wrap .unlock.transmission .icon {
+    background: url(/images/v2/racing/parts_mods/transmission_default.png) no-repeat;
+}
+
+.d .racing-main-wrap .transmission .icon {
+    background: url(/images/v2/racing/parts_mods/transmission_blank.png) no-repeat;
+}
+
+.d .racing-main-wrap .unlock.transmission.gears .icon {
+    background-position: 0 center;
+}
+
+.d .racing-main-wrap .transmission.gears .icon {
+    background-position: 0 center;
+}
+
+.d .racing-main-wrap .unlock.transmission.flywheel .icon {
+    background-position: -60px center;
+}
+
+.d .racing-main-wrap .transmission.flywheel .icon {
+    background-position: -50px center;
+}
+
+.d .racing-main-wrap .unlock.transmission.differential .icon {
+    background-position: -120px center;
+}
+
+.d .racing-main-wrap .transmission.differential .icon {
+    background-position: -100px center;
+}
+
+.d .racing-main-wrap .unlock.transmission.clutch .icon {
+    background-position: -180px center;
+}
+
+.d .racing-main-wrap .transmission.clutch .icon {
+    background-position: -150px center;
+}
+
+.d .racing-main-wrap .unlock.transmission.shifting .icon {
+    background-position: -240px center;
+}
+
+.d .racing-main-wrap .transmission.shifting .icon {
+    background-position: -200px center;
+}
+
+/* WeightReduction */
+
+.d .racing-main-wrap .unlock.reduction .icon {
+    background: url(/images/v2/racing/parts_mods/weightreduction_default.png) no-repeat;
+}
+
+.d .racing-main-wrap .reduction .icon {
+    background: url(/images/v2/racing/parts_mods/weightreduction_blank.png) no-repeat;
+}
+
+.d .racing-main-wrap .unlock.reduction.stripout .icon {
+    background-position: 0 center;
+}
+
+.d .racing-main-wrap .reduction.stripout .icon {
+    background-position: 0 center;
+}
+
+.d .racing-main-wrap .unlock.reduction.steeringwheel .icon {
+    background-position: -60px center;
+}
+
+.d .racing-main-wrap .reduction.steeringwheel .icon {
+    background-position: -50px center;
+}
+
+.d .racing-main-wrap .unlock.reduction.roof .icon {
+    background-position: -120px center;
+}
+
+.d .racing-main-wrap .reduction.roof .icon {
+    background-position: -100px center;
+}
+
+.d .racing-main-wrap .unlock.reduction.interior .icon {
+    background-position: -180px center;
+}
+
+.d .racing-main-wrap .reduction.interior .icon {
+    background-position: -150px center;
+}
+
+.d .racing-main-wrap .unlock.reduction.boot .icon {
+    background-position: -240px center;
+}
+
+.d .racing-main-wrap .reduction.boot .icon {
+    background-position: -200px center;
+}
+
+.d .racing-main-wrap .unlock.reduction.bonnet .icon {
+    background-position: -300px center;
+}
+
+.d .racing-main-wrap .reduction.bonnet .icon {
+    background-position: -250px center;
+}
+
+.d .racing-main-wrap .unlock.reduction.window .icon {
+    background-position: -360px center;
+}
+
+.d .racing-main-wrap .reduction.window .icon {
+    background-position: -300px center;
+}
+
+
+/* WheelsandTyres */
+
+.d .racing-main-wrap .unlock.wheels .icon {
+    background: url(/images/v2/racing/parts_mods/wheels_tyres_default.png) no-repeat;
+}
+
+.d .racing-main-wrap .wheels .icon {
+    background: url(/images/v2/racing/parts_mods/wheels_tyres_blank.png) no-repeat;
+}
+
+.d .racing-main-wrap .unlock.wheels.rims .icon {
+    background-position: 0 center;
+}
+
+.d .racing-main-wrap .wheels.rims .icon {
+    background-position: 0 center;
+}
+
+.d .racing-main-wrap .unlock.wheels.tyre .icon {
+    background-position: -60px center;
+}
+
+.d .racing-main-wrap .wheels.tyre .icon {
+    background-position: -50px center;
+}
