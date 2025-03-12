@@ -174,7 +174,4 @@ const RaceFiltering = {
     }
 };
 
-// Export to global scope immediately
-if (typeof window !== 'undefined') {
-    window.RaceFiltering = RaceFiltering;
-}
+window.RaceFiltering = RaceFiltering;

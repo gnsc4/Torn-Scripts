@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Config GUI
-// @version      3.1.6
+// @version      3.5.0
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -21,6 +21,25 @@
 
 (function() {
     'use strict';
+
+    const trackNames = {
+        '6': 'Uptown',
+        '7': 'Withdrawal',
+        '8': 'Underdog',
+        '9': 'Parkland',
+        '10': 'Docks',
+        '11': 'Commerce',
+        '12': 'Two Islands',
+        '15': 'Industrial',
+        '16': 'Vector',
+        '17': 'Mudpit',
+        '18': 'Hammerhead',
+        '19': 'Sewage',
+        '20': 'Meltdown',
+        '21': 'Speedway',
+        '23': 'Stone Park',
+        '24': 'Convict'
+    };
 
     const GM = {
         xmlHttpRequest: (details) => {
@@ -57,7 +76,8 @@
         // Only initialize racing features on the racing page
         if (isRacingPage) {
             initializeRacingFeatures();
-            initializeRaceFiltering(); // Add this line
+            initializeRaceFiltering(); 
+            resumeAutoJoin(); // Resume auto-join if state exists
         }
     }
 
@@ -747,7 +767,6 @@
             margin: 0;
         }
 
-        .race-filter-section,
         .auto-join-section {
             margin-top: 15px;
         }
@@ -830,52 +849,341 @@
             gap: 10px;
             align-items: center;
         }
+
+        .race-filter-controls .filter-group {
+            flex: 1 !important;
+            min-width: 200px !important;
+        }
+
+        /* Add new laps filter group styles */
+        .race-filter-controls .filter-group.laps-filter {
+            min-width: 140px !important;
+            display: flex !important;
+            gap: 5px !important;
+            align-items: center !important;
+        }
+
+        .race-filter-controls .filter-group.laps-filter input[type="number"] {
+            width: 50px !important;
+            padding: 8px 5px !important;
+            text-align: center !important;
+        }
+
+        .race-filter-controls {
+            background-color: #2a2a2a !important;
+            border: 1px solid #444 !important;
+            border-radius: 8px !important;
+            padding: 10px !important;
+            margin-bottom: 15px !important;
+        }
+
+        .race-filter-controls select,
+        .race-filter-controls input[type="number"] {
+            background-color: #333 !important;
+            color: #eee !important;
+            border: 1px solid #555 !important;
+            border-radius: 4px !important;
+            padding: 5px !important;
+        }
+
+        .race-filter-controls select:focus,
+        .race-filter-controls input[type="number"]:focus {
+            border-color: #666 !important;
+            outline: none !important;
+            box-shadow: 0 0 5px rgba(85, 85, 85, 0.5) !important;
+        }
+
+        .race-filter-controls label {
+            color: #ccc !important;
+            font-size: 0.9em !important;
+        }
+
+        .race-filter-controls .checkbox-option {
+            color: #ccc !important;
+        }
+
+        .race-filter-controls .filter-buttons {
+            margin-top: 5px !important;
+            display: flex !important;
+            justify-content: flex-end !important;
+            gap: 5px !important;
+        }
+
+        .race-filter-controls .gui-button {
+            background-color: #444 !important;
+            color: #eee !important;
+            border: 1px solid #555 !important;
+        }
+
+        .race-filter-controls .gui-button:hover {
+            background-color: #555 !important;
+        }
+
+        .race-filter-controls .gui-button.active {
+            background-color: #2d5a3f !important;
+            border-color: #3d7a5f !important;
+        }
+    `;
+
+    style.textContent += `
+        .auto-join-section {
+            margin-top: 15px;
+        }
     `;
 
     style.textContent += `
         .race-filter-controls {
-            background: #2a2a2a !important;
-            padding: 10px !important;
-            margin: 10px 0 !important;
-            border-radius: 5px !important;
+            background-color: #2a2a2a !important;
             border: 1px solid #444 !important;
-            position: relative !important;
-            z-index: 999999 !important;
+            border-radius: 8px !important;
+            padding: 10px !important;  /* Reduced from 15px */
+            margin-bottom: 15px !important;
         }
 
-        .filter-row {
-            display: flex !important;
-            align-items: center !important;
-            gap: 10px !important;
+        .race-filter-controls .filter-row {
+            background-color: transparent !important;
+            padding: 0 !important;
+            gap: 10px !important;  /* Reduced from 15px */
             flex-wrap: wrap !important;
-            position: relative !important;
-            z-index: 999999 !important;
+            margin-bottom: 5px !important;  /* Added */
         }
 
-        .filter-buttons {
-            margin-left: auto !important;
+        .race-filter-controls .filter-group {
+            flex: 1 !important;
+            min-width: 200px !important;
+            margin-bottom: 5px !important;  /* Added */
+        }
+
+        .race-filter-controls .filter-buttons {
+            flex: 0 0 100% !important;
+            display: flex !important;
+            justify-content: flex-end !important;
+            gap: 5px !important;
+            margin-top: 5px !important;  /* Reduced from 10px */
+        }
+
+        .race-filter-controls .checkboxes {
+            display: flex !important;
+            flex-direction: row !important;  /* Changed from column */
+            gap: 15px !important;
+            margin-bottom: 0 !important;  /* Added */
+        }
+
+        .race-filter-controls .filter-group.laps-filter {
+            min-width: 140px !important;
+            display: flex !important;
+            gap: 5px !important;
+            align-items: center !important;
+        }
+
+        .race-filter-controls .filter-group.laps-filter input[type="number"] {
+            width: 50px !important;
+            padding: 8px 5px !important;
+            text-align: center !important;
+        }
+    `;
+
+    style.textContent += `
+        .auto-join-buttons {
             display: flex !important;
             gap: 10px !important;
+            margin-top: 10px !important;
+            justify-content: center !important;
             position: relative !important;
             z-index: 999999 !important;
         }
 
-        #filterSort {
-            min-width: 150px !important;
-            padding: 5px !important;
+        .auto-join-buttons button {
+            flex: 1 !important;
+            max-width: 200px !important;
             position: relative !important;
             z-index: 999999 !important;
         }
 
-        #toggleFilters, #refreshRaces {
-            position: relative !important;
-            z-index: 999999 !important;
-        }
-
-        #toggleFilters.active {
+        #saveAutoJoinPreset {
             background-color: #2d5a3f !important;
             border-color: #3d7a5f !important;
+            color: #fff !important;
+            padding: 8px 15px !important;
+            cursor: pointer !important;
+            font-size: 0.9em !important;
+            border-radius: 3px !important;
+            transition: all 0.2s ease !important;
+            display: block !important;
+            position: relative !important;
             z-index: 999999 !important;
+        }
+
+        #saveAutoJoinPreset:hover {
+            background-color: #3d7a5f !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3) !important;
+        }
+    `;
+
+    style.textContent += `
+        .preset-section-header {
+            color: #ccc;
+            font-size: 14px;
+            margin: 10px 0 5px 0;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #444;
+        }
+
+        .auto-join-preset-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+
+        .auto-join-preset-button {
+            color: #fff;
+            background-color: #444;
+            border: 1px solid #555;
+            border-radius: 3px;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.2s ease;
+        }
+
+        .auto-join-preset-button:hover {
+            background-color: #2d5a3f;
+            border-color: #3d7a5f;
+        }
+    `;
+
+    style.textContent += `
+        .quick-launch-container {
+            display: flex !important;
+            flex-direction: column !important;
+            width: 100% !important;
+            background-color: #2a2a2a !important;
+            padding: 10px !important;
+            border-radius: 5px !important;
+            margin-top: 5px !important;
+            border: 1px solid #444 !important;
+        }
+
+        .quick-launch-container:empty {
+            display: none !important;
+        }
+
+        .quick-launch-container .button-container {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            gap: 5px !important;
+            width: 100% !important;
+        }
+
+        .auto-join-preset-container {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            gap: 5px !important;
+            margin: 10px 0 !important;
+        }
+    `;
+
+    style.textContent += `
+        .auto-join-preset-container {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+            margin: 10px 0 !important;
+            padding: 5px !important;
+            background-color: rgba(42, 42, 42, 0.5) !important;
+            border-radius: 5px !important;
+        }
+
+        .auto-join-preset-button {
+            color: #ddd !important;
+            background-color: #555 !important;
+            border: 1px solid #777 !important;
+            border-radius: 3px !important;
+            padding: 8px 15px !important;
+            cursor: pointer !important;
+            font-size: 0.9em !important;
+            transition: all 0.2s ease !important;
+            flex: 1 !important;
+            min-width: 120px !important;
+            max-width: 200px !important;
+            text-align: center !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+        }
+
+        .auto-join-preset-button:hover {
+            background-color: #3d7a5f !important;
+            border-color: #2d5a3f !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3) !important;
+        }
+
+        .preset-section-header {
+            color: #fff !important;
+            font-size: 14px !important;
+            margin: 15px 0 5px 0 !important;
+            padding: 5px 10px !important;
+            background-color: #2a2a2a !important;
+            border-radius: 3px !important;
+            border: 1px solid #444 !important;
+        }
+    `;
+
+    style.textContent += `
+        .auto-join-preset-container,
+        .quick-launch-container .button-container {
+            display: grid !important;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
+            gap: 8px !important;
+            margin: 10px 0 !important;
+            padding: 5px !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
+        .auto-join-preset-button,
+        .quick-launch-button {
+            color: #ddd !important;
+            background-color: #555 !important;
+            border: 1px solid #777 !important;
+            border-radius: 3px !important;
+            padding: 8px 15px !important;
+            cursor: pointer !important;
+            font-size: 0.9em !important;
+            transition: all 0.2s ease !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            text-align: center !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+            min-height: 32px !important;
+            width: 100% !important;
+        }
+
+        .auto-join-preset-button:hover,
+        .quick-launch-button:hover {
+            background-color: #3d7a5f !important;
+            border-color: #2d5a3f !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3) !important;
+        }
+
+        .preset-section-header {
+            color: #fff !important;
+            font-size: 14px !important;
+            margin: 15px 0 5px 0 !important;
+            padding: 5px 10px !important;
+            background-color: #2a2a2a !important;
+            border-radius: 3px !important;
+            border: 1px solid #444 !important;
+            grid-column: 1 / -1 !important;
         }
     `;
 
@@ -1069,24 +1377,12 @@
                         <label><input type="checkbox" id="hidePassworded"> Hide Passworded Races</label>
                         <label><input type="checkbox" id="hideBets"> Hide Races with Bets</label>
                     </div>
-                    <button id="startAutoJoin" class="gui-button">Start Auto-Join</button>
-                </div>
-            </div>
-
-            <div class="race-filter-section config-section">
-                <h4>Race Filtering</h4>
-                <div class="filter-options">
-                    <div class="filter-row">
-                        <select id="filterSort" class="filter-select">
-                            <option value="time">Sort by Start Time</option>
-                            <option value="track">Sort by Track</option>
-                            <option value="laps">Sort by Laps</option>
-                            <option value="bets">Sort by Bet Amount</option>
-                        </select>
-                        <label><input type="checkbox" id="hidePassworded"> Hide Passworded</label>
+                    <div class="auto-join-buttons">
+                        <button id="startAutoJoin" class="gui-button">Start Auto-Join</button>
+                        <button id="stopAutoJoin" class="gui-button" style="display: none;">Stop Auto-Join</button>
+                        <button id="refreshCustomEvents" class="gui-button">Refresh Custom Events</button>
                     </div>
                 </div>
-                <div id="filteredRaces" class="races-list"></div>
             </div>
 
             <div class="action-buttons" style="text-align: center; margin-top: 15px;">
@@ -1095,7 +1391,7 @@
 
             <div style="text-align: center; margin-top: 20px; color: #888; font-size: 1.2em;">
                 Script created by <a href="https://www.torn.com/profiles.php?XID=268863" target="_blank" style="color: #888; text-decoration: none;">GNSC4 \[268863\]</a><br>
-                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.1.6 Official Forum Link</a>
+                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.5.0 Official Forum Link</a>
             </div>
         `;
 
@@ -1250,6 +1546,22 @@
                 autoJoinCarDropdown.innerHTML = mainCarDropdown.innerHTML;
             }
         };
+
+        // Add event listener for Start Auto-Join button
+        const startAutoJoinButton = document.getElementById('startAutoJoin');
+        const stopAutoJoinButton = document.getElementById('stopAutoJoin');
+        const refreshCustomEventsButton = document.getElementById('refreshCustomEvents');
+        
+        if (startAutoJoinButton && stopAutoJoinButton && refreshCustomEventsButton) {
+            startAutoJoinButton.addEventListener('click', startAutoJoin);
+            stopAutoJoinButton.addEventListener('click', stopAutoJoin);
+            refreshCustomEventsButton.addEventListener('click', refreshCustomEventsList);
+            
+            // Check if auto-join is active and show correct button
+            const isAutoJoinActive = GM_getValue('autoJoinState', null) !== null;
+            startAutoJoinButton.style.display = isAutoJoinActive ? 'none' : 'block';
+            stopAutoJoinButton.style.display = isAutoJoinActive ? 'block' : 'none';
+        }
 
         dragElement(gui);
 
@@ -1484,8 +1796,8 @@
         statusMessageBox.textContent = message;
         statusMessageBox.style.display = message ? 'block' : 'none';
 
-        statusMessageBox.className = ' ';
-        if (type === 'error' || type === 'success') {
+        statusMessageBox.className = '';
+        if (type === 'error' || type === 'success' || type === 'info') {
             statusMessageBox.classList.add(type);
         }
     }
@@ -1784,30 +2096,39 @@
 
         container.innerHTML = '';
         const presets = loadPresets();
+        const autoJoinPresets = loadAutoJoinPresets();
 
-        if (Object.keys(presets).length === 0) {
+        if (Object.keys(presets).length === 0 && Object.keys(autoJoinPresets).length === 0) {
             container.style.display = 'none';
             return;
         }
 
-        // Create button container and status div
+        // Create containers
         const buttonContainer = document.createElement('div');
         buttonContainer.className = 'button-container';
         const statusDiv = document.createElement('div');
         statusDiv.className = 'quick-launch-status';
 
-        // Add them to the container in the right order
+        // Create section headers
+        const quickLaunchHeader = document.createElement('h4');
+        quickLaunchHeader.textContent = 'Quick Launch Presets';
+        quickLaunchHeader.className = 'preset-section-header';
+
+        const autoJoinHeader = document.createElement('h4');
+        autoJoinHeader.textContent = 'Auto Join Presets';
+        autoJoinHeader.className = 'preset-section-header';
+
+        // Create auto-join container
+        const autoJoinContainer = document.createElement('div');
+        autoJoinContainer.className = 'auto-join-preset-container';
+
+        container.appendChild(quickLaunchHeader);
         container.appendChild(buttonContainer);
+        container.appendChild(autoJoinHeader);
+        container.appendChild(autoJoinContainer);
         container.appendChild(statusDiv);
 
-        const trackNames = {
-            '6': 'Uptown', '7': 'Withdrawal', '8': 'Underdog', '9': 'Parkland',
-            '10': 'Docks', '11': 'Commerce', '12': 'Two Islands', '15': 'Industrial',
-            '16': 'Vector', '17': 'Mudpit', '18': 'Hammerhead', '19': 'Sewage',
-            '20': 'Meltdown', '21': 'Speedway', '23': 'Stone Park', '24': 'Convict'
-        };
-
-        container.style.display = 'flex';
+        // Add quick launch buttons
         Object.entries(presets).forEach(([name, preset]) => {
             const button = document.createElement('button');
             button.className = 'quick-launch-button';
@@ -1830,101 +2151,120 @@
             button.addEventListener('click', async () => {
                 await createRaceFromPreset(preset);
             });
-            buttonContainer.appendChild(button); // Append to buttonContainer instead of container
+            buttonContainer.appendChild(button);
         });
+
+        // Add auto-join presets
+        Object.entries(autoJoinPresets).forEach(([name, preset]) => {
+            const buttonContainer = document.createElement('div');
+            buttonContainer.className = 'preset-button-container';
+            
+            const button = document.createElement('button');
+            button.className = 'auto-join-preset-button';
+            button.textContent = name;
+            button.title = `Auto-join preset: ${name}\nTrack: ${preset.track}\nLaps: ${preset.minLaps}-${preset.maxLaps}`;
+            
+            button.addEventListener('click', () => {
+                applyAutoJoinPreset(preset);
+            });
+
+            const removeButton = document.createElement('a');
+            removeButton.className = 'remove-preset';
+            removeButton.href = '#';
+            removeButton.textContent = '×';
+            removeButton.title = `Remove auto-join preset: ${name}`;
+            removeButton.style.cssText = `
+                position: absolute !important;
+                top: -8px !important;
+                right: -8px !important;
+                background-color: #955 !important;
+                color: #eee !important;
+                width: 20px !important;
+                height: 20px !important;
+                border-radius: 50% !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                text-decoration: none !important;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+                transition: all 0.2s ease !important;
+                z-index: 100 !important;
+            `;
+            
+            removeButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                removeAutoJoinPreset(name);
+            });
+
+            removeButton.addEventListener('mouseover', () => {
+                removeButton.style.backgroundColor = '#c77';
+                removeButton.style.transform = 'scale(1.1)';
+            });
+
+            removeButton.addEventListener('mouseout', () => {
+                removeButton.style.backgroundColor = '#955';
+                removeButton.style.transform = 'scale(1)';
+            });
+            
+            buttonContainer.appendChild(button);
+            buttonContainer.appendChild(removeButton);
+            autoJoinContainer.appendChild(buttonContainer);
+        });
+
+        container.style.display = 'flex';
     }
 
-    async function createRaceFromPreset(preset) {
-        const apiKey = GM_getValue(STORAGE_API_KEY, '');
-        if (!apiKey) {
-            displayStatusMessage('API Key is required to create race.', 'error');
-            setTimeout(() => displayStatusMessage('', ''), 3000);
+    function saveAutoJoinPreset() {
+        const presetName = prompt("Enter a name for this auto-join preset:");
+        if (!presetName) return;
+
+        const preset = {
+            track: document.getElementById('autoJoinTrack').value,
+            minLaps: document.getElementById('minLaps').value,
+            maxLaps: document.getElementById('maxLaps').value,
+            selectedCarId: document.getElementById('autoJoinCar').value,
+            hidePassworded: document.getElementById('hidePassworded').checked,
+            hideBets: document.getElementById('hideBets').checked
+        };
+
+        const presets = loadAutoJoinPresets();
+        presets[presetName] = preset;
+        GM_setValue('autoJoinPresets', JSON.stringify(presets));
+        updateQuickLaunchButtons();
+        displayStatusMessage('Auto-join preset saved', 'success');
+    }
+
+    function loadAutoJoinPresets() {
+        try {
+            return JSON.parse(GM_getValue('autoJoinPresets', '{}'));
+        } catch (e) {
+            console.error('Error loading auto-join presets:', e);
+            return {};
+        }
+    }
+
+    async function applyAutoJoinPreset(preset) {
+        // Set all the auto-join fields first
+        document.getElementById('autoJoinTrack').value = preset.track;
+        document.getElementById('minLaps').value = preset.minLaps;
+        document.getElementById('maxLaps').value = preset.maxLaps;
+        document.getElementById('autoJoinCar').value = preset.selectedCarId;
+        document.getElementById('hidePassworded').checked = preset.hidePassworded;
+        document.getElementById('hideBets').checked = preset.hideBets;
+
+        // Ensure we're on Custom Events tab
+        const tabSwitched = await ensureCustomEventsTab();
+        if (!tabSwitched) {
+            console.log('[DEBUG] Failed to switch to Custom Events tab');
+            displayStatusMessage('Failed to load Custom Events tab', 'error');
             return;
         }
 
-        const trackId = preset.track;
-        const laps = preset.laps;
-        const minDrivers = preset.minDrivers;
-        const maxDrivers = preset.maxDrivers;
-        const raceName = preset.raceName;
-        const password = preset.password;
-        const betAmount = preset.betAmount;
-        const raceHour = preset.hour;
-        const raceMinute = preset.minute;
-        const carId = preset.carId;
-
-        let waitTime = Math.floor(Date.now() / 1000);
-        if (preset.saveTime && preset.hour && preset.minute) {
-            const nextTime = getNextAvailableTime(preset.hour, preset.minute);
-            if (nextTime) {
-                waitTime = Math.floor(nextTime.valueOf() / 1000);
-            }
-        } else {
-            // Default to current time if no time is saved in preset
-            const now = moment.utc();
-            waitTime = Math.floor(now.valueOf() / 1000);
-        }
-
-        const rfcValue = getRFC();
-
-        const params = new URLSearchParams();
-        params.append('carID', carId);
-        params.append('password', password);
-        params.append('createRace', 'true');
-        params.append('title', raceName);
-        params.append('minDrivers', minDrivers);
-        params.append('maxDrivers', maxDrivers);
-        params.append('trackID', trackId);
-        params.append('laps', laps);
-        params.append('minClass', '5');
-        params.append('carsTypeAllowed', '1');
-        params.append('carsAllowed', '5');
-        params.append('betAmount', betAmount);
-        params.append('waitTime', waitTime);
-        params.append('rfcv', rfcValue);
-
-        const raceLink = `https://www.torn.com/loader.php?sid=racing&tab=customrace&section=getInRace&step=getInRace&id=&${params.toString()}`;
-
-        displayStatusMessage('Creating Race...', 'info');
-
-        try {
-            const response = await fetch(raceLink);
-            const data = await response.text();
-
-            const quickLaunchStatus = document.querySelector('.quick-launch-status');
-            if (quickLaunchStatus) {
-                if (data.includes('success') || response.ok) {
-                    quickLaunchStatus.textContent = 'Race Created Successfully!';
-                    quickLaunchStatus.className = 'quick-launch-status success show';
-                    // Navigate to racing page after successful race creation
-                    setTimeout(() => window.location.href = 'https://www.torn.com/loader.php?sid=racing', 1500);
-                } else {
-                    quickLaunchStatus.textContent = 'Error creating race. Please try again.';
-                    quickLaunchStatus.className = 'quick-launch-status error show';
-                }
-                // Removed the setTimeout that was hiding the status
-            }
-
-            // Regular status message for the GUI
-            if (data.includes('success') || response.ok) {
-                displayStatusMessage('Race Created Successfully!', 'success');
-                // Navigate to racing page after successful race creation
-                setTimeout(() => window.location.href = 'https://www.torn.com/loader.php?sid=racing', 1500);
-            } else {
-                displayStatusMessage('Error creating race. Please try again.', 'error');
-            }
-            setTimeout(() => displayStatusMessage('', ''), 3000);
-        } catch (error) {
-            const quickLaunchStatus = document.querySelector('.quick-launch-status');
-            if (quickLaunchStatus) {
-                quickLaunchStatus.textContent = `Error creating race: ${error.message}`;
-                quickLaunchStatus.className = 'quick-launch-status error show';
-                // Removed the setTimeout that was hiding the status
-            }
-
-            displayStatusMessage(`Error creating race: ${error.message}`, 'error');
-            setTimeout(() => displayStatusMessage('', ''), 5000);
-        }
+        // Start auto-join with a slight delay to ensure everything is loaded
+        setTimeout(() => {
+            console.log('[DEBUG] Starting auto-join after preset applied');
+            startAutoJoin();
+        }, 1000);
     }
 
     function populateTimeDropdowns() {
@@ -2118,25 +2458,31 @@
     }
 
     function populateCarDropdown(cars) {
-        const carDropdown = document.getElementById('carDropdown');
-        if (!carDropdown) return;
+        const dropdowns = [
+            document.getElementById('carDropdown'),
+            document.getElementById('autoJoinCar')
+        ];
 
-        carDropdown.innerHTML = '<option value="">Select a car...</option>';
+        dropdowns.forEach(dropdown => {
+            if (!dropdown) return;
 
-        const sortedCars = Object.values(cars)
-            .filter(car => car.leased !== '1')
-            .sort((a, b) => {
-                const nameA = a.name || a.item_name;
-                const nameB = b.name || b.item_name;
-                return nameA.localeCompare(nameB);
+            dropdown.innerHTML = '<option value="">Select a car...</option>';
+
+            const sortedCars = Object.values(cars)
+                .filter(car => car.leased !== '1')
+                .sort((a, b) => {
+                    const nameA = a.name || a.item_name;
+                    const nameB = b.name || b.item_name;
+                    return nameA.localeCompare(nameB);
+                });
+
+            sortedCars.forEach(car => {
+                const carName = car.name || car.item_name;
+                const option = document.createElement('option');
+                option.value = car.id;
+                option.textContent = `${carName} (ID: ${car.id})`;
+                dropdown.appendChild(option);
             });
-
-        sortedCars.forEach(car => {
-            const carName = car.name || car.item_name;
-            const option = document.createElement('option');
-            option.value = car.id;
-            option.textContent = `${carName} (ID: ${car.id})`;
-            carDropdown.appendChild(option);
         });
     }
 
@@ -2432,7 +2778,7 @@
             alert = document.createElement('div');
             alert.id = 'raceAlert';
             alert.className = 'race-alert';
-            alert.textContent = 'No Race';
+            alert.textContent = 'Not Racing';
             alert.style.cssText = `
                 display: inline-flex !important;
                 align-items: center !important;
@@ -2523,178 +2869,1000 @@
     function initializeRaceFiltering() {
         console.log('[DEBUG] Starting race filtering initialization');
         
+        if (window.raceFilteringInitialized) {
+            console.log('[DEBUG] Race filtering already initialized');
+            return;
+        }
+
+        // Create the RaceFiltering object if it doesn't exist
+        window.RaceFiltering = window.RaceFiltering || {
+            filterRacesList() {
+                console.log('[DEBUG] Applying filters to race list');
+                const filters = {
+                    track: document.getElementById('filterTrack')?.value || '',
+                    laps: {
+                        min: parseInt(document.getElementById('filterMinLaps')?.value) || null,
+                        max: parseInt(document.getElementById('filterMaxLaps')?.value) || null
+                    },
+                    sortBy: document.getElementById('filterSort')?.value || 'time',
+                    hidePassworded: document.getElementById('hidePassworded')?.checked || false,
+                    showSuitableCarsOnly: document.getElementById('showSuitableCarsOnly')?.checked || false
+                };
+
+                const racesList = document.querySelector('.custom_events, .events-list, .races-list');
+                if (!racesList) return;
+
+                const races = Array.from(racesList.children);
+                races.forEach(race => {
+                    let shouldShow = true;
+
+                    if (filters.track && !this.matchesTrackFilter(race, filters.track)) {
+                        shouldShow = false;
+                    }
+                    if (shouldShow && filters.showSuitableCarsOnly && !this.hasSuitableCar(race)) {
+                        shouldShow = false;
+                    }
+                    if (shouldShow && filters.laps.min && !this.matchesMinLapsFilter(race, filters.laps.min)) {
+                        shouldShow = false;
+                    }
+                    if (shouldShow && filters.laps.max && !this.matchesMaxLapsFilter(race, filters.laps.max)) {
+                        shouldShow = false;
+                    }
+                    if (shouldShow && filters.hidePassworded && this.isPasswordProtected(race)) {
+                        shouldShow = false;
+                    }
+
+                    race.style.display = shouldShow ? '' : 'none';
+                });
+
+                // Sort visible races
+                const visibleRaces = races.filter(race => race.style.display !== 'none');
+                visibleRaces.sort((a, b) => {
+                    switch(filters.sortBy) {
+                        case 'time': return this.compareTime(a, b);
+                        case 'track': return this.compareTrack(a, b);
+                        case 'laps': return this.compareLaps(a, b);
+                        case 'bets': return this.compareBets(a, b);
+                        default: return 0;
+                    }
+                });
+
+                visibleRaces.forEach(race => racesList.appendChild(race));
+            },
+
+            matchesTrackFilter(race, trackName) {
+                if (!trackName) return true;
+                const trackElement = race.querySelector('li.track');
+                if (!trackElement) return true;
+                
+                // Get the track name by removing the laps text
+                const trackText = trackElement.textContent.replace(/\(\d+\s*laps?\)/i, '').trim();
+                return trackText.toLowerCase() === trackName.toLowerCase();
+            },
+
+            hasSuitableCar(race) {
+                const notSuitableText = "You do not have a suitable car enlisted for this race.";
+                return !race.textContent.includes(notSuitableText);
+            },
+
+            matchesMinLapsFilter(race, minLaps) {
+                if (!minLaps) return true;
+                const lapsElement = race.querySelector('li.track span.laps');
+                if (!lapsElement) return true;
+                
+                const lapsMatch = lapsElement.textContent.match(/(\d+)\s*laps?/i);
+                const raceLaps = lapsMatch ? parseInt(lapsMatch[1]) : 0;
+                console.log('[DEBUG] Min laps check:', { raceLaps, minLaps });
+                return raceLaps >= minLaps;
+            },
+
+            matchesMaxLapsFilter(race, maxLaps) {
+                if (!maxLaps) return true;
+                const lapsElement = race.querySelector('li.track span.laps');
+                if (!lapsElement) return true;
+                
+                const lapsMatch = lapsElement.textContent.match(/(\d+)\s*laps?/i);
+                const raceLaps = lapsMatch ? parseInt(lapsMatch[1]) : 0;
+                console.log('[DEBUG] Max laps check:', { raceLaps, maxLaps });
+                return raceLaps <= maxLaps;
+            },
+
+            isPasswordProtected(race) {
+                const raceText = race.textContent.toLowerCase();
+                return raceText.includes('password') || race.querySelector('[id^="joinPasswordForm"]') !== null;
+            },
+
+            compareTime(a, b) {
+                const getTimeInMinutes = el => {
+                    const timeText = (el.textContent || '').toLowerCase();
+                    
+                    // Waiting races should be first
+                    if (timeText.includes('waiting')) {
+                        return -1;
+                    }
+
+                    let totalMinutes = 0;
+                    
+                    // Try to match various time formats
+                    
+                    // Match "X h Y min" or "X hour Y minute" format
+                    const fullMatch = timeText.match(/(\d+)\s*h(?:our)?s?\s*(?:and)?\s*(\d+)\s*(?:min(?:ute)?s?|m)/);
+                    if (fullMatch) {
+                        return (parseInt(fullMatch[1]) * 60) + parseInt(fullMatch[2]);
+                    }
+                    
+                    // Match single hours format "X h" or "X hour(s)"
+                    const hoursOnlyMatch = timeText.match(/(\d+)\s*h(?:our)?s?/);
+                    if (hoursOnlyMatch) {
+                        return parseInt(hoursOnlyMatch[1]) * 60;
+                    }
+                    
+                    // Match single minutes format "X min", "X minute(s)" or "X m"
+                    const minutesOnlyMatch = timeText.match(/(\d+)\s*(?:min(?:ute)?s?|m)/);
+                    if (minutesOnlyMatch) {
+                        return parseInt(minutesOnlyMatch[1]);
+                    }
+                    
+                    // Match "HH:MM" format
+                    const timeMatch = timeText.match(/(\d+):(\d+)/);
+                    if (timeMatch) {
+                        return (parseInt(timeMatch[1]) * 60) + parseInt(timeMatch[2]);
+                    }
+                    
+                    // No valid time format found
+                    return Infinity;
+                };
+                
+                const timeA = getTimeInMinutes(a);
+                const timeB = getTimeInMinutes(b);
+                return timeA - timeB;
+            },
+
+            compareTrack(a, b) {
+                const getTrackName = el => {
+                    const trackElement = el.querySelector('li.track');
+                    if (!trackElement) return '';
+                    // Remove the laps text and trim whitespace
+                    return trackElement.textContent.replace(/\(\d+\s*laps?\)/i, '').trim();
+                };
+                
+                const trackA = getTrackName(a).toLowerCase();
+                const trackB = getTrackName(b).toLowerCase();
+                return trackA.localeCompare(trackB);
+            },
+
+            compareLaps(a, b) {
+                const getLaps = el => {
+                    const lapsMatch = el.textContent.match(/(\d+)\s*laps?/i);
+                    return parseInt(lapsMatch?.[1]) || 0;
+                };
+                return getLaps(a) - getLaps(b);
+            },
+
+            compareBets(a, b) {
+                const getBet = el => {
+                    const betMatch = el.textContent.match(/\$([0-9,]+)/);
+                    return parseInt(betMatch?.[1]?.replace(/,/g, '')) || 0;
+                };
+                return getBet(b) - getBet(a);
+            }
+        };
+
+        // Only proceed if on racing page
         if (!window.location.href.includes('sid=racing')) {
-            console.log('[DEBUG] Not on racing page, filter init aborted');
             return;
         }
 
         // Setup one-time initialization flag
-        window.raceFiltersInitialized = window.raceFiltersInitialized || false;
-        
-        // Add tab change listener
-        document.addEventListener('click', (e) => {
-            if (e.target && e.target.matches('.categories .link')) {
-                const tabValue = e.target.getAttribute('tab-value');
-                if (tabValue === 'customrace') {
-                    // Clear initialization flag when switching to custom race tab
-                    window.raceFiltersInitialized = false;
-                    // Small delay to allow content to load
-                    setTimeout(checkAndSetupFilters, 100);
-                }
-            }
-        });
+        window.raceFilteringInitialized = true;
 
-        // Setup mutation observer for dynamic content changes
-        const observer = new MutationObserver((mutations) => {
-            for (const mutation of mutations) {
-                checkAndSetupFilters();
-            }
-        });
-
-        observer.observe(document.getElementById('racingMainContainer') || document.body, {
-            childList: true,
-            subtree: true
-        });
-
-        // Initial check
-        checkAndSetupFilters();
-    }
-
-    function checkAndSetupFilters() {
-        // Only proceed if not already initialized
-        if (window.raceFiltersInitialized) {
-            return;
+        // Cleanup old observer if it exists
+        if (window.raceFilterObserver) {
+            window.raceFilterObserver.disconnect();
         }
 
+        // Setup mutation observer with debouncing
+        let debounceTimer;
+        window.raceFilterObserver = new MutationObserver((mutations) => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                const raceList = document.querySelector('.custom_events, .events-list, .races-list');
+                const filterSection = document.querySelector('.race-filter-section');
+                
+                if (raceList && !filterSection) {
+                    console.log('[DEBUG] Race list found, setting up filters');
+                    setupFilterControls();
+                    window.RaceFiltering.filterRacesList();
+                }
+            }, 100); // Debounce delay
+        });
+
+        // Start observing with specific config
+        const observerConfig = {
+            childList: true,
+            subtree: true
+        };
+
+        const container = document.getElementById('racingMainContainer') || document.body;
+        window.raceFilterObserver.observe(container, observerConfig);
+
+        // Initial setup if race list already exists
+        const raceList = document.querySelector('.custom_events, .events-list, .races-list');
+        if (raceList && !raceList.querySelector('.race-filter-section')) {
+            setupFilterControls();
+            window.RaceFiltering.filterRacesList();
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('unload', () => {
+            if (window.raceFilterObserver) {
+                window.raceFilterObserver.disconnect();
+            }
+            window.raceFilteringInitialized = false;
+        });
+    }
+
+    function refreshRacesList() {
+        console.log('[DEBUG] Refreshing race list');
+        const customEventsTab = document.querySelector('a[href*="tab=customrace"]');
+        
+        if (customEventsTab) {
+            const observer = new MutationObserver((mutations, obs) => {
+                const racesList = document.querySelector('.custom_events, .events-list, .races-list');
+                if (racesList) {
+                    console.log('[DEBUG] Race list detected after refresh');
+                    setTimeout(() => {
+                        console.log('[DEBUG] Restoring filters and reapplying');
+                        const filtersEnabled = restoreFilterState();
+                        if (filtersEnabled && document.getElementById('toggleFilters')?.classList.contains('active')) {
+                            window.RaceFiltering?.filterRacesList();
+                        }
+                        obs.disconnect();
+                    }, 500);
+                }
+            });
+
+            const container = document.getElementById('racingMainContainer') || document.body;
+            observer.observe(container, {
+                childList: true,
+                subtree: true
+            });
+
+            customEventsTab.click();
+            
+            setTimeout(() => {
+                observer.disconnect();
+                console.log('[DEBUG] Observer timed out - no race list found');
+            }, 10000);
+        }
+    }
+
+    function clearFilters() {
+        // Reset all filter inputs to default state
+        const filterTrack = document.getElementById('filterTrack');
+        const filterMinLaps = document.getElementById('filterMinLaps');
+        const filterMaxLaps = document.getElementById('filterMaxLaps');
+        const filterSort = document.getElementById('filterSort');
+        const hidePassworded = document.getElementById('hidePassworded');
+        const showSuitableCarsOnly = document.getElementById('showSuitableCarsOnly');
+
+        if (filterTrack) filterTrack.value = '';
+        if (filterMinLaps) filterMinLaps.value = '';
+        if (filterMaxLaps) filterMaxLaps.value = '';
+        if (filterSort) filterSort.value = 'time';
+        if (hidePassworded) hidePassworded.checked = false;
+        if (showSuitableCarsOnly) showSuitableCarsOnly.checked = false;
+
+        // Show all races
+        const racesList = document.querySelector('.custom_events, .events-list, .races-list');
+        if (racesList) {
+            Array.from(racesList.children).forEach(race => {
+                race.style.display = '';
+            });
+        }
+    }
+
+    function saveFilterState() {
+        const state = {
+            track: document.getElementById('filterTrack')?.value || '',
+            minLaps: document.getElementById('filterMinLaps')?.value || '',
+            maxLaps: document.getElementById('filterMaxLaps')?.value || '',
+            sortBy: document.getElementById('filterSort')?.value || 'time',
+            hidePassworded: document.getElementById('hidePassworded')?.checked || false,
+            showSuitableCarsOnly: document.getElementById('showSuitableCarsOnly')?.checked || false,
+            filtersEnabled: document.getElementById('toggleFilters')?.classList.contains('active') || false
+        };
+        GM_setValue('raceFilterState', JSON.stringify(state));
+    }
+
+    function restoreFilterState() {
+        try {
+            const savedState = JSON.parse(GM_getValue('raceFilterState', '{}'));
+            
+            const filterTrack = document.getElementById('filterTrack');
+            const filterMinLaps = document.getElementById('filterMinLaps');
+            const filterMaxLaps = document.getElementById('filterMaxLaps');
+            const filterSort = document.getElementById('filterSort');
+            const hidePassworded = document.getElementById('hidePassworded');
+            const showSuitableCarsOnly = document.getElementById('showSuitableCarsOnly');
+            const toggleFilters = document.getElementById('toggleFilters');
+
+            if (filterTrack) filterTrack.value = savedState.track || '';
+            if (filterMinLaps) filterMinLaps.value = savedState.minLaps || '';
+            if (filterMaxLaps) filterMaxLaps.value = savedState.maxLaps || '';
+            if (filterSort) filterSort.value = savedState.sortBy || 'time';
+            if (hidePassworded) hidePassworded.checked = savedState.hidePassworded || false;
+            if (showSuitableCarsOnly) showSuitableCarsOnly.checked = savedState.showSuitableCarsOnly || false;
+            
+            if (toggleFilters) {
+                if (savedState.filtersEnabled) {
+                    toggleFilters.classList.add('active');
+                    toggleFilters.textContent = 'Disable Filters';
+                } else {
+                    toggleFilters.classList.remove('active');
+                    toggleFilters.textContent = 'Enable Filters';
+                }
+            }
+
+            return savedState.filtersEnabled;
+        } catch (e) {
+            console.error('Error restoring filter state:', e);
+            return false;
+        }
+    }
+
+    function setupFilterControls() {
         const raceList = document.querySelector('.custom_events, .events-list, .races-list');
         if (!raceList || raceList.querySelector('.race-filter-section')) {
             return;
         }
 
-        // Set flag before initializing to prevent multiple initializations
-        window.raceFiltersInitialized = true;
-        
-        setupFilterControls();
-    }
+        // Remove any existing filter controls first
+        const existingFilters = document.querySelectorAll('.race-filter-section');
+        existingFilters.forEach(el => el.remove());
 
-    function setupFilterControls() {
-        const raceList = document.querySelector('.custom_events, .events-list, .races-list');
-        if (!raceList) {
-            console.log('[DEBUG] Race list not found');
-            return;
-        }
-        
         console.log('[DEBUG] Creating filter controls');
         
-        // Check if filters already exist and remove them if they do
-        const existingFilters = document.querySelector('.race-filter-section');
-        if (existingFilters) {
-            existingFilters.remove();
-        }
-        
-        // Create and add new filter controls
         const filterContainer = document.createElement('div');
         filterContainer.className = 'race-filter-section';
-        raceList.parentNode.insertBefore(filterContainer, raceList);
-        
-        const controls = document.createElement('div');
-        controls.className = 'race-filter-controls';
-        controls.innerHTML = `
-            <div class="filter-row">
-                <div class="filter-group">
-                    <label>Track:</label>
-                    <select id="filterTrack">
-                        <option value="">All Tracks</option>
-                        <option value="6">Uptown</option>
-                        <option value="7">Withdrawal</option>
-                        <option value="8">Underdog</option>
-                        <option value="9">Parkland</option>
-                        <option value="10">Docks</option>
-                        <option value="11">Commerce</option>
-                        <option value="12">Two Islands</option>
-                        <option value="15">Industrial</option>
-                        <option value="16">Vector</option>
-                        <option value="17">Mudpit</option>
-                        <option value="18">Hammerhead</option>
-                        <option value="19">Sewage</option>
-                        <option value="20">Meltdown</option>
-                        <option value="21">Speedway</option>
-                        <option value="23">Stone Park</option>
-                        <option value="24">Convict</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label>Laps:</label>
-                    <input type="number" id="filterMinLaps" placeholder="Min" min="1" max="100">
-                    <input type="number" id="filterMaxLaps" placeholder="Max" min="1" max="100">
-                </div>
-                <div class="filter-group">
-                    <label>Sort By:</label>
-                    <select id="filterSort">
-                        <option value="time">Start Time</option>
-                        <option value="track">Track</option>
-                        <option value="laps">Laps</option>
-                        <option value="bets">Bet Amount</option>
-                    </select>
-                </div>
-                <div class="filter-group checkboxes">
-                    <div class="checkbox-option">
-                        <label><input type="checkbox" id="hidePassworded"> Hide Passworded</label>
+        filterContainer.innerHTML = `
+            <div class="race-filter-controls">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label>Track:</label>
+                        <select id="filterTrack">
+                            <option value="">All Tracks</option>
+                            <option value="Uptown">Uptown</option>
+                            <option value="Withdrawal">Withdrawal</option>
+                            <option value="Underdog">Underdog</option>
+                            <option value="Parkland">Parkland</option>
+                            <option value="Docks">Docks</option>
+                            <option value="Commerce">Commerce</option>
+                            <option value="Two Islands">Two Islands</option>
+                            <option value="Industrial">Industrial</option>
+                            <option value="Vector">Vector</option>
+                            <option value="Mudpit">Mudpit</option>
+                            <option value="Hammerhead">Hammerhead</option>
+                            <option value="Sewage">Sewage</option>
+                            <option value="Meltdown">Meltdown</option>
+                            <option value="Speedway">Speedway</option>
+                            <option value="Stone Park">Stone Park</option>
+                            <option value="Convict">Convict</option>
+                        </select>
                     </div>
-                    <div class="checkbox-option">
-                        <label><input type="checkbox" id="showSuitableCarsOnly"> Show Suitable Cars Only</label>
+                    <div class="filter-group laps-filter">
+                        <label>Laps:</label>
+                        <input type="number" id="filterMinLaps" placeholder="Min" min="1" max="100">
+                        <span>-</span>
+                        <input type="number" id="filterMaxLaps" placeholder="Max" min="1" max="100">
+                    </div>
+                    <div class="filter-group">
+                        <label>Sort By:</label>
+                        <select id="filterSort">
+                            <option value="time">Start Time</option>
+                            <option value="track">Track</option>
+                            <option value="laps">Laps</option>
+                            <option value="bets">Bet Amount</option>
+                        </select>
+                    </div>
+                    <div class="filter-group checkboxes">
+                        <div class="checkbox-option">
+                            <label><input type="checkbox" id="hidePassworded"> Hide Passworded</label>
+                        </div>
+                        <div class="checkbox-option">
+                            <label><input type="checkbox" id="showSuitableCarsOnly"> Show Suitable Cars Only</label>
+                        </div>
                     </div>
                 </div>
                 <div class="filter-buttons">
-                    <button id="toggleFilters" class="gui-button active">Disable Filters</button>
                     <button id="refreshRaces" class="gui-button">Refresh List</button>
+                    <button id="toggleFilters" class="gui-button active">Disable Filters</button>
                 </div>
             </div>
         `;
-        
-        filterContainer.appendChild(controls);
-        
-        // Add filter event listeners
+
+        // Insert the filter controls before the race list
+        raceList.parentNode.insertBefore(filterContainer, raceList);
+
+        // Add event listeners
         const filterElements = [
             'filterTrack',
-            'filterMinLaps',
+            'filterMinLaps', 
             'filterMaxLaps',
             'filterSort',
             'hidePassworded',
             'showSuitableCarsOnly'
         ];
-        
+
         filterElements.forEach(id => {
-            document.getElementById(id)?.addEventListener('change', () => {
-                if (document.getElementById('toggleFilters')?.classList.contains('active')) {
-                    window.RaceFiltering.filterRacesList();
-                }
-            });
+            const element = document.getElementById(id);
+            if (element) {
+                element.addEventListener('change', () => {
+                    saveFilterState();
+                    if (document.getElementById('toggleFilters')?.classList.contains('active')) {
+                        window.RaceFiltering?.filterRacesList();
+                    }
+                });
+            }
         });
-        
-        // Add button listeners with filters enabled by default
+
+        // Setup button listeners
         const toggleBtn = document.getElementById('toggleFilters');
         const refreshBtn = document.getElementById('refreshRaces');
-        
+
         if (toggleBtn) {
-            toggleBtn.classList.add('active'); // Enable by default
-            window.RaceFiltering.filterRacesList(); // Apply filters immediately
-            
             toggleBtn.addEventListener('click', function() {
                 const isEnabled = this.classList.toggle('active');
                 this.textContent = isEnabled ? 'Disable Filters' : 'Enable Filters';
+                
                 if (isEnabled) {
-                    window.RaceFiltering.filterRacesList();
+                    window.RaceFiltering?.filterRacesList();
                 } else {
-                    window.location.reload();
+                    clearFilters();
                 }
+                saveFilterState();
             });
         }
 
         if (refreshBtn) {
-            refreshBtn.addEventListener('click', () => window.location.reload());
+            refreshBtn.addEventListener('click', () => {
+                console.log('[DEBUG] Refresh button clicked');
+                refreshRacesList();
+            });
+        }
+
+        // Initial filter application
+        if (toggleBtn?.classList.contains('active')) {
+            window.RaceFiltering?.filterRacesList();
+        }
+
+        // Restore saved state and apply filters if needed
+        const filtersEnabled = restoreFilterState();
+        if (filtersEnabled && toggleBtn?.classList.contains('active')) {
+            window.RaceFiltering?.filterRacesList();
         }
     }
 
-    init();
+    async function startAutoJoin() {
+        // Ensure we're on Custom Events tab first
+        const tabSwitched = await ensureCustomEventsTab();
+        if (!tabSwitched) {
+            console.log('[DEBUG] Failed to switch to Custom Events tab');
+            displayStatusMessage('Failed to load Custom Events tab', 'error');
+            return;
+        }
+
+        // Show stop button and hide start button
+        const startBtn = document.getElementById('startAutoJoin');
+        const stopBtn = document.getElementById('stopAutoJoin');
+        if (startBtn) startBtn.style.display = 'none';
+        if (stopBtn) stopBtn.style.display = 'block';
+        
+        console.log('[DEBUG] Starting Auto-Join process');
+        const track = document.getElementById('autoJoinTrack').value;
+        const minLaps = parseInt(document.getElementById('minLaps').value) || 0;
+        const maxLaps = parseInt(document.getElementById('maxLaps').value) || 100;
+        const selectedCarId = document.getElementById('autoJoinCar').value;
+        const hidePassworded = document.getElementById('hidePassworded').checked;
+        const hideBets = document.getElementById('hideBets').checked;
+
+        console.log('[DEBUG] Filter settings:', { track, minLaps, maxLaps, selectedCarId, hidePassworded, hideBets });
+
+        if (!selectedCarId) {
+            console.log('[DEBUG] No car selected');
+            displayStatusMessage('Please select a car first.', 'error');
+            return;
+        }
+
+        // Look for race list in both custom events and race tabs
+        const customEvents = document.querySelector('.custom_events');
+        const racesList = customEvents || document.querySelector('.events-list, .races-list');
+        
+        console.log('[DEBUG] Found race list container:', racesList ? racesList.className : 'Not found');
+        
+        if (!racesList) {
+            console.log('[DEBUG] No races list found');
+            displayStatusMessage('No races found. Try refreshing the page.', 'error');
+            return;
+        }
+
+        // Get all race rows, excluding header/footer elements
+        const races = Array.from(racesList.children).filter(el => 
+            el.tagName === 'LI' && !el.classList.contains('clear') && !el.classList.contains('head')
+        );
+        
+        console.log(`[DEBUG] Total valid race elements found: ${races.length}`);
+        races.forEach((race, idx) => {
+            console.log(`[DEBUG] Race ${idx + 1} content:`, race.textContent.substring(0, 100) + '...');
+        });
+
+        // Filter races based on criteria
+        const suitableRaces = races.filter(race => {
+            if (!race || race.className === 'clear') return false;
+            
+            let isMatch = true;
+            const lapsElement = race.querySelector('li.track span.laps');
+            const lapsMatch = lapsElement ? lapsElement.textContent.match(/(\d+)\s*laps?/i) : null;
+            const raceLaps = lapsMatch ? parseInt(lapsMatch[1]) : 0;
+            
+            console.log(`[DEBUG] Processing race with ${raceLaps} laps`);
+
+            // Check driver count first
+            const driversElement = race.querySelector('li.drivers');
+            if (driversElement) {
+                const driversText = driversElement.textContent.trim();
+                const [current, max] = driversText.match(/(\d+)\s*\/\s*(\d+)/)?.slice(1).map(Number) || [0, 0];
+                console.log('[DEBUG] Race drivers:', { current, max });
+                
+                if (current >= max) {
+                    console.log('[DEBUG] Race filtered out: Full (' + current + '/' + max + ' drivers)');
+                    isMatch = false;
+                }
+            }
+
+            const trackNames = {
+                '6': 'Uptown',
+                '7': 'Withdrawal',
+                '8': 'Underdog',
+                '9': 'Parkland',
+                '10': 'Docks',
+                '11': 'Commerce',
+                '12': 'Two Islands',
+                '15': 'Industrial',
+                '16': 'Vector',
+                '17': 'Mudpit',
+                '18': 'Hammerhead',
+                '19': 'Sewage',
+                '20': 'Meltdown',
+                '21': 'Speedway',
+                '23': 'Stone Park',
+                '24': 'Convict'
+            };
+
+            // Rest of filtering logic with detailed logging
+            if (isMatch && track !== 'all') {
+                // Convert track ID to name if necessary
+                const trackToMatch = trackNames[track] || track;
+                const matches = window.RaceFiltering.matchesTrackFilter(race, trackToMatch);
+                console.log(`[DEBUG] Track filter (${trackToMatch}):`, matches ? 'passed' : 'failed');
+                if (!matches) isMatch = false;
+            }
+
+            if (isMatch && minLaps) {
+                const matches = window.RaceFiltering.matchesMinLapsFilter(race, minLaps);
+                console.log(`[DEBUG] Min laps filter (${minLaps}):`, matches ? 'passed' : 'failed');
+                if (!matches) isMatch = false;
+            }
+
+            if (isMatch && maxLaps) {
+                const matches = window.RaceFiltering.matchesMaxLapsFilter(race, maxLaps);
+                console.log(`[DEBUG] Max laps filter (${maxLaps}):`, matches ? 'passed' : 'failed');
+                if (!matches) isMatch = false;
+            }
+
+            if (isMatch && hidePassworded) {
+                const matches = window.RaceFiltering.isPasswordProtected(race);
+                console.log(`[DEBUG] Password filter:`, matches ? 'failed' : 'passed');
+                if (matches) isMatch = false;
+            }
+
+            if (isMatch && hideBets) {
+                const matches = hasBet(race);
+                console.log(`[DEBUG] Bet filter:`, matches ? 'failed' : 'passed');
+                if (matches) isMatch = false;
+            }
+
+            if (isMatch) {
+                const matches = window.RaceFiltering.hasSuitableCar(race);
+                console.log(`[DEBUG] Suitable car filter:`, matches ? 'passed' : 'failed');
+                if (!matches) isMatch = false;
+            }
+
+            console.log(`[DEBUG] Final match result for race:`, isMatch);
+            return isMatch;
+        });
+
+        console.log(`[DEBUG] Suitable races found: ${suitableRaces.length}`);
+
+        // Check if no suitable races found or if suitable races list is empty
+        if (suitableRaces.length === 0 || !suitableRaces.some(race => {
+            const lapsElement = race.querySelector('li.track span.laps');
+            const lapsMatch = lapsElement ? lapsElement.textContent.match(/(\d+)\s*laps?/i) : null;
+            const raceLaps = lapsMatch ? parseInt(lapsMatch[1]) : 0;
+            return raceLaps > 0; // Make sure we have at least one race with valid laps
+        })) {
+            console.log('[DEBUG] No valid suitable races found - starting refresh cycle');
+            
+            // Save auto-join state before starting refresh cycle
+            GM_setValue('autoJoinState', {
+                track,
+                minLaps,
+                maxLaps,
+                selectedCarId,
+                hidePassworded,
+                hideBets,
+                active: true  // Add active flag
+            });
+            
+            let countdown = 3;
+            const updateCountdownAndRefresh = () => {
+                if (countdown > 0) {
+                    displayStatusMessage(`No suitable races found. Refreshing in ${countdown}...`, 'info');
+                    countdown--;
+                    window.autoJoinRefreshTimeout = setTimeout(updateCountdownAndRefresh, 1000);
+                } else {
+                    displayStatusMessage('Refreshing race list...', 'info');
+                    refreshCustomEventsList();
+                }
+            };
+
+            updateCountdownAndRefresh();
+            return;
+        }
+
+        // Sort races by time
+        suitableRaces.sort((a, b) => window.RaceFiltering.compareTime(a, b));
+
+        // Get the first (earliest) race
+        const firstRace = suitableRaces[0];
+
+        // Look for race ID in the join link - use the notification-wrap section
+        let raceId = null;
+        const joinLink = firstRace.querySelector('.notification-wrap .join-wrap a[href*="id="]');
+        if (joinLink) {
+            const idMatch = joinLink.href.match(/[?&]id=(\d+)/);
+            if (idMatch) {
+                raceId = idMatch[1];
+            }
+        }
+
+        // If still no race ID, try to find it in all links
+        if (!raceId) {
+            const links = firstRace.querySelectorAll('a[href*="id="]');
+            for (const link of links) {
+                const idMatch = link.href.match(/[?&]id=(\d+)/);
+                if (idMatch) {
+                    raceId = idMatch[1];
+                    break;
+                }
+            }
+        }
+
+        // If still no race ID, try the data attributes as a fallback
+        if (!raceId) {
+            raceId = firstRace.getAttribute('data-raceid') || firstRace.getAttribute('data-race');
+        }
+
+        if (!raceId) {
+            console.log('[DEBUG] Could not find race ID');
+            console.log('[DEBUG] Race element content:', firstRace.innerHTML);
+            displayStatusMessage('Could not find race ID.', 'error');
+            return;
+        }
+
+        console.log('[DEBUG] Found race ID:', raceId);
+        
+        // Get RFC value
+        const rfcValue = getRFC();
+        
+        // Construct join URL with RFC parameter
+        const params = new URLSearchParams();
+        params.append('sid', 'racing');
+        params.append('tab', 'customrace');
+        params.append('section', 'getInRace');
+        params.append('step', 'getInRace');
+        params.append('id', raceId);
+        params.append('carID', selectedCarId);
+        params.append('rfcv', rfcValue);
+        
+        const joinUrl = `https://www.torn.com/loader.php?${params.toString()}`;
+        console.log('[DEBUG] Generated join URL:', joinUrl);
+        
+        // Clear auto-join state and update buttons before navigating
+        GM_setValue('autoJoinState', null);
+        updateAutoJoinButtonStates();
+
+        // Navigate to join URL
+        displayStatusMessage('Joining race...', 'info');
+        window.location.href = joinUrl;
+    }
+
+    function stopAutoJoin(shouldReload = true) {
+        if (window.autoJoinRefreshTimeout) {
+            clearTimeout(window.autoJoinRefreshTimeout);
+            window.autoJoinRefreshTimeout = null;
+        }
+        
+        GM_setValue('autoJoinState', null);
+        updateAutoJoinButtonStates();
+        displayStatusMessage('Auto-join stopped', 'info');
+        
+        // Only reload if explicitly requested
+        if (shouldReload) {
+            window.location.reload();
+        }
+    }
+
+    function resumeAutoJoin() {
+        const autoJoinState = GM_getValue('autoJoinState', null);
+        if (autoJoinState && autoJoinState.active) {
+            console.log('[DEBUG] Resuming Auto-Join with state:', autoJoinState);
+            
+            // Update button states
+            updateAutoJoinButtonStates();
+            
+            if (window.location.href.includes('sid=racing')) {
+                // Restore all saved values
+                const elements = {
+                    'autoJoinTrack': autoJoinState.track,
+                    'minLaps': autoJoinState.minLaps,
+                    'maxLaps': autoJoinState.maxLaps,
+                    'autoJoinCar': autoJoinState.selectedCarId,
+                    'hidePassworded': autoJoinState.hidePassworded,
+                    'hideBets': autoJoinState.hideBets
+                };
+                
+                // Restore each element's value
+                Object.entries(elements).forEach(([id, value]) => {
+                    const element = document.getElementById(id);
+                    if (element) {
+                        if (typeof value === 'boolean') {
+                            element.checked = value;
+                        } else {
+                            element.value = value;
+                        }
+                    }
+                });
+
+                // Wait for DOM to be ready before restarting auto-join
+                setTimeout(() => {
+                    console.log('[DEBUG] Restarting auto-join after resume');
+                    startAutoJoin();
+                }, 1000);
+            }
+        }
+    }
+
+    function refreshCustomEventsList() {
+        console.log('[DEBUG] Refreshing Custom Events list');
+        const rfcValue = getRFC();
+        
+        // Create URL for fetching just the custom events content
+        const params = new URLSearchParams({
+            sid: 'racing',
+            tab: 'customrace',
+            rfcv: rfcValue
+        });
+        
+        const url = `https://www.torn.com/loader.php?${params.toString()}`;
+        
+        displayStatusMessage('Refreshing race list...', 'info');
+        
+        // Add retry mechanism
+        const maxRetries = 3;
+        let retryCount = 0;
+        
+        function attemptRefresh() {
+            fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                    'Cache-Control': 'no-cache',
+                    'Pragma': 'no-cache'
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                
+                const newCustomEvents = doc.querySelector('.custom_events, .events-list, .races-list');
+                const currentCustomEvents = document.querySelector('.custom_events, .events-list, .races-list');
+                
+                if (newCustomEvents && currentCustomEvents) {
+                    currentCustomEvents.innerHTML = newCustomEvents.innerHTML;
+                    console.log('[DEBUG] Custom events refreshed successfully');
+                    
+                    // Restore filters if needed
+                    if (document.getElementById('toggleFilters')?.classList.contains('active')) {
+                        window.RaceFiltering?.filterRacesList();
+                    }
+                    
+                    // Check auto-join state before continuing
+                    const autoJoinState = GM_getValue('autoJoinState', null);
+                    if (autoJoinState) {
+                        console.log('[DEBUG] Auto-join active, continuing search');
+                        setTimeout(() => {
+                            startAutoJoin();
+                        }, 500);
+                    }
+                    
+                    displayStatusMessage('Race list refreshed', 'success');
+                    setTimeout(() => displayStatusMessage('', ''), 3000);
+                } else {
+                    handleRefreshError('Could not find race list container');
+                }
+            })
+            .catch(error => handleRefreshError(error));
+        }
+        
+        function handleRefreshError(error) {
+            console.error('[DEBUG] Refresh error:', error);
+            retryCount++;
+            
+            const autoJoinState = GM_getValue('autoJoinState', null);
+            if (autoJoinState && retryCount < maxRetries) {
+                console.log(`[DEBUG] Retry ${retryCount}/${maxRetries}`);
+                displayStatusMessage(`Retrying refresh... (${retryCount}/${maxRetries})`, 'info');
+                setTimeout(attemptRefresh, 2000);
+            } else if (autoJoinState) {
+                console.log('[DEBUG] Max retries reached, stopping auto-join');
+                displayStatusMessage('Error refreshing races list, auto-join stopped', 'error');
+                stopAutoJoin(false); // Pass false to prevent page reload
+            } else {
+                displayStatusMessage('Error refreshing races list', 'error');
+            }
+        }
+        
+        attemptRefresh();
+    }
+
+    function hasBet(race) {
+        // Look specifically for bet amount that's greater than 0
+        const betText = race.textContent;
+        const betMatch = betText.match(/Bet:\s*\$([0-9,]+)/i);
+        if (betMatch) {
+            const betAmount = parseInt(betMatch[1].replace(/,/g, ''));
+            return betAmount > 0;
+        }
+        return false;
+    }
+
+    function isAutoJoinActive() {
+        const autoJoinState = GM_getValue('autoJoinState', null);
+        const currentUrl = window.location.href;
+        
+        // Check if we're joining a race, in a race, or just generated join URL
+        if (currentUrl.includes('section=getInRace') || 
+            document.querySelector('.car-selected-wrap') || 
+            currentUrl.includes('step=getInRace')) {
+            console.log('[DEBUG] Race join detected or join URL generated - clearing auto-join state');
+            GM_setValue('autoJoinState', null);
+            return false;
+        }
+        
+        return autoJoinState?.active === true && currentUrl.includes('sid=racing');
+    }
+
+    function updateAutoJoinButtonStates() {
+        const startBtn = document.getElementById('startAutoJoin');
+        const stopBtn = document.getElementById('stopAutoJoin');
+        const isActive = isAutoJoinActive();
+        
+        if (startBtn) {
+            startBtn.style.display = isActive ? 'none' : 'block';
+            // Only disable if actually in a race, not when just joining
+            startBtn.disabled = document.querySelector('.car-selected-wrap') !== null;
+        }
+        if (stopBtn) {
+            stopBtn.style.display = isActive ? 'block' : 'none';
+        }
+    }
+
+    function initializeAutoJoinSection() {
+        const waitForAutoJoinContainer = setInterval(() => {
+            const autoJoinButtons = document.querySelector('.auto-join-section .auto-join-buttons');
+            if (autoJoinButtons) {
+                clearInterval(waitForAutoJoinContainer);
+                
+                // Remove existing button if it exists
+                const existingButton = document.getElementById('saveAutoJoinPreset');
+                if (existingButton) {
+                    existingButton.remove();
+                }
+
+                // Create new save preset button
+                const savePresetButton = document.createElement('button');
+                savePresetButton.id = 'saveAutoJoinPreset';
+                savePresetButton.className = 'gui-button';
+                savePresetButton.textContent = 'Save Auto-Join Preset';
+                
+                savePresetButton.addEventListener('click', saveAutoJoinPreset);
+                
+                // Insert at the start of the buttons container
+                autoJoinButtons.insertBefore(savePresetButton, autoJoinButtons.firstChild);
+
+                console.log('[DEBUG] Auto-join preset save button added successfully');
+            }
+        }, 500);
+
+        setTimeout(() => clearInterval(waitForAutoJoinContainer), 10000);
+    }
+
+    async function ensureCustomEventsTab() {
+        return new Promise((resolve) => {
+            const customEventsTab = document.querySelector('a[href*="tab=customrace"]');
+            const isCustomEventsActive = document.querySelector('li.active .icon.custom-events');
+            
+            if (!isCustomEventsActive && customEventsTab) {
+                console.log('[DEBUG] Custom Events tab not active, switching...');
+                
+                // Create observer to wait for race list to load
+                const observer = new MutationObserver((mutations, obs) => {
+                    const racesList = document.querySelector('.custom_events, .events-list, .races-list');
+                    if (racesList) {
+                        console.log('[DEBUG] Race list loaded after tab switch');
+                        obs.disconnect();
+                        setTimeout(() => resolve(true), 500); // Added delay after list loads
+                    }
+                });
+
+                // Start observing before clicking
+                observer.observe(document.getElementById('racingMainContainer') || document.body, {
+                    childList: true,
+                    subtree: true
+                });
+
+                // Click the tab
+                customEventsTab.click();
+                
+                // Set timeout to prevent infinite waiting
+                setTimeout(() => {
+                    observer.disconnect();
+                    resolve(false);
+                }, 5000);
+            } else {
+                resolve(true);
+            }
+        });
+    }
+
+    function initializeAll() {
+        init();
+        // Call initializeAutoJoinSection after a short delay to ensure DOM is ready
+        setTimeout(initializeAutoJoinSection, 1000);
+    }
+
+    function removeAutoJoinPreset(presetName) {
+        if (!confirm(`Are you sure you want to remove auto-join preset "${presetName}"?`)) {
+            return;
+        }
+        
+        try {
+            const presets = loadAutoJoinPresets();
+            delete presets[presetName];
+            GM_setValue('autoJoinPresets', JSON.stringify(presets));
+            
+            updateQuickLaunchButtons();
+            displayStatusMessage(`Auto-join preset "${presetName}" removed.`, 'success');
+            setTimeout(() => displayStatusMessage('', ''), 3000);
+        } catch (error) {
+            console.error('Error removing auto-join preset:', error);
+            displayStatusMessage('Error removing auto-join preset', 'error');
+            setTimeout(() => displayStatusMessage('', ''), 3000);
+        }
+    }
+
+    initializeAll();
 })();
