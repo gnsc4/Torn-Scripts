@@ -15,6 +15,7 @@
 // @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/master/RaceConfiguration.raw.user.js
 // @run-at       document-end
 // @require      https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=torn.com
 // @license      MIT
 // @namespace torn.raceconfigguipda
 // ==/UserScript==
