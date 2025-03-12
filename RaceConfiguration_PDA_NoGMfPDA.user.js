@@ -2591,6 +2591,7 @@
         params.append('rfcv', rfcValue);
 
         const raceLink = `https://www.torn.com/loader.php?sid=racing&tab=customrace&section=getInRace&step=getInRace&id=&${params.toString()}`;
+        console.log('[Race URL]:', raceLink); // Add URL logging
 
         displayStatusMessage('Creating Race...', 'info');
 
@@ -2662,6 +2663,7 @@
         params.append('rfcv', rfcValue);
 
         const raceLink = `https://www.torn.com/loader.php?sid=racing&tab=customrace&section=getInRace&step=getInRace&id=&${params.toString()}`;
+        console.log('[Race URL from preset]:', raceLink); // Add URL logging
 
         displayStatusMessage('Creating Race...', 'info');
 
@@ -3771,10 +3773,21 @@
     }
 
     function initializeAutoJoinSection() {
-        const waitForAutoJoinContainer = setInterval(() => {
-            const autoJoinButtons = document.querySelector('.auto-join-section .auto-join-buttons');
-            if (autoJoinButtons) {
-                clearInterval(waitForAutoJoinContainer);
+        // Check for auto-join section in the GUI rather than page-specific elements
+        const waitForAutoJoinSection = setInterval(() => {
+            const autoJoinSection = document.querySelector('.auto-join-section');
+            const autoJoinConfig = autoJoinSection?.querySelector('.auto-join-config');
+            
+            if (autoJoinSection && autoJoinConfig) {
+                clearInterval(waitForAutoJoinSection);
+                
+                // Create buttons container if it doesn't exist
+                let autoJoinButtons = autoJoinSection.querySelector('.auto-join-buttons');
+                if (!autoJoinButtons) {
+                    autoJoinButtons = document.createElement('div');
+                    autoJoinButtons.className = 'auto-join-buttons';
+                    autoJoinConfig.appendChild(autoJoinButtons);
+                }
                 
                 // Remove existing button if it exists
                 const existingButton = document.getElementById('saveAutoJoinPreset');
@@ -3797,7 +3810,11 @@
             }
         }, 500);
 
-        setTimeout(() => clearInterval(waitForAutoJoinContainer), 10000);
+        // Clear interval after 10 seconds to prevent endless checking
+        setTimeout(() => {
+            clearInterval(waitForAutoJoinSection);
+            console.log('[DEBUG] Stopped waiting for auto-join section');
+        }, 10000);
     }
 
     async function ensureCustomEventsTab() {
