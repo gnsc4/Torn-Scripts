@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Config GUI
-// @version      3.5.0
+// @version      3.5.1
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -134,37 +134,20 @@
                 loadApiKey();
                 loadPresets();
                 
-                // Initialize car-related features
-                const waitForCarElements = () => {
-                    return new Promise((resolve) => {
-                        const checkElements = () => {
-                            const carDropdown = document.getElementById('carDropdown');
-                            const carStatusMessage = document.getElementById('carStatusMessage');
-                            
-                            if (carDropdown && carStatusMessage) {
-                                resolve({ carDropdown, carStatusMessage });
-                            } else if (domCheckAttempts < MAX_DOM_CHECK_ATTEMPTS) {
-                                domCheckAttempts++;
-                                setTimeout(checkElements, 100);
-                            } else {
-                                resolve(null);
-                                console.warn('Car elements not found, but continuing with basic functionality');
-                            }
-                        };
-                        checkElements();
-                    });
-                };
+                // Initialize auto-join section separately without waiting for car elements
+                initializeAutoJoinSection();
                 
-                waitForCarElements().then((elements) => {
-                    if (elements) {
-                        updateCarList().then(() => {
-                            updateQuickLaunchButtons();
-                        }).catch(err => {
-                            console.warn('Failed to update car list:', err);
-                        });
-                    }
-                    console.log('Race Config GUI initialized');
-                });
+                // Initialize car-related features asynchronously
+                setTimeout(() => {
+                    updateCarList().then(() => {
+                        updateQuickLaunchButtons();
+                        console.log('Race Config GUI car list updated');
+                    }).catch(err => {
+                        console.warn('Failed to update car list, but continuing:', err);
+                    });
+                }, 1500);
+                
+                console.log('Race Config GUI initialized');
             } else if (domCheckAttempts < MAX_DOM_CHECK_ATTEMPTS) {
                 domCheckAttempts++;
                 setTimeout(pollForElements, 100);
@@ -1391,7 +1374,7 @@
 
             <div style="text-align: center; margin-top: 20px; color: #888; font-size: 1.2em;">
                 Script created by <a href="https://www.torn.com/profiles.php?XID=268863" target="_blank" style="color: #888; text-decoration: none;">GNSC4 \[268863\]</a><br>
-                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.5.0 Official Forum Link</a>
+                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.5.1 Official Forum Link</a>
             </div>
         `;
 
@@ -2243,28 +2226,286 @@
         }
     }
 
+    // Helper function to wait for multiple elements
+    function waitForElements(elementIds, timeout = 5000) {
+        return new Promise((resolve) => {
+            const elements = {};
+            let checkCount = 0;
+            const maxChecks = 50;
+            const checkInterval = timeout / maxChecks;
+
+            const checkElements = () => {
+                let allFound = true;
+                elementIds.forEach(id => {
+                    const element = document.getElementById(id);
+                    if (element) {
+                        elements[id] = element;
+                    } else {
+                        allFound = false;
+                    }
+                });
+
+                if (allFound) {
+                    resolve(elements);
+                } else if (checkCount < maxChecks) {
+                    checkCount++;
+                    setTimeout(checkElements, checkInterval);
+                } else {
+                    resolve(null);
+                }
+            };
+
+            checkElements();
+        });
+    }
+
+    // Helper function to wait for a single element
+    function waitForElement(selector, timeout = 5000) {
+        return new Promise((resolve) => {
+            if (document.querySelector(selector)) {
+                return resolve(document.querySelector(selector));
+            }
+
+            const observer = new MutationObserver((mutations, obs) => {
+                if (document.querySelector(selector)) {
+                    obs.disconnect();
+                    resolve(document.querySelector(selector));
+                }
+            });
+
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+
+            setTimeout(() => {
+                observer.disconnect();
+                resolve(document.querySelector(selector));
+            }, timeout);
+        });
+    }
+
     async function applyAutoJoinPreset(preset) {
-        // Set all the auto-join fields first
-        document.getElementById('autoJoinTrack').value = preset.track;
-        document.getElementById('minLaps').value = preset.minLaps;
-        document.getElementById('maxLaps').value = preset.maxLaps;
-        document.getElementById('autoJoinCar').value = preset.selectedCarId;
-        document.getElementById('hidePassworded').checked = preset.hidePassworded;
-        document.getElementById('hideBets').checked = preset.hideBets;
+        try {
+            // Ensure we're on Custom Events tab first
+            console.log('[DEBUG] Switching to Custom Events tab');
+            const tabSwitched = await ensureCustomEventsTab();
+            if (!tabSwitched) {
+                console.log('[DEBUG] Failed to switch to Custom Events tab');
+                displayStatusMessage('Failed to load Custom Events tab', 'error');
+                return;
+            }
 
-        // Ensure we're on Custom Events tab
-        const tabSwitched = await ensureCustomEventsTab();
-        if (!tabSwitched) {
-            console.log('[DEBUG] Failed to switch to Custom Events tab');
-            displayStatusMessage('Failed to load Custom Events tab', 'error');
-            return;
-        }
+            // Add delay to ensure DOM is ready
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Define the interface container where we'll add our controls if needed
+            const findOrCreateAutoJoinInterface = () => {
+                console.log('[DEBUG] Looking for or creating auto-join interface');
+                
+                // First, look for existing elements
+                let autoJoinTrack = document.getElementById('autoJoinTrack');
+                let minLaps = document.getElementById('minLaps');
+                let maxLaps = document.getElementById('maxLaps');
+                let autoJoinCar = document.getElementById('autoJoinCar');
+                let hidePassworded = document.getElementById('hidePassworded');
+                let hideBets = document.getElementById('hideBets');
+                
+                // If any are missing, we need to create the interface
+                if (!autoJoinTrack || !minLaps || !maxLaps || !autoJoinCar || !hidePassworded || !hideBets) {
+                    console.log('[DEBUG] Creating auto-join interface elements');
+                    
+                    // Find a suitable container - look for race list or filter controls
+                    const racesList = document.querySelector('.custom_events, .events-list, .races-list');
+                    const filtersSection = document.querySelector('.race-filter-section');
+                    
+                    if (!racesList && !filtersSection) {
+                        console.error('[DEBUG] Cannot find suitable container for auto-join interface');
+                        return null;
+                    }
+                    
+                    const container = document.createElement('div');
+                    container.className = 'auto-join-interface race-filter-controls';
+                    container.style.cssText = `
+                        margin-top: 10px !important;
+                        padding: 10px !important;
+                        background-color: #2a2a2a !important;
+                        border: 1px solid #444 !important;
+                        border-radius: 8px !important;
+                    `;
+                    
+                    container.innerHTML = `
+                        <div class="filter-row">
+                            <div class="filter-group">
+                                <label for="autoJoinTrack">Track:</label>
+                                <select id="autoJoinTrack">
+                                    <option value="all" selected>All Tracks</option>
+                                    <option value="6">Uptown</option>
+                                    <option value="7">Withdrawal</option>
+                                    <option value="8">Underdog</option>
+                                    <option value="9">Parkland</option>
+                                    <option value="10">Docks</option>
+                                    <option value="11">Commerce</option>
+                                    <option value="12">Two Islands</option>
+                                    <option value="15">Industrial</option>
+                                    <option value="16">Vector</option>
+                                    <option value="17">Mudpit</option>
+                                    <option value="18">Hammerhead</option>
+                                    <option value="19">Sewage</option>
+                                    <option value="20">Meltdown</option>
+                                    <option value="21">Speedway</option>
+                                    <option value="23">Stone Park</option>
+                                    <option value="24">Convict</option>
+                                </select>
+                            </div>
+                            <div class="filter-group laps-filter">
+                                <label>Laps Range:</label>
+                                <input type="number" id="minLaps" placeholder="Min" min="1" max="100">
+                                <span>-</span>
+                                <input type="number" id="maxLaps" placeholder="Max" min="1" max="100">
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <div class="filter-group">
+                                <label for="autoJoinCar">Car to Use:</label>
+                                <select id="autoJoinCar">
+                                    <option value="">Select a car...</option>
+                                    ${document.getElementById('carDropdown')?.innerHTML || ''}
+                                </select>
+                            </div>
+                            <div class="filter-group checkboxes">
+                                <div class="checkbox-option">
+                                    <label><input type="checkbox" id="hidePassworded"> Hide Passworded Races</label>
+                                </div>
+                                <div class="checkbox-option">
+                                    <label><input type="checkbox" id="hideBets"> Hide Races with Bets</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="filter-buttons">
+                            <button id="autoJoinNowButton" class="gui-button">Join Now</button>
+                        </div>
+                    `;
+                    
+                    // Insert before race list or after filters
+                    if (filtersSection) {
+                        filtersSection.insertAdjacentElement('afterend', container);
+                    } else if (racesList) {
+                        racesList.insertAdjacentElement('beforebegin', container);
+                    }
+                    
+                    // Get the new elements
+                    autoJoinTrack = document.getElementById('autoJoinTrack');
+                    minLaps = document.getElementById('minLaps');
+                    maxLaps = document.getElementById('maxLaps');
+                    autoJoinCar = document.getElementById('autoJoinCar');
+                    hidePassworded = document.getElementById('hidePassworded');
+                    hideBets = document.getElementById('hideBets');
+                    
+                    // Add event listener to the Join Now button
+                    const joinButton = document.getElementById('autoJoinNowButton');
+                    if (joinButton) {
+                        joinButton.addEventListener('click', startAutoJoin);
+                    }
+                } else {
+                    console.log('[DEBUG] All auto-join elements already exist');
+                }
+                
+                // Return the elements we found or created
+                return {
+                    autoJoinTrack,
+                    minLaps,
+                    maxLaps,
+                    autoJoinCar,
+                    hidePassworded,
+                    hideBets
+                };
+            };
+            
+            // Find or create the interface elements
+            const elements = findOrCreateAutoJoinInterface();
+            
+            if (!elements) {
+                console.error('[DEBUG] Failed to create auto-join interface');
+                displayStatusMessage('Unable to create auto-join interface', 'error');
+                return;
+            }
+            
+            // Synchronize car dropdown with main dropdown if needed
+            if (elements.autoJoinCar && document.getElementById('carDropdown')) {
+                elements.autoJoinCar.innerHTML = document.getElementById('carDropdown').innerHTML;
+            }
+            
+            // Set the values
+            console.log('[DEBUG] Setting auto-join values');
+            if (elements.autoJoinTrack) elements.autoJoinTrack.value = preset.track;
+            if (elements.minLaps) elements.minLaps.value = preset.minLaps;
+            if (elements.maxLaps) elements.maxLaps.value = preset.maxLaps;
+            if (elements.autoJoinCar) elements.autoJoinCar.value = preset.selectedCarId;
+            if (elements.hidePassworded) elements.hidePassworded.checked = preset.hidePassworded;
+            if (elements.hideBets) elements.hideBets.checked = preset.hideBets;
 
-        // Start auto-join with a slight delay to ensure everything is loaded
-        setTimeout(() => {
-            console.log('[DEBUG] Starting auto-join after preset applied');
+            // Add delay before starting auto-join
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            console.log('[DEBUG] Starting auto-join');
             startAutoJoin();
-        }, 1000);
+        } catch (error) {
+            console.error('[DEBUG] Error in applyAutoJoinPreset:', error);
+            displayStatusMessage('Error applying auto-join preset', 'error');
+        }
+    }
+
+    async function ensureCustomEventsTab() {
+        return new Promise((resolve) => {
+            const customEventsTab = document.querySelector('a[href*="tab=customrace"]');
+            const isCustomEventsActive = document.querySelector('li.active .icon.custom-events');
+            
+            if (!isCustomEventsActive && customEventsTab) {
+                console.log('[DEBUG] Custom Events tab not active, switching...');
+                
+                // Create observer to wait for race list to load
+                const observer = new MutationObserver((mutations, obs) => {
+                    const racesList = document.querySelector('.custom_events, .events-list, .races-list');
+                    if (racesList) {
+                        console.log('[DEBUG] Race list loaded after tab switch');
+                        obs.disconnect();
+                        
+                        // Give extra time for elements to fully load
+                        setTimeout(() => {
+                            // Force click the tab icon itself
+                            const tabIcon = customEventsTab.querySelector('.icons, .icon');
+                            if (tabIcon) {
+                                tabIcon.click();
+                                console.log('[DEBUG] Clicked custom events tab icon');
+                            }
+                            // Wait additional time for tab switch animation and content load
+                            setTimeout(() => resolve(true), 1000);
+                        }, 1000);
+                    }
+                });
+
+                observer.observe(document.getElementById('racingMainContainer') || document.body, {
+                    childList: true,
+                    subtree: true
+                });
+
+                // Click both the tab and its icon
+                customEventsTab.click();
+                const tabIcon = customEventsTab.querySelector('.icons, .icon');
+                if (tabIcon) {
+                    setTimeout(() => tabIcon.click(), 100);
+                }
+                
+                // Set timeout to prevent infinite waiting
+                setTimeout(() => {
+                    observer.disconnect();
+                    resolve(false);
+                }, 10000);
+            } else {
+                resolve(true);
+            }
+        });
     }
 
     function populateTimeDropdowns() {
@@ -2395,10 +2636,15 @@
                                 }
                             } else if (data.enlistedcars) {
                                 populateCarDropdown(data.enlistedcars);
-                                if (carStatusMessage) {
-                                    carStatusMessage.textContent = 'Cars Updated';
-                                    carStatusMessage.style.color = '#efe';
-                                }
+                                
+                                // Add a short delay then force sync car dropdowns
+                                setTimeout(() => {
+                                    syncCarDropdowns();
+                                    if (carStatusMessage) {
+                                        carStatusMessage.textContent = 'Cars Updated & Synchronized';
+                                        carStatusMessage.style.color = '#efe';
+                                    }
+                                }, 500);
                             } else {
                                 if (carStatusMessage) {
                                     carStatusMessage.textContent = 'No car data received';
@@ -2458,16 +2704,15 @@
     }
 
     function populateCarDropdown(cars) {
-        const dropdowns = [
-            document.getElementById('carDropdown'),
-            document.getElementById('autoJoinCar')
-        ];
+        console.log('[DEBUG] Populating car dropdowns with', Object.keys(cars).length, 'cars');
+        
+        try {
+            const dropdowns = [
+                document.getElementById('carDropdown'),
+                document.getElementById('autoJoinCar')
+            ];
 
-        dropdowns.forEach(dropdown => {
-            if (!dropdown) return;
-
-            dropdown.innerHTML = '<option value="">Select a car...</option>';
-
+            // Filter and sort the cars
             const sortedCars = Object.values(cars)
                 .filter(car => car.leased !== '1')
                 .sort((a, b) => {
@@ -2476,14 +2721,32 @@
                     return nameA.localeCompare(nameB);
                 });
 
-            sortedCars.forEach(car => {
-                const carName = car.name || car.item_name;
-                const option = document.createElement('option');
-                option.value = car.id;
-                option.textContent = `${carName} (ID: ${car.id})`;
-                dropdown.appendChild(option);
+            // Update each dropdown separately to avoid reference issues
+            dropdowns.forEach(dropdown => {
+                if (!dropdown) {
+                    console.log('[DEBUG] Dropdown not found in populateCarDropdown');
+                    return;
+                }
+                
+                // Clear the dropdown
+                dropdown.innerHTML = '<option value="">Select a car...</option>';
+                
+                // Add the sorted cars
+                sortedCars.forEach(car => {
+                    const carName = car.name || car.item_name;
+                    const option = document.createElement('option');
+                    option.value = car.id;
+                    option.textContent = `${carName} (ID: ${car.id})`;
+                    dropdown.appendChild(option);
+                });
+                
+                console.log('[DEBUG] Added', sortedCars.length, 'cars to dropdown', dropdown.id);
             });
-        });
+            
+            console.log('[DEBUG] Car dropdowns populated successfully');
+        } catch (error) {
+            console.error('[DEBUG] Error in populateCarDropdown:', error);
+        }
     }
 
     function updateCarDropdown() {
@@ -3360,14 +3623,15 @@
         if (startBtn) startBtn.style.display = 'none';
         if (stopBtn) stopBtn.style.display = 'block';
         
+        // Get values from form elements (with fallbacks if not found)
+        const track = document.getElementById('autoJoinTrack')?.value || 'all';
+        const minLaps = parseInt(document.getElementById('minLaps')?.value) || 0;
+        const maxLaps = parseInt(document.getElementById('maxLaps')?.value) || 100;
+        const selectedCarId = document.getElementById('autoJoinCar')?.value || document.getElementById('carIdInput')?.value;
+        const hidePassworded = document.getElementById('hidePassworded')?.checked || false;
+        const hideBets = document.getElementById('hideBets')?.checked || false;
+        
         console.log('[DEBUG] Starting Auto-Join process');
-        const track = document.getElementById('autoJoinTrack').value;
-        const minLaps = parseInt(document.getElementById('minLaps').value) || 0;
-        const maxLaps = parseInt(document.getElementById('maxLaps').value) || 100;
-        const selectedCarId = document.getElementById('autoJoinCar').value;
-        const hidePassworded = document.getElementById('hidePassworded').checked;
-        const hideBets = document.getElementById('hideBets').checked;
-
         console.log('[DEBUG] Filter settings:', { track, minLaps, maxLaps, selectedCarId, hidePassworded, hideBets });
 
         if (!selectedCarId) {
@@ -3773,13 +4037,23 @@
     }
 
     function initializeAutoJoinSection() {
-        // Check for auto-join section in the GUI rather than page-specific elements
-        const waitForAutoJoinSection = setInterval(() => {
+        // Direct check for race page first
+        if (!window.location.href.includes('sid=racing')) {
+            return;
+        }
+        
+        console.log('[DEBUG] Initializing auto-join section');
+        
+        // Wait for auto-join elements to be available in the DOM
+        const waitForAutoJoinDOM = setInterval(() => {
+            // Check for GUI element first (more reliable)
             const autoJoinSection = document.querySelector('.auto-join-section');
-            const autoJoinConfig = autoJoinSection?.querySelector('.auto-join-config');
             
-            if (autoJoinSection && autoJoinConfig) {
-                clearInterval(waitForAutoJoinSection);
+            if (autoJoinSection) {
+                clearInterval(waitForAutoJoinDOM);
+                
+                const autoJoinConfig = autoJoinSection.querySelector('.auto-join-config');
+                if (!autoJoinConfig) return;
                 
                 // Create buttons container if it doesn't exist
                 let autoJoinButtons = autoJoinSection.querySelector('.auto-join-buttons');
@@ -3805,54 +4079,96 @@
                 
                 // Insert at the start of the buttons container
                 autoJoinButtons.insertBefore(savePresetButton, autoJoinButtons.firstChild);
-
+                
+                // Explicitly force sync car dropdowns with timeout to ensure DOM is ready
+                setTimeout(() => {
+                    const syncResult = syncCarDropdowns();
+                    console.log('[DEBUG] Initial car dropdown sync result:', syncResult);
+                    
+                    // If sync failed initially, try again after a longer delay
+                    if (!syncResult) {
+                        setTimeout(syncCarDropdowns, 2000);
+                    }
+                    
+                    // Set up update handler for car dropdown changes
+                    const mainCarDropdown = document.getElementById('carDropdown');
+                    if (mainCarDropdown) {
+                        mainCarDropdown.addEventListener('change', () => {
+                            console.log('[DEBUG] Main car dropdown changed, syncing...');
+                            syncCarDropdowns();
+                        });
+                    }
+                }, 500);
+                
                 console.log('[DEBUG] Auto-join preset save button added successfully');
             }
         }, 500);
 
-        // Clear interval after 10 seconds to prevent endless checking
+        // Clear interval after 20 seconds to prevent endless checking
         setTimeout(() => {
-            clearInterval(waitForAutoJoinSection);
-            console.log('[DEBUG] Stopped waiting for auto-join section');
-        }, 10000);
+            clearInterval(waitForAutoJoinDOM);
+            console.log('[DEBUG] Stopped waiting for auto-join DOM elements');
+        }, 20000);
     }
 
-    async function ensureCustomEventsTab() {
-        return new Promise((resolve) => {
-            const customEventsTab = document.querySelector('a[href*="tab=customrace"]');
-            const isCustomEventsActive = document.querySelector('li.active .icon.custom-events');
+    /**
+     * Synchronizes the auto-join car dropdown with the main car dropdown
+     * with improved error handling and debugging
+     */
+    function syncCarDropdowns() {
+        const mainCarDropdown = document.getElementById('carDropdown');
+        const autoJoinCarDropdown = document.getElementById('autoJoinCar');
+        
+        if (!mainCarDropdown || !autoJoinCarDropdown) {
+            console.log('[DEBUG] syncCarDropdowns: One or both dropdowns not found');
+            return false;
+        }
+        
+        if (mainCarDropdown.options.length <= 1) {
+            console.log('[DEBUG] syncCarDropdowns: Main dropdown has no car options');
+            return false;
+        }
+
+        console.log('[DEBUG] syncCarDropdowns: Found both dropdowns. Main dropdown has', 
+                    mainCarDropdown.options.length, 'options');
+        
+        try {
+            // Save the currently selected value
+            const selectedValue = autoJoinCarDropdown.value;
             
-            if (!isCustomEventsActive && customEventsTab) {
-                console.log('[DEBUG] Custom Events tab not active, switching...');
-                
-                // Create observer to wait for race list to load
-                const observer = new MutationObserver((mutations, obs) => {
-                    const racesList = document.querySelector('.custom_events, .events-list, .races-list');
-                    if (racesList) {
-                        console.log('[DEBUG] Race list loaded after tab switch');
-                        obs.disconnect();
-                        setTimeout(() => resolve(true), 500); // Added delay after list loads
-                    }
-                });
-
-                // Start observing before clicking
-                observer.observe(document.getElementById('racingMainContainer') || document.body, {
-                    childList: true,
-                    subtree: true
-                });
-
-                // Click the tab
-                customEventsTab.click();
-                
-                // Set timeout to prevent infinite waiting
-                setTimeout(() => {
-                    observer.disconnect();
-                    resolve(false);
-                }, 5000);
-            } else {
-                resolve(true);
+            // Create a deep clone of all options
+            const clonedOptions = Array.from(mainCarDropdown.options).map(opt => {
+                const newOpt = document.createElement('option');
+                newOpt.value = opt.value;
+                newOpt.text = opt.text;
+                return newOpt;
+            });
+            
+            // Clear current options and add the cloned ones
+            autoJoinCarDropdown.innerHTML = '';
+            clonedOptions.forEach(opt => autoJoinCarDropdown.appendChild(opt));
+            
+            // Restore selected value if it exists in the new options
+            if (selectedValue && [...autoJoinCarDropdown.options].some(opt => opt.value === selectedValue)) {
+                autoJoinCarDropdown.value = selectedValue;
             }
-        });
+            
+            console.log('[DEBUG] Car dropdowns synchronized successfully. Auto-join dropdown now has', 
+                       autoJoinCarDropdown.options.length, 'options');
+            return true;
+        } catch (error) {
+            console.error('[DEBUG] Error synchronizing dropdowns:', error);
+            
+            // Fallback direct copy if cloning approach fails
+            try {
+                autoJoinCarDropdown.innerHTML = mainCarDropdown.innerHTML;
+                console.log('[DEBUG] Used fallback approach for syncing dropdowns');
+                return true;
+            } catch (fallbackError) {
+                console.error('[DEBUG] Fallback sync also failed:', fallbackError);
+                return false;
+            }
+        }
     }
 
     function initializeAll() {
