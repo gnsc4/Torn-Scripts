@@ -2620,68 +2620,9 @@
         }
     }
 
-    function savePreset() {
-        const carDropdown = document.getElementById('carDropdown');
-        const carId = document.getElementById('carIdInput').value;
-        const raceName = document.getElementById('raceNameInput').value.trim();
-
-        if (!raceName) {
-            displayStatusMessage('Please enter a race name before saving preset.', 'error');
-            setTimeout(() => displayStatusMessage('', ''), 3000);
-            return;
-        }
-
-        if (!carId || carDropdown.value === '') {
-            displayStatusMessage('Please select a car before creating a preset.', 'error');
-            setTimeout(() => displayStatusMessage('', ''), 3000);
-            return;
-        }
-
-        const presetName = prompt("Enter a name for this preset:");
-        if (!presetName) {
-            displayStatusMessage('Preset name cannot be empty.', 'error');
-            setTimeout(() => displayStatusMessage('', ''), 3000);
-            return;
-        }
-
-        const carOption = carDropdown.querySelector(`option[value="${carId}"]`);
-        const carName = carOption ? carOption.textContent.split(' (ID:')[0] : null;
-
-        const saveTime = document.getElementById('saveTimeToPreset').checked;
-        const hourSelect = document.getElementById('hourSelect');
-        const minuteSelect = document.getElementById('minuteSelect');
-        
-        // Get time values with validation
-        let hour = null;
-        let minute = null;
-        
-        if (saveTime) {
-            if (hourSelect && minuteSelect) {
-                hour = hourSelect.value;
-                minute = minuteSelect.value;
-                
-                // Validate time format
-                if (!hour.match(/^([0-1]?[0-9]|2[0-3])$/) || !minute.match(/^[0-5][0-9]$/)) {
-                    TIME_DEBUG.log('Invalid time format detected', { hour, minute });
-                    hour = null;
-                    minute = null;
-                } else {
-                    // Ensure padding
-                    hour = String(parseInt(hour)).padStart(2, '0');
-                    minute = String(parseInt(minute)).padStart(2, '0');
-                }
-            }
-        }
-        
-        TIME_DEBUG.log('Saving preset with time settings', { 
-            saveTime, 
-            hour, 
-            minute 
-        });
-
-        // Create preset data object
-        const presetData = {
-            track: document.getElementById('trackSelect').value,
+    function loadPresets() {
+        return get_value('race_presets') || {};
+    }
             laps: document.getElementById('lapsInput').value,
             minDrivers: document.getElementById('minDriversInput').value,
             maxDrivers: document.getElementById('maxDriversInput').value,
@@ -2704,55 +2645,6 @@
         updateQuickLaunchButtons();
         displayStatusMessage(`Preset "${presetName}" saved.`, 'success');
         setTimeout(() => displayStatusMessage('', ''), 3000);
-    }
-
-    function getNextAvailableTime(hour, minute) {
-        TIME_DEBUG.log('getNextAvailableTime called with', { hour, minute });
-        
-        if (!hour || !minute) {
-            TIME_DEBUG.log('Missing hour or minute', { hour, minute });
-            return null;
-        }
-        
-        // Ensure we're working with integers
-        const hourInt = parseInt(hour, 10);
-        const minuteInt = parseInt(minute, 10);
-        
-        if (isNaN(hourInt) || isNaN(minuteInt)) {
-            TIME_DEBUG.log('Invalid hour or minute', { hour, minute });
-            return null;
-        }
-        
-        // Get current time in UTC (Torn City Time)
-        const now = moment.utc();
-        TIME_DEBUG.log('Current UTC time', { 
-            utc: now.format('YYYY-MM-DD HH:mm:ss'),
-            hour: now.hour(),
-            minute: now.minute()
-        });
-        
-        // Create target time in UTC
-        let targetTime = moment.utc().set({
-            hour: hourInt,
-            minute: minuteInt,
-            second: 0,
-            millisecond: 0
-        });
-        
-        // If the target time has already passed today, set it for tomorrow
-        if (targetTime.isSameOrBefore(now)) {
-            targetTime = targetTime.add(1, 'day');
-            TIME_DEBUG.log('Time already passed, set for tomorrow', { 
-                newTime: targetTime.format('YYYY-MM-DD HH:mm:ss') 
-            });
-        }
-        
-        TIME_DEBUG.log('Final target time', { 
-            utc: targetTime.format('YYYY-MM-DD HH:mm:ss'),
-            unix: Math.floor(targetTime.valueOf() / 1000)
-        });
-        
-        return targetTime;
     }
 
     function getNextAvailableTime(hour, minute) {
@@ -2891,40 +2783,6 @@
         });
     }
 
-    function applyPreset(presetName) {
-        const presets = loadPresets();
-        const preset = presets[presetName];
-        if (preset) {
-            document.getElementById('trackSelect').value = preset.track;
-            document.getElementById('lapsInput').value = preset.laps;
-            document.getElementById('minDriversInput').value = preset.minDrivers;
-            document.getElementById('maxDriversInput').value = preset.maxDrivers;
-            document.getElementById('raceNameInput').value = preset.raceName;
-            document.getElementById('passwordInput').value = preset.password;
-            document.getElementById('betAmountInput').value = preset.betAmount;
-            document.getElementById('hourSelect').value = preset.hour;
-            document.getElementById('minuteSelect').value = preset.minute;
-
-            const carDropdown = document.getElementById('carDropdown');
-            const carIdInput = document.getElementById('carIdInput');
-
-            if (preset.selectedCar && carDropdown) {
-                carDropdown.value = preset.selectedCar;
-            }
-
-            if (carIdInput) {
-                carIdInput.value = preset.carId || preset.selectedCar || '';
-            }
-
-            displayStatusMessage(`Preset "${presetName}" applied.`, 'success');
-            setTimeout(() => displayStatusMessage('', ''), 3000);
-
-        } else {
-            displayStatusMessage(`Preset "${presetName}" not found.`, 'error');
-            setTimeout(() => displayStatusMessage('', ''), 3000);
-        }
-    }
-
     function removePreset(presetName) {
         if (!confirm(`Are you sure you want to remove preset "${presetName}"?`)) {
             return;
@@ -3057,9 +2915,6 @@
             });
             buttonContainer.appendChild(button);
         });
-
-        // Add auto-join presets (code unchanged)
-        // ...existing code...
 
         container.style.display = 'flex';
     }
