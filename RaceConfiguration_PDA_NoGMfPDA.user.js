@@ -42,31 +42,6 @@
         '24': 'Convict'
     };
 
-    const GM = {
-        xmlHttpRequest: (details) => {
-            return new Promise((resolve, reject) => {
-                fetch(details.url, {
-                    method: details.method,
-                    headers: details.headers,
-                    body: details.method === 'POST' ? details.data : undefined
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (details.onload) {
-                        details.onload({ status: 200, responseText: JSON.stringify(data) });
-                    }
-                    resolve(data);
-                })
-                .catch(error => {
-                    if (details.onerror) {
-                        details.onerror(error);
-                    }
-                    reject(error);
-                });
-            });
-        }
-    };
-
     let guiInitialized = false;
     let domCheckAttempts = 0;
     const MAX_DOM_CHECK_ATTEMPTS = 100;
@@ -2541,7 +2516,8 @@ Object.entries(autoJoinPresets).forEach(([name, preset]) => {
                 return;
             }
             
-            const response = await GM.xmlHttpRequest({
+            // Use the GM.xmlHttpRequest provided by GMforPDA instead of our custom implementation
+            await GM.xmlHttpRequest({
                 url: `https://api.torn.com/v2/user/?selections=enlistedcars&key=${apiKey}`,
                 method: 'GET',
                 headers: {
@@ -2897,6 +2873,7 @@ Object.entries(autoJoinPresets).forEach(([name, preset]) => {
             if (key === STORAGE_API_KEY) {
                 GM_setValue(key, value);
             } else {
+                // Use GM_setValue directly from GMforPDA
                 GM_setValue(key, JSON.stringify(value));
             }
         } catch (e) {
@@ -2909,6 +2886,7 @@ Object.entries(autoJoinPresets).forEach(([name, preset]) => {
             if (key === STORAGE_API_KEY) {
                 return GM_getValue(key, defaultValue);
             }
+            // Use GM_getValue directly from GMforPDA
             const value = GM_getValue(key);
             return value ? JSON.parse(value) : defaultValue;
         } catch (e) {
