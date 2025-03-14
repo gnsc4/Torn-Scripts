@@ -1,4 +1,4 @@
-w// ==UserScript==
+// ==UserScript==
 // @name         Torn Race Config GUI
 // @version      3.5.9
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
