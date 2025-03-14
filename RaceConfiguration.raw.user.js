@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Config GUI
-// @version      3.5.1
+// @version      3.5.8
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -67,120 +67,12 @@
         }
     };
 
-    function init() {
-        // Split initialization into racing features and alert features
-        const isRacingPage = window.location.href.includes('sid=racing');
-        
-        // Initialize race alerts for all pages
-        initializeRaceAlerts();
-        
-        // Only initialize racing features on the racing page
-        if (isRacingPage) {
-            initializeRacingFeatures();
-            initializeRaceFiltering(); 
-            resumeAutoJoin(); // Resume auto-join if state exists
-        }
-    }
-
-    function initializeRaceAlerts() {
-        // Load saved preference
-        const raceAlertEnabled = GM_getValue('raceAlertEnabled', false);
-        
-        // Set checkbox state
-        const checkbox = document.getElementById('raceAlertEnabled');
-        if (checkbox) {
-            checkbox.checked = raceAlertEnabled;
-        }
-
-        // Initialize alerts if enabled
-        if (raceAlertEnabled) {
-            updateRaceAlert();
-            if (!window.raceAlertInterval) {
-                window.raceAlertInterval = setInterval(updateRaceAlert, 5000);
-            }
-        } else {
-            removeRaceAlert();
-        }
-
-        // Add change listener if not already added
-        if (!window.alertListenerAdded) {
-            document.addEventListener('change', function(e) {
-                if (e.target && e.target.id === 'raceAlertEnabled') {
-                    const isEnabled = e.target.checked;
-                    GM_setValue('raceAlertEnabled', isEnabled);
-                    
-                    if (isEnabled) {
-                        updateRaceAlert();
-                        if (!window.raceAlertInterval) {
-                            window.raceAlertInterval = setInterval(updateRaceAlert, 5000);
-                        }
-                    } else {
-                        removeRaceAlert();
-                        if (window.raceAlertInterval) {
-                            clearInterval(window.raceAlertInterval);
-                            window.raceAlertInterval = null;
-                        }
-                    }
-                }
-            });
-            window.alertListenerAdded = true;
-        }
-    }
-
-    function initializeRacingFeatures() {
-        const pollForElements = () => {
-            const titleElement = document.querySelector('div.content-title > h4');
-            if (titleElement) {
-                createToggleButton();
-                loadApiKey();
-                loadPresets();
-                
-                // Initialize auto-join section separately without waiting for car elements
-                initializeAutoJoinSection();
-                
-                // Initialize car-related features asynchronously
-                setTimeout(() => {
-                    updateCarList().then(() => {
-                        updateQuickLaunchButtons();
-                        console.log('Race Config GUI car list updated');
-                    }).catch(err => {
-                        console.warn('Failed to update car list, but continuing:', err);
-                    });
-                }, 1500);
-                
-                console.log('Race Config GUI initialized');
-            } else if (domCheckAttempts < MAX_DOM_CHECK_ATTEMPTS) {
-                domCheckAttempts++;
-                setTimeout(pollForElements, 100);
-            }
-        };
-
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', pollForElements);
-        } else {
-            pollForElements();
-        }
-    }
-
-    function initializeScript() {
-        if (window.guiInitialized) {
-            console.warn('GUI already initialized');
-            return;
-        }
-
-        const raceConfigGUI = createRaceConfigGUI();
-        document.body.appendChild(raceConfigGUI);
-        initializeGUI(raceConfigGUI);
-        createToggleButton();
-
-        window.guiInitialized = true;
-        console.log('Race Config GUI initialized successfully');
-    }
-
     let guiInitialized = false;
     let domCheckAttempts = 0;
     const MAX_DOM_CHECK_ATTEMPTS = 100;
+    const STORAGE_API_KEY = 'raceConfigAPIKey_release_NoGMf';
 
+    // Initialize Style
     const style = document.createElement('style');
     style.textContent = `
         #raceConfigGUI {
@@ -194,7 +86,7 @@
             z-index: 999999 !important;
             font-family: Arial, sans-serif;
             border-radius: 10px;
-            max-width: 500px;  /* Increased from 450px */
+            max-width: 500px;
             max-height: 90vh;
             overflow-y: auto;
             display: none;
@@ -375,14 +267,14 @@
             cursor: pointer;
             border: none;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-            text-decoration: none;  /* Remove underline */
+            text-decoration: none;
         }
 
         .remove-preset:hover {
             background-color: #c77;
             transform: scale(1.1);
             transition: all 0.2s ease;
-            text-decoration: none;  /* Keep underline removed on hover */
+            text-decoration: none;
         }
 
         #statusMessageBox {
@@ -471,7 +363,7 @@
 
         .banner-container {
             position: relative;
-            margin-bottom: 25px; /* Increased from 15px */
+            margin-bottom: 25px;
             padding-top: 5px;
         }
 
@@ -480,11 +372,11 @@
             height: auto;
             border-radius: 5px;
             display: block;
-            margin-bottom: 15px; /* Added margin below banner */
+            margin-bottom: 15px;
         }
 
         #raceConfigGUI h2 {
-            margin-top: 10px; /* Added margin above the heading */
+            margin-top: 10px;
         }
 
         .show-password-btn {
@@ -504,11 +396,13 @@
         .show-password-btn:hover {
             color: #999;
         }
+    `;
 
+    style.textContent += `
         .quick-launch-container {
             display: none !important;
             position: relative !important;
-            flex-direction: column !important;  /* Changed to column */
+            flex-direction: column !important;
             gap: 5px !important;
             margin-top: 5px !important;
             margin-bottom: 10px !important;
@@ -586,7 +480,7 @@
             margin-left: auto !important;
             margin-right: auto !important;
             display: block !important;
-            min-height: 20px !important; /* Added to maintain space */
+            min-height: 20px !important;
         }
 
         .quick-launch-status.success {
@@ -598,6 +492,12 @@
         .quick-launch-status.error {
             background-color: #5c1e1e !important;
             border: 1px solid #8b2e2e !important;
+            opacity: 1 !important;
+        }
+        
+        .quick-launch-status.info {
+            background-color: #2a2a2a !important;
+            border: 1px solid #444 !important;
             opacity: 1 !important;
         }
 
@@ -724,7 +624,9 @@
             cursor: pointer !important;
             user-select: none !important;
         }
+    `;
 
+    style.textContent += `
         .time-config {
             display: flex;
             flex-direction: column;
@@ -794,12 +696,6 @@
 
         .join-race-btn:hover {
             background: #3d7a5f;
-        }
-
-        .quick-launch-status.info {
-            background-color: #2a2a2a !important;
-            border: 1px solid #444 !important;
-            opacity: 1 !important;
         }
 
         .filter-row {
@@ -907,35 +803,27 @@
             background-color: #2d5a3f !important;
             border-color: #3d7a5f !important;
         }
-    `;
 
-    style.textContent += `
-        .auto-join-section {
-            margin-top: 15px;
-        }
-    `;
-
-    style.textContent += `
         .race-filter-controls {
             background-color: #2a2a2a !important;
             border: 1px solid #444 !important;
             border-radius: 8px !important;
-            padding: 10px !important;  /* Reduced from 15px */
+            padding: 10px !important;
             margin-bottom: 15px !important;
         }
 
         .race-filter-controls .filter-row {
             background-color: transparent !important;
             padding: 0 !important;
-            gap: 10px !important;  /* Reduced from 15px */
+            gap: 10px !important;
             flex-wrap: wrap !important;
-            margin-bottom: 5px !important;  /* Added */
+            margin-bottom: 5px !important;
         }
 
         .race-filter-controls .filter-group {
             flex: 1 !important;
             min-width: 200px !important;
-            margin-bottom: 5px !important;  /* Added */
+            margin-bottom: 5px !important;
         }
 
         .race-filter-controls .filter-buttons {
@@ -943,14 +831,14 @@
             display: flex !important;
             justify-content: flex-end !important;
             gap: 5px !important;
-            margin-top: 5px !important;  /* Reduced from 10px */
+            margin-top: 5px !important;
         }
 
         .race-filter-controls .checkboxes {
             display: flex !important;
-            flex-direction: row !important;  /* Changed from column */
+            flex-direction: row !important;
             gap: 15px !important;
-            margin-bottom: 0 !important;  /* Added */
+            margin-bottom: 0 !important;
         }
 
         .race-filter-controls .filter-group.laps-filter {
@@ -1003,108 +891,6 @@
             transform: translateY(-1px) !important;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3) !important;
         }
-    `;
-
-    style.textContent += `
-        .preset-section-header {
-            color: #ccc;
-            font-size: 14px;
-            margin: 10px 0 5px 0;
-            padding-bottom: 5px;
-            border-bottom: 1px solid #444;
-        }
-
-        .auto-join-preset-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
-            margin-bottom: 10px;
-        }
-
-        .auto-join-preset-button {
-            color: #fff;
-            background-color: #444;
-            border: 1px solid #555;
-            border-radius: 3px;
-            padding: 5px 10px;
-            cursor: pointer;
-            font-size: 0.9em;
-            transition: all 0.2s ease;
-        }
-
-        .auto-join-preset-button:hover {
-            background-color: #2d5a3f;
-            border-color: #3d7a5f;
-        }
-    `;
-
-    style.textContent += `
-        .quick-launch-container {
-            display: flex !important;
-            flex-direction: column !important;
-            width: 100% !important;
-            background-color: #2a2a2a !important;
-            padding: 10px !important;
-            border-radius: 5px !important;
-            margin-top: 5px !important;
-            border: 1px solid #444 !important;
-        }
-
-        .quick-launch-container:empty {
-            display: none !important;
-        }
-
-        .quick-launch-container .button-container {
-            display: flex !important;
-            flex-wrap: wrap !important;
-            gap: 5px !important;
-            width: 100% !important;
-        }
-
-        .auto-join-preset-container {
-            display: flex !important;
-            flex-wrap: wrap !important;
-            gap: 5px !important;
-            margin: 10px 0 !important;
-        }
-    `;
-
-    style.textContent += `
-        .auto-join-preset-container {
-            display: flex !important;
-            flex-wrap: wrap !important;
-            gap: 8px !important;
-            margin: 10px 0 !important;
-            padding: 5px !important;
-            background-color: rgba(42, 42, 42, 0.5) !important;
-            border-radius: 5px !important;
-        }
-
-        .auto-join-preset-button {
-            color: #ddd !important;
-            background-color: #555 !important;
-            border: 1px solid #777 !important;
-            border-radius: 3px !important;
-            padding: 8px 15px !important;
-            cursor: pointer !important;
-            font-size: 0.9em !important;
-            transition: all 0.2s ease !important;
-            flex: 1 !important;
-            min-width: 120px !important;
-            max-width: 200px !important;
-            text-align: center !important;
-            white-space: nowrap !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
-        }
-
-        .auto-join-preset-button:hover {
-            background-color: #3d7a5f !important;
-            border-color: #2d5a3f !important;
-            transform: translateY(-1px) !important;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3) !important;
-        }
 
         .preset-section-header {
             color: #fff !important;
@@ -1115,11 +901,8 @@
             border-radius: 3px !important;
             border: 1px solid #444 !important;
         }
-    `;
 
-    style.textContent += `
-        .auto-join-preset-container,
-        .quick-launch-container .button-container {
+        .auto-join-preset-container {
             display: grid !important;
             grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
             gap: 8px !important;
@@ -1129,8 +912,7 @@
             box-sizing: border-box !important;
         }
 
-        .auto-join-preset-button,
-        .quick-launch-button {
+        .auto-join-preset-button {
             color: #ddd !important;
             background-color: #555 !important;
             border: 1px solid #777 !important;
@@ -1145,7 +927,7 @@
             text-align: center !important;
             white-space: nowrap !important;
             overflow: hidden !important;
-            text-overflow: ellipsis !important;
+            text-overflow:text-overflow: ellipsis !important;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
             min-height: 32px !important;
             width: 100% !important;
@@ -1158,20 +940,123 @@
             transform: translateY(-1px) !important;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3) !important;
         }
-
-        .preset-section-header {
-            color: #fff !important;
-            font-size: 14px !important;
-            margin: 15px 0 5px 0 !important;
-            padding: 5px 10px !important;
-            background-color: #2a2a2a !important;
-            border-radius: 3px !important;
-            border: 1px solid #444 !important;
-            grid-column: 1 / -1 !important;
-        }
     `;
 
     document.head.appendChild(style);
+
+    // Main initialization functions
+    function init() {
+        // Split initialization into racing features and alert features
+        const isRacingPage = window.location.href.includes('sid=racing');
+        
+        // Initialize race alerts for all pages
+        initializeRaceAlerts();
+        
+        // Initialize auto-join section for all pages where the GUI might appear
+        initializeAutoJoinSection();
+        
+        // Only initialize racing features on the racing page
+        if (isRacingPage) {
+            initializeRacingFeatures();
+            initializeRaceFiltering(); 
+            resumeAutoJoin(); // Resume auto-join if state exists
+        }
+    }
+
+    function initializeRaceAlerts() {
+        // Load saved preference
+        const raceAlertEnabled = GM_getValue('raceAlertEnabled', false);
+        
+        // Set checkbox state
+        const checkbox = document.getElementById('raceAlertEnabled');
+        if (checkbox) {
+            checkbox.checked = raceAlertEnabled;
+        }
+
+        // Initialize alerts if enabled
+        if (raceAlertEnabled) {
+            updateRaceAlert();
+            if (!window.raceAlertInterval) {
+                window.raceAlertInterval = setInterval(updateRaceAlert, 5000);
+            }
+        } else {
+            removeRaceAlert();
+        }
+
+        // Add change listener if not already added
+        if (!window.alertListenerAdded) {
+            document.addEventListener('change', function(e) {
+                if (e.target && e.target.id === 'raceAlertEnabled') {
+                    const isEnabled = e.target.checked;
+                    GM_setValue('raceAlertEnabled', isEnabled);
+                    
+                    if (isEnabled) {
+                        updateRaceAlert();
+                        if (!window.raceAlertInterval) {
+                            window.raceAlertInterval = setInterval(updateRaceAlert, 5000);
+                        }
+                    } else {
+                        removeRaceAlert();
+                        if (window.raceAlertInterval) {
+                            clearInterval(window.raceAlertInterval);
+                            window.raceAlertInterval = null;
+                        }
+                    }
+                }
+            });
+            window.alertListenerAdded = true;
+        }
+    }
+
+    function initializeRacingFeatures() {
+        const pollForElements = () => {
+            const titleElement = document.querySelector('div.content-title > h4');
+            if (titleElement) {
+                createToggleButton();
+                loadApiKey();
+                loadPresets();
+                
+                // Initialize auto-join section separately without waiting for car elements
+                initializeAutoJoinSection();
+                
+                // Initialize car-related features asynchronously with error handling
+                setTimeout(() => {
+                    updateCarList().then(() => {
+                        updateQuickLaunchButtons();
+                        console.log('Race Config GUI car list updated');
+                    }).catch(err => {
+                        console.warn('Failed to update car list, but continuing:', err);
+                    });
+                }, 1500);
+                
+                console.log('Race Config GUI initialized');
+            } else if (domCheckAttempts < MAX_DOM_CHECK_ATTEMPTS) {
+                domCheckAttempts++;
+                setTimeout(pollForElements, 100);
+            }
+        };
+    
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', pollForElements);
+        } else {
+            pollForElements();
+        }
+    }
+
+    function initializeScript() {
+        if (window.guiInitialized) {
+            console.warn('GUI already initialized');
+            return;
+        }
+
+        const raceConfigGUI = createRaceConfigGUI();
+        document.body.appendChild(raceConfigGUI);
+        initializeGUI(raceConfigGUI);
+        createToggleButton();
+
+        window.guiInitialized = true;
+        console.log('Race Config GUI initialized successfully');
+    }
 
     function createRaceConfigGUI() {
         let gui = document.createElement('div');
@@ -1374,8 +1259,8 @@
             </div>
 
             <div style="text-align: center; margin-top: 20px; color: #888; font-size: 1.2em;">
-                Script created by <a href="https://www.torn.com/profiles.php?XID=268863" target="_blank" style="color: #888; text-decoration: none;">GNSC4 \[268863\]</a><br>
-                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.5.1 Official Forum Link</a>
+                Script created by <a href="https://www.torn.com/profiles.php?XID=268863" target="_blank" style="color: #888; text-decoration: none;">GNSC4 [268863]</a><br>
+                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.5.8 Official Forum Link</a>
             </div>
         `;
 
@@ -1738,8 +1623,6 @@
         window.addEventListener('resize', () => enforceWindowBoundaries(elmnt));
     }
 
-    const STORAGE_API_KEY = 'raceConfigAPIKey_release_NoGMf';
-
     function saveApiKey() {
         const apiKeyInput = document.getElementById('apiKeyInput');
         if (!apiKeyInput) return;
@@ -1799,8 +1682,7 @@
 
         if (!carId || carDropdown.value === '') {
             displayStatusMessage('Please select a car before creating a preset.', 'error');
-            setTimeout(() => displayStatusMessage('', ''), 3000);
-            return;
+            setTimeout(() => displayStatusMessage('', ''), 3000);return;
         }
 
         const presetName = prompt("Enter a name for this preset:");
@@ -1930,13 +1812,6 @@
             return;
         }
 
-        const trackNames = {
-            '6': 'Uptown', '7': 'Withdrawal', '8': 'Underdog', '9': 'Parkland',
-            '10': 'Docks', '11': 'Commerce', '12': 'Two Islands', '15': 'Industrial',
-            '16': 'Vector', '17': 'Mudpit', '18': 'Hammerhead', '19': 'Sewage',
-            '20': 'Meltdown', '21': 'Speedway', '23': 'Stone Park', '24': 'Convict'
-        };
-
         Object.keys(presets).forEach(presetName => {
             const preset = presets[presetName];
             const presetButtonContainer = document.createElement('div');
@@ -1973,40 +1848,6 @@
 
             container.appendChild(presetButtonContainer);
         });
-    }
-
-    function applyPreset(presetName) {
-        const presets = loadPresets();
-        const preset = presets[presetName];
-        if (preset) {
-            document.getElementById('trackSelect').value = preset.track;
-            document.getElementById('lapsInput').value = preset.laps;
-            document.getElementById('minDriversInput').value = preset.minDrivers;
-            document.getElementById('maxDriversInput').value = preset.maxDrivers;
-            document.getElementById('raceNameInput').value = preset.raceName;
-            document.getElementById('passwordInput').value = preset.password;
-            document.getElementById('betAmountInput').value = preset.betAmount;
-            document.getElementById('hourSelect').value = preset.hour;
-            document.getElementById('minuteSelect').value = preset.minute;
-
-            const carDropdown = document.getElementById('carDropdown');
-            const carIdInput = document.getElementById('carIdInput');
-
-            if (preset.selectedCar && carDropdown) {
-                carDropdown.value = preset.selectedCar;
-            }
-
-            if (carIdInput) {
-                carIdInput.value = preset.carId || preset.selectedCar || '';
-            }
-
-            displayStatusMessage(`Preset "${presetName}" applied.`, 'success');
-            setTimeout(() => displayStatusMessage('', ''), 3000);
-
-        } else {
-            displayStatusMessage(`Preset "${presetName}" not found.`, 'error');
-            setTimeout(() => displayStatusMessage('', ''), 3000);
-        }
     }
 
     function removePreset(presetName) {
@@ -2138,62 +1979,68 @@
             buttonContainer.appendChild(button);
         });
 
-        // Add auto-join presets
-        Object.entries(autoJoinPresets).forEach(([name, preset]) => {
-            const buttonContainer = document.createElement('div');
-            buttonContainer.className = 'preset-button-container';
-            
-            const button = document.createElement('button');
-            button.className = 'auto-join-preset-button';
-            button.textContent = name;
-            button.title = `Auto-join preset: ${name}\nTrack: ${preset.track}\nLaps: ${preset.minLaps}-${preset.maxLaps}`;
-            
-            button.addEventListener('click', () => {
-                applyAutoJoinPreset(preset);
-            });
+// Add auto-join presets
+Object.entries(autoJoinPresets).forEach(([name, preset]) => {
+    const buttonContainer = document.createElement('div');
+    buttonContainer.className = 'preset-button-container';
+    
+    const button = document.createElement('button');
+    button.className = 'auto-join-preset-button';
+    button.textContent = name;
+    
+    // Enhanced tooltip with car information
+    const carInfo = preset.carName ? 
+        `${preset.carName} (ID: ${preset.selectedCarId})` : 
+        `Car ID: ${preset.selectedCarId}`;
+        
+    button.title = `Auto-join preset: ${name}\nTrack: ${preset.track}\nLaps: ${preset.minLaps}-${preset.maxLaps}\nCar: ${carInfo}`;
+    
+    button.addEventListener('click', () => {
+        applyAutoJoinPreset(preset);
+    });
 
-            const removeButton = document.createElement('a');
-            removeButton.className = 'remove-preset';
-            removeButton.href = '#';
-            removeButton.textContent = '×';
-            removeButton.title = `Remove auto-join preset: ${name}`;
-            removeButton.style.cssText = `
-                position: absolute !important;
-                top: -8px !important;
-                right: -8px !important;
-                background-color: #955 !important;
-                color: #eee !important;
-                width: 20px !important;
-                height: 20px !important;
-                border-radius: 50% !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                text-decoration: none !important;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
-                transition: all 0.2s ease !important;
-                z-index: 100 !important;
-            `;
-            
-            removeButton.addEventListener('click', (event) => {
-                event.preventDefault();
-                removeAutoJoinPreset(name);
-            });
+    const removeButton = document.createElement('a');
+    removeButton.className = 'remove-preset';
+    removeButton.href = '#';
+    removeButton.textContent = '×';
+    removeButton.title = `Remove auto-join preset: ${name}`;
+    removeButton.style.cssText = `
+        position: absolute !important;
+        top: -8px !important;
+        right: -8px !important;
+        background-color: #955 !important;
+        color: #eee !important;
+        width: 20px !important;
+        height: 20px !important;
+        border-radius: 50% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-decoration: none !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+        transition: all 0.2s ease !important;
+        z-index: 100 !important;
+    `;
+    
+    removeButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        removeAutoJoinPreset(name);
+    });
 
-            removeButton.addEventListener('mouseover', () => {
-                removeButton.style.backgroundColor = '#c77';
-                removeButton.style.transform = 'scale(1.1)';
-            });
+    removeButton.addEventListener('mouseover', () => {
+        removeButton.style.backgroundColor = '#c77';
+        removeButton.style.transform = 'scale(1.1)';
+    });
 
-            removeButton.addEventListener('mouseout', () => {
-                removeButton.style.backgroundColor = '#955';
-                removeButton.style.transform = 'scale(1)';
-            });
-            
-            buttonContainer.appendChild(button);
-            buttonContainer.appendChild(removeButton);
-            autoJoinContainer.appendChild(buttonContainer);
-        });
+    removeButton.addEventListener('mouseout', () => {
+        removeButton.style.backgroundColor = '#955';
+        removeButton.style.transform = 'scale(1)';
+    });
+    
+    buttonContainer.appendChild(button);
+    buttonContainer.appendChild(removeButton);
+    autoJoinContainer.appendChild(buttonContainer);
+});
 
         container.style.display = 'flex';
     }
@@ -2201,16 +2048,33 @@
     function saveAutoJoinPreset() {
         const presetName = prompt("Enter a name for this auto-join preset:");
         if (!presetName) return;
-
+    
+        // Get the selected car ID and get its name for display purposes
+        const selectedCarId = document.getElementById('autoJoinCar').value;
+        const selectedCarDropdown = document.getElementById('autoJoinCar');
+        let carName = "Unknown Car";
+        
+        // Try to get the car name from the selected option
+        if (selectedCarDropdown && selectedCarId) {
+            const selectedOption = selectedCarDropdown.querySelector(`option[value="${selectedCarId}"]`);
+            if (selectedOption) {
+                carName = selectedOption.textContent.split(' (ID:')[0];
+            }
+        }
+    
         const preset = {
             track: document.getElementById('autoJoinTrack').value,
             minLaps: document.getElementById('minLaps').value,
             maxLaps: document.getElementById('maxLaps').value,
-            selectedCarId: document.getElementById('autoJoinCar').value,
+            selectedCarId: selectedCarId,
+            carName: carName, // Added car name for display
             hidePassworded: document.getElementById('hidePassworded').checked,
             hideBets: document.getElementById('hideBets').checked
         };
-
+    
+        // Log what we're saving for debugging
+        console.log('[DEBUG] Saving auto-join preset with car:', { id: selectedCarId, name: carName });
+    
         const presets = loadAutoJoinPresets();
         presets[presetName] = preset;
         GM_setValue('autoJoinPresets', JSON.stringify(presets));
@@ -2296,7 +2160,7 @@
                 displayStatusMessage('Failed to load Custom Events tab', 'error');
                 return;
             }
-
+    
             // Add delay to ensure DOM is ready
             await new Promise(resolve => setTimeout(resolve, 1000));
             
@@ -2432,20 +2296,54 @@
                 return;
             }
             
-            // Synchronize car dropdown with main dropdown if needed
-            if (elements.autoJoinCar && document.getElementById('carDropdown')) {
-                elements.autoJoinCar.innerHTML = document.getElementById('carDropdown').innerHTML;
-            }
-            
-            // Set the values
+            // Log the car information from the preset
+            console.log('[DEBUG] Auto-join preset car information:', { 
+                selectedCarId: preset.selectedCarId,
+                carName: preset.carName || 'Unknown Car'
+            });
+    
+            // Set the values - with enhanced car handling
             console.log('[DEBUG] Setting auto-join values');
             if (elements.autoJoinTrack) elements.autoJoinTrack.value = preset.track;
             if (elements.minLaps) elements.minLaps.value = preset.minLaps;
             if (elements.maxLaps) elements.maxLaps.value = preset.maxLaps;
-            if (elements.autoJoinCar) elements.autoJoinCar.value = preset.selectedCarId;
             if (elements.hidePassworded) elements.hidePassworded.checked = preset.hidePassworded;
             if (elements.hideBets) elements.hideBets.checked = preset.hideBets;
-
+            
+            // Special handling for car selection
+            if (elements.autoJoinCar && preset.selectedCarId) {
+                // First check if the car already exists in the dropdown
+                const existingOption = elements.autoJoinCar.querySelector(`option[value="${preset.selectedCarId}"]`);
+                
+                if (existingOption) {
+                    // Car exists in dropdown, simply set the value
+                    elements.autoJoinCar.value = preset.selectedCarId;
+                    console.log('[DEBUG] Found car in dropdown, setting value:', preset.selectedCarId);
+                } else {
+                    // Car doesn't exist in dropdown - we need to create the option
+                    console.log('[DEBUG] Car not found in dropdown, creating option for:', preset.selectedCarId);
+                    
+                    // Create a new option with saved car ID and name
+                    const newOption = document.createElement('option');
+                    newOption.value = preset.selectedCarId;
+                    newOption.textContent = preset.carName ? 
+                        `${preset.carName} (ID: ${preset.selectedCarId})` : 
+                        `Car ID: ${preset.selectedCarId}`;
+                    
+                    // Add the new option at the top (after the default "Select a car" option)
+                    if (elements.autoJoinCar.options.length > 0) {
+                        elements.autoJoinCar.insertBefore(newOption, elements.autoJoinCar.options[1]);
+                    } else {
+                        elements.autoJoinCar.appendChild(newOption);
+                    }
+                    
+                    // Set the value to our car ID
+                    elements.autoJoinCar.value = preset.selectedCarId;
+                }
+            } else {
+                console.log('[DEBUG] No car ID in preset or car dropdown not found');
+            }
+    
             // Add delay before starting auto-join
             await new Promise(resolve => setTimeout(resolve, 500));
             
@@ -2577,49 +2475,72 @@
                     const carDropdown = document.getElementById('carDropdown');
                     const carStatusMessage = document.getElementById('carStatusMessage');
                     const updateCarsButton = document.getElementById('updateCarsButton');
-
+    
                     if (carDropdown && carStatusMessage && updateCarsButton) {
                         resolve({ carDropdown, carStatusMessage, updateCarsButton });
                     } else if (domCheckAttempts < MAX_DOM_CHECK_ATTEMPTS) {
                         domCheckAttempts++;
                         setTimeout(checkElements, 100);
                     } else {
-                        resolve(null);
+                        // Instead of resolving null, resolve with a simple object 
+                        // that has empty/dummy implementations of the required objects
+                        console.log('[DEBUG] Required elements not found for updateCarList, providing fallback objects');
+                        resolve({
+                            carDropdown: {
+                                disabled: false,
+                                querySelector: () => null,
+                                value: '',
+                                innerHTML: ''
+                            },
+                            carStatusMessage: {
+                                textContent: '',
+                                style: { color: '' }
+                            },
+                            updateCarsButton: {
+                                disabled: false
+                            }
+                        });
                     }
                 };
                 checkElements();
             });
         };
-
+    
         const elements = await waitForElements();
-        if (!elements) {
-            console.error('Required elements not found for updateCarList');
-            return;
-        }
-
+        
+        // Continue with the rest of the function, elements will either be real DOM elements
+        // or our fallback objects that won't throw errors when properties are accessed
         const { carDropdown, carStatusMessage, updateCarsButton } = elements;
         const apiKey = GM_getValue(STORAGE_API_KEY, '');
-
+    
         if (!apiKey) {
-            carStatusMessage.textContent = 'API Key Required';
-            carStatusMessage.style.color = 'red';
+            if (carStatusMessage) {
+                carStatusMessage.textContent = 'API Key Required';
+                carStatusMessage.style.color = 'red';
+            }
             return;
         }
-
+    
         if (carStatusMessage) {
             carStatusMessage.textContent = 'Updating Cars...';
             carStatusMessage.style.color = '#aaa';
         }
-
+    
         if (carDropdown) {
             carDropdown.disabled = true;
         }
-
+    
         if (updateCarsButton) {
             updateCarsButton.disabled = true;
         }
-
+    
         try {
+            // Add check to see if we should proceed with API call
+            if (!carDropdown || typeof carDropdown.innerHTML !== 'string') {
+                console.log('[DEBUG] Skipping API call since carDropdown is not valid');
+                return;
+            }
+            
             const response = await GM.xmlHttpRequest({
                 url: `https://api.torn.com/v2/user/?selections=enlistedcars&key=${apiKey}`,
                 method: 'GET',
@@ -3015,9 +2936,7 @@
 
         // Any other racing status should return false
         return false;
-    }
-
-    function updateRaceAlert() {
+    }function updateRaceAlert() {
         const alertEnabled = GM_getValue('raceAlertEnabled', false);
         if (!alertEnabled) {
             removeRaceAlert();
@@ -3378,7 +3297,7 @@
                 if (racesList) {
                     console.log('[DEBUG] Race list detected after refresh');
                     setTimeout(() => {
-                        console.log('[DEBUG] Restoring filters and reapplying');
+                        console.console.log('[DEBUG] Restoring filters and reapplying');
                         const filtersEnabled = restoreFilterState();
                         if (filtersEnabled && document.getElementById('toggleFilters')?.classList.contains('active')) {
                             window.RaceFiltering?.filterRacesList();
@@ -4038,11 +3957,6 @@
     }
 
     function initializeAutoJoinSection() {
-        // Direct check for race page first
-        if (!window.location.href.includes('sid=racing')) {
-            return;
-        }
-        
         console.log('[DEBUG] Initializing auto-join section');
         
         // Wait for auto-join elements to be available in the DOM
@@ -4069,7 +3983,7 @@
                 if (existingButton) {
                     existingButton.remove();
                 }
-
+    
                 // Create new save preset button
                 const savePresetButton = document.createElement('button');
                 savePresetButton.id = 'saveAutoJoinPreset';
@@ -4104,7 +4018,7 @@
                 console.log('[DEBUG] Auto-join preset save button added successfully');
             }
         }, 500);
-
+    
         // Clear interval after 20 seconds to prevent endless checking
         setTimeout(() => {
             clearInterval(waitForAutoJoinDOM);
@@ -4174,8 +4088,6 @@
 
     function initializeAll() {
         init();
-        // Call initializeAutoJoinSection after a short delay to ensure DOM is ready
-        setTimeout(initializeAutoJoinSection, 1000);
     }
 
     function removeAutoJoinPreset(presetName) {
