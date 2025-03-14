@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Config GUI
-// @version      3.5.9
+// @version      3.5.8
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -40,6 +40,31 @@
         '21': 'Speedway',
         '23': 'Stone Park',
         '24': 'Convict'
+    };
+
+    const GM = {
+        xmlHttpRequest: (details) => {
+            return new Promise((resolve, reject) => {
+                fetch(details.url, {
+                    method: details.method,
+                    headers: details.headers,
+                    body: details.method === 'POST' ? details.data : undefined
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (details.onload) {
+                        details.onload({ status: 200, responseText: JSON.stringify(data) });
+                    }
+                    resolve(data);
+                })
+                .catch(error => {
+                    if (details.onerror) {
+                        details.onerror(error);
+                    }
+                    reject(error);
+                });
+            });
+        }
     };
 
     let guiInitialized = false;
@@ -2516,8 +2541,7 @@ Object.entries(autoJoinPresets).forEach(([name, preset]) => {
                 return;
             }
             
-            // Use the GM.xmlHttpRequest provided by GMforPDA instead of our custom implementation
-            await GM.xmlHttpRequest({
+            const response = await GM.xmlHttpRequest({
                 url: `https://api.torn.com/v2/user/?selections=enlistedcars&key=${apiKey}`,
                 method: 'GET',
                 headers: {
@@ -2873,7 +2897,6 @@ Object.entries(autoJoinPresets).forEach(([name, preset]) => {
             if (key === STORAGE_API_KEY) {
                 GM_setValue(key, value);
             } else {
-                // Use GM_setValue directly from GMforPDA
                 GM_setValue(key, JSON.stringify(value));
             }
         } catch (e) {
@@ -2886,7 +2909,6 @@ Object.entries(autoJoinPresets).forEach(([name, preset]) => {
             if (key === STORAGE_API_KEY) {
                 return GM_getValue(key, defaultValue);
             }
-            // Use GM_getValue directly from GMforPDA
             const value = GM_getValue(key);
             return value ? JSON.parse(value) : defaultValue;
         } catch (e) {
