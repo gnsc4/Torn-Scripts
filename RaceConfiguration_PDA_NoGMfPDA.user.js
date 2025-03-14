@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Config GUI
-// @version      3.5.9
+// @version      3.5.10
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -2666,7 +2666,7 @@
     }
 
     function getRFC() {
-        // Improved RFC cookie retrieval function
+        // Improved RFC cookie retrieval function for PDA compatibility
         try {
             // Try multiple methods to get the RFC token
             let rfcValue = null;
@@ -2691,7 +2691,18 @@
                 }
             }
             
-            // Method 3: Try to extract from page content if available
+            // Method 3: PDA specific - look for RFC in localStorage
+            try {
+                const localRfc = localStorage.getItem('rfc_v');
+                if (localRfc) {
+                    console.log('[DEBUG] Got RFC token from localStorage');
+                    return localRfc;
+                }
+            } catch (e) {
+                console.log('[DEBUG] Error checking localStorage for RFC:', e);
+            }
+            
+            // Method 4: Try to extract from page content
             try {
                 const scripts = document.querySelectorAll('script:not([src])');
                 for (const script of scripts) {
@@ -2726,8 +2737,9 @@
                 console.error('[DEBUG] Error searching for RFC in page content:', e);
             }
             
-            console.warn('[DEBUG] Failed to find rfc_v token, race creation may fail');
-            return '';
+            // If nothing else works, return 'pda' as a marker
+            console.warn('[DEBUG] Failed to find rfc_v token, using PDA fallback');
+            return 'pda';
         } catch (e) {
             console.error('[DEBUG] Error retrieving RFC cookie:', e);
             return '';
@@ -2867,7 +2879,7 @@
             setTimeout(() => displayStatusMessage('', ''), 3000);
             return;
         }
-
+    
         const trackId = preset.track;
         const laps = preset.laps;
         const minDrivers = preset.minDrivers;
@@ -2878,7 +2890,7 @@
         const raceHour = preset.hour;
         const raceMinute = preset.minute;
         const carId = preset.carId;
-
+    
         let waitTime = Math.floor(Date.now() / 1000);
         if (preset.saveTime && preset.hour && preset.minute) {
             const nextTime = getNextAvailableTime(preset.hour, preset.minute);
@@ -2890,9 +2902,9 @@
             const now = moment.utc();
             waitTime = Math.floor(now.valueOf() / 1000);
         }
-
+    
         const rfcValue = getRFC();
-
+    
         const params = new URLSearchParams();
         params.append('carID', carId);
         params.append('password', password || '');
@@ -2908,82 +2920,59 @@
         params.append('betAmount', betAmount);
         params.append('waitTime', waitTime);
         params.append('rfcv', rfcValue);
-
-        const raceLink = `https://www.torn.com/loader.php?sid=racing&tab=customrace&section=getInRace&step=getInRace&id=&${params.toString()}`;
+    
+        // Construct URL - both formats for compatibility
+        const queryString = params.toString();
+        const raceLink = `https://www.torn.com/loader.php?sid=racing&tab=customrace&section=getInRace&step=getInRace&id=&${queryString}`;
         console.log('[Race URL from preset]:', raceLink);
-
+    
+        // Update status message
         displayStatusMessage('Creating Race...', 'info');
-
+        
+        // Get quick launch status element for updating
+        const quickLaunchStatus = document.querySelector('.quick-launch-status');
+        
         try {
             console.log('[DEBUG] Creating race from preset:', {
                 trackId, laps, minDrivers, maxDrivers, betAmount, carId,
                 hasPassword: !!password?.length
             });
             
-            // Use our enhanced fetchWithGMfallback function 
-            const response = await fetchWithGMfallback(raceLink);
-            console.log('[DEBUG] Race creation from preset response received');
-            const data = await response.text();
+            // PDA-SPECIFIC METHOD - Try using direct navigation first which works best in PDA
+            console.log('[DEBUG] Using direct navigation approach for PDA');
             
-            console.log('[DEBUG] Race from preset response status:', response.status, 
-                       'Data length:', data?.length || 0);
-
-            const quickLaunchStatus = document.querySelector('.quick-launch-status');
-
-            // Better success detection - check status code and content
-            const isSuccess = (response.ok || response.redirected || response.status === 302) || 
-                             (data && (
-                               data.includes('successfully created') || 
-                               data.includes('race has been created') ||
-                               data.includes('race was created') ||
-                               data.includes('racecreationsuccess')
-                             ));
-            
+            // In PDA, direct navigation works better than XHR
             if (quickLaunchStatus) {
-                if (isSuccess) {
-                    quickLaunchStatus.textContent = 'Race Created Successfully!';
-                    quickLaunchStatus.className = 'quick-launch-status success show';
-                    // Navigate to racing page after successful race creation
-                    setTimeout(() => window.location.href = 'https://www.torn.com/loader.php?sid=racing', 1500);
-                } else {
-                    console.error('[DEBUG] Race from preset failed. Status:', response.status);
-                    
-                    let errorMsg = 'Error creating race. Please try again.';
-                    
-                    // Enhanced error messages
-                    if (response.status === 403) {
-                        errorMsg = 'Access denied (403). Try refreshing your RFC token.';
-                        await refreshRFCToken();
-                    }
-                    
-                    quickLaunchStatus.textContent = errorMsg;
-                    quickLaunchStatus.className = 'quick-launch-status error show';
-                }
+                quickLaunchStatus.textContent = 'Creating race...';
+                quickLaunchStatus.className = 'quick-launch-status info show';
             }
-
-            // Regular status message for the GUI
-            if (isSuccess) {
-                displayStatusMessage('Race Created Successfully!', 'success');
-                // Navigate to racing page after successful race creation
-                setTimeout(() => window.location.href = 'https://www.torn.com/loader.php?sid=racing', 1500);
-            } else {
-                const errorMsg = response.status === 403 ? 
-                                'Access denied (403). Try refreshing your RFC token.' :
-                                'Error creating race. Please try again.';
-                displayStatusMessage(errorMsg, 'error');
-            }
-            setTimeout(() => displayStatusMessage('', ''), 5000);
+            
+            // Short delay to ensure status message is shown before navigation
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
+            // Direct navigation - most reliable method in PDA
+            window.location.href = raceLink;
+            
+            // We won't reach here due to navigation, but as a fallback:
+            return {
+                success: true,
+                message: 'Race creation initiated via navigation'
+            };
+            
         } catch (error) {
             console.error('[DEBUG] Race from preset error:', error);
             
-            const quickLaunchStatus = document.querySelector('.quick-launch-status');
             if (quickLaunchStatus) {
                 quickLaunchStatus.textContent = `Error creating race: ${error.message}`;
                 quickLaunchStatus.className = 'quick-launch-status error show';
             }
-
+    
             displayStatusMessage(`Error creating race: ${error.message}`, 'error');
             setTimeout(() => displayStatusMessage('', ''), 5000);
+            return {
+                success: false,
+                message: error.message
+            };
         }
     }
 
