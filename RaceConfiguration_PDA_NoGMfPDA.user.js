@@ -952,6 +952,9 @@
         // Initialize race alerts for all pages
         initializeRaceAlerts();
         
+        // Initialize auto-join section for all pages where the GUI might appear
+        initializeAutoJoinSection();
+        
         // Only initialize racing features on the racing page
         if (isRacingPage) {
             initializeRacingFeatures();
@@ -1016,7 +1019,7 @@
                 // Initialize auto-join section separately without waiting for car elements
                 initializeAutoJoinSection();
                 
-                // Initialize car-related features asynchronously
+                // Initialize car-related features asynchronously with error handling
                 setTimeout(() => {
                     updateCarList().then(() => {
                         updateQuickLaunchButtons();
@@ -1032,7 +1035,7 @@
                 setTimeout(pollForElements, 100);
             }
         };
-
+    
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', pollForElements);
         } else {
@@ -2472,49 +2475,72 @@ Object.entries(autoJoinPresets).forEach(([name, preset]) => {
                     const carDropdown = document.getElementById('carDropdown');
                     const carStatusMessage = document.getElementById('carStatusMessage');
                     const updateCarsButton = document.getElementById('updateCarsButton');
-
+    
                     if (carDropdown && carStatusMessage && updateCarsButton) {
                         resolve({ carDropdown, carStatusMessage, updateCarsButton });
                     } else if (domCheckAttempts < MAX_DOM_CHECK_ATTEMPTS) {
                         domCheckAttempts++;
                         setTimeout(checkElements, 100);
                     } else {
-                        resolve(null);
+                        // Instead of resolving null, resolve with a simple object 
+                        // that has empty/dummy implementations of the required objects
+                        console.log('[DEBUG] Required elements not found for updateCarList, providing fallback objects');
+                        resolve({
+                            carDropdown: {
+                                disabled: false,
+                                querySelector: () => null,
+                                value: '',
+                                innerHTML: ''
+                            },
+                            carStatusMessage: {
+                                textContent: '',
+                                style: { color: '' }
+                            },
+                            updateCarsButton: {
+                                disabled: false
+                            }
+                        });
                     }
                 };
                 checkElements();
             });
         };
-
+    
         const elements = await waitForElements();
-        if (!elements) {
-            console.error('Required elements not found for updateCarList');
-            return;
-        }
-
+        
+        // Continue with the rest of the function, elements will either be real DOM elements
+        // or our fallback objects that won't throw errors when properties are accessed
         const { carDropdown, carStatusMessage, updateCarsButton } = elements;
         const apiKey = GM_getValue(STORAGE_API_KEY, '');
-
+    
         if (!apiKey) {
-            carStatusMessage.textContent = 'API Key Required';
-            carStatusMessage.style.color = 'red';
+            if (carStatusMessage) {
+                carStatusMessage.textContent = 'API Key Required';
+                carStatusMessage.style.color = 'red';
+            }
             return;
         }
-
+    
         if (carStatusMessage) {
             carStatusMessage.textContent = 'Updating Cars...';
             carStatusMessage.style.color = '#aaa';
         }
-
+    
         if (carDropdown) {
             carDropdown.disabled = true;
         }
-
+    
         if (updateCarsButton) {
             updateCarsButton.disabled = true;
         }
-
+    
         try {
+            // Add check to see if we should proceed with API call
+            if (!carDropdown || typeof carDropdown.innerHTML !== 'string') {
+                console.log('[DEBUG] Skipping API call since carDropdown is not valid');
+                return;
+            }
+            
             const response = await GM.xmlHttpRequest({
                 url: `https://api.torn.com/v2/user/?selections=enlistedcars&key=${apiKey}`,
                 method: 'GET',
@@ -3931,11 +3957,6 @@ Object.entries(autoJoinPresets).forEach(([name, preset]) => {
     }
 
     function initializeAutoJoinSection() {
-        // Direct check for race page first
-        if (!window.location.href.includes('sid=racing')) {
-            return;
-        }
-        
         console.log('[DEBUG] Initializing auto-join section');
         
         // Wait for auto-join elements to be available in the DOM
@@ -3962,7 +3983,7 @@ Object.entries(autoJoinPresets).forEach(([name, preset]) => {
                 if (existingButton) {
                     existingButton.remove();
                 }
-
+    
                 // Create new save preset button
                 const savePresetButton = document.createElement('button');
                 savePresetButton.id = 'saveAutoJoinPreset';
@@ -3997,7 +4018,7 @@ Object.entries(autoJoinPresets).forEach(([name, preset]) => {
                 console.log('[DEBUG] Auto-join preset save button added successfully');
             }
         }, 500);
-
+    
         // Clear interval after 20 seconds to prevent endless checking
         setTimeout(() => {
             clearInterval(waitForAutoJoinDOM);
@@ -4067,8 +4088,6 @@ Object.entries(autoJoinPresets).forEach(([name, preset]) => {
 
     function initializeAll() {
         init();
-        // Call initializeAutoJoinSection after a short delay to ensure DOM is ready
-        setTimeout(initializeAutoJoinSection, 1000);
     }
 
     function removeAutoJoinPreset(presetName) {
