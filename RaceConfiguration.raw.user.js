@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Config GUI
-// @version      3.5.8
+// @version      3.5.9
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -40,31 +40,6 @@
         '21': 'Speedway',
         '23': 'Stone Park',
         '24': 'Convict'
-    };
-
-    const GM = {
-        xmlHttpRequest: (details) => {
-            return new Promise((resolve, reject) => {
-                fetch(details.url, {
-                    method: details.method,
-                    headers: details.headers,
-                    body: details.method === 'POST' ? details.data : undefined
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (details.onload) {
-                        details.onload({ status: 200, responseText: JSON.stringify(data) });
-                    }
-                    resolve(data);
-                })
-                .catch(error => {
-                    if (details.onerror) {
-                        details.onerror(error);
-                    }
-                    reject(error);
-                });
-            });
-        }
     };
 
     let guiInitialized = false;
@@ -1260,7 +1235,7 @@
 
             <div style="text-align: center; margin-top: 20px; color: #888; font-size: 1.2em;">
                 Script created by <a href="https://www.torn.com/profiles.php?XID=268863" target="_blank" style="color: #888; text-decoration: none;">GNSC4 [268863]</a><br>
-                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.5.8 Official Forum Link</a>
+                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.5.9 Official Forum Link</a>
             </div>
         `;
 
@@ -1988,10 +1963,10 @@ Object.entries(autoJoinPresets).forEach(([name, preset]) => {
     button.className = 'auto-join-preset-button';
     button.textContent = name;
     
-    // Enhanced tooltip with car information
+    // Enhanced tooltip with car information - fixed to avoid showing "Car ID:" twice
     const carInfo = preset.carName ? 
         `${preset.carName} (ID: ${preset.selectedCarId})` : 
-        `Car ID: ${preset.selectedCarId}`;
+        `${preset.selectedCarId}`;
         
     button.title = `Auto-join preset: ${name}\nTrack: ${preset.track}\nLaps: ${preset.minLaps}-${preset.maxLaps}\nCar: ${carInfo}`;
     
@@ -2656,9 +2631,13 @@ Object.entries(autoJoinPresets).forEach(([name, preset]) => {
                 // Add the sorted cars
                 sortedCars.forEach(car => {
                     const carName = car.name || car.item_name;
+                    
+                    // Generate car part information using categorization
+                    let partInfo = generateCarPartInfo(car.parts || []);
+                    
                     const option = document.createElement('option');
                     option.value = car.id;
-                    option.textContent = `${carName} (ID: ${car.id})`;
+                    option.textContent = partInfo ? `${carName} (${partInfo}) [ID: ${car.id}]` : `${carName} [ID: ${car.id}]`;
                     dropdown.appendChild(option);
                 });
                 
@@ -2669,6 +2648,64 @@ Object.entries(autoJoinPresets).forEach(([name, preset]) => {
         } catch (error) {
             console.error('[DEBUG] Error in populateCarDropdown:', error);
         }
+    }
+
+    /**
+     * Generates a user-friendly description of car parts
+     * @param {Array} parts - Array of part IDs
+     * @return {string} Description of key parts
+     */
+    function generateCarPartInfo(parts) {
+        if (!parts || !Array.isArray(parts) || parts.length === 0) {
+            return '';
+        }
+
+        // Create categories for organizing parts
+        const categories = {
+            transmission: [],
+            power: []
+        };
+
+        // Map of verified part IDs to their shortened display names
+        // Only including parts confirmed in Untitled-1.user.js
+        const partShortNames = {
+            // Transmissions (verified)
+            84: "TL",  // Paddle Shift Long
+            85: "TS",  // Paddle Shift Short
+            86: "DL",  // Rally Long
+            87: "DS",  // Rally Short
+            
+            // Power adders (verified)
+            81: "T2",   // Turbo Stage 2
+            99: "T3"    // Turbo Stage 3
+        };
+
+        // Sort parts into categories
+        parts.forEach(partId => {
+            const partId_num = Number(partId);
+            const shortName = partShortNames[partId_num];
+            if (!shortName) return;
+            
+            // Categorize by part ID ranges
+            if ([84, 85, 86, 87].includes(partId_num)) {
+                categories.transmission.push(shortName);
+            } else if ([81, 99].includes(partId_num)) {
+                categories.power.push(shortName);
+            }
+        });
+
+        // Build descriptive string with categories
+        const partDescriptions = [];
+        
+        if (categories.transmission.length > 0) {
+            partDescriptions.push(categories.transmission[0]);
+        }
+        
+        if (categories.power.length > 0) {
+            partDescriptions.push(categories.power.join('/'));
+        }
+        
+        return partDescriptions.join('-');
     }
 
     function updateCarDropdown() {
