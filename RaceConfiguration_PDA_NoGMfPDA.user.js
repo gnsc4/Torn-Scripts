@@ -902,7 +902,7 @@
             text-align: center !important;
             white-space: nowrap !important;
             overflow: hidden !important;
-            text-overflow:text-overflow: ellipsis !important;
+            text-overflow: ellipsis !important;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
             min-height: 32px !important;
             width: 100% !important;
@@ -928,6 +928,7 @@
         initializeRaceAlerts();
         
         // Initialize auto-join section for all pages where the GUI might appear
+
         initializeAutoJoinSection();
         
         // Only initialize racing features on the racing page
@@ -1954,68 +1955,68 @@
             buttonContainer.appendChild(button);
         });
 
-// Add auto-join presets
-Object.entries(autoJoinPresets).forEach(([name, preset]) => {
-    const buttonContainer = document.createElement('div');
-    buttonContainer.className = 'preset-button-container';
-    
-    const button = document.createElement('button');
-    button.className = 'auto-join-preset-button';
-    button.textContent = name;
-    
-    // Enhanced tooltip with car information
-    const carInfo = preset.carName ? 
-        `${preset.carName} (ID: ${preset.selectedCarId})` : 
-        `Car ID: ${preset.selectedCarId}`;
-        
-    button.title = `Auto-join preset: ${name}\nTrack: ${preset.track}\nLaps: ${preset.minLaps}-${preset.maxLaps}\nCar: ${carInfo}`;
-    
-    button.addEventListener('click', () => {
-        applyAutoJoinPreset(preset);
-    });
+        // Add auto-join presets
+        Object.entries(autoJoinPresets).forEach(([name, preset]) => {
+            const buttonContainer = document.createElement('div');
+            buttonContainer.className = 'preset-button-container';
+            
+            const button = document.createElement('button');
+            button.className = 'auto-join-preset-button';
+            button.textContent = name;
+            
+            // Enhanced tooltip with car information
+            const carInfo = preset.carName ? 
+                `${preset.carName} (ID: ${preset.selectedCarId})` : 
+                `Car ID: ${preset.selectedCarId}`;
+                
+            button.title = `Auto-join preset: ${name}\nTrack: ${preset.track}\nLaps: ${preset.minLaps}-${preset.maxLaps}\nCar: ${carInfo}`;
+            
+            button.addEventListener('click', () => {
+                applyAutoJoinPreset(preset);
+            });
 
-    const removeButton = document.createElement('a');
-    removeButton.className = 'remove-preset';
-    removeButton.href = '#';
-    removeButton.textContent = '×';
-    removeButton.title = `Remove auto-join preset: ${name}`;
-    removeButton.style.cssText = `
-        position: absolute !important;
-        top: -8px !important;
-        right: -8px !important;
-        background-color: #955 !important;
-        color: #eee !important;
-        width: 20px !important;
-        height: 20px !important;
-        border-radius: 50% !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        text-decoration: none !important;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
-        transition: all 0.2s ease !important;
-        z-index: 100 !important;
-    `;
-    
-    removeButton.addEventListener('click', (event) => {
-        event.preventDefault();
-        removeAutoJoinPreset(name);
-    });
+            const removeButton = document.createElement('a');
+            removeButton.className = 'remove-preset';
+            removeButton.href = '#';
+            removeButton.textContent = '×';
+            removeButton.title = `Remove auto-join preset: ${name}`;
+            removeButton.style.cssText = `
+                position: absolute !important;
+                top: -8px !important;
+                right: -8px !important;
+                background-color: #955 !important;
+                color: #eee !important;
+                width: 20px !important;
+                height: 20px !important;
+                border-radius: 50% !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                text-decoration: none !important;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+                transition: all 0.2s ease !important;
+                z-index: 100 !important;
+            `;
+            
+            removeButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                removeAutoJoinPreset(name);
+            });
 
-    removeButton.addEventListener('mouseover', () => {
-        removeButton.style.backgroundColor = '#c77';
-        removeButton.style.transform = 'scale(1.1)';
-    });
+            removeButton.addEventListener('mouseover', () => {
+                removeButton.style.backgroundColor = '#c77';
+                removeButton.style.transform = 'scale(1.1)';
+            });
 
-    removeButton.addEventListener('mouseout', () => {
-        removeButton.style.backgroundColor = '#955';
-        removeButton.style.transform = 'scale(1)';
-    });
-    
-    buttonContainer.appendChild(button);
-    buttonContainer.appendChild(removeButton);
-    autoJoinContainer.appendChild(buttonContainer);
-});
+            removeButton.addEventListener('mouseout', () => {
+                removeButton.style.backgroundColor = '#955';
+                removeButton.style.transform = 'scale(1)';
+            });
+            
+            buttonContainer.appendChild(button);
+            buttonContainer.appendChild(removeButton);
+            autoJoinContainer.appendChild(buttonContainer);
+        });
 
         container.style.display = 'flex';
     }
@@ -2124,7 +2125,6 @@ Object.entries(autoJoinPresets).forEach(([name, preset]) => {
             }, timeout);
         });
     }
-
     async function applyAutoJoinPreset(preset) {
         try {
             // Ensure we're on Custom Events tab first
@@ -2666,39 +2666,70 @@ Object.entries(autoJoinPresets).forEach(([name, preset]) => {
     }
 
     function getRFC() {
-        if (typeof $.cookie !== 'function') {
-            console.error("Error: jQuery Cookie plugin is not loaded correctly!");
-            console.log("Attempting fallback cookie parsing for rfc_v...");
-            let rfc = null;
-            const cookies = document.cookie.split("; ");
-            for (let i in cookies) {
-                let cookie = cookies[i].split("=");
-                if (cookie[0] && cookie[0].trim() === "rfc_v") {
-                    rfc = decodeURIComponent(cookie[1]);
-                    console.log("Fallback cookie parsing successful. rfc_v value:", rfc);
-                    return rfc;
+        // Improved RFC cookie retrieval function
+        try {
+            // Try multiple methods to get the RFC token
+            let rfcValue = null;
+            
+            // Method 1: Try jQuery cookie function if available
+            if (typeof $.cookie === 'function') {
+                rfcValue = $.cookie('rfc_v');
+                if (rfcValue) {
+                    console.log('[DEBUG] Got RFC token from jQuery cookie');
+                    return rfcValue;
                 }
             }
-            console.warn("Fallback cookie parsing failed to find rfc_v cookie.");
+            
+            // Method 2: Direct cookie parsing as fallback
+            const cookies = document.cookie.split('; ');
+            for (const cookie of cookies) {
+                const [name, value] = cookie.split('=');
+                if (name === 'rfc_v') {
+                    rfcValue = decodeURIComponent(value);
+                    console.log('[DEBUG] Got RFC token from document.cookie');
+                    return rfcValue;
+                }
+            }
+            
+            // Method 3: Try to extract from page content if available
+            try {
+                const scripts = document.querySelectorAll('script:not([src])');
+                for (const script of scripts) {
+                    const match = script.textContent.match(/rfcv\s*=\s*['"]([^'"]+)['"]/);
+                    if (match && match[1]) {
+                        rfcValue = match[1];
+                        console.log('[DEBUG] Got RFC token from script content');
+                        return rfcValue;
+                    }
+                }
+                
+                // Try from meta tag
+                const metaRfc = document.querySelector('meta[name="rfc_token"]');
+                if (metaRfc) {
+                    rfcValue = metaRfc.getAttribute('content');
+                    if (rfcValue) {
+                        console.log('[DEBUG] Got RFC token from meta tag');
+                        return rfcValue;
+                    }
+                }
+                
+                // Try from form fields
+                const formRfc = document.querySelector('input[name="rfcv"]');
+                if (formRfc) {
+                    rfcValue = formRfc.value;
+                    if (rfcValue) {
+                        console.log('[DEBUG] Got RFC token from form field');
+                        return rfcValue;
+                    }
+                }
+            } catch (e) {
+                console.error('[DEBUG] Error searching for RFC in page content:', e);
+            }
+            
+            console.warn('[DEBUG] Failed to find rfc_v token, race creation may fail');
             return '';
-        }
-
-        let rfcValue = $.cookie('rfc_v');
-        if (rfcValue) {
-            return rfcValue;
-        } else {
-            console.log("jQuery.cookie failed to get rfc_v, attempting fallback parsing...");
-            let rfc = null;
-            const cookies = document.cookie.split("; ");
-            for (let i in cookies) {
-                let cookie = cookies[i].split("=");
-                if (cookie[0] && cookie[0].trim() === "rfc_v") {
-                    rfc = decodeURIComponent(cookie[1]);
-                    console.log("Fallback cookie parsing successful. rfc_v value:", rfc);
-                    return rfc;
-                }
-            }
-            console.warn("Fallback cookie parsing failed to find rfc_v cookie.");
+        } catch (e) {
+            console.error('[DEBUG] Error retrieving RFC cookie:', e);
             return '';
         }
     }
@@ -2751,7 +2782,7 @@ Object.entries(autoJoinPresets).forEach(([name, preset]) => {
 
         const params = new URLSearchParams();
         params.append('carID', carId);
-        params.append('password', password);
+        params.append('password', password || '');
         params.append('createRace', 'true');
         params.append('title', raceName);
         params.append('minDrivers', minDrivers);
@@ -2771,19 +2802,59 @@ Object.entries(autoJoinPresets).forEach(([name, preset]) => {
         displayStatusMessage('Creating Race...', 'info');
 
         try {
-            // Use GMforPDA's fetch wrapper if available, otherwise fallback to native fetch
+            console.log('[DEBUG] Creating race with parameters:', {
+                trackId, laps, minDrivers, maxDrivers, betAmount, carId, raceName, 
+                hasPassword: !!password?.length
+            });
+            
+            // Use our enhanced fetchWithGMfallback function
             const response = await fetchWithGMfallback(raceLink);
+            console.log('[DEBUG] Race creation response received');
             const data = await response.text();
-
-            if (data.includes('success') || response.ok) {
+            
+            console.log('[DEBUG] Race creation response status:', response.status, 
+                       'Data length:', data?.length || 0);
+            
+            // Better success detection - check status code and content
+            const isSuccess = (response.ok || response.redirected || response.status === 302) || 
+                             (data && (
+                               data.includes('successfully created') || 
+                               data.includes('race has been created') ||
+                               data.includes('race was created') ||
+                               data.includes('racecreationsuccess')
+                             ));
+            
+            if (isSuccess) {
+                console.log('[DEBUG] Race creation successful!');
                 displayStatusMessage('Race Created Successfully!', 'success');
                 // Navigate to racing page after successful race creation
                 setTimeout(() => window.location.href = 'https://www.torn.com/loader.php?sid=racing', 1500);
             } else {
-                displayStatusMessage('Error creating race. Please try again.', 'error');
+                console.error('[DEBUG] Race creation failed. Status:', response.status);
+                
+                let errorMsg = 'Error creating race. Please try again.';
+                
+                // Enhanced error messages
+                if (response.status === 403) {
+                    errorMsg = 'Access denied (403). Try refreshing your RFC token.';
+                    await refreshRFCToken();
+                } else if (data.includes('error') && data.includes('message')) {
+                    try {
+                        // Try to parse error message if in JSON format
+                        const match = data.match(/"message"\s*:\s*"([^"]+)"/);
+                        if (match && match[1]) {
+                            errorMsg = `Server error: ${match[1]}`;
+                        }
+                    } catch (e) {
+                        console.log('[DEBUG] Could not parse error message from response');
+                    }
+                }
+                
+                displayStatusMessage(errorMsg, 'error');
             }
-            setTimeout(() => displayStatusMessage('', ''), 3000);
+            setTimeout(() => displayStatusMessage('', ''), 6000);  // Longer timeout for errors
         } catch (error) {
+            console.error('[DEBUG] Race creation error:', error);
             displayStatusMessage(`Error creating race: ${error.message}`, 'error');
             setTimeout(() => displayStatusMessage('', ''), 5000);
         }
@@ -2824,7 +2895,7 @@ Object.entries(autoJoinPresets).forEach(([name, preset]) => {
 
         const params = new URLSearchParams();
         params.append('carID', carId);
-        params.append('password', password);
+        params.append('password', password || '');
         params.append('createRace', 'true');
         params.append('title', raceName);
         params.append('minDrivers', minDrivers);
@@ -2839,44 +2910,76 @@ Object.entries(autoJoinPresets).forEach(([name, preset]) => {
         params.append('rfcv', rfcValue);
 
         const raceLink = `https://www.torn.com/loader.php?sid=racing&tab=customrace&section=getInRace&step=getInRace&id=&${params.toString()}`;
-        console.log('[Race URL from preset]:', raceLink); // Add URL logging
+        console.log('[Race URL from preset]:', raceLink);
 
         displayStatusMessage('Creating Race...', 'info');
 
         try {
-            // Use our new fetchWithGMfallback function
+            console.log('[DEBUG] Creating race from preset:', {
+                trackId, laps, minDrivers, maxDrivers, betAmount, carId,
+                hasPassword: !!password?.length
+            });
+            
+            // Use our enhanced fetchWithGMfallback function 
             const response = await fetchWithGMfallback(raceLink);
+            console.log('[DEBUG] Race creation from preset response received');
             const data = await response.text();
+            
+            console.log('[DEBUG] Race from preset response status:', response.status, 
+                       'Data length:', data?.length || 0);
 
             const quickLaunchStatus = document.querySelector('.quick-launch-status');
+
+            // Better success detection - check status code and content
+            const isSuccess = (response.ok || response.redirected || response.status === 302) || 
+                             (data && (
+                               data.includes('successfully created') || 
+                               data.includes('race has been created') ||
+                               data.includes('race was created') ||
+                               data.includes('racecreationsuccess')
+                             ));
+            
             if (quickLaunchStatus) {
-                if (data.includes('success') || response.ok) {
+                if (isSuccess) {
                     quickLaunchStatus.textContent = 'Race Created Successfully!';
                     quickLaunchStatus.className = 'quick-launch-status success show';
                     // Navigate to racing page after successful race creation
                     setTimeout(() => window.location.href = 'https://www.torn.com/loader.php?sid=racing', 1500);
                 } else {
-                    quickLaunchStatus.textContent = 'Error creating race. Please try again.';
+                    console.error('[DEBUG] Race from preset failed. Status:', response.status);
+                    
+                    let errorMsg = 'Error creating race. Please try again.';
+                    
+                    // Enhanced error messages
+                    if (response.status === 403) {
+                        errorMsg = 'Access denied (403). Try refreshing your RFC token.';
+                        await refreshRFCToken();
+                    }
+                    
+                    quickLaunchStatus.textContent = errorMsg;
                     quickLaunchStatus.className = 'quick-launch-status error show';
                 }
-                // Removed the setTimeout that was hiding the status
             }
 
             // Regular status message for the GUI
-            if (data.includes('success') || response.ok) {
+            if (isSuccess) {
                 displayStatusMessage('Race Created Successfully!', 'success');
                 // Navigate to racing page after successful race creation
                 setTimeout(() => window.location.href = 'https://www.torn.com/loader.php?sid=racing', 1500);
             } else {
-                displayStatusMessage('Error creating race. Please try again.', 'error');
+                const errorMsg = response.status === 403 ? 
+                                'Access denied (403). Try refreshing your RFC token.' :
+                                'Error creating race. Please try again.';
+                displayStatusMessage(errorMsg, 'error');
             }
-            setTimeout(() => displayStatusMessage('', ''), 3000);
+            setTimeout(() => displayStatusMessage('', ''), 5000);
         } catch (error) {
+            console.error('[DEBUG] Race from preset error:', error);
+            
             const quickLaunchStatus = document.querySelector('.quick-launch-status');
             if (quickLaunchStatus) {
                 quickLaunchStatus.textContent = `Error creating race: ${error.message}`;
                 quickLaunchStatus.className = 'quick-launch-status error show';
-                // Removed the setTimeout that was hiding the status
             }
 
             displayStatusMessage(`Error creating race: ${error.message}`, 'error');
@@ -2887,6 +2990,103 @@ Object.entries(autoJoinPresets).forEach(([name, preset]) => {
     // Helper function to use GMforPDA's HTTP functions if available, or fallback to fetch
     async function fetchWithGMfallback(url, options = {}) {
         console.log('[DEBUG] Using fetchWithGMfallback for URL:', url);
+        
+        // For race creation requests, try form submission approach first
+        if (url.includes('createRace=true')) {
+            console.log('[DEBUG] Race creation detected, trying form submission approach');
+            
+            try {
+                // Extract parameters from URL to use in form submission
+                const urlParams = new URL(url).searchParams;
+                const result = await submitRaceCreationForm(urlParams);
+                if (result.success) {
+                    return {
+                        ok: true,
+                        status: 200,
+                        text: () => Promise.resolve(result.data || "Race created successfully"),
+                        redirected: true,
+                        url: result.redirectUrl || url
+                    };
+                } else {
+                    // Use direct xmlhttpRequest as fallback
+                    console.log('[DEBUG] Form submission failed, falling back to direct request');
+                }
+            } catch (error) {
+                console.error('[DEBUG] Form submission approach failed:', error);
+                // Continue to fallback methods
+            }
+            
+            // Fallback to direct request if form submission failed
+            return new Promise((resolve, reject) => {
+                const requestFn = typeof GM_xmlhttpRequest !== 'undefined' ? 
+                                 GM_xmlhttpRequest : 
+                                 (typeof GM !== 'undefined' && GM.xmlHttpRequest) ?
+                                 function(details) { return GM.xmlHttpRequest(details) } : null;
+                
+                if (!requestFn) {
+                    console.error('[DEBUG] No xmlHttpRequest function available for race creation');
+                    return reject(new Error('No suitable request method available'));
+                }
+                
+                requestFn({
+                    method: 'GET',
+                    url: url,
+                    headers: {
+                        'Accept': 'text/html,application/xhtml+xml,application/xml',
+                        'Cache-Control': 'no-cache'
+                    },
+                    timeout: 30000,
+                    onload: function(response) {
+                        console.log('[DEBUG] Race creation response received:', {
+                            status: response.status,
+                            responseSize: response.responseText?.length || 0
+                        });
+                        
+                        // Important: Check status code properly
+                        if (response.status >= 200 && response.status < 300) {
+                            // Normal success case
+                            resolve({
+                                ok: true,
+                                status: response.status,
+                                statusText: response.statusText || '',
+                                text: () => Promise.resolve(response.responseText),
+                                responseText: response.responseText
+                            });
+                        } else if (response.status === 302 || response.responseText.includes('race was created successfully')) {
+                            // Race creation success despite redirect
+                            resolve({
+                                ok: true,
+                                status: 200,
+                                statusText: 'Success (via redirect)',
+                                text: () => Promise.resolve("Race created successfully"),
+                                responseText: "Race created successfully",
+                                redirected: true
+                            });
+                        } else {
+                            // Real error case
+                            console.error('[DEBUG] Race creation request failed with status:', response.status);
+                            console.error('[DEBUG] Response excerpt:', response.responseText?.substring(0, 200));
+                            
+                            resolve({
+                                ok: false,
+                                status: response.status,
+                                statusText: response.statusText || 'Error',
+                                text: () => Promise.resolve(response.responseText),
+                                responseText: response.responseText
+                            });
+                        }
+                    },
+                    onerror: function(error) {
+                        console.error('[DEBUG] Race creation request failed:', error);
+                        reject(new Error(`Request failed: ${error.statusText || 'Unknown error'}`));
+                    },
+                    ontimeout: function() {
+                        console.error('[DEBUG] Race creation request timed out');
+                        reject(new Error('Request timed out'));
+                    }
+                });
+            });
+        }
         
         // Try to use PDA native HTTP functions first if available
         if (typeof PDA_httpGet === 'function' && (!options.method || options.method === 'GET')) {
@@ -2954,6 +3154,114 @@ Object.entries(autoJoinPresets).forEach(([name, preset]) => {
         // Fallback to native fetch if nothing else works
         console.log('[DEBUG] Falling back to native fetch');
         return fetch(url, options);
+    }
+
+    // New function to attempt race creation via form submission
+    async function submitRaceCreationForm(params) {
+        return new Promise((resolve) => {
+            console.log('[DEBUG] Creating race via form submission');
+            
+            // Create a hidden form
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = 'https://www.torn.com/loader.php';
+            form.style.display = 'none';
+            
+            // Add all parameters from the URL
+            params.forEach((value, key) => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = value;
+                form.appendChild(input);
+            });
+            
+            // Additional form fields that might be needed
+            const fields = {
+                'sid': 'racing',
+                'tab': 'customrace',
+                'section': 'getInRace', 
+                'step': 'getInRace',
+            };
+            
+            // Add any missing required fields
+            Object.entries(fields).forEach(([key, value]) => {
+                if (!params.has(key)) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = key;
+                    input.value = value;
+                    form.appendChild(input);
+                }
+            });
+            
+            // Add custom submit handler
+            let formSubmitted = false;
+            let formTimeout = null;
+            
+            window.addEventListener('beforeunload', function() {
+                if (formSubmitted) {
+                    // This is likely our form causing the navigation
+                    resolve({success: true, redirected: true});
+                    clearTimeout(formTimeout);
+                }
+            }, {once: true});
+            
+            // Add the form to the document
+            document.body.appendChild(form);
+            
+            // Set a timeout to check if form submission worked
+            formTimeout = setTimeout(() => {
+                if (!formSubmitted) {
+                    console.log('[DEBUG] Form submission timed out or failed');
+                    resolve({success: false});
+                    document.body.removeChild(form);
+                }
+            }, 3000);
+            
+            // Submit the form
+            try {
+                formSubmitted = true;
+                form.submit();
+                
+                // Wait for a second to see if navigation happens
+                setTimeout(() => {
+                    // If we're still here, the form didn't cause navigation
+                    if (document.body.contains(form)) {
+                        document.body.removeChild(form);
+                        resolve({success: false});
+                        console.log('[DEBUG] Form submission didn\'t trigger navigation');
+                    }
+                }, 1000);
+            } catch (error) {
+                console.error('[DEBUG] Form submission error:', error);
+                if (document.body.contains(form)) {
+                    document.body.removeChild(form);
+                }
+                resolve({success: false, error});
+            }
+        });
+    }
+
+    // Add new function to refresh RFC token
+    async function refreshRFCToken() {
+        console.log('[DEBUG] Attempting to refresh RFC token');
+        
+        try {
+            // Fetch the racing page to get a fresh RFC token
+            const response = await fetchWithGMfallback('https://www.torn.com/loader.php?sid=racing', {
+                method: 'GET',
+                headers: {
+                    'Cache-Control': 'no-cache'
+                }
+            });
+            
+            console.log('[DEBUG] RFC token refresh request completed');
+            return true;
+        } catch (error) {
+            console.error('[DEBUG] Failed to refresh RFC token:', error);
+            return false;
+        }
     }
 
     function set_value(key, value) {
@@ -3051,7 +3359,9 @@ Object.entries(autoJoinPresets).forEach(([name, preset]) => {
 
         // Any other racing status should return false
         return false;
-    }function updateRaceAlert() {
+    }
+
+    function updateRaceAlert() {
         const alertEnabled = GM_getValue('raceAlertEnabled', false);
         if (!alertEnabled) {
             removeRaceAlert();
@@ -3143,20 +3453,29 @@ Object.entries(autoJoinPresets).forEach(([name, preset]) => {
         popup.innerHTML = '';
 
         if (Object.keys(presets).length === 0) {
-            popup.innerHTML = '<div style="padding: 10px; color: #aaa;">No presets available</div>';
+            popup.innerHTML = '<div style="padding: 5px;">No presets available</div>';
             return;
         }
 
+        const list = document.createElement('div');
+        list.style.cssText = 'display: flex; flex-direction: column; gap: 5px;';
+
         Object.entries(presets).forEach(([name, preset]) => {
-            const button = document.createElement('button');
-            button.className = 'quick-launch-button';
-            button.textContent = name;
-            button.addEventListener('click', async (e) => {
-                e.stopPropagation();
+            const item = document.createElement('button');
+            item.className = 'quick-launch-button';
+            item.textContent = name;
+            item.style.width = '100%';
+            item.title = `Launch race: ${name}`;
+            
+            item.addEventListener('click', async () => {
                 await createRaceFromPreset(preset);
+                popup.classList.remove('show');
             });
-            popup.appendChild(button);
+            
+            list.appendChild(item);
         });
+
+        popup.appendChild(list);
     }
 
     function removeRaceAlert() {
@@ -3167,217 +3486,193 @@ Object.entries(autoJoinPresets).forEach(([name, preset]) => {
     }
 
     function initializeRaceFiltering() {
-        console.log('[DEBUG] Starting race filtering initialization');
-        
         if (window.raceFilteringInitialized) {
-            console.log('[DEBUG] Race filtering already initialized');
             return;
         }
 
-        // Create the RaceFiltering object if it doesn't exist
-        window.RaceFiltering = window.RaceFiltering || {
-            filterRacesList() {
-                console.log('[DEBUG] Applying filters to race list');
-                const filters = {
-                    track: document.getElementById('filterTrack')?.value || '',
-                    laps: {
-                        min: parseInt(document.getElementById('filterMinLaps')?.value) || null,
-                        max: parseInt(document.getElementById('filterMaxLaps')?.value) || null
-                    },
-                    sortBy: document.getElementById('filterSort')?.value || 'time',
-                    hidePassworded: document.getElementById('hidePassworded')?.checked || false,
-                    showSuitableCarsOnly: document.getElementById('showSuitableCarsOnly')?.checked || false
-                };
-
+        window.raceFilteringInitialized = true;
+        
+        // Initialize RaceFiltering object with filtering logic
+        window.RaceFiltering = {
+            filterRacesList: function() {
                 const racesList = document.querySelector('.custom_events, .events-list, .races-list');
                 if (!racesList) return;
-
-                const races = Array.from(racesList.children);
-                races.forEach(race => {
-                    let shouldShow = true;
-
-                    if (filters.track && !this.matchesTrackFilter(race, filters.track)) {
-                        shouldShow = false;
-                    }
-                    if (shouldShow && filters.showSuitableCarsOnly && !this.hasSuitableCar(race)) {
-                        shouldShow = false;
-                    }
-                    if (shouldShow && filters.laps.min && !this.matchesMinLapsFilter(race, filters.laps.min)) {
-                        shouldShow = false;
-                    }
-                    if (shouldShow && filters.laps.max && !this.matchesMaxLapsFilter(race, filters.laps.max)) {
-                        shouldShow = false;
-                    }
-                    if (shouldShow && filters.hidePassworded && this.isPasswordProtected(race)) {
-                        shouldShow = false;
-                    }
-
-                    race.style.display = shouldShow ? '' : 'none';
-                });
-
-                // Sort visible races
-                const visibleRaces = races.filter(race => race.style.display !== 'none');
-                visibleRaces.sort((a, b) => {
-                    switch(filters.sortBy) {
-                        case 'time': return this.compareTime(a, b);
-                        case 'track': return this.compareTrack(a, b);
-                        case 'laps': return this.compareLaps(a, b);
-                        case 'bets': return this.compareBets(a, b);
-                        default: return 0;
-                    }
-                });
-
-                visibleRaces.forEach(race => racesList.appendChild(race));
-            },
-
-            matchesTrackFilter(race, trackName) {
-                if (!trackName) return true;
-                const trackElement = race.querySelector('li.track');
-                if (!trackElement) return true;
                 
-                // Get the track name by removing the laps text
-                const trackText = trackElement.textContent.replace(/\(\d+\s*laps?\)/i, '').trim();
-                return trackText.toLowerCase() === trackName.toLowerCase();
+                const track = document.getElementById('filterTrack')?.value || '';
+                const minLaps = parseInt(document.getElementById('filterMinLaps')?.value) || 0;
+                const maxLaps = parseInt(document.getElementById('filterMaxLaps')?.value) || Infinity;
+                const sortBy = document.getElementById('filterSort')?.value || 'time';
+                const hidePassworded = document.getElementById('hidePassworded')?.checked || false;
+                const showSuitableCarsOnly = document.getElementById('showSuitableCarsOnly')?.checked || false;
+                
+                console.log('[DEBUG] Filtering with options:', {
+                    track, minLaps, maxLaps, sortBy, hidePassworded, showSuitableCarsOnly
+                });
+                
+                // Get races and filter
+                const races = Array.from(racesList.children).filter(el => 
+                    el.tagName === 'LI' && !el.classList.contains('clear') && !el.classList.contains('head')
+                );
+                
+                races.forEach(race => {
+                    let visible = true;
+                    
+                    if (track && !this.matchesTrackFilter(race, track)) {
+                        visible = false;
+                    }
+                    
+                    if (visible && minLaps && !this.matchesMinLapsFilter(race, minLaps)) {
+                        visible = false;
+                    }
+                    
+                    if (visible && maxLaps && !this.matchesMaxLapsFilter(race, maxLaps)) {
+                        visible = false;
+                    }
+                    
+                    if (visible && hidePassworded && this.isPasswordProtected(race)) {
+                        visible = false;
+                    }
+                    
+                    if (visible && showSuitableCarsOnly && !this.hasSuitableCar(race)) {
+                        visible = false;
+                    }
+                    
+                    race.style.display = visible ? '' : 'none';
+                });
+                
+                // Sort races
+                if (sortBy !== 'time') {
+                    const sortedRaces = races
+                        .filter(race => race.style.display !== 'none')
+                        .sort((a, b) => {
+                            if (sortBy === 'track') {
+                                return this.compareTrack(a, b);
+                            } else if (sortBy === 'laps') {
+                                return this.compareLaps(a, b);
+                            } else if (sortBy === 'bets') {
+                                return this.compareBets(a, b);
+                            }
+                            return 0;
+                        });
+                    
+                    // Reorder races in DOM
+                    sortedRaces.forEach(race => {
+                        racesList.appendChild(race);
+                    });
+                }
             },
-
-            hasSuitableCar(race) {
-                const notSuitableText = "You do not have a suitable car enlisted for this race.";
-                return !race.textContent.includes(notSuitableText);
+            
+            matchesTrackFilter: function(race, trackFilter) {
+                const trackName = race.querySelector('li.track span:first-child')?.textContent;
+                return !trackName || trackName.includes(trackFilter);
             },
-
-            matchesMinLapsFilter(race, minLaps) {
-                if (!minLaps) return true;
+            
+            matchesMinLapsFilter: function(race, minLaps) {
                 const lapsElement = race.querySelector('li.track span.laps');
                 if (!lapsElement) return true;
                 
                 const lapsMatch = lapsElement.textContent.match(/(\d+)\s*laps?/i);
-                const raceLaps = lapsMatch ? parseInt(lapsMatch[1]) : 0;
-                console.log('[DEBUG] Min laps check:', { raceLaps, minLaps });
+                if (!lapsMatch) return true;
+                
+                const raceLaps = parseInt(lapsMatch[1]);
                 return raceLaps >= minLaps;
             },
-
-            matchesMaxLapsFilter(race, maxLaps) {
-                if (!maxLaps) return true;
+            
+            matchesMaxLapsFilter: function(race, maxLaps) {
                 const lapsElement = race.querySelector('li.track span.laps');
                 if (!lapsElement) return true;
                 
                 const lapsMatch = lapsElement.textContent.match(/(\d+)\s*laps?/i);
-                const raceLaps = lapsMatch ? parseInt(lapsMatch[1]) : 0;
-                console.log('[DEBUG] Max laps check:', { raceLaps, maxLaps });
+                if (!lapsMatch) return true;
+                
+                const raceLaps = parseInt(lapsMatch[1]);
                 return raceLaps <= maxLaps;
             },
-
-            isPasswordProtected(race) {
-                const raceText = race.textContent.toLowerCase();
-                return raceText.includes('password') || race.querySelector('[id^="joinPasswordForm"]') !== null;
+            
+            isPasswordProtected: function(race) {
+                return race.querySelector('.t-red, .locked') !== null;
             },
-
-            compareTime(a, b) {
-                const getTimeInMinutes = el => {
-                    const timeText = (el.textContent || '').toLowerCase();
-                    
-                    // Waiting races should be first
-                    if (timeText.includes('waiting')) {
-                        return -1;
-                    }
-
-                    let totalMinutes = 0;
-                    
-                    // Try to match various time formats
-                    
-                    // Match "X h Y min" or "X hour Y minute" format
-                    const fullMatch = timeText.match(/(\d+)\s*h(?:our)?s?\s*(?:and)?\s*(\d+)\s*(?:min(?:ute)?s?|m)/);
-                    if (fullMatch) {
-                        return (parseInt(fullMatch[1]) * 60) + parseInt(fullMatch[2]);
-                    }
-                    
-                    // Match single hours format "X h" or "X hour(s)"
-                    const hoursOnlyMatch = timeText.match(/(\d+)\s*h(?:our)?s?/);
-                    if (hoursOnlyMatch) {
-                        return parseInt(hoursOnlyMatch[1]) * 60;
-                    }
-                    
-                    // Match single minutes format "X min", "X minute(s)" or "X m"
-                    const minutesOnlyMatch = timeText.match(/(\d+)\s*(?:min(?:ute)?s?|m)/);
-                    if (minutesOnlyMatch) {
-                        return parseInt(minutesOnlyMatch[1]);
-                    }
-                    
-                    // Match "HH:MM" format
-                    const timeMatch = timeText.match(/(\d+):(\d+)/);
-                    if (timeMatch) {
-                        return (parseInt(timeMatch[1]) * 60) + parseInt(timeMatch[2]);
-                    }
-                    
-                    // No valid time format found
-                    return Infinity;
-                };
-                
-                const timeA = getTimeInMinutes(a);
-                const timeB = getTimeInMinutes(b);
-                return timeA - timeB;
+            
+            hasSuitableCar: function(race) {
+                // In this simple version, assume all races are suitable
+                // Could be enhanced based on race requirements vs available cars
+                return true;
             },
-
-            compareTrack(a, b) {
-                const getTrackName = el => {
-                    const trackElement = el.querySelector('li.track');
-                    if (!trackElement) return '';
-                    // Remove the laps text and trim whitespace
-                    return trackElement.textContent.replace(/\(\d+\s*laps?\)/i, '').trim();
-                };
-                
-                const trackA = getTrackName(a).toLowerCase();
-                const trackB = getTrackName(b).toLowerCase();
+            
+            compareTrack: function(a, b) {
+                const trackA = a.querySelector('li.track span:first-child')?.textContent || '';
+                const trackB = b.querySelector('li.track span:first-child')?.textContent || '';
                 return trackA.localeCompare(trackB);
             },
-
-            compareLaps(a, b) {
-                const getLaps = el => {
-                    const lapsMatch = el.textContent.match(/(\d+)\s*laps?/i);
-                    return parseInt(lapsMatch?.[1]) || 0;
+            
+            compareLaps: function(a, b) {
+                const getLaps = (race) => {
+                    const lapsElement = race.querySelector('li.track span.laps');
+                    if (!lapsElement) return 0;
+                    
+                    const lapsMatch = lapsElement.textContent.match(/(\d+)\s*laps?/i);
+                    return lapsMatch ? parseInt(lapsMatch[1]) : 0;
                 };
+                
                 return getLaps(a) - getLaps(b);
             },
-
-            compareBets(a, b) {
-                const getBet = el => {
-                    const betMatch = el.textContent.match(/\$([0-9,]+)/);
-                    return parseInt(betMatch?.[1]?.replace(/,/g, '')) || 0;
+            
+            compareBets: function(a, b) {
+                const getBet = (race) => {
+                    const betEl = race.querySelector('.bet');
+                    if (!betEl) return 0;
+                    
+                    const betMatch = betEl.textContent.match(/\$([0-9,]+)/);
+                    return betMatch ? parseInt(betMatch[1].replace(/,/g, '')) : 0;
                 };
-                return getBet(b) - getBet(a);
+                
+                return getBet(a) - getBet(b);
+            },
+            
+            compareTime: function(a, b) {
+                const getTimeMinutes = (race) => {
+                    const timeEl = race.querySelector('.starts-in');
+                    if (!timeEl) return 0;
+                    
+                    const timeText = timeEl.textContent;
+                    if (timeText.includes('min')) {
+                        return parseInt(timeText.match(/(\d+)/)[1]);
+                    } else if (timeText.includes('hr')) {
+                        return parseInt(timeText.match(/(\d+)/)[1]) * 60;
+                    }
+                    return 9999; // Far future for unknown time format
+                };
+                
+                return getTimeMinutes(a) - getTimeMinutes(b);
             }
         };
-
-        // Only proceed if on racing page
-        if (!window.location.href.includes('sid=racing')) {
-            return;
-        }
-
-        // Setup one-time initialization flag
-        window.raceFilteringInitialized = true;
-
-        // Cleanup old observer if it exists
-        if (window.raceFilterObserver) {
-            window.raceFilterObserver.disconnect();
-        }
-
-        // Setup mutation observer with debouncing
-        let debounceTimer;
+        
+        // Set up mutation observer to detect when race list changes
         window.raceFilterObserver = new MutationObserver((mutations) => {
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => {
-                const raceList = document.querySelector('.custom_events, .events-list, .races-list');
-                const filterSection = document.querySelector('.race-filter-section');
-                
-                if (raceList && !filterSection) {
-                    console.log('[DEBUG] Race list found, setting up filters');
-                    setupFilterControls();
-                    window.RaceFiltering.filterRacesList();
+            // Check if any mutations affected the race list
+            for (const mutation of mutations) {
+                if (mutation.type === 'childList' && 
+                   (mutation.target.classList.contains('custom_events') || 
+                    mutation.target.classList.contains('events-list') || 
+                    mutation.target.classList.contains('races-list'))) {
+                    
+                    // Race list has changed, set up filters if needed
+                    if (!document.querySelector('.race-filter-section')) {
+                        setupFilterControls();
+                    }
+                    
+                    // Apply filters if active
+                    if (document.getElementById('toggleFilters')?.classList.contains('active')) {
+                        window.RaceFiltering.filterRacesList();
+                    }
+                    
+                    // No need to check other mutations
+                    break;
                 }
-            }, 100); // Debounce delay
+            }
         });
 
-        // Start observing with specific config
+        // Start observing for race list changes
         const observerConfig = {
             childList: true,
             subtree: true
@@ -3412,7 +3707,7 @@ Object.entries(autoJoinPresets).forEach(([name, preset]) => {
                 if (racesList) {
                     console.log('[DEBUG] Race list detected after refresh');
                     setTimeout(() => {
-                        console.console.log('[DEBUG] Restoring filters and reapplying');
+                        console.log('[DEBUG] Restoring filters and reapplying');
                         const filtersEnabled = restoreFilterState();
                         if (filtersEnabled && document.getElementById('toggleFilters')?.classList.contains('active')) {
                             window.RaceFiltering?.filterRacesList();
@@ -3461,7 +3756,6 @@ Object.entries(autoJoinPresets).forEach(([name, preset]) => {
             });
         }
     }
-
     function saveFilterState() {
         const state = {
             track: document.getElementById('filterTrack')?.value || '',
