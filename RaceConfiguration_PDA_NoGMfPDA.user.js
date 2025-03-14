@@ -23,13 +23,6 @@
 (function() {
     'use strict';
 
-    // Add time-specific debug logging
-    const TIME_DEBUG = {
-        log: function(action, details = {}) {
-            console.log(`[TIME DEBUG] ${action}`, details);
-        }
-    };
-
     const trackNames = {
         '6': 'Uptown',
         '7': 'Withdrawal',
@@ -74,120 +67,12 @@
         }
     };
 
-    function init() {
-        // Split initialization into racing features and alert features
-        const isRacingPage = window.location.href.includes('sid=racing');
-        
-        // Initialize race alerts for all pages
-        initializeRaceAlerts();
-        
-        // Only initialize racing features on the racing page
-        if (isRacingPage) {
-            initializeRacingFeatures();
-            initializeRaceFiltering(); 
-            resumeAutoJoin(); // Resume auto-join if state exists
-        }
-    }
-
-    function initializeRaceAlerts() {
-        // Load saved preference
-        const raceAlertEnabled = GM_getValue('raceAlertEnabled', false);
-        
-        // Set checkbox state
-        const checkbox = document.getElementById('raceAlertEnabled');
-        if (checkbox) {
-            checkbox.checked = raceAlertEnabled;
-        }
-
-        // Initialize alerts if enabled
-        if (raceAlertEnabled) {
-            updateRaceAlert();
-            if (!window.raceAlertInterval) {
-                window.raceAlertInterval = setInterval(updateRaceAlert, 5000);
-            }
-        } else {
-            removeRaceAlert();
-        }
-
-        // Add change listener if not already added
-        if (!window.alertListenerAdded) {
-            document.addEventListener('change', function(e) {
-                if (e.target && e.target.id === 'raceAlertEnabled') {
-                    const isEnabled = e.target.checked;
-                    GM_setValue('raceAlertEnabled', isEnabled);
-                    
-                    if (isEnabled) {
-                        updateRaceAlert();
-                        if (!window.raceAlertInterval) {
-                            window.raceAlertInterval = setInterval(updateRaceAlert, 5000);
-                        }
-                    } else {
-                        removeRaceAlert();
-                        if (window.raceAlertInterval) {
-                            clearInterval(window.raceAlertInterval);
-                            window.raceAlertInterval = null;
-                        }
-                    }
-                }
-            });
-            window.alertListenerAdded = true;
-        }
-    }
-
-    function initializeRacingFeatures() {
-        const pollForElements = () => {
-            const titleElement = document.querySelector('div.content-title > h4');
-            if (titleElement) {
-                createToggleButton();
-                loadApiKey();
-                loadPresets();
-                
-                // Initialize auto-join section separately without waiting for car elements
-                initializeAutoJoinSection();
-                
-                // Initialize car-related features asynchronously
-                setTimeout(() => {
-                    updateCarList().then(() => {
-                        updateQuickLaunchButtons();
-                        console.log('Race Config GUI car list updated');
-                    }).catch(err => {
-                        console.warn('Failed to update car list, but continuing:', err);
-                    });
-                }, 1500);
-                
-                console.log('Race Config GUI initialized');
-            } else if (domCheckAttempts < MAX_DOM_CHECK_ATTEMPTS) {
-                domCheckAttempts++;
-                setTimeout(pollForElements, 100);
-            }
-        };
-
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', pollForElements);
-        } else {
-            pollForElements();
-        }
-    }
-
-    function initializeScript() {
-        if (window.guiInitialized) {
-            console.warn('GUI already initialized');
-            return;
-        }
-
-        const raceConfigGUI = createRaceConfigGUI();
-        document.body.appendChild(raceConfigGUI);
-        initializeGUI(raceConfigGUI);
-        createToggleButton();
-
-        window.guiInitialized = true;
-        console.log('Race Config GUI initialized successfully');
-    }
-
     let guiInitialized = false;
     let domCheckAttempts = 0;
     const MAX_DOM_CHECK_ATTEMPTS = 100;
+    const STORAGE_API_KEY = 'raceConfigAPIKey_release_NoGMf';
 
+    // Initialize Style
     const style = document.createElement('style');
     style.textContent = `
         #raceConfigGUI {
@@ -201,7 +86,7 @@
             z-index: 999999 !important;
             font-family: Arial, sans-serif;
             border-radius: 10px;
-            max-width: 500px;  /* Increased from 450px */
+            max-width: 500px;
             max-height: 90vh;
             overflow-y: auto;
             display: none;
@@ -382,14 +267,14 @@
             cursor: pointer;
             border: none;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-            text-decoration: none;  /* Remove underline */
+            text-decoration: none;
         }
 
         .remove-preset:hover {
             background-color: #c77;
             transform: scale(1.1);
             transition: all 0.2s ease;
-            text-decoration: none;  /* Keep underline removed on hover */
+            text-decoration: none;
         }
 
         #statusMessageBox {
@@ -478,7 +363,7 @@
 
         .banner-container {
             position: relative;
-            margin-bottom: 25px; /* Increased from 15px */
+            margin-bottom: 25px;
             padding-top: 5px;
         }
 
@@ -487,11 +372,11 @@
             height: auto;
             border-radius: 5px;
             display: block;
-            margin-bottom: 15px; /* Added margin below banner */
+            margin-bottom: 15px;
         }
 
         #raceConfigGUI h2 {
-            margin-top: 10px; /* Added margin above the heading */
+            margin-top: 10px;
         }
 
         .show-password-btn {
@@ -511,11 +396,13 @@
         .show-password-btn:hover {
             color: #999;
         }
+    `;
 
+    style.textContent += `
         .quick-launch-container {
             display: none !important;
             position: relative !important;
-            flex-direction: column !important;  /* Changed to column */
+            flex-direction: column !important;
             gap: 5px !important;
             margin-top: 5px !important;
             margin-bottom: 10px !important;
@@ -593,7 +480,7 @@
             margin-left: auto !important;
             margin-right: auto !important;
             display: block !important;
-            min-height: 20px !important; /* Added to maintain space */
+            min-height: 20px !important;
         }
 
         .quick-launch-status.success {
@@ -605,6 +492,12 @@
         .quick-launch-status.error {
             background-color: #5c1e1e !important;
             border: 1px solid #8b2e2e !important;
+            opacity: 1 !important;
+        }
+        
+        .quick-launch-status.info {
+            background-color: #2a2a2a !important;
+            border: 1px solid #444 !important;
             opacity: 1 !important;
         }
 
@@ -731,7 +624,9 @@
             cursor: pointer !important;
             user-select: none !important;
         }
+    `;
 
+    style.textContent += `
         .time-config {
             display: flex;
             flex-direction: column;
@@ -801,12 +696,6 @@
 
         .join-race-btn:hover {
             background: #3d7a5f;
-        }
-
-        .quick-launch-status.info {
-            background-color: #2a2a2a !important;
-            border: 1px solid #444 !important;
-            opacity: 1 !important;
         }
 
         .filter-row {
@@ -914,35 +803,27 @@
             background-color: #2d5a3f !important;
             border-color: #3d7a5f !important;
         }
-    `;
 
-    style.textContent += `
-        .auto-join-section {
-            margin-top: 15px;
-        }
-    `;
-
-    style.textContent += `
         .race-filter-controls {
             background-color: #2a2a2a !important;
             border: 1px solid #444 !important;
             border-radius: 8px !important;
-            padding: 10px !important;  /* Reduced from 15px */
+            padding: 10px !important;
             margin-bottom: 15px !important;
         }
 
         .race-filter-controls .filter-row {
             background-color: transparent !important;
             padding: 0 !important;
-            gap: 10px !important;  /* Reduced from 15px */
+            gap: 10px !important;
             flex-wrap: wrap !important;
-            margin-bottom: 5px !important;  /* Added */
+            margin-bottom: 5px !important;
         }
 
         .race-filter-controls .filter-group {
             flex: 1 !important;
             min-width: 200px !important;
-            margin-bottom: 5px !important;  /* Added */
+            margin-bottom: 5px !important;
         }
 
         .race-filter-controls .filter-buttons {
@@ -950,14 +831,14 @@
             display: flex !important;
             justify-content: flex-end !important;
             gap: 5px !important;
-            margin-top: 5px !important;  /* Reduced from 10px */
+            margin-top: 5px !important;
         }
 
         .race-filter-controls .checkboxes {
             display: flex !important;
-            flex-direction: row !important;  /* Changed from column */
+            flex-direction: row !important;
             gap: 15px !important;
-            margin-bottom: 0 !important;  /* Added */
+            margin-bottom: 0 !important;
         }
 
         .race-filter-controls .filter-group.laps-filter {
@@ -1010,108 +891,6 @@
             transform: translateY(-1px) !important;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3) !important;
         }
-    `;
-
-    style.textContent += `
-        .preset-section-header {
-            color: #ccc;
-            font-size: 14px;
-            margin: 10px 0 5px 0;
-            padding-bottom: 5px;
-            border-bottom: 1px solid #444;
-        }
-
-        .auto-join-preset-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
-            margin-bottom: 10px;
-        }
-
-        .auto-join-preset-button {
-            color: #fff;
-            background-color: #444;
-            border: 1px solid #555;
-            border-radius: 3px;
-            padding: 5px 10px;
-            cursor: pointer;
-            font-size: 0.9em;
-            transition: all 0.2s ease;
-        }
-
-        .auto-join-preset-button:hover {
-            background-color: #2d5a3f;
-            border-color: #3d7a5f;
-        }
-    `;
-
-    style.textContent += `
-        .quick-launch-container {
-            display: flex !important;
-            flex-direction: column !important;
-            width: 100% !important;
-            background-color: #2a2a2a !important;
-            padding: 10px !important;
-            border-radius: 5px !important;
-            margin-top: 5px !important;
-            border: 1px solid #444 !important;
-        }
-
-        .quick-launch-container:empty {
-            display: none !important;
-        }
-
-        .quick-launch-container .button-container {
-            display: flex !important;
-            flex-wrap: wrap !important;
-            gap: 5px !important;
-            width: 100% !important;
-        }
-
-        .auto-join-preset-container {
-            display: flex !important;
-            flex-wrap: wrap !important;
-            gap: 5px !important;
-            margin: 10px 0 !important;
-        }
-    `;
-
-    style.textContent += `
-        .auto-join-preset-container {
-            display: flex !important;
-            flex-wrap: wrap !important;
-            gap: 8px !important;
-            margin: 10px 0 !important;
-            padding: 5px !important;
-            background-color: rgba(42, 42, 42, 0.5) !important;
-            border-radius: 5px !important;
-        }
-
-        .auto-join-preset-button {
-            color: #ddd !important;
-            background-color: #555 !important;
-            border: 1px solid #777 !important;
-            border-radius: 3px !important;
-            padding: 8px 15px !important;
-            cursor: pointer !important;
-            font-size: 0.9em !important;
-            transition: all 0.2s ease !important;
-            flex: 1 !important;
-            min-width: 120px !important;
-            max-width: 200px !important;
-            text-align: center !important;
-            white-space: nowrap !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
-        }
-
-        .auto-join-preset-button:hover {
-            background-color: #3d7a5f !important;
-            border-color: #2d5a3f !important;
-            transform: translateY(-1px) !important;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3) !important;
-        }
 
         .preset-section-header {
             color: #fff !important;
@@ -1122,11 +901,8 @@
             border-radius: 3px !important;
             border: 1px solid #444 !important;
         }
-    `;
 
-    style.textContent += `
-        .auto-join-preset-container,
-        .quick-launch-container .button-container {
+        .auto-join-preset-container {
             display: grid !important;
             grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
             gap: 8px !important;
@@ -1136,8 +912,7 @@
             box-sizing: border-box !important;
         }
 
-        .auto-join-preset-button,
-        .quick-launch-button {
+        .auto-join-preset-button {
             color: #ddd !important;
             background-color: #555 !important;
             border: 1px solid #777 !important;
@@ -1152,7 +927,7 @@
             text-align: center !important;
             white-space: nowrap !important;
             overflow: hidden !important;
-            text-overflow: ellipsis !important;
+            text-overflow:text-overflow: ellipsis !important;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
             min-height: 32px !important;
             width: 100% !important;
@@ -1165,20 +940,120 @@
             transform: translateY(-1px) !important;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3) !important;
         }
-
-        .preset-section-header {
-            color: #fff !important;
-            font-size: 14px !important;
-            margin: 15px 0 5px 0 !important;
-            padding: 5px 10px !important;
-            background-color: #2a2a2a !important;
-            border-radius: 3px !important;
-            border: 1px solid #444 !important;
-            grid-column: 1 / -1 !important;
-        }
     `;
 
     document.head.appendChild(style);
+
+    // Main initialization functions
+    function init() {
+        // Split initialization into racing features and alert features
+        const isRacingPage = window.location.href.includes('sid=racing');
+        
+        // Initialize race alerts for all pages
+        initializeRaceAlerts();
+        
+        // Only initialize racing features on the racing page
+        if (isRacingPage) {
+            initializeRacingFeatures();
+            initializeRaceFiltering(); 
+            resumeAutoJoin(); // Resume auto-join if state exists
+        }
+    }
+
+    function initializeRaceAlerts() {
+        // Load saved preference
+        const raceAlertEnabled = GM_getValue('raceAlertEnabled', false);
+        
+        // Set checkbox state
+        const checkbox = document.getElementById('raceAlertEnabled');
+        if (checkbox) {
+            checkbox.checked = raceAlertEnabled;
+        }
+
+        // Initialize alerts if enabled
+        if (raceAlertEnabled) {
+            updateRaceAlert();
+            if (!window.raceAlertInterval) {
+                window.raceAlertInterval = setInterval(updateRaceAlert, 5000);
+            }
+        } else {
+            removeRaceAlert();
+        }
+
+        // Add change listener if not already added
+        if (!window.alertListenerAdded) {
+            document.addEventListener('change', function(e) {
+                if (e.target && e.target.id === 'raceAlertEnabled') {
+                    const isEnabled = e.target.checked;
+                    GM_setValue('raceAlertEnabled', isEnabled);
+                    
+                    if (isEnabled) {
+                        updateRaceAlert();
+                        if (!window.raceAlertInterval) {
+                            window.raceAlertInterval = setInterval(updateRaceAlert, 5000);
+                        }
+                    } else {
+                        removeRaceAlert();
+                        if (window.raceAlertInterval) {
+                            clearInterval(window.raceAlertInterval);
+                            window.raceAlertInterval = null;
+                        }
+                    }
+                }
+            });
+            window.alertListenerAdded = true;
+        }
+    }
+
+    function initializeRacingFeatures() {
+        const pollForElements = () => {
+            const titleElement = document.querySelector('div.content-title > h4');
+            if (titleElement) {
+                createToggleButton();
+                loadApiKey();
+                loadPresets();
+                
+                // Initialize auto-join section separately without waiting for car elements
+                initializeAutoJoinSection();
+                
+                // Initialize car-related features asynchronously
+                setTimeout(() => {
+                    updateCarList().then(() => {
+                        updateQuickLaunchButtons();
+                        console.log('Race Config GUI car list updated');
+                    }).catch(err => {
+                        console.warn('Failed to update car list, but continuing:', err);
+                    });
+                }, 1500);
+                
+                console.log('Race Config GUI initialized');
+            } else if (domCheckAttempts < MAX_DOM_CHECK_ATTEMPTS) {
+                domCheckAttempts++;
+                setTimeout(pollForElements, 100);
+            }
+        };
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', pollForElements);
+        } else {
+            pollForElements();
+        }
+    }
+
+    function initializeScript() {
+        if (window.guiInitialized) {
+            console.warn('GUI already initialized');
+            return;
+        }
+
+        const raceConfigGUI = createRaceConfigGUI();
+        document.body.appendChild(raceConfigGUI);
+        initializeGUI(raceConfigGUI);
+        createToggleButton();
+
+        window.guiInitialized = true;
+        console.log('Race Config GUI initialized successfully');
+    }
 
     function createRaceConfigGUI() {
         let gui = document.createElement('div');
@@ -1381,7 +1256,7 @@
             </div>
 
             <div style="text-align: center; margin-top: 20px; color: #888; font-size: 1.2em;">
-                Script created by <a href="https://www.torn.com/profiles.php?XID=268863" target="_blank" style="color: #888; text-decoration: none;">GNSC4 \[268863\]</a><br>
+                Script created by <a href="https://www.torn.com/profiles.php?XID=268863" target="_blank" style="color: #888; text-decoration: none;">GNSC4 [268863]</a><br>
                 <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.5.1 Official Forum Link</a>
             </div>
         `;
@@ -1745,8 +1620,6 @@
         window.addEventListener('resize', () => enforceWindowBoundaries(elmnt));
     }
 
-    const STORAGE_API_KEY = 'raceConfigAPIKey_release_NoGMf';
-
     function saveApiKey() {
         const apiKeyInput = document.getElementById('apiKeyInput');
         if (!apiKeyInput) return;
@@ -1793,61 +1666,6 @@
         }
     }
 
-    // Add this function to better debug time values
-    function logTimeInfo(action, details) {
-        console.log(`[TIME] ${action}:`, details);
-        // You can comment this out or set a DEBUG flag to disable in production
-    }
-
-    // Fix the getNextAvailableTime function to properly handle UTC timestamps
-    function getNextAvailableTime(hour, minute) {
-        logTimeInfo('Getting next available time', { hour, minute });
-        
-        if (!hour || !minute) {
-            logTimeInfo('Missing hour or minute', { hour, minute });
-            return null;
-        }
-        
-        // Parse as integers to ensure proper handling
-        const hourInt = parseInt(hour, 10);
-        const minuteInt = parseInt(minute, 10);
-        
-        if (isNaN(hourInt) || isNaN(minuteInt) || 
-            hourInt < 0 || hourInt > 23 || 
-            minuteInt < 0 || minuteInt > 59) {
-            logTimeInfo('Invalid time values', { hour, minute });
-            return null;
-        }
-        
-        // Get current time in UTC (Torn City Time)
-        const now = moment.utc();
-        
-        // Create target time in UTC
-        let targetTime = moment.utc().set({
-            hour: hourInt,
-            minute: minuteInt,
-            second: 0,
-            millisecond: 0
-        });
-        
-        // If the target time has already passed today, set it for tomorrow
-        if (targetTime.isSameOrBefore(now)) {
-            targetTime = targetTime.add(1, 'day');
-            logTimeInfo('Target time was in past, set for tomorrow', {
-                original: moment.utc().set({hour: hourInt, minute: minuteInt}).format('YYYY-MM-DD HH:mm:ss'),
-                adjusted: targetTime.format('YYYY-MM-DD HH:mm:ss')
-            });
-        }
-        
-        logTimeInfo('Final target time', {
-            unix: targetTime.unix(),
-            formatted: targetTime.format('YYYY-MM-DD HH:mm:ss')
-        });
-        
-        return targetTime;
-    }
-
-    // Fix the savePreset function to properly save time values
     function savePreset() {
         const carDropdown = document.getElementById('carDropdown');
         const carId = document.getElementById('carIdInput').value;
@@ -1861,8 +1679,7 @@
 
         if (!carId || carDropdown.value === '') {
             displayStatusMessage('Please select a car before creating a preset.', 'error');
-            setTimeout(() => displayStatusMessage('', ''), 3000);
-            return;
+            setTimeout(() => displayStatusMessage('', ''), 3000);return;
         }
 
         const presetName = prompt("Enter a name for this preset:");
@@ -1875,35 +1692,7 @@
         const carOption = carDropdown.querySelector(`option[value="${carId}"]`);
         const carName = carOption ? carOption.textContent.split(' (ID:')[0] : null;
 
-        // Get time values from the form
-        const hourSelect = document.getElementById('hourSelect');
-        const minuteSelect = document.getElementById('minuteSelect');
         const saveTime = document.getElementById('saveTimeToPreset').checked;
-        
-        // Process time values only if saveTime is checked
-        let hour = null;
-        let minute = null;
-        
-        if (saveTime && hourSelect && minuteSelect) {
-            // Always get the currently selected values
-            hour = hourSelect.value;
-            minute = minuteSelect.value;
-            
-            // Make sure they're properly formatted
-            hour = String(parseInt(hour, 10)).padStart(2, '0');
-            minute = String(parseInt(minute, 10)).padStart(2, '0');
-            
-            logTimeInfo('Saving time to preset', { 
-                saveTime,
-                hour,
-                minute,
-                hourOriginal: hourSelect.value,
-                minuteOriginal: minuteSelect.value
-            });
-        } else {
-            logTimeInfo('Not saving time to preset', { saveTime });
-        }
-
         const presetData = {
             track: document.getElementById('trackSelect').value,
             laps: document.getElementById('lapsInput').value,
@@ -1912,731 +1701,13 @@
             raceName: document.getElementById('raceNameInput').value,
             password: document.getElementById('passwordInput').value,
             betAmount: document.getElementById('betAmountInput').value,
-            hour: hour, // Will be null if saveTime is false
-            minute: minute, // Will be null if saveTime is false
+            hour: saveTime ? document.getElementById('hourSelect').value : null,
+            minute: saveTime ? document.getElementById('minuteSelect').value : null,
             carId: carId,
             carName: carName,
             selectedCar: carDropdown.value,
             saveTime: saveTime
         };
-
-        logTimeInfo('Full preset data being saved', presetData);
-
-        let presets = loadPresets();
-        presets[presetName] = presetData;
-        set_value('race_presets', presets);
-        displayPresets();
-        updateQuickPresetsDisplay();
-        updateQuickLaunchButtons();
-        displayStatusMessage(`Preset "${presetName}" saved.`, 'success');
-        setTimeout(() => displayStatusMessage('', ''), 3000);
-    }
-
-    // Fix the applyPreset function to properly handle time values
-    function applyPreset(presetName) {
-        const presets = loadPresets();
-        const preset = presets[presetName];
-        if (!preset) {
-            displayStatusMessage(`Preset "${presetName}" not found.`, 'error');
-            setTimeout(() => displayStatusMessage('', ''), 3000);
-            return;
-        }
-        
-        logTimeInfo('Applying preset with time data', {
-            presetName,
-            saveTime: preset.saveTime,
-            hour: preset.hour,
-            minute: preset.minute
-        });
-
-        // Apply all the basic settings
-        const trackSelect = document.getElementById('trackSelect');
-        const lapsInput = document.getElementById('lapsInput');
-        const minDriversInput = document.getElementById('minDriversInput');
-        const maxDriversInput = document.getElementById('maxDriversInput');
-        const raceNameInput = document.getElementById('raceNameInput');
-        const passwordInput = document.getElementById('passwordInput');
-        const betAmountInput = document.getElementById('betAmountInput');
-        const carDropdown = document.getElementById('carDropdown');
-        const carIdInput = document.getElementById('carIdInput');
-        const hourSelect = document.getElementById('hourSelect');
-        const minuteSelect = document.getElementById('minuteSelect');
-        const saveTimeCheckbox = document.getElementById('saveTimeToPreset');
-
-        if (trackSelect) trackSelect.value = preset.track;
-        if (lapsInput) lapsInput.value = preset.laps;
-        if (minDriversInput) minDriversInput.value = preset.minDrivers;
-        if (maxDriversInput) maxDriversInput.value = preset.maxDrivers;
-        if (raceNameInput) raceNameInput.value = preset.raceName;
-        if (passwordInput) passwordInput.value = preset.password;
-        if (betAmountInput) betAmountInput.value = preset.betAmount;
-        
-        // Always set the saveTime checkbox correctly
-        if (saveTimeCheckbox) {
-            saveTimeCheckbox.checked = preset.saveTime || false;
-        }
-        
-        // Handle time settings
-        if (hourSelect && minuteSelect) {
-            if (preset.saveTime && preset.hour && preset.minute) {
-                // Ensure hour and minute values exist in the dropdowns
-                const hour = String(parseInt(preset.hour, 10)).padStart(2, '0');
-                const minute = String(parseInt(preset.minute, 10)).padStart(2, '0');
-                
-                // Check if we need to add the hour to the dropdown
-                if (!Array.from(hourSelect.options).some(opt => opt.value === hour)) {
-                    const option = document.createElement('option');
-                    option.value = hour;
-                    option.textContent = hour;
-                    hourSelect.appendChild(option);
-                    logTimeInfo('Added missing hour to dropdown', { hour });
-                }
-                
-                // Check if we need to add the minute to the dropdown
-                if (!Array.from(minuteSelect.options).some(opt => opt.value === minute)) {
-                    const option = document.createElement('option');
-                    option.value = minute;
-                    option.textContent = minute;
-                    option.className = 'temp-minute';
-                    minuteSelect.appendChild(option);
-                    logTimeInfo('Added missing minute to dropdown', { minute });
-                }
-                
-                // Set the dropdown values
-                hourSelect.value = hour;
-                minuteSelect.value = minute;
-                
-                logTimeInfo('Applied time values from preset', { 
-                    hour, 
-                    minute, 
-                    hourValue: hourSelect.value, 
-                    minuteValue: minuteSelect.value
-                });
-            } else {
-                // Reset time fields if no time in preset or saveTime is false
-                hourSelect.value = hourSelect.options[0].value;
-                minuteSelect.value = minuteSelect.options[0].value;
-                logTimeInfo('Reset time fields to defaults', { 
-                    hour: hourSelect.value, 
-                    minute: minuteSelect.value 
-                });
-            }
-        }
-
-        if (carDropdown && preset.selectedCar) {
-            carDropdown.value = preset.selectedCar;
-        }
-        if (carIdInput) {
-            carIdInput.value = preset.carId || preset.selectedCar || '';
-        }
-
-        displayStatusMessage(`Preset "${presetName}" applied.`, 'success');
-        setTimeout(() => displayStatusMessage('', ''), 3000);
-    }
-
-    // Improve populateTimeDropdowns to ensure proper option values
-    function populateTimeDropdowns() {
-        const hourSelect = document.getElementById('hourSelect');
-        const minuteSelect = document.getElementById('minuteSelect');
-
-        if (!hourSelect || !minuteSelect) {
-            return;
-        }
-
-        // Clear existing options first
-        hourSelect.innerHTML = '';
-        minuteSelect.innerHTML = '';
-
-        // Add hours (00-23 for 24-hour format)
-        for (let i = 0; i <= 23; i++) {
-            const hourValue = String(i).padStart(2, '0');
-            const option = document.createElement('option');
-            option.value = hourValue;
-            option.textContent = hourValue;
-            hourSelect.appendChild(option);
-        }
-
-        // Add standard minute intervals (00, 15, 30, 45)
-        const minutes = ['00', '15', '30', '45'];
-        minutes.forEach(minute => {
-            const option = document.createElement('option');
-            option.value = minute;
-            option.textContent = minute;
-            minuteSelect.appendChild(option);
-        });
-        
-        logTimeInfo('Time dropdowns initialized', {
-            hourOptions: hourSelect.options.length,
-            minuteOptions: minuteSelect.options.length
-        });
-    }
-
-    // Fix the setTimeToNow function to properly handle current UTC time
-    function setTimeToNow() {
-        const hourSelect = document.getElementById('hourSelect');
-        const minuteSelect = document.getElementById('minuteSelect');
-
-        if (!hourSelect || !minuteSelect) {
-            return;
-        }
-
-        // Get current time in UTC (Torn City Time)
-        const now = moment.utc();
-        const currentHour = now.hour();
-        const currentMinute = now.minute();
-        
-        logTimeInfo('Setting time to current UTC', {
-            currentTime: now.format('HH:mm:ss'),
-            hour: currentHour,
-            minute: currentMinute
-        });
-
-        // Format values with leading zeros
-        const hourValue = String(currentHour).padStart(2, '0');
-        const minuteValue = String(currentMinute).padStart(2, '0');
-
-        // Remove any existing temporary minute options
-        const tempOptions = minuteSelect.querySelectorAll('.temp-minute');
-        tempOptions.forEach(opt => opt.remove());
-
-        // Check if hour exists in dropdown
-        if (!Array.from(hourSelect.options).some(opt => opt.value === hourValue)) {
-            const option = document.createElement('option');
-            option.value = hourValue;
-            option.textContent = hourValue;
-            hourSelect.appendChild(option);
-        }
-        
-        // Check if minute exists in dropdown
-        if (!Array.from(minuteSelect.options).some(opt => opt.value === minuteValue)) {
-            const option = document.createElement('option');
-            option.value = minuteValue;
-            option.textContent = minuteValue;
-            option.className = 'temp-minute';
-            minuteSelect.appendChild(option);
-        }
-        
-        // Set the values
-        hourSelect.value = hourValue;
-        minuteSelect.value = minuteValue;
-        
-        logTimeInfo('Time set to now successfully', {
-            hourValue: hourSelect.value,
-            minuteValue: minuteSelect.value
-        });
-    }
-
-    async function updateCarList() {
-        // Wait for elements to be available
-        const waitForElements = () => {
-            return new Promise((resolve) => {
-                const checkElements = () => {
-                    const carDropdown = document.getElementById('carDropdown');
-                    const carStatusMessage = document.getElementById('carStatusMessage');
-                    const updateCarsButton = document.getElementById('updateCarsButton');
-
-                    if (carDropdown && carStatusMessage && updateCarsButton) {
-                        resolve({ carDropdown, carStatusMessage, updateCarsButton });
-                    } else if (domCheckAttempts < MAX_DOM_CHECK_ATTEMPTS) {
-                        domCheckAttempts++;
-                        setTimeout(checkElements, 100);
-                    } else {
-                        resolve(null);
-                    }
-                };
-                checkElements();
-            });
-        };
-
-        const elements = await waitForElements();
-        if (!elements) {
-            console.error('Required elements not found for updateCarList');
-            return;
-        }
-
-        const { carDropdown, carStatusMessage, updateCarsButton } = elements;
-        const apiKey = GM_getValue(STORAGE_API_KEY, '');
-
-        if (!apiKey) {
-            carStatusMessage.textContent = 'API Key Required';
-            carStatusMessage.style.color = 'red';
-            return;
-        }
-
-        if (carStatusMessage) {
-            carStatusMessage.textContent = 'Updating Cars...';
-            carStatusMessage.style.color = '#aaa';
-        }
-
-        if (carDropdown) {
-            carDropdown.disabled = true;
-        }
-
-        if (updateCarsButton) {
-            updateCarsButton.disabled = true;
-        }
-
-        try {
-            const response = await GM.xmlHttpRequest({
-                url: `https://api.torn.com/v2/user/?selections=enlistedcars&key=${apiKey}`,
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                onload: function(response) {
-                    try {
-                        if (response.status === 200) {
-                            const data = JSON.parse(response.responseText);
-                            if (data.error) {
-                                if (carStatusMessage) {
-                                    carStatusMessage.textContent = `API Error: ${data.error.error}`;
-                                    carStatusMessage.style.color = 'red';
-                                }
-                            } else if (data.enlistedcars) {
-                                populateCarDropdown(data.enlistedcars);
-                                
-                                // Add a short delay then force sync car dropdowns
-                                setTimeout(() => {
-                                    syncCarDropdowns();
-                                    if (carStatusMessage) {
-                                        carStatusMessage.textContent = 'Cars Updated & Synchronized';
-                                        carStatusMessage.style.color = '#efe';
-                                    }
-                                }, 500);
-                            } else {
-                                if (carStatusMessage) {
-                                    carStatusMessage.textContent = 'No car data received';
-                                    carStatusMessage.style.color = 'orange';
-                                }
-                            }
-                        } else {
-                            if (carStatusMessage) {
-                                carStatusMessage.textContent = `HTTP Error: ${response.status}`;
-                                carStatusMessage.style.color = 'red';
-                            }
-                        }
-                    } catch (e) {
-                        console.error('Error parsing response:', e);
-                        if (carStatusMessage) {
-                            carStatusMessage.textContent = 'Error parsing car data';
-                            carStatusMessage.style.color = 'red';
-                        }
-                    }
-                    if (carDropdown) carDropdown.disabled = false;
-                    if (updateCarsButton) updateCarsButton.disabled = false;
-                    if (carStatusMessage) {
-                        setTimeout(() => {
-                            if (carStatusMessage) carStatusMessage.textContent = '';
-                        }, 3000);
-                    }
-                },
-                onerror: function(error) {
-                    console.error('Request failed:', error);
-                    if (carStatusMessage) {
-                        carStatusMessage.textContent = 'Request failed';
-                        carStatusMessage.style.color = 'red';
-                    }
-                    if (carDropdown) carDropdown.disabled = false;
-                    if (updateCarsButton) updateCarsButton.disabled = false;
-                    if (carStatusMessage) {
-                        setTimeout(() => {
-                            if (carStatusMessage) carStatusMessage.textContent = '';
-                        }, 5000);
-                    }
-                }
-            });
-        } catch (error) {
-            console.error('Error updating cars:', error);
-            if (carStatusMessage) {
-                carStatusMessage.textContent = `Error: ${error.message}`;
-                carStatusMessage.style.color = 'red';
-            }
-            if (carDropdown) carDropdown.disabled = false;
-            if (updateCarsButton) updateCarsButton.disabled = false;
-            if (carStatusMessage) {
-                setTimeout(() => {
-                    if (carStatusMessage) carStatusMessage.textContent = '';
-                }, 5000);
-            }
-        }
-    }
-
-    function populateCarDropdown(cars) {
-        console.log('[DEBUG] Populating car dropdowns with', Object.keys(cars).length, 'cars');
-        
-        try {
-            const dropdowns = [
-                document.getElementById('carDropdown'),
-                document.getElementById('autoJoinCar')
-            ];
-
-            // Filter and sort the cars
-            const sortedCars = Object.values(cars)
-                .filter(car => car.leased !== '1')
-                .sort((a, b) => {
-                    const nameA = a.name || a.item_name;
-                    const nameB = b.name || b.item_name;
-                    return nameA.localeCompare(nameB);
-                });
-
-            // Update each dropdown separately to avoid reference issues
-            dropdowns.forEach(dropdown => {
-                if (!dropdown) {
-                    console.log('[DEBUG] Dropdown not found in populateCarDropdown');
-                    return;
-                }
-                
-                // Clear the dropdown
-                dropdown.innerHTML = '<option value="">Select a car...</option>';
-                
-                // Add the sorted cars
-                sortedCars.forEach(car => {
-                    const carName = car.name || car.item_name;
-                    const option = document.createElement('option');
-                    option.value = car.id;
-                    option.textContent = `${carName} (ID: ${car.id})`;
-                    dropdown.appendChild(option);
-                });
-                
-                console.log('[DEBUG] Added', sortedCars.length, 'cars to dropdown', dropdown.id);
-            });
-            
-            console.log('[DEBUG] Car dropdowns populated successfully');
-        } catch (error) {
-            console.error('[DEBUG] Error in populateCarDropdown:', error);
-        }
-    }
-
-    function updateCarDropdown() {
-        updateCarList();
-    }
-
-    function getRFC() {
-        if (typeof $.cookie !== 'function') {
-            console.error("Error: jQuery Cookie plugin is not loaded correctly!");
-            console.log("Attempting fallback cookie parsing for rfc_v...");
-            let rfc = null;
-            const cookies = document.cookie.split("; ");
-            for (let i in cookies) {
-                let cookie = cookies[i].split("=");
-                if (cookie[0] && cookie[0].trim() === "rfc_v") {
-                    rfc = decodeURIComponent(cookie[1]);
-                    console.log("Fallback cookie parsing successful. rfc_v value:", rfc);
-                    return rfc;
-                }
-            }
-            console.warn("Fallback cookie parsing failed to find rfc_v cookie.");
-            return '';
-        }
-
-        let rfcValue = $.cookie('rfc_v');
-        if (rfcValue) {
-            return rfcValue;
-        } else {
-            console.log("jQuery.cookie failed to get rfc_v, attempting fallback parsing...");
-            let rfc = null;
-            const cookies = document.cookie.split("; ");
-            for (let i in cookies) {
-                let cookie = cookies[i].split("=");
-                if (cookie[0] && cookie[0].trim() === "rfc_v") {
-                    rfc = decodeURIComponent(cookie[1]);
-                    console.log("Fallback cookie parsing successful. rfc_v value:", rfc);
-                    return rfc;
-                }
-            }
-            console.warn("Fallback cookie parsing failed to find rfc_v cookie.");
-            return '';
-        }
-    }
-
-    async function createRace() {
-        const apiKey = GM_getValue(STORAGE_API_KEY, '');
-        const raceName = document.getElementById('raceNameInput').value.trim();
-
-        if (!apiKey) {
-            displayStatusMessage('API Key is required to create race.', 'error');
-            setTimeout(() => displayStatusMessage('', ''), 3000);
-            return;
-        }
-
-        if (!raceName) {
-            displayStatusMessage('Please enter a race name.', 'error');
-            setTimeout(() => displayStatusMessage('', ''), 3000);
-            return;
-        }
-
-        const trackId = document.getElementById('trackSelect').value;
-        const laps = document.getElementById('lapsInput').value;
-        const minDrivers = document.getElementById('minDriversInput').value;
-        const maxDrivers = document.getElementById('maxDriversInput').value;
-        const password = document.getElementById('passwordInput').value;
-        const betAmount = document.getElementById('betAmountInput').value;
-        const saveTime = document.getElementById('saveTimeToPreset').checked;
-        const carId = document.getElementById('carIdInput').value;
-        
-        // Get time values from dropdowns
-        const hourSelect = document.getElementById('hourSelect');
-        const minuteSelect = document.getElementById('minuteSelect');
-        
-        let raceHour = hourSelect ? hourSelect.value : '00';
-        let raceMinute = minuteSelect ? minuteSelect.value : '00';
-        
-        // Ensure proper format
-        raceHour = String(parseInt(raceHour, 10)).padStart(2, '0');
-        raceMinute = String(parseInt(raceMinute, 10)).padStart(2, '0');
-
-        // Calculate waitTime timestamp
-        let waitTime;
-        
-        if (saveTime) {
-            const nextTime = getNextAvailableTime(raceHour, raceMinute);
-            if (nextTime) {
-                // Convert to Unix timestamp in seconds
-                waitTime = nextTime.unix(); // Use unix method from moment.js
-                
-                logTimeInfo('Using scheduled time for race', {
-                    hour: raceHour,
-                    minute: raceMinute,
-                    nextTime: nextTime.format('YYYY-MM-DD HH:mm:ss'),
-                    waitTime: waitTime,
-                    humanReadable: new Date(waitTime * 1000).toUTCString()
-                });
-            } else {
-                // Fallback to current time if error
-                waitTime = Math.floor(Date.now() / 1000);
-                logTimeInfo('Failed to get next time, using current time', { waitTime });
-            }
-        } else {
-            // Use current time for immediate race start
-            waitTime = Math.floor(Date.now() / 1000);
-            logTimeInfo('Using current time for immediate start', { waitTime });
-        }
-
-        const rfcValue = getRFC();
-
-        // Build race parameters
-        const params = new URLSearchParams();
-        params.append('carID', carId);
-        params.append('password', password);
-        params.append('createRace', 'true');
-        params.append('title', raceName);
-        params.append('minDrivers', minDrivers);
-        params.append('maxDrivers', maxDrivers);
-        params.append('trackID', trackId);
-        params.append('laps', laps);
-        params.append('minClass', '5');
-        params.append('carsTypeAllowed', '1');
-        params.append('carsAllowed', '5');
-        params.append('betAmount', betAmount);
-        params.append('waitTime', waitTime);
-        params.append('rfcv', rfcValue);
-
-        const raceLink = `https://www.torn.com/loader.php?sid=racing&tab=customrace&section=getInRace&step=getInRace&id=&${params.toString()}`;
-        
-        logTimeInfo('Creating race with URL', { 
-            raceLink,
-            waitTime,
-            saveTime,
-            raceHour,
-            raceMinute
-        });
-
-        displayStatusMessage('Creating Race...', 'info');
-
-        try {
-            const response = await fetch(raceLink);
-            const data = await response.text();
-
-            if (data.includes('success') || response.ok) {
-                displayStatusMessage('Race Created Successfully!', 'success');
-                // Navigate to racing page after successful race creation
-                setTimeout(() => window.location.href = 'https://www.torn.com/loader.php?sid=racing', 1500);
-            } else {
-                displayStatusMessage('Error creating race. Please try again.', 'error');
-            }
-            setTimeout(() => displayStatusMessage('', ''), 3000);
-        } catch (error) {
-            displayStatusMessage(`Error creating race: ${error.message}`, 'error');
-            setTimeout(() => displayStatusMessage('', ''), 5000);
-        }
-    }
-
-    // Fix createRaceFromPreset to properly handle time values and fix the undefined data error
-    async function createRaceFromPreset(preset) {
-        const apiKey = GM_getValue(STORAGE_API_KEY, '');
-        if (!apiKey) {
-            displayStatusMessage('API Key is required to create race.', 'error');
-            setTimeout(() => displayStatusMessage('', ''), 3000);
-            return;
-        }
-
-        // Extract preset values
-        const trackId = preset.track;
-        const laps = preset.laps;
-        const minDrivers = preset.minDrivers;
-        const maxDrivers = preset.maxDrivers;
-        const raceName = preset.raceName;
-        const password = preset.password;
-        const betAmount = preset.betAmount;
-        const carId = preset.carId;
-        
-        // Time handling
-        const saveTime = preset.saveTime;
-        let raceHour = preset.hour;
-        let raceMinute = preset.minute;
-        
-        if (saveTime && raceHour && raceMinute) {
-            // Ensure proper format
-            raceHour = String(parseInt(raceHour, 10)).padStart(2, '0');
-            raceMinute = String(parseInt(raceMinute, 10)).padStart(2, '0');
-        } else {
-            // Default to current time if no time saved or saveTime is false
-            const now = moment.utc();
-            raceHour = String(now.hour()).padStart(2, '0');
-            raceMinute = String(now.minute()).padStart(2, '0');
-        }
-        
-        logTimeInfo('Creating race from preset with time', {
-            presetName: preset.raceName,
-            saveTime,
-            raceHour,
-            raceMinute
-        });
-
-        // Calculate waitTime timestamp
-        let waitTime;
-        
-        if (saveTime && raceHour && raceMinute) {
-            const nextTime = getNextAvailableTime(raceHour, raceMinute);
-            if (nextTime) {
-                // Convert to Unix timestamp in seconds
-                waitTime = nextTime.unix();
-                
-                logTimeInfo('Using scheduled time from preset', {
-                    hour: raceHour,
-                    minute: raceMinute,
-                    nextTime: nextTime.format('YYYY-MM-DD HH:mm:ss'),
-                    waitTime: waitTime
-                });
-            } else {
-                // Fallback to current time if error
-                waitTime = Math.floor(Date.now() / 1000);
-                logTimeInfo('Failed to get next time, using current time', { waitTime });
-            }
-        } else {
-            // Use current time for immediate race start
-            waitTime = Math.floor(Date.now() / 1000);
-            logTimeInfo('Using current timestamp (immediate start)', { waitTime });
-        }
-
-        const rfcValue = getRFC();
-
-        // Build race parameters
-        const params = new URLSearchParams();
-        params.append('carID', carId);
-        params.append('password', password);
-        params.append('createRace', 'true');
-        params.append('title', raceName);
-        params.append('minDrivers', minDrivers);
-        params.append('maxDrivers', maxDrivers);
-        params.append('trackID', trackId);
-        params.append('laps', laps);
-        params.append('minClass', '5');
-        params.append('carsTypeAllowed', '1');
-        params.append('carsAllowed', '5');
-        params.append('betAmount', betAmount);
-        params.append('waitTime', waitTime);
-        params.append('rfcv', rfcValue);
-
-        const raceLink = `https://www.torn.com/loader.php?sid=racing&tab=customrace&section=getInRace&step=getInRace&id=&${params.toString()}`;
-
-        logTimeInfo('Final race creation URL from preset', {
-            waitTime,
-            raceHour,
-            raceMinute,
-            url: raceLink
-        });
-
-        displayStatusMessage('Creating Race...', 'info');
-
-        try {
-            // Create data object from params for the request
-            const data = {
-                carID: carId,
-                password: password,
-                createRace: 'true',
-                title: raceName,
-                minDrivers: minDrivers,
-                maxDrivers: maxDrivers,
-                trackID: trackId,
-                laps: laps,
-                minClass: '5',
-                carsTypeAllowed: '1',
-                carsAllowed: '5',
-                betAmount: betAmount,
-                waitTime: waitTime,
-                rfcv: rfcValue
-            };
-            
-            const response = await fetch(raceLink, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: new URLSearchParams(data).toString()
-            });
-            
-            const responseData = await response.text();
-
-            // Update quick launch status if it exists
-            const quickLaunchStatus = document.querySelector('.quick-launch-status');
-            
-            if (responseData.includes('success') || response.ok) {
-                displayStatusMessage('Race Created Successfully!', 'success');
-                
-                if (quickLaunchStatus) {
-                    quickLaunchStatus.textContent = 'Race Created Successfully!';
-                    quickLaunchStatus.className = 'quick-launch-status success show';
-                }
-                
-                // Navigate to racing page after successful race creation
-                setTimeout(() => window.location.href = 'https://www.torn.com/loader.php?sid=racing', 1500);
-            } else {
-                displayStatusMessage('Error creating race. Please try again.', 'error');
-                
-                if (quickLaunchStatus) {
-                    quickLaunchStatus.textContent = 'Error creating race. Please try again.';
-                    quickLaunchStatus.className = 'quick-launch-status error show';
-                }
-            }
-        } catch (error) {
-            displayStatusMessage(`Error creating race: ${error.message}`, 'error');
-            
-            const quickLaunchStatus = document.querySelector('.quick-launch-status');
-            if (quickLaunchStatus) {
-                quickLaunchStatus.textContent = `Error creating race: ${error.message}`;
-                quickLaunchStatus.className = 'quick-launch-status error show';
-            }
-        }
-    }
-
-    function loadPresets() {
-        return get_value('race_presets') || {};
-    }
-            laps: document.getElementById('lapsInput').value,
-            minDrivers: document.getElementById('minDriversInput').value,
-            maxDrivers: document.getElementById('maxDriversInput').value,
-            raceName: document.getElementById('raceNameInput').value,
-            password: document.getElementById('passwordInput').value,
-            betAmount: document.getElementById('betAmountInput').value,
-            hour: hour,
-            minute: minute,
-            carId: document.getElementById('carIdInput').value,
-            carName: carOption ? carOption.textContent.split(' (ID:')[0] : null,
-            selectedCar: carDropdown.value,
-            saveTime: saveTime
-        };
-
         let presets = loadPresets();
         presets[presetName] = presetData;
         set_value('race_presets', presets);
@@ -2737,13 +1808,6 @@
             container.textContent = 'No presets saved yet.';
             return;
         }
-
-        const trackNames = {
-            '6': 'Uptown', '7': 'Withdrawal', '8': 'Underdog', '9': 'Parkland',
-            '10': 'Docks', '11': 'Commerce', '12': 'Two Islands', '15': 'Industrial',
-            '16': 'Vector', '17': 'Mudpit', '18': 'Hammerhead', '19': 'Sewage',
-            '20': 'Meltdown', '21': 'Speedway', '23': 'Stone Park', '24': 'Convict'
-        };
 
         Object.keys(presets).forEach(presetName => {
             const preset = presets[presetName];
@@ -2848,7 +1912,6 @@
         }
     }
 
-    // Update to fix the race status part in updateQuickLaunchButtons
     function updateQuickLaunchButtons() {
         const container = document.getElementById('quickLaunchContainer');
         if (!container) return;
@@ -2865,10 +1928,8 @@
         // Create containers
         const buttonContainer = document.createElement('div');
         buttonContainer.className = 'button-container';
-        
         const statusDiv = document.createElement('div');
         statusDiv.className = 'quick-launch-status';
-        statusDiv.id = 'quickLaunchStatus';
 
         // Create section headers
         const quickLaunchHeader = document.createElement('h4');
@@ -2904,8 +1965,7 @@
                 `Laps: ${preset.laps}`,
                 `Drivers: ${preset.minDrivers}-${preset.maxDrivers}`,
                 `Password: ${preset.password ? 'Yes' : 'No'}`,
-                preset.betAmount > 0 ? `Bet: $${Number(preset.betAmount).toLocaleString()}` : null,
-                preset.saveTime && preset.hour && preset.minute ? `Time: ${preset.hour}:${preset.minute}` : null
+                preset.betAmount > 0 ? `Bet: $${Number(preset.betAmount).toLocaleString()}` : null
             ].filter(Boolean).join('\n');
 
             button.title = tooltipInfo;
@@ -2914,6 +1974,63 @@
                 await createRaceFromPreset(preset);
             });
             buttonContainer.appendChild(button);
+        });
+
+        // Add auto-join presets
+        Object.entries(autoJoinPresets).forEach(([name, preset]) => {
+            const buttonContainer = document.createElement('div');
+            buttonContainer.className = 'preset-button-container';
+            
+            const button = document.createElement('button');
+            button.className = 'auto-join-preset-button';
+            button.textContent = name;
+            button.title = `Auto-join preset: ${name}\nTrack: ${preset.track}\nLaps: ${preset.minLaps}-${preset.maxLaps}`;
+            
+            button.addEventListener('click', () => {
+                applyAutoJoinPreset(preset);
+            });
+
+            const removeButton = document.createElement('a');
+            removeButton.className = 'remove-preset';
+            removeButton.href = '#';
+            removeButton.textContent = '×';
+            removeButton.title = `Remove auto-join preset: ${name}`;
+            removeButton.style.cssText = `
+                position: absolute !important;
+                top: -8px !important;
+                right: -8px !important;
+                background-color: #955 !important;
+                color: #eee !important;
+                width: 20px !important;
+                height: 20px !important;
+                border-radius: 50% !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                text-decoration: none !important;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+                transition: all 0.2s ease !important;
+                z-index: 100 !important;
+            `;
+            
+            removeButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                removeAutoJoinPreset(name);
+            });
+
+            removeButton.addEventListener('mouseover', () => {
+                removeButton.style.backgroundColor = '#c77';
+                removeButton.style.transform = 'scale(1.1)';
+            });
+
+            removeButton.addEventListener('mouseout', () => {
+                removeButton.style.backgroundColor = '#955';
+                removeButton.style.transform = 'scale(1)';
+            });
+            
+            buttonContainer.appendChild(button);
+            buttonContainer.appendChild(removeButton);
+            autoJoinContainer.appendChild(buttonContainer);
         });
 
         container.style.display = 'flex';
@@ -3022,8 +2139,7 @@
             await new Promise(resolve => setTimeout(resolve, 1000));
             
             // Define the interface container where we'll add our controls if needed
-            const findOrCreateAutoJoinInterface = () => {
-                console.log('[DEBUG] Looking for or creating auto-join interface');
+            const findOrCreateAutoJoinInterface = () => {console.log('[DEBUG] Looking for or creating auto-join interface');
                 
                 // First, look for existing elements
                 let autoJoinTrack = document.getElementById('autoJoinTrack');
@@ -3234,25 +2350,15 @@
         const hourSelect = document.getElementById('hourSelect');
         const minuteSelect = document.getElementById('minuteSelect');
 
-        if (!hourSelect || !minuteSelect) {
-            TIME_DEBUG.log('Time dropdowns not found');
-            return;
-        }
+        if (!hourSelect || !minuteSelect) return;
 
-        // Clear existing options first
-        hourSelect.innerHTML = '';
-        minuteSelect.innerHTML = '';
-        
-        // Add hours (00-23 for 24-hour format)
         for (let i = 0; i <= 23; i++) {
-            const hourValue = String(i).padStart(2, '0');
             const option = document.createElement('option');
-            option.value = hourValue;
-            option.textContent = hourValue;
+            option.value = String(i).padStart(2, '0');
+            option.textContent = String(i).padStart(2, '0');
             hourSelect.appendChild(option);
         }
 
-        // Add minutes (00, 15, 30, 45 for quarter-hour intervals)
         const minutes = ['00', '15', '30', '45'];
         minutes.forEach(minute => {
             const option = document.createElement('option');
@@ -3260,85 +2366,43 @@
             option.textContent = minute;
             minuteSelect.appendChild(option);
         });
-        
-        TIME_DEBUG.log('Time dropdowns populated', { 
-            hours: hourSelect.options.length,
-            minutes: minuteSelect.options.length
-        });
     }
 
     function setTimeToNow() {
         const hourSelect = document.getElementById('hourSelect');
         const minuteSelect = document.getElementById('minuteSelect');
 
-        if (!hourSelect || !minuteSelect) {
-            TIME_DEBUG.log('Cannot set time to now - elements not found');
-            return;
-        }
+        if (!hourSelect || !minuteSelect) return;
 
-        // Get current time in UTC (Torn City Time)
         const now = moment.utc();
         const currentHour = now.hour();
         const currentMinute = now.minute();
-        
-        TIME_DEBUG.log('Setting time to current UTC', { 
-            utc: now.format('YYYY-MM-DD HH:mm:ss'),
-            hour: currentHour,
-            minute: currentMinute
-        });
 
-        // Format hour with leading zero
-        const hourValue = String(currentHour).padStart(2, '0');
-        
-        // Set hour in dropdown
-        if (hourSelect.querySelector(`option[value="${hourValue}"]`)) {
-            hourSelect.value = hourValue;
-        } else {
-            TIME_DEBUG.log('Hour value not found in dropdown', { hourValue });
-            // Add it if not found
-            const option = document.createElement('option');
-            option.value = hourValue;
-            option.textContent = hourValue;
-            hourSelect.appendChild(option);
-            hourSelect.value = hourValue;
+        // Set hour
+        hourSelect.value = String(currentHour).padStart(2, '0');
+
+        // Handle minutes - round to nearest 15 if not using exact time
+        let roundedMinute = Math.round(currentMinute / 15) * 15;
+        if (roundedMinute === 60) {
+            roundedMinute = 0;
         }
-
+        
         // Remove any existing temporary minute option
-        const tempOptions = minuteSelect.querySelectorAll('.temp-minute');
-        tempOptions.forEach(opt => opt.remove());
-
-        // Check if current minute exists in dropdown
-        const minuteValue = String(currentMinute).padStart(2, '0');
-        let minuteFound = false;
-        
-        for (let i = 0; i < minuteSelect.options.length; i++) {
-            if (minuteSelect.options[i].value === minuteValue) {
-                minuteFound = true;
-                break;
-            }
+        const tempOption = minuteSelect.querySelector('.temp-minute');
+        if (tempOption) {
+            tempOption.remove();
         }
 
-        // Add current minute as option if it doesn't exist
-        if (!minuteFound) {
+        // Add current minute as option if it's not one of the standard intervals
+        if (![0, 15, 30, 45].includes(currentMinute)) {
             const option = document.createElement('option');
-            option.value = minuteValue;
-            option.textContent = minuteValue;
+            option.value = String(currentMinute).padStart(2, '0');
+            option.textContent = String(currentMinute).padStart(2, '0');
             option.className = 'temp-minute';
             minuteSelect.appendChild(option);
-            
-            TIME_DEBUG.log('Added exact minute to dropdown', { minuteValue });
-        }
-        
-        // Set minute in dropdown
-        minuteSelect.value = minuteValue;
-        
-        // Save the time if the checkbox is checked
-        const saveTimeCheckbox = document.getElementById('saveTimeToPreset');
-        if (saveTimeCheckbox && saveTimeCheckbox.checked) {
-            TIME_DEBUG.log('Time will be saved with preset', { 
-                hour: hourValue, 
-                minute: minuteValue 
-            });
+            minuteSelect.value = String(currentMinute).padStart(2, '0');
+        } else {
+            minuteSelect.value = String(roundedMinute).padStart(2, '0');
         }
     }
 
@@ -3587,58 +2651,30 @@
         const maxDrivers = document.getElementById('maxDriversInput').value;
         const password = document.getElementById('passwordInput').value;
         const betAmount = document.getElementById('betAmountInput').value;
-        const saveTime = document.getElementById('saveTimeToPreset').checked;
-        const carId = document.getElementById('carIdInput').value;
-        
-        // Get time values from dropdowns
         let raceHour = document.getElementById('hourSelect').value;
         let raceMinute = document.getElementById('minuteSelect').value;
+        const saveTime = document.getElementById('saveTimeToPreset').checked;
+        const carId = document.getElementById('carIdInput').value;
 
         // Default to current time if no time is set
         if (!raceHour || !raceMinute) {
             const now = moment.utc();
             raceHour = String(now.hour()).padStart(2, '0');
             raceMinute = String(now.minute()).padStart(2, '0');
-            
-            // Update the dropdowns
             document.getElementById('hourSelect').value = raceHour;
             document.getElementById('minuteSelect').value = raceMinute;
-            
-            TIME_DEBUG.log('Using current UTC time as default', { 
-                hour: raceHour, 
-                minute: raceMinute 
-            });
         }
 
-        // Calculate waitTime in Unix timestamp (seconds)
-        let waitTime;
-        
+        let waitTime = Math.floor(Date.now() / 1000);
         if (saveTime) {
-            // Get next available time as UTC moment
             const nextTime = getNextAvailableTime(raceHour, raceMinute);
-            
             if (nextTime) {
-                // Convert to Unix timestamp in seconds
                 waitTime = Math.floor(nextTime.valueOf() / 1000);
-                TIME_DEBUG.log('Using scheduled future time', { 
-                    time: nextTime.format('YYYY-MM-DD HH:mm:ss'),
-                    waitTime: waitTime,
-                    humanReadable: new Date(waitTime * 1000).toUTCString()
-                });
-            } else {
-                // Fallback to current time if error in time calculation
-                waitTime = Math.floor(Date.now() / 1000);
-                TIME_DEBUG.log('Using current timestamp as fallback', { waitTime });
             }
-        } else {
-            // Use current time (immediate race start)
-            waitTime = Math.floor(Date.now() / 1000);
-            TIME_DEBUG.log('Using current timestamp (immediate start)', { waitTime });
         }
 
         const rfcValue = getRFC();
 
-        // Build race parameters
         const params = new URLSearchParams();
         params.append('carID', carId);
         params.append('password', password);
@@ -3656,11 +2692,7 @@
         params.append('rfcv', rfcValue);
 
         const raceLink = `https://www.torn.com/loader.php?sid=racing&tab=customrace&section=getInRace&step=getInRace&id=&${params.toString()}`;
-        
-        TIME_DEBUG.log('Creating race with URL', { 
-            raceLink,
-            params: Object.fromEntries(params.entries())
-        });
+        console.log('[Race URL]:', raceLink); // Add URL logging
 
         displayStatusMessage('Creating Race...', 'info');
 
@@ -3701,35 +2733,20 @@
         const raceMinute = preset.minute;
         const carId = preset.carId;
 
-        // Calculate waitTime in Unix timestamp (seconds)
-        let waitTime;
-        
-        if (preset.saveTime && raceHour && raceMinute) {
-            // Get next available time as UTC moment
-            const nextTime = getNextAvailableTime(raceHour, raceMinute);
-            
+        let waitTime = Math.floor(Date.now() / 1000);
+        if (preset.saveTime && preset.hour && preset.minute) {
+            const nextTime = getNextAvailableTime(preset.hour, preset.minute);
             if (nextTime) {
-                // Convert to Unix timestamp in seconds
                 waitTime = Math.floor(nextTime.valueOf() / 1000);
-                TIME_DEBUG.log('Using scheduled future time from preset', { 
-                    time: nextTime.format('YYYY-MM-DD HH:mm:ss'),
-                    waitTime: waitTime,
-                    humanReadable: new Date(waitTime * 1000).toUTCString()
-                });
-            } else {
-                // Fallback to current time if error in time calculation
-                waitTime = Math.floor(Date.now() / 1000);
-                TIME_DEBUG.log('Time calculation failed, using current timestamp', { waitTime });
             }
         } else {
-            // Use current time (immediate race start)
-            waitTime = Math.floor(Date.now() / 1000);
-            TIME_DEBUG.log('Using current timestamp (immediate start)', { waitTime });
+            // Default to current time if no time is saved in preset
+            const now = moment.utc();
+            waitTime = Math.floor(now.valueOf() / 1000);
         }
 
         const rfcValue = getRFC();
 
-        // Build race parameters
         const params = new URLSearchParams();
         params.append('carID', carId);
         params.append('password', password);
@@ -3747,35 +2764,48 @@
         params.append('rfcv', rfcValue);
 
         const raceLink = `https://www.torn.com/loader.php?sid=racing&tab=customrace&section=getInRace&step=getInRace&id=&${params.toString()}`;
-        
-        TIME_DEBUG.log('Creating race from preset with URL', { 
-            raceLink,
-            params: Object.fromEntries(params.entries())
-        });
+        console.log('[Race URL from preset]:', raceLink); // Add URL logging
 
-        const quickLaunchStatus = document.querySelector('.quick-launch-status');
-        if (quickLaunchStatus) {
+        displayStatusMessage('Creating Race...', 'info');
+
+        try {
+            const response = await fetch(raceLink);
+            const data = await response.text();
+
+            const quickLaunchStatus = document.querySelector('.quick-launch-status');
+            if (quickLaunchStatus) {
+                if (data.includes('success') || response.ok) {
+                    quickLaunchStatus.textContent = 'Race Created Successfully!';
+                    quickLaunchStatus.className = 'quick-launch-status success show';
+                    // Navigate to racing page after successful race creation
+                    setTimeout(() => window.location.href = 'https://www.torn.com/loader.php?sid=racing', 1500);
+                } else {
+                    quickLaunchStatus.textContent = 'Error creating race. Please try again.';
+                    quickLaunchStatus.className = 'quick-launch-status error show';
+                }
+                // Removed the setTimeout that was hiding the status
+            }
+
+            // Regular status message for the GUI
             if (data.includes('success') || response.ok) {
-                quickLaunchStatus.textContent = 'Race Created Successfully!';
-                quickLaunchStatus.className = 'quick-launch-status success show';
+                displayStatusMessage('Race Created Successfully!', 'success');
                 // Navigate to racing page after successful race creation
                 setTimeout(() => window.location.href = 'https://www.torn.com/loader.php?sid=racing', 1500);
             } else {
-                quickLaunchStatus.textContent = 'Error creating race. Please try again.';
-                quickLaunchStatus.className = 'quick-launch-status error show';
+                displayStatusMessage('Error creating race. Please try again.', 'error');
             }
-            // Removed the setTimeout that was hiding the status
-        }
+            setTimeout(() => displayStatusMessage('', ''), 3000);
+        } catch (error) {
+            const quickLaunchStatus = document.querySelector('.quick-launch-status');
+            if (quickLaunchStatus) {
+                quickLaunchStatus.textContent = `Error creating race: ${error.message}`;
+                quickLaunchStatus.className = 'quick-launch-status error show';
+                // Removed the setTimeout that was hiding the status
+            }
 
-        // Regular status message for the GUI
-        if (data.includes('success') || response.ok) {
-            displayStatusMessage('Race Created Successfully!', 'success');
-            // Navigate to racing page after successful race creation
-            setTimeout(() => window.location.href = 'https://www.torn.com/loader.php?sid=racing', 1500);
-        } else {
-            displayStatusMessage('Error creating race. Please try again.', 'error');
+            displayStatusMessage(`Error creating race: ${error.message}`, 'error');
+            setTimeout(() => displayStatusMessage('', ''), 5000);
         }
-        setTimeout(() => displayStatusMessage('', ''), 3000);
     }
 
     function set_value(key, value) {
@@ -3822,9 +2852,7 @@
 
         // Any other racing status should return false
         return false;
-    }
-
-    function updateRaceAlert() {
+    }function updateRaceAlert() {
         const alertEnabled = GM_getValue('raceAlertEnabled', false);
         if (!alertEnabled) {
             removeRaceAlert();
@@ -4185,7 +3213,7 @@
                 if (racesList) {
                     console.log('[DEBUG] Race list detected after refresh');
                     setTimeout(() => {
-                        console.log('[DEBUG] Restoring filters and reapplying');
+                        console.console.log('[DEBUG] Restoring filters and reapplying');
                         const filtersEnabled = restoreFilterState();
                         if (filtersEnabled && document.getElementById('toggleFilters')?.classList.contains('active')) {
                             window.RaceFiltering?.filterRacesList();
