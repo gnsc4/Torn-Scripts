@@ -1976,62 +1976,68 @@
             buttonContainer.appendChild(button);
         });
 
-        // Add auto-join presets
-        Object.entries(autoJoinPresets).forEach(([name, preset]) => {
-            const buttonContainer = document.createElement('div');
-            buttonContainer.className = 'preset-button-container';
-            
-            const button = document.createElement('button');
-            button.className = 'auto-join-preset-button';
-            button.textContent = name;
-            button.title = `Auto-join preset: ${name}\nTrack: ${preset.track}\nLaps: ${preset.minLaps}-${preset.maxLaps}`;
-            
-            button.addEventListener('click', () => {
-                applyAutoJoinPreset(preset);
-            });
+// Add auto-join presets
+Object.entries(autoJoinPresets).forEach(([name, preset]) => {
+    const buttonContainer = document.createElement('div');
+    buttonContainer.className = 'preset-button-container';
+    
+    const button = document.createElement('button');
+    button.className = 'auto-join-preset-button';
+    button.textContent = name;
+    
+    // Enhanced tooltip with car information
+    const carInfo = preset.carName ? 
+        `${preset.carName} (ID: ${preset.selectedCarId})` : 
+        `Car ID: ${preset.selectedCarId}`;
+        
+    button.title = `Auto-join preset: ${name}\nTrack: ${preset.track}\nLaps: ${preset.minLaps}-${preset.maxLaps}\nCar: ${carInfo}`;
+    
+    button.addEventListener('click', () => {
+        applyAutoJoinPreset(preset);
+    });
 
-            const removeButton = document.createElement('a');
-            removeButton.className = 'remove-preset';
-            removeButton.href = '#';
-            removeButton.textContent = '×';
-            removeButton.title = `Remove auto-join preset: ${name}`;
-            removeButton.style.cssText = `
-                position: absolute !important;
-                top: -8px !important;
-                right: -8px !important;
-                background-color: #955 !important;
-                color: #eee !important;
-                width: 20px !important;
-                height: 20px !important;
-                border-radius: 50% !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                text-decoration: none !important;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
-                transition: all 0.2s ease !important;
-                z-index: 100 !important;
-            `;
-            
-            removeButton.addEventListener('click', (event) => {
-                event.preventDefault();
-                removeAutoJoinPreset(name);
-            });
+    const removeButton = document.createElement('a');
+    removeButton.className = 'remove-preset';
+    removeButton.href = '#';
+    removeButton.textContent = '×';
+    removeButton.title = `Remove auto-join preset: ${name}`;
+    removeButton.style.cssText = `
+        position: absolute !important;
+        top: -8px !important;
+        right: -8px !important;
+        background-color: #955 !important;
+        color: #eee !important;
+        width: 20px !important;
+        height: 20px !important;
+        border-radius: 50% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-decoration: none !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+        transition: all 0.2s ease !important;
+        z-index: 100 !important;
+    `;
+    
+    removeButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        removeAutoJoinPreset(name);
+    });
 
-            removeButton.addEventListener('mouseover', () => {
-                removeButton.style.backgroundColor = '#c77';
-                removeButton.style.transform = 'scale(1.1)';
-            });
+    removeButton.addEventListener('mouseover', () => {
+        removeButton.style.backgroundColor = '#c77';
+        removeButton.style.transform = 'scale(1.1)';
+    });
 
-            removeButton.addEventListener('mouseout', () => {
-                removeButton.style.backgroundColor = '#955';
-                removeButton.style.transform = 'scale(1)';
-            });
-            
-            buttonContainer.appendChild(button);
-            buttonContainer.appendChild(removeButton);
-            autoJoinContainer.appendChild(buttonContainer);
-        });
+    removeButton.addEventListener('mouseout', () => {
+        removeButton.style.backgroundColor = '#955';
+        removeButton.style.transform = 'scale(1)';
+    });
+    
+    buttonContainer.appendChild(button);
+    buttonContainer.appendChild(removeButton);
+    autoJoinContainer.appendChild(buttonContainer);
+});
 
         container.style.display = 'flex';
     }
@@ -2039,16 +2045,33 @@
     function saveAutoJoinPreset() {
         const presetName = prompt("Enter a name for this auto-join preset:");
         if (!presetName) return;
-
+    
+        // Get the selected car ID and get its name for display purposes
+        const selectedCarId = document.getElementById('autoJoinCar').value;
+        const selectedCarDropdown = document.getElementById('autoJoinCar');
+        let carName = "Unknown Car";
+        
+        // Try to get the car name from the selected option
+        if (selectedCarDropdown && selectedCarId) {
+            const selectedOption = selectedCarDropdown.querySelector(`option[value="${selectedCarId}"]`);
+            if (selectedOption) {
+                carName = selectedOption.textContent.split(' (ID:')[0];
+            }
+        }
+    
         const preset = {
             track: document.getElementById('autoJoinTrack').value,
             minLaps: document.getElementById('minLaps').value,
             maxLaps: document.getElementById('maxLaps').value,
-            selectedCarId: document.getElementById('autoJoinCar').value,
+            selectedCarId: selectedCarId,
+            carName: carName, // Added car name for display
             hidePassworded: document.getElementById('hidePassworded').checked,
             hideBets: document.getElementById('hideBets').checked
         };
-
+    
+        // Log what we're saving for debugging
+        console.log('[DEBUG] Saving auto-join preset with car:', { id: selectedCarId, name: carName });
+    
         const presets = loadAutoJoinPresets();
         presets[presetName] = preset;
         GM_setValue('autoJoinPresets', JSON.stringify(presets));
@@ -2134,12 +2157,13 @@
                 displayStatusMessage('Failed to load Custom Events tab', 'error');
                 return;
             }
-
+    
             // Add delay to ensure DOM is ready
             await new Promise(resolve => setTimeout(resolve, 1000));
             
             // Define the interface container where we'll add our controls if needed
-            const findOrCreateAutoJoinInterface = () => {console.log('[DEBUG] Looking for or creating auto-join interface');
+            const findOrCreateAutoJoinInterface = () => {
+                console.log('[DEBUG] Looking for or creating auto-join interface');
                 
                 // First, look for existing elements
                 let autoJoinTrack = document.getElementById('autoJoinTrack');
@@ -2269,20 +2293,54 @@
                 return;
             }
             
-            // Synchronize car dropdown with main dropdown if needed
-            if (elements.autoJoinCar && document.getElementById('carDropdown')) {
-                elements.autoJoinCar.innerHTML = document.getElementById('carDropdown').innerHTML;
-            }
-            
-            // Set the values
+            // Log the car information from the preset
+            console.log('[DEBUG] Auto-join preset car information:', { 
+                selectedCarId: preset.selectedCarId,
+                carName: preset.carName || 'Unknown Car'
+            });
+    
+            // Set the values - with enhanced car handling
             console.log('[DEBUG] Setting auto-join values');
             if (elements.autoJoinTrack) elements.autoJoinTrack.value = preset.track;
             if (elements.minLaps) elements.minLaps.value = preset.minLaps;
             if (elements.maxLaps) elements.maxLaps.value = preset.maxLaps;
-            if (elements.autoJoinCar) elements.autoJoinCar.value = preset.selectedCarId;
             if (elements.hidePassworded) elements.hidePassworded.checked = preset.hidePassworded;
             if (elements.hideBets) elements.hideBets.checked = preset.hideBets;
-
+            
+            // Special handling for car selection
+            if (elements.autoJoinCar && preset.selectedCarId) {
+                // First check if the car already exists in the dropdown
+                const existingOption = elements.autoJoinCar.querySelector(`option[value="${preset.selectedCarId}"]`);
+                
+                if (existingOption) {
+                    // Car exists in dropdown, simply set the value
+                    elements.autoJoinCar.value = preset.selectedCarId;
+                    console.log('[DEBUG] Found car in dropdown, setting value:', preset.selectedCarId);
+                } else {
+                    // Car doesn't exist in dropdown - we need to create the option
+                    console.log('[DEBUG] Car not found in dropdown, creating option for:', preset.selectedCarId);
+                    
+                    // Create a new option with saved car ID and name
+                    const newOption = document.createElement('option');
+                    newOption.value = preset.selectedCarId;
+                    newOption.textContent = preset.carName ? 
+                        `${preset.carName} (ID: ${preset.selectedCarId})` : 
+                        `Car ID: ${preset.selectedCarId}`;
+                    
+                    // Add the new option at the top (after the default "Select a car" option)
+                    if (elements.autoJoinCar.options.length > 0) {
+                        elements.autoJoinCar.insertBefore(newOption, elements.autoJoinCar.options[1]);
+                    } else {
+                        elements.autoJoinCar.appendChild(newOption);
+                    }
+                    
+                    // Set the value to our car ID
+                    elements.autoJoinCar.value = preset.selectedCarId;
+                }
+            } else {
+                console.log('[DEBUG] No car ID in preset or car dropdown not found');
+            }
+    
             // Add delay before starting auto-join
             await new Promise(resolve => setTimeout(resolve, 500));
             
