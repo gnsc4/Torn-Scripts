@@ -1,6 +1,6 @@
 // ==UserScript==
-// @name         Torn Race Config GUI
-// @version      3.5.9
+// @name         Torn Race Manager
+// @version      3.6.0
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -22,6 +22,12 @@
 
 (function() {
     'use strict';
+
+    // Ensure document is available before accessing it
+    if (typeof document === 'undefined') {
+        console.error('Document object not available yet. Script may not run correctly.');
+        return;
+    }
 
     const trackNames = {
         '6': 'Uptown',
@@ -373,26 +379,33 @@
         }
     `;
 
+    // Consolidated Quick Launch Container styles
     style.textContent += `
         .quick-launch-container {
-            display: none !important;
             position: relative !important;
+            display: flex !important;
             flex-direction: column !important;
+            width: 100% !important;
+            max-width: 800px !important;
             gap: 5px !important;
             margin-top: 5px !important;
             margin-bottom: 10px !important;
-            width: 100% !important;
-            max-width: 800px !important;
             background-color: #2a2a2a !important;
-            padding: 5px !important;
+            padding: 10px !important;
             border-radius: 5px !important;
             border: 1px solid #444 !important;
             z-index: 1 !important;
         }
 
         .quick-launch-container:not(:empty) {
-            display: flex !important;
             justify-content: flex-start !important;
+        }
+
+        .quick-launch-container .button-container {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            gap: 5px !important;
+            width: 100% !important;
         }
 
         .quick-launch-button {
@@ -417,26 +430,6 @@
             border-color: #777 !important;
             transform: translateY(-1px) !important;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3) !important;
-        }
-
-        .car-select-section .car-input-container {
-            display: flex;
-            gap: 10px;
-            align-items: flex-start;
-        }
-
-        .car-select-section .car-id-wrapper {
-            flex: 0 0 30%;
-        }
-
-        .car-select-section .car-dropdown-wrapper {
-            flex: 0 0 70%;
-        }
-
-        .car-select-section input,
-        .car-select-section select {
-            width: 100% !important;
-            box-sizing: border-box;
         }
 
         .quick-launch-status {
@@ -479,28 +472,26 @@
         .quick-launch-status.show {
             opacity: 1 !important;
         }
+    `;
 
-        .quick-launch-container .button-container {
-            display: flex !important;
-            flex-wrap: wrap !important;
-            gap: 5px !important;
-            width: 100% !important;
-        }
-
+    // Consolidated Race Alert styles
+    style.textContent += `
         .race-alert {
             position: relative !important;
-            background-color: rgba(255, 68, 68, 0.8);
-            color: white;
-            text-align: center;
-            padding: 5px 10px;
-            font-weight: bold;
-            user-select: none;
-            margin: 0 0 0 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            display: inline-block;
-            cursor: pointer;
-            vertical-align: middle;
+            display: inline-flex !important;
+            align-items: center !important;
+            margin-left: 10px !important;
+            background-color: rgba(255, 68, 68, 0.8) !important;
+            color: white !important;
+            text-align: center !important;
+            padding: 5px 10px !important;
+            border-radius: 4px !important;
+            font-size: 12px !important;
+            font-weight: bold !important;
+            cursor: pointer !important;
+            user-select: none !important;
+            vertical-align: middle !important;
+            order: 2 !important;
         }
 
         .quick-launch-popup {
@@ -528,6 +519,7 @@
         .race-active .defaultIcon___iiNis {
             position: relative;
             z-index: 2;
+            background-color: transparent !important;
         }
 
         .race-active .svgIconWrap___AMIqR {
@@ -545,12 +537,10 @@
         .race-active svg {
             fill: #fff !important;
         }
+    `;
 
-        /* Remove old conflicting styles */
-        .race-active .defaultIcon___iiNis {
-            background-color: transparent !important;
-        }
-
+    // Consolidated Racing UI layout styles
+    style.textContent += `
         #raceToggleRow {
             display: flex !important;
             align-items: center !important;
@@ -568,39 +558,9 @@
             gap: 10px !important;
             margin-right: auto !important;
         }
-
-        .quick-launch-container {
-            display: flex !important;
-            flex-direction: column !important;
-            width: 100% !important;
-            background-color: #2a2a2a !important;
-            padding: 10px !important;
-            border-radius: 5px !important;
-            margin-top: 5px !important;
-        }
-
-        .quick-launch-container .button-container {
-            display: flex !important;
-            flex-wrap: wrap !important;
-            gap: 5px !important;
-            width: 100% !important;
-        }
-
-        .race-alert {
-            display: inline-flex !important;
-            align-items: center !important;
-            margin-left: 10px !important;
-            background-color: rgba(255, 68, 68, 0.8) !important;
-            color: white !important;
-            padding: 5px 10px !important;
-            border-radius: 4px !important;
-            font-size: 12px !important;
-            font-weight: bold !important;
-            cursor: pointer !important;
-            user-select: none !important;
-        }
     `;
 
+    // Consolidated Form Layout styles
     style.textContent += `
         .time-config {
             display: flex;
@@ -627,19 +587,68 @@
         .time-save-option input[type="checkbox"] {
             margin: 0;
         }
-
+        
         .auto-join-section {
             margin-top: 15px;
         }
 
+        .car-select-section .car-input-container {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .car-select-section .car-id-wrapper {
+            flex: 0 0 30%;
+        }
+
+        .car-select-section .car-dropdown-wrapper {
+            flex: 0 0 70%;
+        }
+
+        .car-select-section input,
+        .car-select-section select {
+            width: 100% !important;
+            box-sizing: border-box;
+        }
+    `;
+
+    // Consolidated Race Filters and Race List styles
+    style.textContent += `
         .filter-options {
             margin-bottom: 10px;
         }
 
         .filter-row {
+            display: flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+            margin-bottom: 10px !important;
+            padding: 10px;
+            background: #2a2a2a;
+            border-radius: 5px;
+        }
+
+        .filter-buttons {
+            margin-left: auto;
             display: flex;
             gap: 10px;
             align-items: center;
+        }
+
+        .filter-row select {
+            min-width: 150px;
+        }
+
+        .filter-row .gui-button {
+            padding: 5px 10px;
+            height: 30px;
+            margin-left: auto;
+        }
+
+        .gui-button.active {
+            background-color: #2d5a3f !important;
+            border-color: #3d7a5f !important;
         }
 
         .races-list {
@@ -672,64 +681,58 @@
         .join-race-btn:hover {
             background: #3d7a5f;
         }
+    `;
 
-        .filter-row {
-            display: flex !important;
-            align-items: center !important;
-            gap: 10px !important;
-            margin-bottom: 10px;
-            padding: 10px;
-            background: #2a2a2a;
-            border-radius: 5px;
-        }
-
-        .filter-row select {
-            min-width: 150px;
-        }
-
-        .filter-row .gui-button {
-            padding: 5px 10px;
-            height: 30px;
-            margin-left: auto;
-        }
-
-        .gui-button.active {
-            background-color: #2d5a3f !important;
-            border-color: #3d7a5f !important;
-        }
-
-        .filter-buttons {
-            margin-left: auto;
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .race-filter-controls .filter-group {
-            flex: 1 !important;
-            min-width: 200px !important;
-        }
-
-        /* Add new laps filter group styles */
-        .race-filter-controls .filter-group.laps-filter {
-            min-width: 140px !important;
-            display: flex !important;
-            gap: 5px !important;
-            align-items: center !important;
-        }
-
-        .race-filter-controls .filter-group.laps-filter input[type="number"] {
-            width: 50px !important;
-            padding: 8px 5px !important;
-            text-align: center !important;
-        }
-
+    // Consolidated Race Filter Controls styles
+    style.textContent += `
         .race-filter-controls {
             background-color: #2a2a2a !important;
             border: 1px solid #444 !important;
             border-radius: 8px !important;
             padding: 10px !important;
             margin-bottom: 15px !important;
+        }
+        
+        .race-filter-controls .filter-row {
+            background-color: transparent !important;
+            padding: 0 !important;
+            gap: 10px !important;
+            flex-wrap: wrap !important;
+            margin-bottom: 5px !important;
+        }
+
+        .race-filter-controls .filter-group {
+            flex: 1 !important;
+            min-width: 200px !important;
+            margin-bottom: 5px !important;
+        }
+        
+        .race-filter-controls .filter-group.laps-filter {
+            min-width: 140px !important;
+            display: flex !important;
+            gap: 5px !important;
+            align-items: center !important;
+        }
+        
+        .race-filter-controls .filter-group.laps-filter input[type="number"] {
+            width: 50px !important;
+            padding: 8px 5px !important;
+            text-align: center !important;
+        }
+
+        .race-filter-controls .filter-buttons {
+            flex: 0 0 100% !important;
+            display: flex !important;
+            justify-content: flex-end !important;
+            gap: 5px !important;
+            margin-top: 5px !important;
+        }
+
+        .race-filter-controls .checkboxes {
+            display: flex !important;
+            flex-direction: row !important;
+            gap: 15px !important;
+            margin-bottom: 0 !important;
         }
 
         .race-filter-controls select,
@@ -757,13 +760,6 @@
             color: #ccc !important;
         }
 
-        .race-filter-controls .filter-buttons {
-            margin-top: 5px !important;
-            display: flex !important;
-            justify-content: flex-end !important;
-            gap: 5px !important;
-        }
-
         .race-filter-controls .gui-button {
             background-color: #444 !important;
             color: #eee !important;
@@ -778,58 +774,9 @@
             background-color: #2d5a3f !important;
             border-color: #3d7a5f !important;
         }
-
-        .race-filter-controls {
-            background-color: #2a2a2a !important;
-            border: 1px solid #444 !important;
-            border-radius: 8px !important;
-            padding: 10px !important;
-            margin-bottom: 15px !important;
-        }
-
-        .race-filter-controls .filter-row {
-            background-color: transparent !important;
-            padding: 0 !important;
-            gap: 10px !important;
-            flex-wrap: wrap !important;
-            margin-bottom: 5px !important;
-        }
-
-        .race-filter-controls .filter-group {
-            flex: 1 !important;
-            min-width: 200px !important;
-            margin-bottom: 5px !important;
-        }
-
-        .race-filter-controls .filter-buttons {
-            flex: 0 0 100% !important;
-            display: flex !important;
-            justify-content: flex-end !important;
-            gap: 5px !important;
-            margin-top: 5px !important;
-        }
-
-        .race-filter-controls .checkboxes {
-            display: flex !important;
-            flex-direction: row !important;
-            gap: 15px !important;
-            margin-bottom: 0 !important;
-        }
-
-        .race-filter-controls .filter-group.laps-filter {
-            min-width: 140px !important;
-            display: flex !important;
-            gap: 5px !important;
-            align-items: center !important;
-        }
-
-        .race-filter-controls .filter-group.laps-filter input[type="number"] {
-            width: 50px !important;
-            padding: 8px 5px !important;
-            text-align: center !important;
-        }
     `;
 
+    // Consolidated Auto-Join styles
     style.textContent += `
         .auto-join-buttons {
             display: flex !important;
@@ -902,7 +849,7 @@
             text-align: center !important;
             white-space: nowrap !important;
             overflow: hidden !important;
-            text-overflow:text-overflow: ellipsis !important;
+            text-overflow: ellipsis !important;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
             min-height: 32px !important;
             width: 100% !important;
@@ -914,6 +861,139 @@
             border-color: #2d5a3f !important;
             transform: translateY(-1px) !important;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3) !important;
+        }
+    `;
+
+    // Updated Minimize/Maximize Button styles
+    style.textContent += `
+        /* Enhanced button styles for full clickability and hover effects */
+        #minimizeQuickLaunchButton {
+            position: absolute !important;
+            top: 2px !important;
+            right: 2px !important;
+            width: 30px !important;
+            height: 30px !important;
+            background-color: #444 !important;
+            color: white !important;
+            border: 1px solid #666 !important;
+            border-radius: 4px !important;
+            font-size: 16px !important;
+            text-align: center !important;
+            line-height: 30px !important;
+            cursor: pointer !important;
+            z-index: 1000000 !important; /* Increased z-index */
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            transition: all 0.2s ease !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3) !important;
+            user-select: none !important;
+            pointer-events: auto !important; /* Ensure button is clickable */
+        }
+
+        #minimizeQuickLaunchButton:hover {
+            background-color: #555 !important;
+            border-color: #888 !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.4) !important;
+        }
+
+        #minimizeQuickLaunchButton:active {
+            transform: translateY(0px) !important;
+            background-color: #333 !important;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.4) !important;
+        }
+
+        #minimizeQuickLaunchButtonContent {
+            pointer-events: none !important;
+            width: 100% !important;
+            height: 100% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        /* Minimized container overrides */
+        .quick-launch-container.minimized {
+            padding: 5px !important;
+            max-height: 35px !important;
+            overflow: hidden !important;
+            position: relative !important;
+        }
+
+        .quick-launch-container.minimized .button-container,
+        .quick-launch-container.minimized .auto-join-preset-container,
+        .quick-launch-container.minimized .preset-section-header:not(:first-child) {
+            display: none !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            opacity: 0 !important;
+            overflow: hidden !important;
+        }
+
+        /* Ensure first header stays visible */
+        .quick-launch-container.minimized .preset-section-header:first-child {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            margin: 0 !important;
+        }
+
+        /* Make sure the section header doesn't interfere with the button */
+        .quick-launch-container .preset-section-header:first-child {
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+            padding-right: 40px !important;
+            z-index: 1 !important;
+            pointer-events: none !important;
+        }
+
+        /* Add clickable areas for section headers */
+        .quick-launch-container .preset-section-header:first-child > span {
+            pointer-events: auto !important;
+            display: inline-block !important;
+        }
+    `;
+
+    // Additional force-override styles for minimized state
+    style.textContent += `
+        /* Additional force-override styles for minimized state */
+        .quick-launch-container.minimized .button-container,
+        .quick-launch-container.minimized .auto-join-preset-container,
+        .quick-launch-container.minimized .preset-section-header:not(:first-child) {
+            display: none !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            opacity: 0 !important;
+            overflow: hidden !important;
+        }
+
+        .quick-launch-container.minimized {
+            padding: 5px !important;
+            max-height: 35px !important;
+            overflow: hidden !important;
+            position: relative !important;
+        }
+
+        /* Ensure first header stays visible */
+        .quick-launch-container.minimized .preset-section-header:first-child {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            margin: 0 !important;
+        }
+
+        /* Make sure minimize button is always visible */
+        #minimizeQuickLaunchButton {
+            display: block !important;
+            z-index: 1000000 !important; /* Increased z-index */
+            position: absolute !important;
+            pointer-events: auto !important; /* Ensure button is clickable */
+        }
+
+        /* Ensure the container is always above the button */
+        .quick-launch-container {
+            z-index: 1 !important;
         }
     `;
 
@@ -1039,6 +1119,7 @@
         gui.innerHTML = `
             <div class="banner-container">
                 <button type="button" id="closeGUIButton" class="close-button" title="Close GUI">×</button>
+                <button type="button" id="minimizeGUIButton" title="Minimize/Maximize GUI">_</button>
                 <img id="raceBanner" src="https://www.torn.com/images/v2/racing/header/banners/976_classA.png" alt="Racing Banner">
                 <h2>Race Configuration</h2>
             </div>
@@ -1235,13 +1316,19 @@
 
             <div style="text-align: center; margin-top: 20px; color: #888; font-size: 1.2em;">
                 Script created by <a href="https://www.torn.com/profiles.php?XID=268863" target="_blank" style="color: #888; text-decoration: none;">GNSC4 [268863]</a><br>
-                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.5.9 Official Forum Link</a>
+                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.6.0 Official Forum Link</a>
             </div>
         `;
 
         gui.addEventListener('touchstart', function(e) {
             e.stopPropagation();
         }, { passive: true });
+
+        // Restore minimized state if previously minimized
+        const isMinimized = GM_getValue('raceConfigGUIMinimized', false);
+        if (isMinimized) {
+            gui.classList.add('minimized');
+        }
 
         return gui;
     }
@@ -1275,6 +1362,7 @@
         const statusMessageBox = document.getElementById('statusMessageBox');
         const createRaceButton = document.getElementById('createRaceButton');
         const closeGUIButton = document.getElementById('closeGUIButton');
+        const minimizeGUIButton = document.getElementById('minimizeGUIButton');
 
         if (saveApiKeyButton) {
             saveApiKeyButton.addEventListener('click', () => {
@@ -1338,6 +1426,23 @@
             });
         } else {
             console.error("Error: closeGUIButton element not found in initializeGUI");
+        }
+
+        if (minimizeGUIButton) {
+            minimizeGUIButton.parentNode.removeChild(minimizeGUIButton);
+            console.log("Removed minimizeGUIButton as requested");
+        } else {
+            console.error("Error: minimizeGUIButton element not found in initializeGUI");
+        }
+
+        // Make the h2 title also toggle minimize when clicked
+        const titleElement = gui.querySelector('h2');
+        if (titleElement) {
+            titleElement.addEventListener('click', () => {
+                if (gui.classList.contains('minimized')) {
+                    toggleMinimizeGUI();
+                }
+            });
         }
 
         if (carDropdown && carIdInput) {
@@ -1903,20 +2008,38 @@
             return;
         }
 
-        // Create containers
+        console.log('Creating minimize button');
+        
+        // Create a completely new button with optimized structure
+        const minimizeButton = document.createElement('button');
+        minimizeButton.id = 'minimizeQuickLaunchButton';
+        minimizeButton.type = 'button';
+        minimizeButton.title = 'Minimize Quick Launch Area';
+        
+        // Create inner content div to prevent pointer event issues
+        const innerContent = document.createElement('div');
+        innerContent.id = 'minimizeQuickLaunchButtonContent';
+        innerContent.textContent = '_';
+        minimizeButton.appendChild(innerContent);
+        
+        // Add to container immediately
+        container.appendChild(minimizeButton);
+        console.log('Minimize button added to container');
+
+        // Create containers for other content
         const buttonContainer = document.createElement('div');
         buttonContainer.className = 'button-container';
         const statusDiv = document.createElement('div');
         statusDiv.className = 'quick-launch-status';
 
         // Create section headers
-        const quickLaunchHeader = document.createElement('h4');
-        quickLaunchHeader.textContent = 'Quick Launch Presets';
+        const quickLaunchHeader = document.createElement('div');
         quickLaunchHeader.className = 'preset-section-header';
+        quickLaunchHeader.textContent = 'Quick Launch Presets';
 
-        const autoJoinHeader = document.createElement('h4');
-        autoJoinHeader.textContent = 'Auto Join Presets';
+        const autoJoinHeader = document.createElement('div');
         autoJoinHeader.className = 'preset-section-header';
+        autoJoinHeader.textContent = 'Auto Join Presets';
 
         // Create auto-join container
         const autoJoinContainer = document.createElement('div');
@@ -1954,71 +2077,213 @@
             buttonContainer.appendChild(button);
         });
 
-// Add auto-join presets
-Object.entries(autoJoinPresets).forEach(([name, preset]) => {
-    const buttonContainer = document.createElement('div');
-    buttonContainer.className = 'preset-button-container';
-    
-    const button = document.createElement('button');
-    button.className = 'auto-join-preset-button';
-    button.textContent = name;
-    
-    // Enhanced tooltip with car information - fixed to avoid showing "Car ID:" twice
-    const carInfo = preset.carName ? 
-        `${preset.carName} (ID: ${preset.selectedCarId})` : 
-        `${preset.selectedCarId}`;
-        
-    button.title = `Auto-join preset: ${name}\nTrack: ${preset.track}\nLaps: ${preset.minLaps}-${preset.maxLaps}\nCar: ${carInfo}`;
-    
-    button.addEventListener('click', () => {
-        applyAutoJoinPreset(preset);
-    });
+        // Add auto-join presets
+        Object.entries(autoJoinPresets).forEach(([name, preset]) => {
+            const buttonContainer = document.createElement('div');
+            buttonContainer.className = 'preset-button-container';
+            
+            const button = document.createElement('button');
+            button.className = 'auto-join-preset-button';
+            button.textContent = name;
+            
+            const carInfo = preset.carName ? 
+                `${preset.carName} (ID: ${preset.selectedCarId})` : 
+                `${preset.selectedCarId}`;
+                
+            button.title = `Auto-join preset: ${name}\nTrack: ${preset.track}\nLaps: ${preset.minLaps}-${preset.maxLaps}\nCar: ${carInfo}`;
+            
+            button.addEventListener('click', () => {
+                applyAutoJoinPreset(preset);
+            });
 
-    const removeButton = document.createElement('a');
-    removeButton.className = 'remove-preset';
-    removeButton.href = '#';
-    removeButton.textContent = '×';
-    removeButton.title = `Remove auto-join preset: ${name}`;
-    removeButton.style.cssText = `
-        position: absolute !important;
-        top: -8px !important;
-        right: -8px !important;
-        background-color: #955 !important;
-        color: #eee !important;
-        width: 20px !important;
-        height: 20px !important;
-        border-radius: 50% !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        text-decoration: none !important;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
-        transition: all 0.2s ease !important;
-        z-index: 100 !important;
-    `;
-    
-    removeButton.addEventListener('click', (event) => {
-        event.preventDefault();
-        removeAutoJoinPreset(name);
-    });
-
-    removeButton.addEventListener('mouseover', () => {
-        removeButton.style.backgroundColor = '#c77';
-        removeButton.style.transform = 'scale(1.1)';
-    });
-
-    removeButton.addEventListener('mouseout', () => {
-        removeButton.style.backgroundColor = '#955';
-        removeButton.style.transform = 'scale(1)';
-    });
-    
-    buttonContainer.appendChild(button);
-    buttonContainer.appendChild(removeButton);
-    autoJoinContainer.appendChild(buttonContainer);
-});
+            const removeButton = document.createElement('a');
+            removeButton.className = 'remove-preset';
+            removeButton.href = '#';
+            removeButton.textContent = '×';
+            removeButton.title = `Remove auto-join preset: ${name}`;
+            removeButton.style.cssText = `
+                position: absolute !important;
+                top: -8px !important;
+                right: -8px !important;
+                background-color: #955 !important;
+                color: #eee !important;
+                width: 20px !important;
+                height: 20px !important;
+                border-radius: 50% !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                text-decoration: none !important;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+                transition: all 0.2s ease !important;
+                z-index: 100 !important;
+            `;
+            
+            removeButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                removeAutoJoinPreset(name);
+            });
+            
+            buttonContainer.appendChild(button);
+            buttonContainer.appendChild(removeButton);
+            autoJoinContainer.appendChild(buttonContainer);
+        });
 
         container.style.display = 'flex';
+
+        // Use multiple event listeners for redundancy
+        const addButtonListeners = () => {
+            const btn = document.getElementById('minimizeQuickLaunchButton');
+            if (!btn) return;
+            
+            // Clear any existing listeners
+            const newBtn = btn.cloneNode(true);
+            if (btn.parentNode) {
+                btn.parentNode.replaceChild(newBtn, btn);
+            }
+            
+            // Add the event listeners
+            newBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Minimize button clicked');
+                toggleQuickLaunchMinimize();
+            });
+            
+            // Touch support for mobile
+            newBtn.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                e.stopPropagation(); 
+                console.log('Minimize button touched');
+                toggleQuickLaunchMinimize();
+            }, { passive: false });
+        };
+
+        // Add button listeners immediately and after a delay to ensure they're attached
+        addButtonListeners();
+        setTimeout(addButtonListeners, 100);
+
+        // Check minimized state
+        const minimizedState = GM_getValue('quickLaunchMinimized', false);
+        if (minimizedState === true) {
+            container.classList.add('minimized');
+            const btnContent = document.getElementById('minimizeQuickLaunchButtonContent');
+            if (btnContent) btnContent.textContent = '□';
+            minimizeButton.title = 'Expand Quick Launch Area';
+            
+            // Force hide elements immediately
+            const buttonContainer = container.querySelector('.button-container');
+            const autoJoinContainer = container.querySelector('.auto-join-preset-container');
+            const otherHeaders = container.querySelectorAll('.preset-section-header:not(:first-child)');
+            
+            if (buttonContainer) buttonContainer.style.display = 'none';
+            if (autoJoinContainer) autoJoinContainer.style.display = 'none';
+            otherHeaders.forEach(header => header.style.display = 'none');
+            
+            // Force container height
+            container.style.maxHeight = '35px';
+            container.style.overflow = 'hidden';
+        }
     }
+
+    // Function to toggle the entire quick launch container - simplified for reliability
+    function toggleQuickLaunchMinimize() {
+        console.log('toggleQuickLaunchMinimize called');
+        const container = document.getElementById('quickLaunchContainer');
+        const minimizeButton = document.getElementById('minimizeQuickLaunchButton');
+        const buttonContent = document.getElementById('minimizeQuickLaunchButtonContent');
+        
+        if (!container || !minimizeButton) {
+            console.error('Container or button not found');
+            return;
+        }
+        
+        const isCurrentlyMinimized = container.classList.contains('minimized');
+        console.log('Current state:', isCurrentlyMinimized ? 'minimized' : 'maximized');
+        
+        if (isCurrentlyMinimized) {
+            // Maximizing
+            container.classList.remove('minimized');
+            if (buttonContent) buttonContent.textContent = '_';
+            minimizeButton.title = 'Minimize Quick Launch Area';
+            GM_setValue('quickLaunchMinimized', false);
+            
+            // Force display of elements
+            const buttonContainer = container.querySelector('.button-container');
+            const autoJoinContainer = container.querySelector('.auto-join-preset-container');
+            const otherHeaders = container.querySelectorAll('.preset-section-header:not(:first-child)');
+            
+            if (buttonContainer) buttonContainer.style.display = 'flex';
+            if (autoJoinContainer) autoJoinContainer.style.display = 'grid';
+            otherHeaders.forEach(header => header.style.display = 'block');
+            
+            console.log('Container maximized');
+        } else {
+            // Minimizing
+            container.classList.add('minimized');
+            if (buttonContent) buttonContent.textContent = '□';
+            minimizeButton.title = 'Expand Quick Launch Area';
+            GM_setValue('quickLaunchMinimized', true);
+            
+            // Force hide elements
+            const buttonContainer = container.querySelector('.button-container');
+            const autoJoinContainer = container.querySelector('.auto-join-preset-container');
+            const otherHeaders = container.querySelectorAll('.preset-section-header:not(:first-child)');
+            
+            if (buttonContainer) buttonContainer.style.display = 'none';
+            if (autoJoinContainer) autoJoinContainer.style.display = 'none';
+            otherHeaders.forEach(header => header.style.display = 'none');
+            
+            console.log('Container minimized');
+        }
+        
+        // Force a reflow/repaint
+        container.style.maxHeight = isCurrentlyMinimized ? 'none' : '35px';
+        container.style.padding = isCurrentlyMinimized ? '10px' : '5px';
+        
+        // Add important inline style for additional assurance
+        if (!isCurrentlyMinimized) {
+            container.style.cssText += "max-height: 35px !important; overflow: hidden !important;";
+        } else {
+            container.style.cssText += "max-height: none !important; overflow: visible !important;";
+        }
+    }
+
+    // Add additional CSS styles to ensure minimize functionality works
+    style.textContent += `
+        /* Additional force-override styles for minimized state */
+        .quick-launch-container.minimized .button-container,
+        .quick-launch-container.minimized .auto-join-preset-container,
+        .quick-launch-container.minimized .preset-section-header:not(:first-child) {
+            display: none !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            opacity: 0 !important;
+            overflow: hidden !important;
+        }
+
+        .quick-launch-container.minimized {
+            padding: 5px !important;
+            max-height: 35px !important;
+            overflow: hidden !important;
+            position: relative !important;
+        }
+
+        /* Ensure first header stays visible */
+        .quick-launch-container.minimized .preset-section-header:first-child {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            margin: 0 !important;
+        }
+
+        /* Make sure minimize button is always visible */
+        #minimizeQuickLaunchButton {
+            display: block !important;
+            z-index: 999999 !important;
+            position: absolute !important;
+        }
+    `;
 
     function saveAutoJoinPreset() {
         const presetName = prompt("Enter a name for this auto-join preset:");
@@ -4124,7 +4389,14 @@ Object.entries(autoJoinPresets).forEach(([name, preset]) => {
     }
 
     function initializeAll() {
-        init();
+        // Ensure document is available before initializing
+        if (typeof document !== 'undefined' && document.readyState !== 'loading') {
+            init();
+        } else {
+            document.addEventListener('DOMContentLoaded', function() {
+                init();
+            });
+        }
     }
 
     function removeAutoJoinPreset(presetName) {
@@ -4147,5 +4419,11 @@ Object.entries(autoJoinPresets).forEach(([name, preset]) => {
         }
     }
 
-    initializeAll();
+    // Instead of directly calling initializeAll, ensure DOM is ready first
+    if (document.readyState !== 'loading') {
+        initializeAll();
+    } else {
+        document.addEventListener('DOMContentLoaded', initializeAll);
+    }
+
 })();
