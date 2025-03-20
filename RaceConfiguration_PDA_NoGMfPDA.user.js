@@ -1,10 +1,12 @@
 // ==UserScript==
-// @name         Torn Race Config GUI
-// @version      3.5.10
+// @name         Torn Race Manager
+// @version      3.6.4
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
 // @match        https://www.torn.com/*
+// @match        api.torn.com/*
+// @match        https://api.torn.com/*
 // @grant        GM.xmlHttpRequest
 // @grant        GM_xmlhttpRequest
 // @grant        GM.setValue
@@ -22,6 +24,12 @@
 
 (function() {
     'use strict';
+
+    // Ensure document is available before accessing it
+    if (typeof document === 'undefined') {
+        console.error('Document object not available yet. Script may not run correctly.');
+        return;
+    }
 
     const trackNames = {
         '6': 'Uptown',
@@ -373,26 +381,33 @@
         }
     `;
 
+    // Consolidated Quick Launch Container styles
     style.textContent += `
         .quick-launch-container {
-            display: none !important;
             position: relative !important;
+            display: flex !important;
             flex-direction: column !important;
+            width: 100% !important;
+            max-width: 800px !important;
             gap: 5px !important;
             margin-top: 5px !important;
             margin-bottom: 10px !important;
-            width: 100% !important;
-            max-width: 800px !important;
             background-color: #2a2a2a !important;
-            padding: 5px !important;
+            padding: 10px !important;
             border-radius: 5px !important;
             border: 1px solid #444 !important;
             z-index: 1 !important;
         }
 
         .quick-launch-container:not(:empty) {
-            display: flex !important;
             justify-content: flex-start !important;
+        }
+
+        .quick-launch-container .button-container {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            gap: 5px !important;
+            width: 100% !important;
         }
 
         .quick-launch-button {
@@ -417,26 +432,6 @@
             border-color: #777 !important;
             transform: translateY(-1px) !important;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3) !important;
-        }
-
-        .car-select-section .car-input-container {
-            display: flex;
-            gap: 10px;
-            align-items: flex-start;
-        }
-
-        .car-select-section .car-id-wrapper {
-            flex: 0 0 30%;
-        }
-
-        .car-select-section .car-dropdown-wrapper {
-            flex: 0 0 70%;
-        }
-
-        .car-select-section input,
-        .car-select-section select {
-            width: 100% !important;
-            box-sizing: border-box;
         }
 
         .quick-launch-status {
@@ -479,28 +474,26 @@
         .quick-launch-status.show {
             opacity: 1 !important;
         }
+    `;
 
-        .quick-launch-container .button-container {
-            display: flex !important;
-            flex-wrap: wrap !important;
-            gap: 5px !important;
-            width: 100% !important;
-        }
-
+    // Consolidated Race Alert styles
+    style.textContent += `
         .race-alert {
             position: relative !important;
-            background-color: rgba(255, 68, 68, 0.8);
-            color: white;
-            text-align: center;
-            padding: 5px 10px;
-            font-weight: bold;
-            user-select: none;
-            margin: 0 0 0 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            display: inline-block;
-            cursor: pointer;
-            vertical-align: middle;
+            display: inline-flex !important;
+            align-items: center !important;
+            margin-left: 10px !important;
+            background-color: rgba(255, 68, 68, 0.8) !important;
+            color: white !important;
+            text-align: center !important;
+            padding: 5px 10px !important;
+            border-radius: 4px !important;
+            font-size: 12px !important;
+            font-weight: bold !important;
+            cursor: pointer !important;
+            user-select: none !important;
+            vertical-align: middle !important;
+            order: 2 !important;
         }
 
         .quick-launch-popup {
@@ -528,6 +521,7 @@
         .race-active .defaultIcon___iiNis {
             position: relative;
             z-index: 2;
+            background-color: transparent !important;
         }
 
         .race-active .svgIconWrap___AMIqR {
@@ -545,12 +539,10 @@
         .race-active svg {
             fill: #fff !important;
         }
+    `;
 
-        /* Remove old conflicting styles */
-        .race-active .defaultIcon___iiNis {
-            background-color: transparent !important;
-        }
-
+    // Consolidated Racing UI layout styles
+    style.textContent += `
         #raceToggleRow {
             display: flex !important;
             align-items: center !important;
@@ -568,39 +560,9 @@
             gap: 10px !important;
             margin-right: auto !important;
         }
-
-        .quick-launch-container {
-            display: flex !important;
-            flex-direction: column !important;
-            width: 100% !important;
-            background-color: #2a2a2a !important;
-            padding: 10px !important;
-            border-radius: 5px !important;
-            margin-top: 5px !important;
-        }
-
-        .quick-launch-container .button-container {
-            display: flex !important;
-            flex-wrap: wrap !important;
-            gap: 5px !important;
-            width: 100% !important;
-        }
-
-        .race-alert {
-            display: inline-flex !important;
-            align-items: center !important;
-            margin-left: 10px !important;
-            background-color: rgba(255, 68, 68, 0.8) !important;
-            color: white !important;
-            padding: 5px 10px !important;
-            border-radius: 4px !important;
-            font-size: 12px !important;
-            font-weight: bold !important;
-            cursor: pointer !important;
-            user-select: none !important;
-        }
     `;
 
+    // Consolidated Form Layout styles
     style.textContent += `
         .time-config {
             display: flex;
@@ -627,19 +589,68 @@
         .time-save-option input[type="checkbox"] {
             margin: 0;
         }
-
+        
         .auto-join-section {
             margin-top: 15px;
         }
 
+        .car-select-section .car-input-container {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .car-select-section .car-id-wrapper {
+            flex: 0 0 30%;
+        }
+
+        .car-select-section .car-dropdown-wrapper {
+            flex: 0 0 70%;
+        }
+
+        .car-select-section input,
+        .car-select-section select {
+            width: 100% !important;
+            box-sizing: border-box;
+        }
+    `;
+
+    // Consolidated Race Filters and Race List styles
+    style.textContent += `
         .filter-options {
             margin-bottom: 10px;
         }
 
         .filter-row {
+            display: flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+            margin-bottom: 10px !important;
+            padding: 10px;
+            background: #2a2a2a;
+            border-radius: 5px;
+        }
+
+        .filter-buttons {
+            margin-left: auto;
             display: flex;
             gap: 10px;
             align-items: center;
+        }
+
+        .filter-row select {
+            min-width: 150px;
+        }
+
+        .filter-row .gui-button {
+            padding: 5px 10px;
+            height: 30px;
+            margin-left: auto;
+        }
+
+        .gui-button.active {
+            background-color: #2d5a3f !important;
+            border-color: #3d7a5f !important;
         }
 
         .races-list {
@@ -672,64 +683,58 @@
         .join-race-btn:hover {
             background: #3d7a5f;
         }
+    `;
 
-        .filter-row {
-            display: flex !important;
-            align-items: center !important;
-            gap: 10px !important;
-            margin-bottom: 10px;
-            padding: 10px;
-            background: #2a2a2a;
-            border-radius: 5px;
-        }
-
-        .filter-row select {
-            min-width: 150px;
-        }
-
-        .filter-row .gui-button {
-            padding: 5px 10px;
-            height: 30px;
-            margin-left: auto;
-        }
-
-        .gui-button.active {
-            background-color: #2d5a3f !important;
-            border-color: #3d7a5f !important;
-        }
-
-        .filter-buttons {
-            margin-left: auto;
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .race-filter-controls .filter-group {
-            flex: 1 !important;
-            min-width: 200px !important;
-        }
-
-        /* Add new laps filter group styles */
-        .race-filter-controls .filter-group.laps-filter {
-            min-width: 140px !important;
-            display: flex !important;
-            gap: 5px !important;
-            align-items: center !important;
-        }
-
-        .race-filter-controls .filter-group.laps-filter input[type="number"] {
-            width: 50px !important;
-            padding: 8px 5px !important;
-            text-align: center !important;
-        }
-
+    // Consolidated Race Filter Controls styles
+    style.textContent += `
         .race-filter-controls {
             background-color: #2a2a2a !important;
             border: 1px solid #444 !important;
             border-radius: 8px !important;
             padding: 10px !important;
             margin-bottom: 15px !important;
+        }
+        
+        .race-filter-controls .filter-row {
+            background-color: transparent !important;
+            padding: 0 !important;
+            gap: 10px !important;
+            flex-wrap: wrap !important;
+            margin-bottom: 5px !important;
+        }
+
+        .race-filter-controls .filter-group {
+            flex: 1 !important;
+            min-width: 200px !important;
+            margin-bottom: 5px !important;
+        }
+        
+        .race-filter-controls .filter-group.laps-filter {
+            min-width: 140px !important;
+            display: flex !important;
+            gap: 5px !important;
+            align-items: center !important;
+        }
+        
+        .race-filter-controls .filter-group.laps-filter input[type="number"] {
+            width: 50px !important;
+            padding: 8px 5px !important;
+            text-align: center !important;
+        }
+
+        .race-filter-controls .filter-buttons {
+            flex: 0 0 100% !important;
+            display: flex !important;
+            justify-content: flex-end !important;
+            gap: 5px !important;
+            margin-top: 5px !important;
+        }
+
+        .race-filter-controls .checkboxes {
+            display: flex !important;
+            flex-direction: row !important;
+            gap: 15px !important;
+            margin-bottom: 0 !important;
         }
 
         .race-filter-controls select,
@@ -757,13 +762,6 @@
             color: #ccc !important;
         }
 
-        .race-filter-controls .filter-buttons {
-            margin-top: 5px !important;
-            display: flex !important;
-            justify-content: flex-end !important;
-            gap: 5px !important;
-        }
-
         .race-filter-controls .gui-button {
             background-color: #444 !important;
             color: #eee !important;
@@ -778,58 +776,9 @@
             background-color: #2d5a3f !important;
             border-color: #3d7a5f !important;
         }
-
-        .race-filter-controls {
-            background-color: #2a2a2a !important;
-            border: 1px solid #444 !important;
-            border-radius: 8px !important;
-            padding: 10px !important;
-            margin-bottom: 15px !important;
-        }
-
-        .race-filter-controls .filter-row {
-            background-color: transparent !important;
-            padding: 0 !important;
-            gap: 10px !important;
-            flex-wrap: wrap !important;
-            margin-bottom: 5px !important;
-        }
-
-        .race-filter-controls .filter-group {
-            flex: 1 !important;
-            min-width: 200px !important;
-            margin-bottom: 5px !important;
-        }
-
-        .race-filter-controls .filter-buttons {
-            flex: 0 0 100% !important;
-            display: flex !important;
-            justify-content: flex-end !important;
-            gap: 5px !important;
-            margin-top: 5px !important;
-        }
-
-        .race-filter-controls .checkboxes {
-            display: flex !important;
-            flex-direction: row !important;
-            gap: 15px !important;
-            margin-bottom: 0 !important;
-        }
-
-        .race-filter-controls .filter-group.laps-filter {
-            min-width: 140px !important;
-            display: flex !important;
-            gap: 5px !important;
-            align-items: center !important;
-        }
-
-        .race-filter-controls .filter-group.laps-filter input[type="number"] {
-            width: 50px !important;
-            padding: 8px 5px !important;
-            text-align: center !important;
-        }
     `;
 
+    // Consolidated Auto-Join styles
     style.textContent += `
         .auto-join-buttons {
             display: flex !important;
@@ -917,6 +866,139 @@
         }
     `;
 
+    // Updated Minimize/Maximize Button styles
+    style.textContent += `
+        /* Enhanced button styles for full clickability and hover effects */
+        #minimizeQuickLaunchButton {
+            position: absolute !important;
+            top: 2px !important;
+            right: 2px !important;
+            width: 30px !important;
+            height: 30px !important;
+            background-color: #444 !important;
+            color: white !important;
+            border: 1px solid #666 !important;
+            border-radius: 4px !important;
+            font-size: 16px !important;
+            text-align: center !important;
+            line-height: 30px !important;
+            cursor: pointer !important;
+            z-index: 1000000 !important; /* Increased z-index */
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            transition: all 0.2s ease !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3) !important;
+            user-select: none !important;
+            pointer-events: auto !important; /* Ensure button is clickable */
+        }
+
+        #minimizeQuickLaunchButton:hover {
+            background-color: #555 !important;
+            border-color: #888 !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.4) !important;
+        }
+
+        #minimizeQuickLaunchButton:active {
+            transform: translateY(0px) !important;
+            background-color: #333 !important;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.4) !important;
+        }
+
+        #minimizeQuickLaunchButtonContent {
+            pointer-events: none !important;
+            width: 100% !important;
+            height: 100% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        /* Minimized container overrides */
+        .quick-launch-container.minimized {
+            padding: 5px !important;
+            max-height: 35px !important;
+            overflow: hidden !important;
+            position: relative !important;
+        }
+
+        .quick-launch-container.minimized .button-container,
+        .quick-launch-container.minimized .auto-join-preset-container,
+        .quick-launch-container.minimized .preset-section-header:not(:first-child) {
+            display: none !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            opacity: 0 !important;
+            overflow: hidden !important;
+        }
+
+        /* Ensure first header stays visible */
+        .quick-launch-container.minimized .preset-section-header:first-child {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            margin: 0 !important;
+        }
+
+        /* Make sure the section header doesn't interfere with the button */
+        .quick-launch-container .preset-section-header:first-child {
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+            padding-right: 40px !important;
+            z-index: 1 !important;
+            pointer-events: none !important;
+        }
+
+        /* Add clickable areas for section headers */
+        .quick-launch-container .preset-section-header:first-child > span {
+            pointer-events: auto !important;
+            display: inline-block !important;
+        }
+    `;
+
+    // Additional force-override styles for minimized state
+    style.textContent += `
+        /* Additional force-override styles for minimized state */
+        .quick-launch-container.minimized .button-container,
+        .quick-launch-container.minimized .auto-join-preset-container,
+        .quick-launch-container.minimized .preset-section-header:not(:first-child) {
+            display: none !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            opacity: 0 !important;
+            overflow: hidden !important;
+        }
+
+        .quick-launch-container.minimized {
+            padding: 5px !important;
+            max-height: 35px !important;
+            overflow: hidden !important;
+            position: relative !important;
+        }
+
+        /* Ensure first header stays visible */
+        .quick-launch-container.minimized .preset-section-header:first-child {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            margin: 0 !important;
+        }
+
+        /* Make sure minimize button is always visible */
+        #minimizeQuickLaunchButton {
+            display: block !important;
+            z-index: 1000000 !important; /* Increased z-index */
+            position: absolute !important;
+            pointer-events: auto !important; /* Ensure button is clickable */
+        }
+
+        /* Ensure the container is always above the button */
+        .quick-launch-container {
+            z-index: 1 !important;
+        }
+    `;
+
     document.head.appendChild(style);
 
     // Main initialization functions
@@ -928,7 +1010,6 @@
         initializeRaceAlerts();
         
         // Initialize auto-join section for all pages where the GUI might appear
-
         initializeAutoJoinSection();
         
         // Only initialize racing features on the racing page
@@ -1040,6 +1121,7 @@
         gui.innerHTML = `
             <div class="banner-container">
                 <button type="button" id="closeGUIButton" class="close-button" title="Close GUI">×</button>
+                <button type="button" id="minimizeGUIButton" title="Minimize/Maximize GUI">_</button>
                 <img id="raceBanner" src="https://www.torn.com/images/v2/racing/header/banners/976_classA.png" alt="Racing Banner">
                 <h2>Race Configuration</h2>
             </div>
@@ -1236,13 +1318,19 @@
 
             <div style="text-align: center; margin-top: 20px; color: #888; font-size: 1.2em;">
                 Script created by <a href="https://www.torn.com/profiles.php?XID=268863" target="_blank" style="color: #888; text-decoration: none;">GNSC4 [268863]</a><br>
-                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.5.1 Official Forum Link</a>
+                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.6.1 Official Forum Link</a>
             </div>
         `;
 
         gui.addEventListener('touchstart', function(e) {
             e.stopPropagation();
         }, { passive: true });
+
+        // Restore minimized state if previously minimized
+        const isMinimized = GM_getValue('raceConfigGUIMinimized', false);
+        if (isMinimized) {
+            gui.classList.add('minimized');
+        }
 
         return gui;
     }
@@ -1276,6 +1364,7 @@
         const statusMessageBox = document.getElementById('statusMessageBox');
         const createRaceButton = document.getElementById('createRaceButton');
         const closeGUIButton = document.getElementById('closeGUIButton');
+        const minimizeGUIButton = document.getElementById('minimizeGUIButton');
 
         if (saveApiKeyButton) {
             saveApiKeyButton.addEventListener('click', () => {
@@ -1339,6 +1428,23 @@
             });
         } else {
             console.error("Error: closeGUIButton element not found in initializeGUI");
+        }
+
+        if (minimizeGUIButton) {
+            minimizeGUIButton.parentNode.removeChild(minimizeGUIButton);
+            console.log("Removed minimizeGUIButton as requested");
+        } else {
+            console.error("Error: minimizeGUIButton element not found in initializeGUI");
+        }
+
+        // Make the h2 title also toggle minimize when clicked
+        const titleElement = gui.querySelector('h2');
+        if (titleElement) {
+            titleElement.addEventListener('click', () => {
+                if (gui.classList.contains('minimized')) {
+                    toggleMinimizeGUI();
+                }
+            });
         }
 
         if (carDropdown && carIdInput) {
@@ -1904,20 +2010,38 @@
             return;
         }
 
-        // Create containers
+        console.log('Creating minimize button');
+        
+        // Create a completely new button with optimized structure
+        const minimizeButton = document.createElement('button');
+        minimizeButton.id = 'minimizeQuickLaunchButton';
+        minimizeButton.type = 'button';
+        minimizeButton.title = 'Minimize Quick Launch Area';
+        
+        // Create inner content div to prevent pointer event issues
+        const innerContent = document.createElement('div');
+        innerContent.id = 'minimizeQuickLaunchButtonContent';
+        innerContent.textContent = '_';
+        minimizeButton.appendChild(innerContent);
+        
+        // Add to container immediately
+        container.appendChild(minimizeButton);
+        console.log('Minimize button added to container');
+
+        // Create containers for other content
         const buttonContainer = document.createElement('div');
         buttonContainer.className = 'button-container';
         const statusDiv = document.createElement('div');
         statusDiv.className = 'quick-launch-status';
 
         // Create section headers
-        const quickLaunchHeader = document.createElement('h4');
-        quickLaunchHeader.textContent = 'Quick Launch Presets';
+        const quickLaunchHeader = document.createElement('div');
         quickLaunchHeader.className = 'preset-section-header';
+        quickLaunchHeader.textContent = 'Quick Launch Presets';
 
-        const autoJoinHeader = document.createElement('h4');
-        autoJoinHeader.textContent = 'Auto Join Presets';
+        const autoJoinHeader = document.createElement('div');
         autoJoinHeader.className = 'preset-section-header';
+        autoJoinHeader.textContent = 'Auto Join Presets';
 
         // Create auto-join container
         const autoJoinContainer = document.createElement('div');
@@ -1964,10 +2088,9 @@
             button.className = 'auto-join-preset-button';
             button.textContent = name;
             
-            // Enhanced tooltip with car information
             const carInfo = preset.carName ? 
                 `${preset.carName} (ID: ${preset.selectedCarId})` : 
-                `Car ID: ${preset.selectedCarId}`;
+                `${preset.selectedCarId}`;
                 
             button.title = `Auto-join preset: ${name}\nTrack: ${preset.track}\nLaps: ${preset.minLaps}-${preset.maxLaps}\nCar: ${carInfo}`;
             
@@ -2002,16 +2125,6 @@
                 event.preventDefault();
                 removeAutoJoinPreset(name);
             });
-
-            removeButton.addEventListener('mouseover', () => {
-                removeButton.style.backgroundColor = '#c77';
-                removeButton.style.transform = 'scale(1.1)';
-            });
-
-            removeButton.addEventListener('mouseout', () => {
-                removeButton.style.backgroundColor = '#955';
-                removeButton.style.transform = 'scale(1)';
-            });
             
             buttonContainer.appendChild(button);
             buttonContainer.appendChild(removeButton);
@@ -2019,7 +2132,160 @@
         });
 
         container.style.display = 'flex';
+
+        // Use multiple event listeners for redundancy
+        const addButtonListeners = () => {
+            const btn = document.getElementById('minimizeQuickLaunchButton');
+            if (!btn) return;
+            
+            // Clear any existing listeners
+            const newBtn = btn.cloneNode(true);
+            if (btn.parentNode) {
+                btn.parentNode.replaceChild(newBtn, btn);
+            }
+            
+            // Add the event listeners
+            newBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Minimize button clicked');
+                toggleQuickLaunchMinimize();
+            });
+            
+            // Touch support for mobile
+            newBtn.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                e.stopPropagation(); 
+                console.log('Minimize button touched');
+                toggleQuickLaunchMinimize();
+            }, { passive: false });
+        };
+
+        // Add button listeners immediately and after a delay to ensure they're attached
+        addButtonListeners();
+        setTimeout(addButtonListeners, 100);
+
+        // Check minimized state
+        const minimizedState = GM_getValue('quickLaunchMinimized', false);
+        if (minimizedState === true) {
+            container.classList.add('minimized');
+            const btnContent = document.getElementById('minimizeQuickLaunchButtonContent');
+            if (btnContent) btnContent.textContent = '□';
+            minimizeButton.title = 'Expand Quick Launch Area';
+            
+            // Force hide elements immediately
+            const buttonContainer = container.querySelector('.button-container');
+            const autoJoinContainer = container.querySelector('.auto-join-preset-container');
+            const otherHeaders = container.querySelectorAll('.preset-section-header:not(:first-child)');
+            
+            if (buttonContainer) buttonContainer.style.display = 'none';
+            if (autoJoinContainer) autoJoinContainer.style.display = 'none';
+            otherHeaders.forEach(header => header.style.display = 'none');
+            
+            // Force container height
+            container.style.maxHeight = '35px';
+            container.style.overflow = 'hidden';
+        }
     }
+
+    // Function to toggle the entire quick launch container - simplified for reliability
+    function toggleQuickLaunchMinimize() {
+        console.log('toggleQuickLaunchMinimize called');
+        const container = document.getElementById('quickLaunchContainer');
+        const minimizeButton = document.getElementById('minimizeQuickLaunchButton');
+        const buttonContent = document.getElementById('minimizeQuickLaunchButtonContent');
+        
+        if (!container || !minimizeButton) {
+            console.error('Container or button not found');
+            return;
+        }
+        
+        const isCurrentlyMinimized = container.classList.contains('minimized');
+        console.log('Current state:', isCurrentlyMinimized ? 'minimized' : 'maximized');
+        
+        if (isCurrentlyMinimized) {
+            // Maximizing
+            container.classList.remove('minimized');
+            if (buttonContent) buttonContent.textContent = '_';
+            minimizeButton.title = 'Minimize Quick Launch Area';
+            GM_setValue('quickLaunchMinimized', false);
+            
+            // Force display of elements
+            const buttonContainer = container.querySelector('.button-container');
+            const autoJoinContainer = container.querySelector('.auto-join-preset-container');
+            const otherHeaders = container.querySelectorAll('.preset-section-header:not(:first-child)');
+            
+            if (buttonContainer) buttonContainer.style.display = 'flex';
+            if (autoJoinContainer) autoJoinContainer.style.display = 'grid';
+            otherHeaders.forEach(header => header.style.display = 'block');
+            
+            console.log('Container maximized');
+        } else {
+            // Minimizing
+            container.classList.add('minimized');
+            if (buttonContent) buttonContent.textContent = '□';
+            minimizeButton.title = 'Expand Quick Launch Area';
+            GM_setValue('quickLaunchMinimized', true);
+            
+            // Force hide elements
+            const buttonContainer = container.querySelector('.button-container');
+            const autoJoinContainer = container.querySelector('.auto-join-preset-container');
+            const otherHeaders = container.querySelectorAll('.preset-section-header:not(:first-child)');
+            
+            if (buttonContainer) buttonContainer.style.display = 'none';
+            if (autoJoinContainer) autoJoinContainer.style.display = 'none';
+            otherHeaders.forEach(header => header.style.display = 'none');
+            
+            console.log('Container minimized');
+        }
+        
+        // Force a reflow/repaint
+        container.style.maxHeight = isCurrentlyMinimized ? 'none' : '35px';
+        container.style.padding = isCurrentlyMinimized ? '10px' : '5px';
+        
+        // Add important inline style for additional assurance
+        if (!isCurrentlyMinimized) {
+            container.style.cssText += "max-height: 35px !important; overflow: hidden !important;";
+        } else {
+            container.style.cssText += "max-height: none !important; overflow: visible !important;";
+        }
+    }
+
+    // Add additional CSS styles to ensure minimize functionality works
+    style.textContent += `
+        /* Additional force-override styles for minimized state */
+        .quick-launch-container.minimized .button-container,
+        .quick-launch-container.minimized .auto-join-preset-container,
+        .quick-launch-container.minimized .preset-section-header:not(:first-child) {
+            display: none !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            opacity: 0 !important;
+            overflow: hidden !important;
+        }
+
+        .quick-launch-container.minimized {
+            padding: 5px !important;
+            max-height: 35px !important;
+            overflow: hidden !important;
+            position: relative !important;
+        }
+
+        /* Ensure first header stays visible */
+        .quick-launch-container.minimized .preset-section-header:first-child {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            margin: 0 !important;
+        }
+
+        /* Make sure minimize button is always visible */
+        #minimizeQuickLaunchButton {
+            display: block !important;
+            z-index: 999999 !important;
+            position: absolute !important;
+        }
+    `;
 
     function saveAutoJoinPreset() {
         const presetName = prompt("Enter a name for this auto-join preset:");
@@ -2125,6 +2391,7 @@
             }, timeout);
         });
     }
+
     async function applyAutoJoinPreset(preset) {
         try {
             // Ensure we're on Custom Events tab first
@@ -2516,22 +2783,7 @@
                 return;
             }
             
-            // We'll use either GM.xmlHttpRequest or GM_xmlhttpRequest depending on what's available
-            const xmlHttpRequestFn = typeof GM !== 'undefined' && GM.xmlHttpRequest ? 
-                                     GM.xmlHttpRequest : 
-                                     typeof GM_xmlhttpRequest !== 'undefined' ? 
-                                     GM_xmlhttpRequest : null;
-            
-            if (!xmlHttpRequestFn) {
-                console.error('[DEBUG] No GM xmlHttpRequest function available');
-                if (carStatusMessage) {
-                    carStatusMessage.textContent = 'GM API not available';
-                    carStatusMessage.style.color = 'red';
-                }
-                return;
-            }
-            
-            await xmlHttpRequestFn({
+            const response = await GM.xmlHttpRequest({
                 url: `https://api.torn.com/v2/user/?selections=enlistedcars&key=${apiKey}`,
                 method: 'GET',
                 headers: {
@@ -2646,9 +2898,13 @@
                 // Add the sorted cars
                 sortedCars.forEach(car => {
                     const carName = car.name || car.item_name;
+                    
+                    // Generate car part information using categorization
+                    let partInfo = generateCarPartInfo(car.parts || []);
+                    
                     const option = document.createElement('option');
                     option.value = car.id;
-                    option.textContent = `${carName} (ID: ${car.id})`;
+                    option.textContent = partInfo ? `${carName} (${partInfo}) [ID: ${car.id}]` : `${carName} [ID: ${car.id}]`;
                     dropdown.appendChild(option);
                 });
                 
@@ -2661,87 +2917,102 @@
         }
     }
 
+    /**
+     * Generates a user-friendly description of car parts
+     * @param {Array} parts - Array of part IDs
+     * @return {string} Description of key parts
+     */
+    function generateCarPartInfo(parts) {
+        if (!parts || !Array.isArray(parts) || parts.length === 0) {
+            return '';
+        }
+
+        // Create categories for organizing parts
+        const categories = {
+            transmission: [],
+            power: []
+        };
+
+        // Map of verified part IDs to their shortened display names
+        // Only including parts confirmed in Untitled-1.user.js
+        const partShortNames = {
+            // Transmissions (verified)
+            84: "TL",  // Paddle Shift Long
+            85: "TS",  // Paddle Shift Short
+            86: "DL",  // Rally Long
+            87: "DS",  // Rally Short
+            
+            // Power adders (verified)
+            81: "T2",   // Turbo Stage 2
+            99: "T3"    // Turbo Stage 3
+        };
+
+        // Sort parts into categories
+        parts.forEach(partId => {
+            const partId_num = Number(partId);
+            const shortName = partShortNames[partId_num];
+            if (!shortName) return;
+            
+            // Categorize by part ID ranges
+            if ([84, 85, 86, 87].includes(partId_num)) {
+                categories.transmission.push(shortName);
+            } else if ([81, 99].includes(partId_num)) {
+                categories.power.push(shortName);
+            }
+        });
+
+        // Build descriptive string with categories
+        const partDescriptions = [];
+        
+        if (categories.transmission.length > 0) {
+            partDescriptions.push(categories.transmission[0]);
+        }
+        
+        if (categories.power.length > 0) {
+            partDescriptions.push(categories.power.join('/'));
+        }
+        
+        return partDescriptions.join('-');
+    }
+
     function updateCarDropdown() {
         updateCarList();
     }
 
     function getRFC() {
-        // Improved RFC cookie retrieval function for PDA compatibility
-        try {
-            // Try multiple methods to get the RFC token
-            let rfcValue = null;
-            
-            // Method 1: Try jQuery cookie function if available
-            if (typeof $.cookie === 'function') {
-                rfcValue = $.cookie('rfc_v');
-                if (rfcValue) {
-                    console.log('[DEBUG] Got RFC token from jQuery cookie');
-                    return rfcValue;
+        if (typeof $.cookie !== 'function') {
+            console.error("Error: jQuery Cookie plugin is not loaded correctly!");
+            console.log("Attempting fallback cookie parsing for rfc_v...");
+            let rfc = null;
+            const cookies = document.cookie.split("; ");
+            for (let i in cookies) {
+                let cookie = cookies[i].split("=");
+                if (cookie[0] && cookie[0].trim() === "rfc_v") {
+                    rfc = decodeURIComponent(cookie[1]);
+                    console.log("Fallback cookie parsing successful. rfc_v value:", rfc);
+                    return rfc;
                 }
             }
-            
-            // Method 2: Direct cookie parsing as fallback
-            const cookies = document.cookie.split('; ');
-            for (const cookie of cookies) {
-                const [name, value] = cookie.split('=');
-                if (name === 'rfc_v') {
-                    rfcValue = decodeURIComponent(value);
-                    console.log('[DEBUG] Got RFC token from document.cookie');
-                    return rfcValue;
+            console.warn("Fallback cookie parsing failed to find rfc_v cookie.");
+            return '';
+        }
+
+        let rfcValue = $.cookie('rfc_v');
+        if (rfcValue) {
+            return rfcValue;
+        } else {
+            console.log("jQuery.cookie failed to get rfc_v, attempting fallback parsing...");
+            let rfc = null;
+            const cookies = document.cookie.split("; ");
+            for (let i in cookies) {
+                let cookie = cookies[i].split("=");
+                if (cookie[0] && cookie[0].trim() === "rfc_v") {
+                    rfc = decodeURIComponent(cookie[1]);
+                    console.log("Fallback cookie parsing successful. rfc_v value:", rfc);
+                    return rfc;
                 }
             }
-            
-            // Method 3: PDA specific - look for RFC in localStorage
-            try {
-                const localRfc = localStorage.getItem('rfc_v');
-                if (localRfc) {
-                    console.log('[DEBUG] Got RFC token from localStorage');
-                    return localRfc;
-                }
-            } catch (e) {
-                console.log('[DEBUG] Error checking localStorage for RFC:', e);
-            }
-            
-            // Method 4: Try to extract from page content
-            try {
-                const scripts = document.querySelectorAll('script:not([src])');
-                for (const script of scripts) {
-                    const match = script.textContent.match(/rfcv\s*=\s*['"]([^'"]+)['"]/);
-                    if (match && match[1]) {
-                        rfcValue = match[1];
-                        console.log('[DEBUG] Got RFC token from script content');
-                        return rfcValue;
-                    }
-                }
-                
-                // Try from meta tag
-                const metaRfc = document.querySelector('meta[name="rfc_token"]');
-                if (metaRfc) {
-                    rfcValue = metaRfc.getAttribute('content');
-                    if (rfcValue) {
-                        console.log('[DEBUG] Got RFC token from meta tag');
-                        return rfcValue;
-                    }
-                }
-                
-                // Try from form fields
-                const formRfc = document.querySelector('input[name="rfcv"]');
-                if (formRfc) {
-                    rfcValue = formRfc.value;
-                    if (rfcValue) {
-                        console.log('[DEBUG] Got RFC token from form field');
-                        return rfcValue;
-                    }
-                }
-            } catch (e) {
-                console.error('[DEBUG] Error searching for RFC in page content:', e);
-            }
-            
-            // If nothing else works, return 'pda' as a marker
-            console.warn('[DEBUG] Failed to find rfc_v token, using PDA fallback');
-            return 'pda';
-        } catch (e) {
-            console.error('[DEBUG] Error retrieving RFC cookie:', e);
+            console.warn("Fallback cookie parsing failed to find rfc_v cookie.");
             return '';
         }
     }
@@ -2768,33 +3039,16 @@
         const maxDrivers = document.getElementById('maxDriversInput').value;
         const password = document.getElementById('passwordInput').value;
         const betAmount = document.getElementById('betAmountInput').value;
-        let raceHour = document.getElementById('hourSelect').value;
-        let raceMinute = document.getElementById('minuteSelect').value;
-        const saveTime = document.getElementById('saveTimeToPreset').checked;
         const carId = document.getElementById('carIdInput').value;
 
-        // Default to current time if no time is set
-        if (!raceHour || !raceMinute) {
-            const now = moment.utc();
-            raceHour = String(now.hour()).padStart(2, '0');
-            raceMinute = String(now.minute()).padStart(2, '0');
-            document.getElementById('hourSelect').value = raceHour;
-            document.getElementById('minuteSelect').value = raceMinute;
-        }
-
-        let waitTime = Math.floor(Date.now() / 1000);
-        if (saveTime) {
-            const nextTime = getNextAvailableTime(raceHour, raceMinute);
-            if (nextTime) {
-                waitTime = Math.floor(nextTime.valueOf() / 1000);
-            }
-        }
-
+        // Simplify waitTime calculation for compatibility
+        const waitTime = Math.floor(Date.now() / 1000);
+        
         const rfcValue = getRFC();
 
         const params = new URLSearchParams();
         params.append('carID', carId);
-        params.append('password', password || '');
+        params.append('password', password);
         params.append('createRace', 'true');
         params.append('title', raceName);
         params.append('minDrivers', minDrivers);
@@ -2809,64 +3063,23 @@
         params.append('rfcv', rfcValue);
 
         const raceLink = `https://www.torn.com/loader.php?sid=racing&tab=customrace&section=getInRace&step=getInRace&id=&${params.toString()}`;
-        console.log('[Race URL]:', raceLink); // Add URL logging
+        console.log('[Race URL]:', raceLink); // Keep URL logging
 
         displayStatusMessage('Creating Race...', 'info');
 
         try {
-            console.log('[DEBUG] Creating race with parameters:', {
-                trackId, laps, minDrivers, maxDrivers, betAmount, carId, raceName, 
-                hasPassword: !!password?.length
-            });
-            
-            // Use our enhanced fetchWithGMfallback function
-            const response = await fetchWithGMfallback(raceLink);
-            console.log('[DEBUG] Race creation response received');
+            const response = await fetch(raceLink);
             const data = await response.text();
-            
-            console.log('[DEBUG] Race creation response status:', response.status, 
-                       'Data length:', data?.length || 0);
-            
-            // Better success detection - check status code and content
-            const isSuccess = (response.ok || response.redirected || response.status === 302) || 
-                             (data && (
-                               data.includes('successfully created') || 
-                               data.includes('race has been created') ||
-                               data.includes('race was created') ||
-                               data.includes('racecreationsuccess')
-                             ));
-            
-            if (isSuccess) {
-                console.log('[DEBUG] Race creation successful!');
+
+            if (data.includes('success') || response.ok) {
                 displayStatusMessage('Race Created Successfully!', 'success');
                 // Navigate to racing page after successful race creation
                 setTimeout(() => window.location.href = 'https://www.torn.com/loader.php?sid=racing', 1500);
             } else {
-                console.error('[DEBUG] Race creation failed. Status:', response.status);
-                
-                let errorMsg = 'Error creating race. Please try again.';
-                
-                // Enhanced error messages
-                if (response.status === 403) {
-                    errorMsg = 'Access denied (403). Try refreshing your RFC token.';
-                    await refreshRFCToken();
-                } else if (data.includes('error') && data.includes('message')) {
-                    try {
-                        // Try to parse error message if in JSON format
-                        const match = data.match(/"message"\s*:\s*"([^"]+)"/);
-                        if (match && match[1]) {
-                            errorMsg = `Server error: ${match[1]}`;
-                        }
-                    } catch (e) {
-                        console.log('[DEBUG] Could not parse error message from response');
-                    }
-                }
-                
-                displayStatusMessage(errorMsg, 'error');
+                displayStatusMessage('Error creating race. Please try again.', 'error');
             }
-            setTimeout(() => displayStatusMessage('', ''), 6000);  // Longer timeout for errors
+            setTimeout(() => displayStatusMessage('', ''), 3000);
         } catch (error) {
-            console.error('[DEBUG] Race creation error:', error);
             displayStatusMessage(`Error creating race: ${error.message}`, 'error');
             setTimeout(() => displayStatusMessage('', ''), 5000);
         }
@@ -2875,11 +3088,10 @@
     async function createRaceFromPreset(preset) {
         const apiKey = GM_getValue(STORAGE_API_KEY, '');
         if (!apiKey) {
-            displayStatusMessage('API Key is required to create race.', 'error');
-            setTimeout(() => displayStatusMessage('', ''), 3000);
+            displayQuickLaunchStatus('API Key is required to create race.', 'error');
             return;
         }
-    
+
         const trackId = preset.track;
         const laps = preset.laps;
         const minDrivers = preset.minDrivers;
@@ -2887,27 +3099,16 @@
         const raceName = preset.raceName;
         const password = preset.password;
         const betAmount = preset.betAmount;
-        const raceHour = preset.hour;
-        const raceMinute = preset.minute;
         const carId = preset.carId;
-    
-        let waitTime = Math.floor(Date.now() / 1000);
-        if (preset.saveTime && preset.hour && preset.minute) {
-            const nextTime = getNextAvailableTime(preset.hour, preset.minute);
-            if (nextTime) {
-                waitTime = Math.floor(nextTime.valueOf() / 1000);
-            }
-        } else {
-            // Default to current time if no time is saved in preset
-            const now = moment.utc();
-            waitTime = Math.floor(now.valueOf() / 1000);
-        }
-    
+
+        // Simplify waitTime calculation - a key compatibility issue
+        const waitTime = Math.floor(Date.now() / 1000);
+        
         const rfcValue = getRFC();
-    
+
         const params = new URLSearchParams();
         params.append('carID', carId);
-        params.append('password', password || '');
+        params.append('password', password);
         params.append('createRace', 'true');
         params.append('title', raceName);
         params.append('minDrivers', minDrivers);
@@ -2920,433 +3121,312 @@
         params.append('betAmount', betAmount);
         params.append('waitTime', waitTime);
         params.append('rfcv', rfcValue);
-    
-        // Construct URL - both formats for compatibility
-        const queryString = params.toString();
-        const raceLink = `https://www.torn.com/loader.php?sid=racing&tab=customrace&section=getInRace&step=getInRace&id=&${queryString}`;
-        console.log('[Race URL from preset]:', raceLink);
-    
-        // Update status message
-        displayStatusMessage('Creating Race...', 'info');
-        
-        // Get quick launch status element for updating
-        const quickLaunchStatus = document.querySelector('.quick-launch-status');
-        
+
+        const raceLink = `https://www.torn.com/loader.php?sid=racing&tab=customrace&section=getInRace&step=getInRace&id=&${params.toString()}`;
+        console.log('[Race URL from preset]:', raceLink); // Keep URL logging
+
+        displayQuickLaunchStatus('Creating Race...', 'info');
+
         try {
-            console.log('[DEBUG] Creating race from preset:', {
-                trackId, laps, minDrivers, maxDrivers, betAmount, carId,
-                hasPassword: !!password?.length
-            });
+            // Use standard fetch API which is better supported on mobile
+            const response = await fetch(raceLink);
+            const data = await response.text();
             
-            // PDA-SPECIFIC METHOD - Try using direct navigation first which works best in PDA
-            console.log('[DEBUG] Using direct navigation approach for PDA');
-            
-            // In PDA, direct navigation works better than XHR
-            if (quickLaunchStatus) {
-                quickLaunchStatus.textContent = 'Creating race...';
-                quickLaunchStatus.className = 'quick-launch-status info show';
+            if (data.includes('success') || response.ok) {
+                displayQuickLaunchStatus('Race Created Successfully!', 'success');
+                // Refresh page after successful race creation - critical for mobile
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                displayQuickLaunchStatus('Error creating race. Please try again.', 'error');
             }
-            
-            // Short delay to ensure status message is shown before navigation
-            await new Promise(resolve => setTimeout(resolve, 300));
-            
-            // Direct navigation - most reliable method in PDA
-            window.location.href = raceLink;
-            
-            // We won't reach here due to navigation, but as a fallback:
-            return {
-                success: true,
-                message: 'Race creation initiated via navigation'
-            };
-            
         } catch (error) {
-            console.error('[DEBUG] Race from preset error:', error);
-            
-            if (quickLaunchStatus) {
-                quickLaunchStatus.textContent = `Error creating race: ${error.message}`;
-                quickLaunchStatus.className = 'quick-launch-status error show';
-            }
-    
-            displayStatusMessage(`Error creating race: ${error.message}`, 'error');
-            setTimeout(() => displayStatusMessage('', ''), 5000);
-            return {
-                success: false,
-                message: error.message
-            };
+            displayQuickLaunchStatus(`Error creating race: ${error.message}`, 'error');
         }
     }
 
-    // Helper function to use GMforPDA's HTTP functions if available, or fallback to fetch
-    async function fetchWithGMfallback(url, options = {}) {
-        console.log('[DEBUG] Using fetchWithGMfallback for URL:', url);
+    // Add a helper function for displaying quick launch status
+    function displayQuickLaunchStatus(message, type = '') {
+        const statusElement = document.querySelector('.quick-launch-status');
+        if (!statusElement) return;
         
-        // For race creation requests, try form submission approach first
-        if (url.includes('createRace=true')) {
-            console.log('[DEBUG] Race creation detected, trying form submission approach');
-            
-            try {
-                // Extract parameters from URL to use in form submission
-                const urlParams = new URL(url).searchParams;
-                const result = await submitRaceCreationForm(urlParams);
-                if (result.success) {
-                    return {
-                        ok: true,
-                        status: 200,
-                        text: () => Promise.resolve(result.data || "Race created successfully"),
-                        redirected: true,
-                        url: result.redirectUrl || url
-                    };
-                } else {
-                    // Use direct xmlhttpRequest as fallback
-                    console.log('[DEBUG] Form submission failed, falling back to direct request');
-                }
-            } catch (error) {
-                console.error('[DEBUG] Form submission approach failed:', error);
-                // Continue to fallback methods
-            }
-            
-            // Fallback to direct request if form submission failed
-            return new Promise((resolve, reject) => {
-                const requestFn = typeof GM_xmlhttpRequest !== 'undefined' ? 
-                                 GM_xmlhttpRequest : 
-                                 (typeof GM !== 'undefined' && GM.xmlHttpRequest) ?
-                                 function(details) { return GM.xmlHttpRequest(details) } : null;
-                
-                if (!requestFn) {
-                    console.error('[DEBUG] No xmlHttpRequest function available for race creation');
-                    return reject(new Error('No suitable request method available'));
-                }
-                
-                requestFn({
-                    method: 'GET',
-                    url: url,
-                    headers: {
-                        'Accept': 'text/html,application/xhtml+xml,application/xml',
-                        'Cache-Control': 'no-cache'
-                    },
-                    timeout: 30000,
-                    onload: function(response) {
-                        console.log('[DEBUG] Race creation response received:', {
-                            status: response.status,
-                            responseSize: response.responseText?.length || 0
-                        });
-                        
-                        // Important: Check status code properly
-                        if (response.status >= 200 && response.status < 300) {
-                            // Normal success case
-                            resolve({
-                                ok: true,
-                                status: response.status,
-                                statusText: response.statusText || '',
-                                text: () => Promise.resolve(response.responseText),
-                                responseText: response.responseText
-                            });
-                        } else if (response.status === 302 || response.responseText.includes('race was created successfully')) {
-                            // Race creation success despite redirect
-                            resolve({
-                                ok: true,
-                                status: 200,
-                                statusText: 'Success (via redirect)',
-                                text: () => Promise.resolve("Race created successfully"),
-                                responseText: "Race created successfully",
-                                redirected: true
-                            });
-                        } else {
-                            // Real error case
-                            console.error('[DEBUG] Race creation request failed with status:', response.status);
-                            console.error('[DEBUG] Response excerpt:', response.responseText?.substring(0, 200));
-                            
-                            resolve({
-                                ok: false,
-                                status: response.status,
-                                statusText: response.statusText || 'Error',
-                                text: () => Promise.resolve(response.responseText),
-                                responseText: response.responseText
-                            });
-                        }
-                    },
-                    onerror: function(error) {
-                        console.error('[DEBUG] Race creation request failed:', error);
-                        reject(new Error(`Request failed: ${error.statusText || 'Unknown error'}`));
-                    },
-                    ontimeout: function() {
-                        console.error('[DEBUG] Race creation request timed out');
-                        reject(new Error('Request timed out'));
-                    }
-                });
-            });
+        statusElement.textContent = message;
+        statusElement.className = 'quick-launch-status';
+        
+        if (type) {
+            statusElement.classList.add(type);
+            statusElement.classList.add('show');
         }
         
-        // Try to use PDA native HTTP functions first if available
-        if (typeof PDA_httpGet === 'function' && (!options.method || options.method === 'GET')) {
-            console.log('[DEBUG] Using PDA_httpGet');
-            try {
-                const response = await PDA_httpGet(url);
-                return {
-                    ok: true,
-                    status: 200,
-                    text: () => Promise.resolve(response)
-                };
-            } catch (error) {
-                console.error('[DEBUG] PDA_httpGet failed:', error);
-                // Fall through to other methods
-            }
-        }
-        
-        // Try to use GMforPDA's xmlHttpRequest
-        if (typeof GM !== 'undefined' && GM.xmlHttpRequest) {
-            console.log('[DEBUG] Using GM.xmlHttpRequest');
-            return new Promise((resolve, reject) => {
-                GM.xmlHttpRequest({
-                    method: options.method || 'GET',
-                    url: url,
-                    headers: options.headers || {},
-                    data: options.body,
-                    onload: function(response) {
-                        resolve({
-                            ok: response.status >= 200 && response.status < 300,
-                            status: response.status,
-                            statusText: response.statusText,
-                            text: () => Promise.resolve(response.responseText)
-                        });
-                    },
-                    onerror: function(error) {
-                        console.error('[DEBUG] GM.xmlHttpRequest error:', error);
-                        reject(new Error('Request failed'));
-                    }
-                });
-            });
-        } else if (typeof GM_xmlhttpRequest !== 'undefined') {
-            console.log('[DEBUG] Using GM_xmlhttpRequest');
-            return new Promise((resolve, reject) => {
-                GM_xmlhttpRequest({
-                    method: options.method || 'GET',
-                    url: url,
-                    headers: options.headers || {},
-                    data: options.body,
-                    onload: function(response) {
-                        resolve({
-                            ok: response.status >= 200 && response.status < 300,
-                            status: response.status,
-                            statusText: response.statusText,
-                            text: () => Promise.resolve(response.responseText)
-                        });
-                    },
-                    onerror: function(error) {
-                        console.error('[DEBUG] GM_xmlhttpRequest error:', error);
-                        reject(new Error('Request failed'));
-                    }
-                });
-            });
-        }
-        
-        // Fallback to native fetch if nothing else works
-        console.log('[DEBUG] Falling back to native fetch');
-        return fetch(url, options);
-    }
-
-    // New function to attempt race creation via form submission
-    async function submitRaceCreationForm(params) {
-        return new Promise((resolve) => {
-            console.log('[DEBUG] Creating race via form submission');
-            
-            // Create a hidden form
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = 'https://www.torn.com/loader.php';
-            form.style.display = 'none';
-            
-            // Add all parameters from the URL
-            params.forEach((value, key) => {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = key;
-                input.value = value;
-                form.appendChild(input);
-            });
-            
-            // Additional form fields that might be needed
-            const fields = {
-                'sid': 'racing',
-                'tab': 'customrace',
-                'section': 'getInRace', 
-                'step': 'getInRace',
-            };
-            
-            // Add any missing required fields
-            Object.entries(fields).forEach(([key, value]) => {
-                if (!params.has(key)) {
-                    const input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = key;
-                    input.value = value;
-                    form.appendChild(input);
-                }
-            });
-            
-            // Add custom submit handler
-            let formSubmitted = false;
-            let formTimeout = null;
-            
-            window.addEventListener('beforeunload', function() {
-                if (formSubmitted) {
-                    // This is likely our form causing the navigation
-                    resolve({success: true, redirected: true});
-                    clearTimeout(formTimeout);
-                }
-            }, {once: true});
-            
-            // Add the form to the document
-            document.body.appendChild(form);
-            
-            // Set a timeout to check if form submission worked
-            formTimeout = setTimeout(() => {
-                if (!formSubmitted) {
-                    console.log('[DEBUG] Form submission timed out or failed');
-                    resolve({success: false});
-                    document.body.removeChild(form);
-                }
-            }, 3000);
-            
-            // Submit the form
-            try {
-                formSubmitted = true;
-                form.submit();
-                
-                // Wait for a second to see if navigation happens
-                setTimeout(() => {
-                    // If we're still here, the form didn't cause navigation
-                    if (document.body.contains(form)) {
-                        document.body.removeChild(form);
-                        resolve({success: false});
-                        console.log('[DEBUG] Form submission didn\'t trigger navigation');
-                    }
-                }, 1000);
-            } catch (error) {
-                console.error('[DEBUG] Form submission error:', error);
-                if (document.body.contains(form)) {
-                    document.body.removeChild(form);
-                }
-                resolve({success: false, error});
-            }
-        });
-    }
-
-    // Add new function to refresh RFC token
-    async function refreshRFCToken() {
-        console.log('[DEBUG] Attempting to refresh RFC token');
-        
-        try {
-            // Fetch the racing page to get a fresh RFC token
-            const response = await fetchWithGMfallback('https://www.torn.com/loader.php?sid=racing', {
-                method: 'GET',
-                headers: {
-                    'Cache-Control': 'no-cache'
-                }
-            });
-            
-            console.log('[DEBUG] RFC token refresh request completed');
-            return true;
-        } catch (error) {
-            console.error('[DEBUG] Failed to refresh RFC token:', error);
-            return false;
-        }
+        // Also display in the main GUI status box if available
+        displayStatusMessage(message, type);
     }
 
     function set_value(key, value) {
         try {
-            const jsonValue = key === STORAGE_API_KEY ? value : JSON.stringify(value);
-            
-            // Try GM_setValue first (synchronous and most compatible)
-            if (typeof GM_setValue !== 'undefined') {
-                GM_setValue(key, jsonValue);
-                return;
+            if (key === STORAGE_API_KEY) {
+                GM_setValue(key, value);
+            } else {
+                GM_setValue(key, JSON.stringify(value));
             }
-            
-            // Fall back to GM.setValue (Promise-based)
-            if (typeof GM !== 'undefined' && GM.setValue) {
-                GM.setValue(key, jsonValue).catch(err => {
-                    console.error('[DEBUG] GM.setValue failed:', err);
-                });
-                return;
-            }
-            
-            console.error('No GM setValue function available');
         } catch (e) {
             console.error('Error saving value:', e);
         }
     }
 
-    // Get value synchronously - for most cases where we need the value immediately
     function get_value(key, defaultValue) {
         try {
-            // Always prefer GM_getValue for synchronous operation
-            if (typeof GM_getValue !== 'undefined') {
-                const value = GM_getValue(key);
-                if (key === STORAGE_API_KEY) {
-                    return value !== undefined ? value : defaultValue;
-                }
-                return value ? JSON.parse(value) : defaultValue;
+            if (key === STORAGE_API_KEY) {
+                return GM_getValue(key, defaultValue);
             }
-            
-            // For completeness, handle GM.getValue, but note that this will not work synchronously
-            // We'll log an error and return the default value
-            if (typeof GM !== 'undefined' && GM.getValue) {
-                console.warn('[DEBUG] Using GM.getValue in synchronous context! This will not work properly.');
-                // We must return defaultValue since we can't await here
-                return defaultValue;
-            }
-            
-            return defaultValue;
+            const value = GM_getValue(key);
+            return value ? JSON.parse(value) : defaultValue;
         } catch (e) {
             console.error('Error reading value:', e);
             return defaultValue;
         }
     }
 
-    // Version that works with promises when needed
-    async function get_value_async(key, defaultValue) {
-        try {
-            // Try GM.getValue first (Promise-based)
-            if (typeof GM !== 'undefined' && GM.getValue) {
-                try {
-                    const value = await GM.getValue(key);
-                    if (key === STORAGE_API_KEY) {
-                        return value !== undefined ? value : defaultValue;
-                    }
-                    return value ? JSON.parse(value) : defaultValue;
-                } catch (err) {
-                    console.warn('[DEBUG] GM.getValue failed:', err);
-                    // Fall through to GM_getValue
-                }
+    function checkRaceStatus() {
+        // Method 0: First check for completed race states - these take priority
+        const completedRaceIndicators = [
+            // URL patterns for completed races
+            { type: 'url', pattern: 'sid=racing&tab=finishedRaces' },
+            { type: 'url', pattern: 'step=results' },
+            { type: 'url', pattern: 'step=finished' },
+            
+            // DOM elements for race results
+            { type: 'selector', pattern: '.race-results' },
+            { type: 'selector', pattern: '.finished-race' },
+            { type: 'selector', pattern: '.race-finished-screen' },
+            { type: 'selector', pattern: '.race-summary' },
+            { type: 'selector', pattern: '[class*="raceResults"]' },
+            
+            // Text content for completed races
+            { type: 'text', pattern: 'Race Results' },
+            { type: 'text', pattern: 'You finished' },
+            { type: 'text', pattern: 'Race complete' },
+            { type: 'text', pattern: 'Final position' }
+        ];
+        
+        // Check URL patterns first
+        const currentUrl = window.location.href;
+        
+        for (const indicator of completedRaceIndicators) {
+            if (indicator.type === 'url' && currentUrl.includes(indicator.pattern)) {
+                console.log(`[Race Detection] Race completed detected via URL: ${indicator.pattern}`);
+                return false; // Race is completed, not active
             }
             
-            // Fall back to GM_getValue (synchronous)
-            return get_value(key, defaultValue);
-        } catch (e) {
-            console.error('Error reading value asynchronously:', e);
-            return defaultValue;
+            if (indicator.type === 'selector' && document.querySelector(indicator.pattern)) {
+                console.log(`[Race Detection] Race completed detected via element: ${indicator.pattern}`);
+                return false; // Race is completed, not active
+            }
+            
+            if (indicator.type === 'text' && document.body.textContent.includes(indicator.pattern)) {
+                console.log(`[Race Detection] Race completed detected via text: ${indicator.pattern}`);
+                return false; // Race is completed, not active
+            }
         }
-    }
-
-    function checkRaceStatus() {
+        
+        // Method 1: Try the original approach first (works on desktop)
         const raceLink = document.querySelector('a[href="/page.php?sid=racing"]');
-        if (!raceLink) return false;
-
-        const ariaLabel = raceLink.getAttribute('aria-label');
-        if (!ariaLabel) return false;
-
-        // Check if currently racing or waiting
-        if (ariaLabel === 'Racing: Currently racing' || ariaLabel === 'Racing: Waiting for a race to start') {
+        if (raceLink) {
+            const ariaLabel = raceLink.getAttribute('aria-label');
+            if (ariaLabel) {
+                // Check if race finished (will match any position) - this should happen first
+                if (ariaLabel.match(/Racing: You finished \d+[a-z]{2} in the .+ race/)) {
+                    console.log("[Race Detection] Detected race completion via aria-label");
+                    return false;
+                }
+                
+                // Check if currently racing or waiting
+                if (ariaLabel === 'Racing: Currently racing' || ariaLabel === 'Racing: Waiting for a race to start') {
+                    console.log("[Race Detection] Found active race via aria-label");
+                    return true;
+                }
+            }
+        }
+        
+        // Method 2: Check URL patterns that indicate active racing
+        if (currentUrl.includes('sid=racing&tab=active') || 
+            currentUrl.includes('step=inProgress') || 
+            currentUrl.includes('step=spectating') ||
+            currentUrl.includes('section=setUpCar')) {
+            console.log("[Race Detection] Found active race via racing URL pattern");
             return true;
         }
-
-        // Check if race finished (will match any position)
-        if (ariaLabel.match(/Racing: You finished \d+[a-z]{2} in the .+ race/)) {
-            return false;
+        
+        // Check racing UI state (prioritize "race results" over "racing")
+        const raceResultElements = [
+            '.race-finish-position',
+            '.race-position-final',
+            '.race-completed',
+            '.position-final',
+            '[class*="raceFinished"]',
+            '[class*="raceComplete"]'
+        ];
+        
+        for (const selector of raceResultElements) {
+            if (document.querySelector(selector)) {
+                console.log(`[Race Detection] Race completion detected via element: ${selector}`);
+                return false;
+            }
         }
-
-        // Any other racing status should return false
+        
+        // Method 3: Check for race UI elements that would only be present during a race
+        const raceElements = [
+            '.car-selected-wrap',                     // Car selection element
+            '.race-player',                          // Player in race
+            '.race-list',                            // Race participants list
+            '.race-track',                           // Race track view
+            '.status-racing',                        // Status indicator
+            '.car-selected-stats',                   // Selected car stats
+            '[class*="progressBarFill"]',            // Progress bar (for newer UI)
+            '[class*="raceTrack"]',                  // Race track (newer UI)
+            'div.data-list-table:has(.race)'         // Race table with race rows
+        ];
+        
+        for (const selector of raceElements) {
+            if (document.querySelector(selector)) {
+                // Double-check if race completion elements are also present
+                const isCompleted = document.body.textContent.includes("Race complete") || 
+                                   document.body.textContent.includes("You finished") ||
+                                   document.body.textContent.includes("Final position");
+                
+                if (isCompleted) {
+                    console.log(`[Race Detection] Race elements found but race is completed based on text`);
+                    return false;
+                }
+                
+                console.log(`[Race Detection] Found active racing element: ${selector}`);
+                return true;
+            }
+        }
+        
+        // Method 4: Look for mobile-specific racing indicators (Torn PDA)
+        const mobileSelectors = [
+            // Mobile menu items with race status
+            '.navigationWrapper a.active[aria-label*="Racing"]',
+            // Mobile race status indicators
+            '.status-icons-mobile .racing-status',
+            // PDA-specific elements
+            '[class*="racingIcon"]',
+            '[class*="raceStatus"]',
+            // Check for any elements with racing in the class name
+            '[class*="racing"]:not(a):not(li)',
+            // Racing section container (specific to PDA)
+            '.tornPDA-racing-container',
+            // Check for race timer elements
+            '.race-timer',
+            '[class*="raceCountdown"]',
+            // Check the right side menu for racing activity icon
+            '.sideMenu___qDOTV .linkActive___vc2pE [class*="racing"]',
+            // Check for the race progress indicator in the top menu
+            '.headerProgressBar___O7xbl'
+        ];
+        
+        for (const selector of mobileSelectors) {
+            if (document.querySelector(selector)) {
+                // Check page content for completion text 
+                const isCompleted = document.body.textContent.includes("Race complete") || 
+                                   document.body.textContent.includes("You finished") ||
+                                   document.body.textContent.includes("Final position") ||
+                                   document.body.textContent.includes("Race results");
+                
+                if (isCompleted) {
+                    console.log(`[Race Detection] Mobile racing elements found but race is completed based on text`);
+                    return false;
+                }
+                
+                console.log(`[Race Detection] Found mobile racing element: ${selector}`);
+                return true;
+            }
+        }
+        
+        // Method 5: Check the global page content for racing indicators
+        const pageContent = document.body.textContent || '';
+        
+        // First check for completion text
+        const completionTextIndicators = [
+            'Race Results',
+            'You finished',
+            'Race complete',
+            'Final position',
+            'Race over',
+            'Race has ended'
+        ];
+        
+        for (const text of completionTextIndicators) {
+            if (pageContent.includes(text)) {
+                console.log(`[Race Detection] Race completion detected via text: ${text}`);
+                return false;
+            }
+        }
+        
+        // Then check for active race text
+        const raceTextIndicators = [
+            'Race in progress',
+            'Waiting for race to start',
+            'Position:',
+            'lap times:',
+            'Race time:',
+            'Countdown:',
+            'Race Progress:'
+        ];
+        
+        for (const text of raceTextIndicators) {
+            if (pageContent.includes(text)) {
+                console.log(`[Race Detection] Found racing text: ${text}`);
+                return true;
+            }
+        }
+        
+        // Method 6: Last resort for PDA - check any DOM element with "race" in the class or id
+        const allElements = document.querySelectorAll('*');
+        let foundRaceElement = false;
+        
+        for (const el of allElements) {
+            const classNames = el.className?.toString() || '';
+            const id = el.id || '';
+            
+            // First check for completion indicators with high priority
+            if ((classNames.toLowerCase().includes('finish') || 
+                 classNames.toLowerCase().includes('complete') || 
+                 classNames.toLowerCase().includes('result') ||
+                 id.toLowerCase().includes('finish') ||
+                 id.toLowerCase().includes('complete') ||
+                 id.toLowerCase().includes('result')) && 
+                el.offsetParent !== null) {
+                
+                console.log(`[Race Detection] Race completion detected via element: ${classNames || id}`);
+                return false;
+            }
+            
+            // Then check for racing indicators with lower priority
+            if (!foundRaceElement && 
+                (classNames.toLowerCase().includes('race') || id.toLowerCase().includes('race')) && 
+                !classNames.includes('race-alert') && // Exclude our own elements
+                el.offsetParent !== null) { // Element is visible
+                
+                // Exclude navigation and menu elements to prevent false positives
+                if (!classNames.includes('menu') && !classNames.includes('nav') && 
+                    !classNames.includes('link') && !classNames.includes('button')) {
+                    
+                    console.log(`[Race Detection] Found generic race element: ${classNames || id}`);
+                    foundRaceElement = true;
+                    // Don't return yet, continue checking for completion indicators
+                }
+            }
+        }
+        
+        // If we found a race element and no completion indicators, consider it an active race
+        if (foundRaceElement) {
+            console.log(`[Race Detection] Determined active race from generic elements after checking for completion indicators`);
+            return true;
+        }
+        
+        // If all methods fail, assume user is not racing
+        console.log(`[Race Detection] No race indicators found, assuming not racing`);
         return false;
     }
 
@@ -3358,14 +3438,18 @@
         }
 
         const isInRace = checkRaceStatus();
+        console.log("[Race Detection] Final race status determination:", isInRace ? "IN RACE" : "NOT RACING");
+        
         const existingAlert = document.getElementById('raceAlert');
 
+        // Only show alert when NOT racing
         if (!isInRace) {
-            // Only create alert if it doesn't exist or is not properly attached
+            // Create or update the alert
             if (!existingAlert || !document.body.contains(existingAlert)) {
                 showRaceAlert();
             }
         } else {
+            // Remove the alert if racing
             removeRaceAlert();
         }
     }
@@ -3383,6 +3467,8 @@
                 align-items: center !important;
                 margin-left: 10px !important;
                 order: 2 !important;
+                z-index: 99999 !important;
+                pointer-events: auto !important;
             `;
             
             const popup = document.createElement('div');
@@ -3400,8 +3486,14 @@
                 popup.classList.remove('show');
             });
             
+            // Try to find a good place to insert the alert, with special handling for PDA
+            const isMobilePDA = navigator.userAgent.includes('PDA') || 
+                               window.innerWidth < 768 || 
+                               document.documentElement.classList.contains('tornPDA');
+            
             // Special handling for racing page
             if (window.location.href.includes('sid=racing')) {
+                // Look for racing page specific containers
                 const raceToggleRow = document.getElementById('raceToggleRow');
                 if (raceToggleRow) {
                     raceToggleRow.appendChild(alert);
@@ -3409,7 +3501,36 @@
                 }
             }
             
-            // Default handling for other pages
+            // Special handling for mobile/PDA
+            if (isMobilePDA) {
+                // Try PDA specific containers
+                const pdaContainers = [
+                    '.navigationWrapper',
+                    '.status-icons-mobile',
+                    '.tornPDA-header',
+                    '.headerWrapper___f5LgD',
+                    '.headerTopContainer___CfrOY'
+                ];
+                
+                for (const selector of pdaContainers) {
+                    const container = document.querySelector(selector);
+                    if (container) {
+                        container.appendChild(alert);
+                        
+                        // Adjust styling for mobile
+                        alert.style.position = 'absolute';
+                        alert.style.top = '10px';
+                        alert.style.right = '10px';
+                        alert.style.margin = '0';
+                        alert.style.zIndex = '999999';
+                        
+                        console.log(`[Race Alert] Attached to mobile container: ${selector}`);
+                        return;
+                    }
+                }
+            }
+            
+            // Default handling for other pages - try multiple possible title elements
             const titleSelectors = [
                 '#mainContainer > div.content-wrapper.winter > div.content-title.m-bottom10 h4',
                 '.titleContainer___QrlWP .title___rhtB4',
@@ -3419,7 +3540,11 @@
                 '.page-head > h4',
                 '#react-root > div > div.appHeader___gUnYC.crimes-app-header > h4',
                 'div.appHeader___gUnYC h4',
-                '#skip-to-content'
+                '#skip-to-content',
+                // Add mobile-specific selectors
+                '.header-title',
+                '.mobile-title',
+                '.app-header'
             ];
             
             for (const selector of titleSelectors) {
@@ -3429,8 +3554,19 @@
                         titleElement.parentNode.style.position = 'relative';
                     }
                     titleElement.insertAdjacentElement('beforeend', alert);
-                    break;
+                    console.log(`[Race Alert] Attached to title element: ${selector}`);
+                    return;
                 }
+            }
+            
+            // Last resort - append to body with fixed positioning
+            if (!alert.parentNode) {
+                alert.style.position = 'fixed';
+                alert.style.top = '10px';
+                alert.style.right = '10px';
+                alert.style.zIndex = '999999';
+                document.body.appendChild(alert);
+                console.log(`[Race Alert] Attached directly to body as fixed element`);
             }
         }
     }
@@ -3442,29 +3578,20 @@
         popup.innerHTML = '';
 
         if (Object.keys(presets).length === 0) {
-            popup.innerHTML = '<div style="padding: 5px;">No presets available</div>';
+            popup.innerHTML = '<div style="padding: 10px; color: #aaa;">No presets available</div>';
             return;
         }
 
-        const list = document.createElement('div');
-        list.style.cssText = 'display: flex; flex-direction: column; gap: 5px;';
-
         Object.entries(presets).forEach(([name, preset]) => {
-            const item = document.createElement('button');
-            item.className = 'quick-launch-button';
-            item.textContent = name;
-            item.style.width = '100%';
-            item.title = `Launch race: ${name}`;
-            
-            item.addEventListener('click', async () => {
+            const button = document.createElement('button');
+            button.className = 'quick-launch-button';
+            button.textContent = name;
+            button.addEventListener('click', async (e) => {
+                e.stopPropagation();
                 await createRaceFromPreset(preset);
-                popup.classList.remove('show');
             });
-            
-            list.appendChild(item);
+            popup.appendChild(button);
         });
-
-        popup.appendChild(list);
     }
 
     function removeRaceAlert() {
@@ -3475,193 +3602,217 @@
     }
 
     function initializeRaceFiltering() {
+        console.log('[DEBUG] Starting race filtering initialization');
+        
         if (window.raceFilteringInitialized) {
+            console.log('[DEBUG] Race filtering already initialized');
             return;
         }
 
-        window.raceFilteringInitialized = true;
-        
-        // Initialize RaceFiltering object with filtering logic
-        window.RaceFiltering = {
-            filterRacesList: function() {
+        // Create the RaceFiltering object if it doesn't exist
+        window.RaceFiltering = window.RaceFiltering || {
+            filterRacesList() {
+                console.log('[DEBUG] Applying filters to race list');
+                const filters = {
+                    track: document.getElementById('filterTrack')?.value || '',
+                    laps: {
+                        min: parseInt(document.getElementById('filterMinLaps')?.value) || null,
+                        max: parseInt(document.getElementById('filterMaxLaps')?.value) || null
+                    },
+                    sortBy: document.getElementById('filterSort')?.value || 'time',
+                    hidePassworded: document.getElementById('hidePassworded')?.checked || false,
+                    showSuitableCarsOnly: document.getElementById('showSuitableCarsOnly')?.checked || false
+                };
+
                 const racesList = document.querySelector('.custom_events, .events-list, .races-list');
                 if (!racesList) return;
-                
-                const track = document.getElementById('filterTrack')?.value || '';
-                const minLaps = parseInt(document.getElementById('filterMinLaps')?.value) || 0;
-                const maxLaps = parseInt(document.getElementById('filterMaxLaps')?.value) || Infinity;
-                const sortBy = document.getElementById('filterSort')?.value || 'time';
-                const hidePassworded = document.getElementById('hidePassworded')?.checked || false;
-                const showSuitableCarsOnly = document.getElementById('showSuitableCarsOnly')?.checked || false;
-                
-                console.log('[DEBUG] Filtering with options:', {
-                    track, minLaps, maxLaps, sortBy, hidePassworded, showSuitableCarsOnly
-                });
-                
-                // Get races and filter
-                const races = Array.from(racesList.children).filter(el => 
-                    el.tagName === 'LI' && !el.classList.contains('clear') && !el.classList.contains('head')
-                );
-                
+
+                const races = Array.from(racesList.children);
                 races.forEach(race => {
-                    let visible = true;
-                    
-                    if (track && !this.matchesTrackFilter(race, track)) {
-                        visible = false;
+                    let shouldShow = true;
+
+                    if (filters.track && !this.matchesTrackFilter(race, filters.track)) {
+                        shouldShow = false;
                     }
-                    
-                    if (visible && minLaps && !this.matchesMinLapsFilter(race, minLaps)) {
-                        visible = false;
+                    if (shouldShow && filters.showSuitableCarsOnly && !this.hasSuitableCar(race)) {
+                        shouldShow = false;
                     }
-                    
-                    if (visible && maxLaps && !this.matchesMaxLapsFilter(race, maxLaps)) {
-                        visible = false;
+                    if (shouldShow && filters.laps.min && !this.matchesMinLapsFilter(race, filters.laps.min)) {
+                        shouldShow = false;
                     }
-                    
-                    if (visible && hidePassworded && this.isPasswordProtected(race)) {
-                        visible = false;
+                    if (shouldShow && filters.laps.max && !this.matchesMaxLapsFilter(race, filters.laps.max)) {
+                        shouldShow = false;
                     }
-                    
-                    if (visible && showSuitableCarsOnly && !this.hasSuitableCar(race)) {
-                        visible = false;
+                    if (shouldShow && filters.hidePassworded && this.isPasswordProtected(race)) {
+                        shouldShow = false;
                     }
-                    
-                    race.style.display = visible ? '' : 'none';
+
+                    race.style.display = shouldShow ? '' : 'none';
                 });
+
+                // Sort visible races
+                const visibleRaces = races.filter(race => race.style.display !== 'none');
+                visibleRaces.sort((a, b) => {
+                    switch(filters.sortBy) {
+                        case 'time': return this.compareTime(a, b);
+                        case 'track': return this.compareTrack(a, b);
+                        case 'laps': return this.compareLaps(a, b);
+                        case 'bets': return this.compareBets(a, b);
+                        default: return 0;
+                    }
+                });
+
+                visibleRaces.forEach(race => racesList.appendChild(race));
+            },
+
+            matchesTrackFilter(race, trackName) {
+                if (!trackName) return true;
+                const trackElement = race.querySelector('li.track');
+                if (!trackElement) return true;
                 
-                // Sort races
-                if (sortBy !== 'time') {
-                    const sortedRaces = races
-                        .filter(race => race.style.display !== 'none')
-                        .sort((a, b) => {
-                            if (sortBy === 'track') {
-                                return this.compareTrack(a, b);
-                            } else if (sortBy === 'laps') {
-                                return this.compareLaps(a, b);
-                            } else if (sortBy === 'bets') {
-                                return this.compareBets(a, b);
-                            }
-                            return 0;
-                        });
-                    
-                    // Reorder races in DOM
-                    sortedRaces.forEach(race => {
-                        racesList.appendChild(race);
-                    });
-                }
+                // Get the track name by removing the laps text
+                const trackText = trackElement.textContent.replace(/\(\d+\s*laps?\)/i, '').trim();
+                return trackText.toLowerCase() === trackName.toLowerCase();
             },
-            
-            matchesTrackFilter: function(race, trackFilter) {
-                const trackName = race.querySelector('li.track span:first-child')?.textContent;
-                return !trackName || trackName.includes(trackFilter);
+
+            hasSuitableCar(race) {
+                const notSuitableText = "You do not have a suitable car enlisted for this race.";
+                return !race.textContent.includes(notSuitableText);
             },
-            
-            matchesMinLapsFilter: function(race, minLaps) {
+
+            matchesMinLapsFilter(race, minLaps) {
+                if (!minLaps) return true;
                 const lapsElement = race.querySelector('li.track span.laps');
                 if (!lapsElement) return true;
                 
                 const lapsMatch = lapsElement.textContent.match(/(\d+)\s*laps?/i);
-                if (!lapsMatch) return true;
-                
-                const raceLaps = parseInt(lapsMatch[1]);
+                const raceLaps = lapsMatch ? parseInt(lapsMatch[1]) : 0;
+                console.log('[DEBUG] Min laps check:', { raceLaps, minLaps });
                 return raceLaps >= minLaps;
             },
-            
-            matchesMaxLapsFilter: function(race, maxLaps) {
+
+            matchesMaxLapsFilter(race, maxLaps) {
+                if (!maxLaps) return true;
                 const lapsElement = race.querySelector('li.track span.laps');
                 if (!lapsElement) return true;
                 
                 const lapsMatch = lapsElement.textContent.match(/(\d+)\s*laps?/i);
-                if (!lapsMatch) return true;
-                
-                const raceLaps = parseInt(lapsMatch[1]);
+                const raceLaps = lapsMatch ? parseInt(lapsMatch[1]) : 0;
+                console.log('[DEBUG] Max laps check:', { raceLaps, maxLaps });
                 return raceLaps <= maxLaps;
             },
-            
-            isPasswordProtected: function(race) {
-                return race.querySelector('.t-red, .locked') !== null;
+
+            isPasswordProtected(race) {
+                const raceText = race.textContent.toLowerCase();
+                return raceText.includes('password') || race.querySelector('[id^="joinPasswordForm"]') !== null;
             },
-            
-            hasSuitableCar: function(race) {
-                // In this simple version, assume all races are suitable
-                // Could be enhanced based on race requirements vs available cars
-                return true;
+
+            compareTime(a, b) {
+                const getTimeInMinutes = el => {
+                    const timeText = (el.textContent || '').toLowerCase();
+                    
+                    // Waiting races should be first
+                    if (timeText.includes('waiting')) {
+                        return -1;
+                    }
+
+                    let totalMinutes = 0;
+                    
+                    // Try to match various time formats
+                    
+                    // Match "X h Y min" or "X hour Y minute" format
+                    const fullMatch = timeText.match(/(\d+)\s*h(?:our)?s?\s*(?:and)?\s*(\d+)\s*(?:min(?:ute)?s?|m)/);
+                    if (fullMatch) {
+                        return (parseInt(fullMatch[1]) * 60) + parseInt(fullMatch[2]);
+                    }
+                    
+                    // Match single hours format "X h" or "X hour(s)"
+                    const hoursOnlyMatch = timeText.match(/(\d+)\s*h(?:our)?s?/);
+                    if (hoursOnlyMatch) {
+                        return parseInt(hoursOnlyMatch[1]) * 60;
+                    }
+                    
+                    // Match single minutes format "X min", "X minute(s)" or "X m"
+                    const minutesOnlyMatch = timeText.match(/(\d+)\s*(?:min(?:ute)?s?|m)/);
+                    if (minutesOnlyMatch) {
+                        return parseInt(minutesOnlyMatch[1]);
+                    }
+                    
+                    // Match "HH:MM" format
+                    const timeMatch = timeText.match(/(\d+):(\d+)/);
+                    if (timeMatch) {
+                        return (parseInt(timeMatch[1]) * 60) + parseInt(timeMatch[2]);
+                    }
+                    
+                    // No valid time format found
+                    return Infinity;
+                };
+                
+                const timeA = getTimeInMinutes(a);
+                const timeB = getTimeInMinutes(b);
+                return timeA - timeB;
             },
-            
-            compareTrack: function(a, b) {
-                const trackA = a.querySelector('li.track span:first-child')?.textContent || '';
-                const trackB = b.querySelector('li.track span:first-child')?.textContent || '';
+
+            compareTrack(a, b) {
+                const getTrackName = el => {
+                    const trackElement = el.querySelector('li.track');
+                    if (!trackElement) return '';
+                    // Remove the laps text and trim whitespace
+                    return trackElement.textContent.replace(/\(\d+\s*laps?\)/i, '').trim();
+                };
+                
+                const trackA = getTrackName(a).toLowerCase();
+                const trackB = getTrackName(b).toLowerCase();
                 return trackA.localeCompare(trackB);
             },
-            
-            compareLaps: function(a, b) {
-                const getLaps = (race) => {
-                    const lapsElement = race.querySelector('li.track span.laps');
-                    if (!lapsElement) return 0;
-                    
-                    const lapsMatch = lapsElement.textContent.match(/(\d+)\s*laps?/i);
-                    return lapsMatch ? parseInt(lapsMatch[1]) : 0;
+
+            compareLaps(a, b) {
+                const getLaps = el => {
+                    const lapsMatch = el.textContent.match(/(\d+)\s*laps?/i);
+                    return parseInt(lapsMatch?.[1]) || 0;
                 };
-                
                 return getLaps(a) - getLaps(b);
             },
-            
-            compareBets: function(a, b) {
-                const getBet = (race) => {
-                    const betEl = race.querySelector('.bet');
-                    if (!betEl) return 0;
-                    
-                    const betMatch = betEl.textContent.match(/\$([0-9,]+)/);
-                    return betMatch ? parseInt(betMatch[1].replace(/,/g, '')) : 0;
+
+            compareBets(a, b) {
+                const getBet = el => {
+                    const betMatch = el.textContent.match(/\$([0-9,]+)/);
+                    return parseInt(betMatch?.[1]?.replace(/,/g, '')) || 0;
                 };
-                
-                return getBet(a) - getBet(b);
-            },
-            
-            compareTime: function(a, b) {
-                const getTimeMinutes = (race) => {
-                    const timeEl = race.querySelector('.starts-in');
-                    if (!timeEl) return 0;
-                    
-                    const timeText = timeEl.textContent;
-                    if (timeText.includes('min')) {
-                        return parseInt(timeText.match(/(\d+)/)[1]);
-                    } else if (timeText.includes('hr')) {
-                        return parseInt(timeText.match(/(\d+)/)[1]) * 60;
-                    }
-                    return 9999; // Far future for unknown time format
-                };
-                
-                return getTimeMinutes(a) - getTimeMinutes(b);
+                return getBet(b) - getBet(a);
             }
         };
-        
-        // Set up mutation observer to detect when race list changes
+
+        // Only proceed if on racing page
+        if (!window.location.href.includes('sid=racing')) {
+            return;
+        }
+
+        // Setup one-time initialization flag
+        window.raceFilteringInitialized = true;
+
+        // Cleanup old observer if it exists
+        if (window.raceFilterObserver) {
+            window.raceFilterObserver.disconnect();
+        }
+
+        // Setup mutation observer with debouncing
+        let debounceTimer;
         window.raceFilterObserver = new MutationObserver((mutations) => {
-            // Check if any mutations affected the race list
-            for (const mutation of mutations) {
-                if (mutation.type === 'childList' && 
-                   (mutation.target.classList.contains('custom_events') || 
-                    mutation.target.classList.contains('events-list') || 
-                    mutation.target.classList.contains('races-list'))) {
-                    
-                    // Race list has changed, set up filters if needed
-                    if (!document.querySelector('.race-filter-section')) {
-                        setupFilterControls();
-                    }
-                    
-                    // Apply filters if active
-                    if (document.getElementById('toggleFilters')?.classList.contains('active')) {
-                        window.RaceFiltering.filterRacesList();
-                    }
-                    
-                    // No need to check other mutations
-                    break;
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                const raceList = document.querySelector('.custom_events, .events-list, .races-list');
+                const filterSection = document.querySelector('.race-filter-section');
+                
+                if (raceList && !filterSection) {
+                    console.log('[DEBUG] Race list found, setting up filters');
+                    setupFilterControls();
+                    window.RaceFiltering.filterRacesList();
                 }
-            }
+            }, 100); // Debounce delay
         });
 
-        // Start observing for race list changes
+        // Start observing with specific config
         const observerConfig = {
             childList: true,
             subtree: true
@@ -3696,7 +3847,7 @@
                 if (racesList) {
                     console.log('[DEBUG] Race list detected after refresh');
                     setTimeout(() => {
-                        console.log('[DEBUG] Restoring filters and reapplying');
+                        console.console.log('[DEBUG] Restoring filters and reapplying');
                         const filtersEnabled = restoreFilterState();
                         if (filtersEnabled && document.getElementById('toggleFilters')?.classList.contains('active')) {
                             window.RaceFiltering?.filterRacesList();
@@ -3745,6 +3896,7 @@
             });
         }
     }
+
     function saveFilterState() {
         const state = {
             track: document.getElementById('filterTrack')?.value || '',
@@ -4247,8 +4399,7 @@
         let retryCount = 0;
         
         function attemptRefresh() {
-            // Use our unified fetch function
-            fetchWithGMfallback(url, {
+            fetch(url, {
                 method: 'GET',
                 headers: {
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -4486,13 +4637,14 @@
     }
 
     function initializeAll() {
-        // Check if we need to migrate from Promise-based storage
-        checkStorageMigration().then(() => {
+        // Ensure document is available before initializing
+        if (typeof document !== 'undefined' && document.readyState !== 'loading') {
             init();
-        }).catch(err => {
-            console.error('Error during storage migration check:', err);
-            init(); // Still try to initialize even if migration check fails
-        });
+        } else {
+            document.addEventListener('DOMContentLoaded', function() {
+                init();
+            });
+        }
     }
 
     function removeAutoJoinPreset(presetName) {
@@ -4515,24 +4667,11 @@
         }
     }
 
-    // Function to check if we need to migrate storage from Promise-based to synchronous
-    async function checkStorageMigration() {
-        try {
-            if (typeof GM !== 'undefined' && GM.getValue && typeof GM_setValue !== 'undefined') {
-                // Try to get race_presets with async method
-                const asyncPresets = await GM.getValue('race_presets');
-                if (asyncPresets && typeof asyncPresets === 'string') {
-                    // If we got a string value, it's likely we have data in the Promise-based storage
-                    console.log('[DEBUG] Found Promise-based storage data, migrating to synchronous storage');
-                    // Save to synchronous storage
-                    GM_setValue('race_presets', asyncPresets);
-                    console.log('[DEBUG] Migration complete');
-                }
-            }
-        } catch (err) {
-            console.error('Error during storage migration:', err);
-        }
+    // Instead of directly calling initializeAll, ensure DOM is ready first
+    if (document.readyState !== 'loading') {
+        initializeAll();
+    } else {
+        document.addEventListener('DOMContentLoaded', initializeAll);
     }
 
-    initializeAll();
 })();
