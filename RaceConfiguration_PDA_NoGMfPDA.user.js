@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Manager
-// @version      3.6.2
+// @version      3.6.3
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -3187,25 +3187,125 @@
     }
 
     function checkRaceStatus() {
+        // Method 1: Try the original approach first (works on desktop)
         const raceLink = document.querySelector('a[href="/page.php?sid=racing"]');
-        if (!raceLink) return false;
-
-        const ariaLabel = raceLink.getAttribute('aria-label');
-        if (!ariaLabel) return false;
-
-        // Check if currently racing or waiting
-        if (ariaLabel === 'Racing: Currently racing' || ariaLabel === 'Racing: Waiting for a race to start') {
+        if (raceLink) {
+            const ariaLabel = raceLink.getAttribute('aria-label');
+            if (ariaLabel) {
+                // Check if currently racing or waiting
+                if (ariaLabel === 'Racing: Currently racing' || ariaLabel === 'Racing: Waiting for a race to start') {
+                    console.log("[Race Detection] Found via aria-label");
+                    return true;
+                }
+                
+                // Check if race finished (will match any position)
+                if (ariaLabel.match(/Racing: You finished \d+[a-z]{2} in the .+ race/)) {
+                    return false;
+                }
+            }
+        }
+        
+        // Method 2: Check URL patterns that indicate active racing
+        const currentUrl = window.location.href;
+        if (currentUrl.includes('sid=racing&tab=active') || 
+            currentUrl.includes('step=inProgress') || 
+            currentUrl.includes('step=spectating')) {
+            console.log("[Race Detection] Found via racing URL pattern");
             return true;
         }
-
-        // Check if race finished (will match any position)
-        if (ariaLabel.match(/Racing: You finished \d+[a-z]{2} in the .+ race/)) {
-            return false;
+        
+        // Method 3: Check for race UI elements that would only be present during a race
+        const raceElements = [
+            '.car-selected-wrap',                     // Car selection element
+            '.race-player',                          // Player in race
+            '.race-list',                            // Race participants list
+            '.race-track',                           // Race track view
+            '.status-racing',                        // Status indicator
+            '.car-selected-stats',                   // Selected car stats
+            '[class*="progressBarFill"]',            // Progress bar (for newer UI)
+            '[class*="raceTrack"]',                  // Race track (newer UI)
+            'div.data-list-table:has(.race)'         // Race table with race rows
+        ];
+        
+        for (const selector of raceElements) {
+            if (document.querySelector(selector)) {
+                console.log(`[Race Detection] Found racing element: ${selector}`);
+                return true;
+            }
         }
-
-        // Any other racing status should return false
+        
+        // Method 4: Look for mobile-specific racing indicators (Torn PDA)
+        const mobileSelectors = [
+            // Mobile menu items with race status
+            '.navigationWrapper a.active[aria-label*="Racing"]',
+            // Mobile race status indicators
+            '.status-icons-mobile .racing-status',
+            // PDA-specific elements
+            '[class*="racingIcon"]',
+            '[class*="raceStatus"]',
+            // Check for any elements with racing in the class name
+            '[class*="racing"]:not(a):not(li)',
+            // Racing section container (specific to PDA)
+            '.tornPDA-racing-container',
+            // Check for race timer elements
+            '.race-timer',
+            '[class*="raceCountdown"]',
+            // Check the right side menu for racing activity icon
+            '.sideMenu___qDOTV .linkActive___vc2pE [class*="racing"]',
+            // Check for the race progress indicator in the top menu
+            '.headerProgressBar___O7xbl'
+        ];
+        
+        for (const selector of mobileSelectors) {
+            if (document.querySelector(selector)) {
+                console.log(`[Race Detection] Found mobile racing element: ${selector}`);
+                return true;
+            }
+        }
+        
+        // Method 5: Check the global page content for racing indicators
+        const pageContent = document.body.textContent || '';
+        const raceTextIndicators = [
+            'Race in progress',
+            'Waiting for race to start',
+            'Position:',
+            'lap times:',
+            'Race time:',
+            'Countdown:',
+            'Race Progress:'
+        ];
+        
+        for (const text of raceTextIndicators) {
+            if (pageContent.includes(text)) {
+                console.log(`[Race Detection] Found racing text: ${text}`);
+                return true;
+            }
+        }
+        
+        // Method 6: Last resort for PDA - check any DOM element with "race" in the class or id
+        const allElements = document.querySelectorAll('*');
+        for (const el of allElements) {
+            const classNames = el.className?.toString() || '';
+            const id = el.id || '';
+            
+            if ((classNames.toLowerCase().includes('race') || id.toLowerCase().includes('race')) && 
+                !classNames.includes('race-alert') && // Exclude our own elements
+                el.offsetParent !== null) { // Element is visible
+                
+                // Exclude navigation and menu elements to prevent false positives
+                if (!classNames.includes('menu') && !classNames.includes('nav') && 
+                    !classNames.includes('link') && !classNames.includes('button')) {
+                    console.log(`[Race Detection] Found generic race element: ${classNames || id}`);
+                    return true;
+                }
+            }
+        }
+        
+        // If all methods fail, assume user is not racing
         return false;
-    }function updateRaceAlert() {
+    }
+
+    function updateRaceAlert() {
         const alertEnabled = GM_getValue('raceAlertEnabled', false);
         if (!alertEnabled) {
             removeRaceAlert();
@@ -3213,14 +3313,18 @@
         }
 
         const isInRace = checkRaceStatus();
+        console.log("[Race Detection] Race status:", isInRace ? "IN RACE" : "NOT RACING");
+        
         const existingAlert = document.getElementById('raceAlert');
 
+        // Only show alert when NOT racing
         if (!isInRace) {
-            // Only create alert if it doesn't exist or is not properly attached
+            // Create or update the alert
             if (!existingAlert || !document.body.contains(existingAlert)) {
                 showRaceAlert();
             }
         } else {
+            // Remove the alert if racing
             removeRaceAlert();
         }
     }
@@ -3238,6 +3342,8 @@
                 align-items: center !important;
                 margin-left: 10px !important;
                 order: 2 !important;
+                z-index: 99999 !important;
+                pointer-events: auto !important;
             `;
             
             const popup = document.createElement('div');
@@ -3255,8 +3361,14 @@
                 popup.classList.remove('show');
             });
             
+            // Try to find a good place to insert the alert, with special handling for PDA
+            const isMobilePDA = navigator.userAgent.includes('PDA') || 
+                               window.innerWidth < 768 || 
+                               document.documentElement.classList.contains('tornPDA');
+            
             // Special handling for racing page
             if (window.location.href.includes('sid=racing')) {
+                // Look for racing page specific containers
                 const raceToggleRow = document.getElementById('raceToggleRow');
                 if (raceToggleRow) {
                     raceToggleRow.appendChild(alert);
@@ -3264,7 +3376,36 @@
                 }
             }
             
-            // Default handling for other pages
+            // Special handling for mobile/PDA
+            if (isMobilePDA) {
+                // Try PDA specific containers
+                const pdaContainers = [
+                    '.navigationWrapper',
+                    '.status-icons-mobile',
+                    '.tornPDA-header',
+                    '.headerWrapper___f5LgD',
+                    '.headerTopContainer___CfrOY'
+                ];
+                
+                for (const selector of pdaContainers) {
+                    const container = document.querySelector(selector);
+                    if (container) {
+                        container.appendChild(alert);
+                        
+                        // Adjust styling for mobile
+                        alert.style.position = 'absolute';
+                        alert.style.top = '10px';
+                        alert.style.right = '10px';
+                        alert.style.margin = '0';
+                        alert.style.zIndex = '999999';
+                        
+                        console.log(`[Race Alert] Attached to mobile container: ${selector}`);
+                        return;
+                    }
+                }
+            }
+            
+            // Default handling for other pages - try multiple possible title elements
             const titleSelectors = [
                 '#mainContainer > div.content-wrapper.winter > div.content-title.m-bottom10 h4',
                 '.titleContainer___QrlWP .title___rhtB4',
@@ -3274,7 +3415,11 @@
                 '.page-head > h4',
                 '#react-root > div > div.appHeader___gUnYC.crimes-app-header > h4',
                 'div.appHeader___gUnYC h4',
-                '#skip-to-content'
+                '#skip-to-content',
+                // Add mobile-specific selectors
+                '.header-title',
+                '.mobile-title',
+                '.app-header'
             ];
             
             for (const selector of titleSelectors) {
@@ -3284,8 +3429,19 @@
                         titleElement.parentNode.style.position = 'relative';
                     }
                     titleElement.insertAdjacentElement('beforeend', alert);
-                    break;
+                    console.log(`[Race Alert] Attached to title element: ${selector}`);
+                    return;
                 }
+            }
+            
+            // Last resort - append to body with fixed positioning
+            if (!alert.parentNode) {
+                alert.style.position = 'fixed';
+                alert.style.top = '10px';
+                alert.style.right = '10px';
+                alert.style.zIndex = '999999';
+                document.body.appendChild(alert);
+                console.log(`[Race Alert] Attached directly to body as fixed element`);
             }
         }
     }
