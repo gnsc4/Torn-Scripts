@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Manager
-// @version      3.6.1
+// @version      3.6.2
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -3039,28 +3039,11 @@
         const maxDrivers = document.getElementById('maxDriversInput').value;
         const password = document.getElementById('passwordInput').value;
         const betAmount = document.getElementById('betAmountInput').value;
-        let raceHour = document.getElementById('hourSelect').value;
-        let raceMinute = document.getElementById('minuteSelect').value;
-        const saveTime = document.getElementById('saveTimeToPreset').checked;
         const carId = document.getElementById('carIdInput').value;
 
-        // Default to current time if no time is set
-        if (!raceHour || !raceMinute) {
-            const now = moment.utc();
-            raceHour = String(now.hour()).padStart(2, '0');
-            raceMinute = String(now.minute()).padStart(2, '0');
-            document.getElementById('hourSelect').value = raceHour;
-            document.getElementById('minuteSelect').value = raceMinute;
-        }
-
-        let waitTime = Math.floor(Date.now() / 1000);
-        if (saveTime) {
-            const nextTime = getNextAvailableTime(raceHour, raceMinute);
-            if (nextTime) {
-                waitTime = Math.floor(nextTime.valueOf() / 1000);
-            }
-        }
-
+        // Simplify waitTime calculation for compatibility
+        const waitTime = Math.floor(Date.now() / 1000);
+        
         const rfcValue = getRFC();
 
         const params = new URLSearchParams();
@@ -3080,7 +3063,7 @@
         params.append('rfcv', rfcValue);
 
         const raceLink = `https://www.torn.com/loader.php?sid=racing&tab=customrace&section=getInRace&step=getInRace&id=&${params.toString()}`;
-        console.log('[Race URL]:', raceLink); // Add URL logging
+        console.log('[Race URL]:', raceLink); // Keep URL logging
 
         displayStatusMessage('Creating Race...', 'info');
 
@@ -3105,8 +3088,7 @@
     async function createRaceFromPreset(preset) {
         const apiKey = GM_getValue(STORAGE_API_KEY, '');
         if (!apiKey) {
-            displayStatusMessage('API Key is required to create race.', 'error');
-            setTimeout(() => displayStatusMessage('', ''), 3000);
+            displayQuickLaunchStatus('API Key is required to create race.', 'error');
             return;
         }
 
@@ -3117,24 +3099,12 @@
         const raceName = preset.raceName;
         const password = preset.password;
         const betAmount = preset.betAmount;
-        const raceHour = preset.hour;
-        const raceMinute = preset.minute;
         const carId = preset.carId;
 
-        let waitTime = Math.floor(Date.now() / 1000);
-        if (preset.saveTime && preset.hour && preset.minute) {
-            const nextTime = getNextAvailableTime(preset.hour, preset.minute);
-            if (nextTime) {
-                waitTime = Math.floor(nextTime.valueOf() / 1000);
-            }
-        } else {
-            // Default to current time if no time is saved in preset
-            const now = moment.utc();
-            waitTime = Math.floor(now.valueOf() / 1000);
-        }
-
+        // Simplify waitTime calculation - a key compatibility issue
+        const waitTime = Math.floor(Date.now() / 1000);
+        
         const rfcValue = getRFC();
-        console.log('[DEBUG] RFC Value:', rfcValue);
 
         const params = new URLSearchParams();
         params.append('carID', carId);
@@ -3153,147 +3123,42 @@
         params.append('rfcv', rfcValue);
 
         const raceLink = `https://www.torn.com/loader.php?sid=racing&tab=customrace&section=getInRace&step=getInRace&id=&${params.toString()}`;
-        console.log('[Race URL from preset]:', raceLink);
+        console.log('[Race URL from preset]:', raceLink); // Keep URL logging
 
-        // Update status indicators
-        displayStatusMessage('Creating Race...', 'info');
-        updateQuickLaunchStatus('Creating Race...', 'info');
+        displayQuickLaunchStatus('Creating Race...', 'info');
 
         try {
-            // Use a more compatible approach that works in both browser and PDA
-            const isPDA = typeof AndroidInterface !== 'undefined' || navigator.userAgent.includes('TornPDA');
-            console.log('[DEBUG] Environment detection - isPDA:', isPDA);
-
-            if (isPDA) {
-                console.log('[DEBUG] Using PDA-compatible navigation method');
-                // For PDA - create and click a link instead of fetch
-                const tempLink = document.createElement('a');
-                tempLink.href = raceLink;
-                tempLink.style.display = 'none';
-                document.body.appendChild(tempLink);
-                
-                // Use timeout to ensure the status is shown before navigating
-                setTimeout(() => {
-                    try {
-                        tempLink.click();
-                        document.body.removeChild(tempLink);
-                    } catch (clickError) {
-                        console.error('[DEBUG] Error during link click:', clickError);
-                        window.location.href = raceLink; // Fallback
-                    }
-                }, 500);
-                return; // Exit early since we're navigating away
-            }
-
-            // Standard browser approach using fetch
-            const response = await fetch(raceLink, {
-                method: 'GET',
-                credentials: 'include',
-                headers: {
-                    'Accept': 'text/html,application/xhtml+xml,application/xml',
-                    'Referer': 'https://www.torn.com/loader.php?sid=racing',
-                    'Cache-Control': 'no-cache'
-                }
-            });
-            
+            // Use standard fetch API which is better supported on mobile
+            const response = await fetch(raceLink);
             const data = await response.text();
-            console.log('[DEBUG] Race creation response status:', response.status);
-            console.log('[DEBUG] Race creation response contains success:', data.includes('success'));
-
+            
             if (data.includes('success') || response.ok) {
-                updateQuickLaunchStatus('Race Created Successfully!', 'success');
-                displayStatusMessage('Race Created Successfully!', 'success');
-                
-                // Navigate to racing page after successful race creation
-                setTimeout(() => {
-                    window.location.href = 'https://www.torn.com/loader.php?sid=racing';
-                }, 1500);
+                displayQuickLaunchStatus('Race Created Successfully!', 'success');
+                // Refresh page after successful race creation - critical for mobile
+                setTimeout(() => window.location.reload(), 1500);
             } else {
-                updateQuickLaunchStatus('Error creating race. Please try again.', 'error');
-                displayStatusMessage('Error creating race. Please try again.', 'error');
+                displayQuickLaunchStatus('Error creating race. Please try again.', 'error');
             }
         } catch (error) {
-            console.error('[DEBUG] Race creation error:', error);
-            updateQuickLaunchStatus(`Error: ${error.message}`, 'error');
-            displayStatusMessage(`Error creating race: ${error.message}`, 'error');
-            
-            // Fallback navigation on error for both environments
-            setTimeout(() => {
-                try {
-                    window.location.href = raceLink;
-                } catch (navError) {
-                    console.error('[DEBUG] Navigation fallback error:', navError);
-                    // Final emergency fallback - create and click a link
-                    const emergencyLink = document.createElement('a');
-                    emergencyLink.href = raceLink;
-                    emergencyLink.style.display = 'none';
-                    document.body.appendChild(emergencyLink);
-                    emergencyLink.click();
-                    document.body.removeChild(emergencyLink);
-                }
-            }, 2000);
+            displayQuickLaunchStatus(`Error creating race: ${error.message}`, 'error');
         }
     }
 
-    // Add helper function to update quick launch status
-    function updateQuickLaunchStatus(message, type = 'info') {
+    // Add a helper function for displaying quick launch status
+    function displayQuickLaunchStatus(message, type = '') {
         const statusElement = document.querySelector('.quick-launch-status');
         if (!statusElement) return;
         
         statusElement.textContent = message;
-        statusElement.className = `quick-launch-status ${type} show`;
+        statusElement.className = 'quick-launch-status';
         
-        // Make sure the status stays visible
-        clearTimeout(window.quickLaunchStatusTimeout);
+        if (type) {
+            statusElement.classList.add(type);
+            statusElement.classList.add('show');
+        }
         
-        // Only auto-hide info messages, not errors or success messages that need user attention
-        if (type === 'info') {
-            window.quickLaunchStatusTimeout = setTimeout(() => {
-                statusElement.className = 'quick-launch-status';
-            }, 10000);
-        }
-    }
-
-    // Enhanced RFC getter with better fallbacks for PDA
-    function getRFC() {
-        try {
-            // Try jQuery method first
-            if (typeof $.cookie === 'function') {
-                const rfcValue = $.cookie('rfc_v');
-                if (rfcValue) {
-                    console.log('[DEBUG] Got RFC from jQuery.cookie:', rfcValue);
-                    return rfcValue;
-                }
-            }
-            
-            // Fall back to document.cookie parsing
-            console.log('[DEBUG] Falling back to manual cookie parsing');
-            const cookies = document.cookie.split("; ");
-            for (let cookie of cookies) {
-                const [name, value] = cookie.split("=");
-                if (name === "rfc_v") {
-                    const decodedValue = decodeURIComponent(value);
-                    console.log('[DEBUG] Got RFC from document.cookie:', decodedValue);
-                    return decodedValue;
-                }
-            }
-            
-            // Final fallback - try to extract from DOM or page source
-            console.log('[DEBUG] Trying to extract RFC from page source');
-            const pageSource = document.documentElement.outerHTML;
-            const rfcMatch = pageSource.match(/rfc_v\s*=\s*["']([^"']+)["']/);
-            if (rfcMatch && rfcMatch[1]) {
-                console.log('[DEBUG] Extracted RFC from page source:', rfcMatch[1]);
-                return rfcMatch[1];
-            }
-            
-            // No RFC found
-            console.warn('[DEBUG] No RFC value found!');
-            return '';
-        } catch (error) {
-            console.error('[DEBUG] Error getting RFC:', error);
-            return '';
-        }
+        // Also display in the main GUI status box if available
+        displayStatusMessage(message, type);
     }
 
     function set_value(key, value) {
