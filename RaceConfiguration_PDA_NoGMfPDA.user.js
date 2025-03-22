@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Manager
-// @version      3.6.5
+// @version      3.6.6
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -3336,51 +3336,73 @@
         }
         
         // Method 4: Look for mobile-specific racing indicators (Torn PDA)
-        // Add specific check for mobile links with or without aria-label
-        const mobileSpecificSelectors = [
-            'a[href*="sid=racing"][class*="racing"]',
-            'a[data-is-tooltip-opened][href*="sid=racing"]',
-            '.navigationWrapper a[aria-label*="Racing"][class*="active"]', // Must be active link
-            '.mobile-nav a[href*="racing"][class*="active"]',              // Must be active link
-            '.navigation-wrapper a[href*="racing"][class*="active"]'       // Must be active link
+        // Add specific check for the exact mobile racing indicator selector provided
+        const mobileRacingIndicator = document.querySelector('#sidebar > div > div > div.user-information-mobile___WjXnd > div:nth-child(2) > div > div.swiper-wrapper.swiper___qtI61 > div.swiper-slide.slide___NOBlS.swiper-slide-next > ul > li.icon17___eXCy4 > a');
+        
+        // Also add a more flexible version in case class names change
+        const genericMobileRacingSelector = document.querySelector('#sidebar [class*="user-information-mobile"] [class*="swiper"] [class*="slide"] ul li[class*="icon17"] > a');
+        
+        // Check either of these specific racing indicators
+        const mobileIndicator = mobileRacingIndicator || genericMobileRacingSelector;
+        
+        if (mobileIndicator) {
+            const ariaLabel = mobileIndicator.getAttribute('aria-label');
+            console.log(`[Race Detection] Found specific mobile racing indicator with aria-label: ${ariaLabel}`);
+            
+            // Check for active racing states in the aria-label
+            if (ariaLabel && (
+                ariaLabel.includes('Currently racing') || 
+                ariaLabel.includes('Waiting for') ||
+                ariaLabel === 'Racing: Currently racing')
+            ) {
+                console.log('[Race Detection] Detected active race via specific mobile selector');
+                return true;
+            }
+            
+            // Check for race completion in the aria-label
+            if (ariaLabel && (
+                ariaLabel.match(/You finished \d+[a-z]{2}/) ||
+                ariaLabel.includes('Your best lap was'))
+            ) {
+                console.log('[Race Detection] Race completion detected via mobile aria-label');
+                return false;
+            }
+        }
+        
+        // Add specific exclusions for known false positive elements
+        const excludedSelectors = [
+            // Mobile sidebar navigation item for racing page (but not active racing)
+            '#sidebar > div > div > div.user-information-mobile___WjXnd > div:nth-child(2) > div > div.swiper-wrapper.swiper___qtI61 > div.swiper-slide.slide___NOBlS.swiper-slide-next > ul > li.icon18___iPKVP > a',
+            '#sidebar [class*="user-information-mobile"] [class*="swiper"] [class*="slide"] ul li[class*="icon18"] > a',
+            // Other general navigation elements that may contain "racing" class
+            '.sidebar [class*="navigation"] [class*="racing"]:not([aria-label*="Currently racing"])',
+            '.sidebarMobileWrapper [class*="racing"]:not([aria-label*="Currently racing"])',
+            '.headerMobileWrapper [class*="racing"]:not([aria-label*="Currently racing"])'
         ];
         
-        for (const selector of mobileSpecificSelectors) {
-            const elements = document.querySelectorAll(selector);
-            if (elements.length > 0) {
-                // For each matching element, check if it indicates a race completion
-                let anyCompleted = false;
-                for (const el of elements) {
-                    const ariaLabel = el.getAttribute('aria-label');
-                    if (ariaLabel && (
-                        ariaLabel.match(/You finished \d+[a-z]{2}/) ||
-                        ariaLabel.includes('Your best lap was')
-                    )) {
-                        console.log(`[Race Detection] Found race completion via mobile element: ${selector}`);
-                        anyCompleted = true;
-                        break;
-                    }
-                }
-                
-                if (anyCompleted) {
-                    return false;
+        // Check if any of the excluded elements exist (but don't count them as racing indicators)
+        for (const selector of excludedSelectors) {
+            const el = document.querySelector(selector);
+            if (el) {
+                const ariaLabel = el.getAttribute('aria-label') || '';
+                // Don't count these as racing unless they have an explicit racing aria-label
+                if (!ariaLabel.includes('Currently racing') && !ariaLabel.includes('Waiting for')) {
+                    console.log(`[Race Detection] Found excluded element (not counting as race indicator): ${selector}`);
+                    // Do not return here - these should not be used for detection unless they indicate racing
                 } else {
-                    // Extra validation for active race detection
-                    const hasActiveRaceIndicator = elements[0].classList.contains('active') || 
-                                                 (elements[0].getAttribute('aria-label') || '').includes('Currently racing');
-                    
-                    if (hasActiveRaceIndicator) {
-                        console.log(`[Race Detection] Found active race via mobile element: ${selector}`);
-                        return true;
-                    }
-                    
-                    // Otherwise keep checking other indicators
+                    // If they do have racing aria-labels, they should be counted
+                    console.log(`[Race Detection] Found excluded element WITH RACING ARIA-LABEL: ${ariaLabel}`);
+                    return true;
                 }
             }
         }
         
-        // Continue with existing mobile selectors but with much stricter validation
+        // Check other mobile selectors with better validation
         const mobileSelectors = [
+            // Generic link with racing aria-label anywhere
+            'a[aria-label="Racing: Currently racing"]',
+            'a[aria-label*="Currently racing"]',
+            'a[aria-label*="Waiting for a race"]',
             // Mobile menu items with race status - must be active
             '.navigationWrapper a.active[aria-label*="Racing"]',
             // Mobile race status indicators - must have specific text
@@ -3401,6 +3423,9 @@
             const element = document.querySelector(selector);
             if (element) {
                 // Additional validation to prevent false positives
+                // Skip navigation/layout elements unless they specifically indicate racing via aria-label
+                const ariaLabel = element.getAttribute('aria-label') || '';
+                
                 // Skip common UI elements that aren't actually race indicators
                 if (element.classList.contains('racing-navigation') ||
                     element.classList.contains('racing-menu') ||
@@ -3408,7 +3433,28 @@
                     element.classList.contains('racing-layout') ||
                     element.classList.contains('racing-sidebar') ||
                     element.parentElement?.classList.contains('navigation')) {
-                    continue; // Skip navigation/layout elements
+                    
+                    // Only count navigation elements if they explicitly have racing aria-labels
+                    if (!ariaLabel.includes('Currently racing') && !ariaLabel.includes('Waiting for')) {
+                        continue; // Skip navigation elements without racing indication
+                    }
+                }
+                
+                // Verify it's not just a mobile menu icon without racing context
+                if (element.closest('#sidebar') || 
+                    element.closest('[class*="sidebar"]') ||
+                    element.closest('[class*="navigation"]') ||
+                    element.closest('.headerMobileWrapper')) {
+                    
+                    // For sidebar/navigation items, we need strong evidence it's about active racing
+                    const hasActiveClass = element.classList.contains('active');
+                    const hasActiveIcon = element.querySelector('.icon.active, [class*="Icon"].active');
+                    const hasRacingLabel = ariaLabel.includes('Currently racing') || ariaLabel.includes('Waiting for');
+                    
+                    // Skip if it looks like just a navigation item without racing indication
+                    if (!(hasActiveClass || hasActiveIcon || hasRacingLabel)) {
+                        continue;
+                    }
                 }
                 
                 // Check if race completion indicators are also present
@@ -3422,7 +3468,7 @@
                     return false;
                 }
                 
-                console.log(`[Race Detection] Found mobile racing element: ${selector}`);
+                console.log(`[Race Detection] Found mobile racing element: ${selector} with aria-label: ${ariaLabel}`);
                 return true;
             }
         }
@@ -3820,7 +3866,7 @@
                     const trackElement = el.querySelector('li.track');
                     if (!trackElement) return '';
                     // Remove the laps text and trim whitespace
-                    return trackElement.textContent.replace(/\(\d+\s*laps?\)/i, '').trim();
+                    return trackElement.textContent.replace(/\(\d+\s*laps?/i, '').trim();
                 };
                 
                 const trackA = getTrackName(a).toLowerCase();
