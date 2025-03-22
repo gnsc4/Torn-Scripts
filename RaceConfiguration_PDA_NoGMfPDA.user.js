@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Manager
-// @version      3.6.14
+// @version      3.6.20
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -48,39 +48,6 @@
         '23': 'Stone Park',
         '24': 'Convict'
     };
-
-    // Improve mobile and PDA detection
-    const isMobile = {
-        Android: function() {
-            return /Android/i.test(navigator.userAgent);
-        },
-        iOS: function() {
-            return /iPhone|iPad|iPod/i.test(navigator.userAgent);
-        },
-        Opera: function() {
-            return /Opera Mini/i.test(navigator.userAgent);
-        },
-        Windows: function() {
-            return /IEMobile|WPDesktop/i.test(navigator.userAgent);
-        },
-        KiwiBrowser: function() {
-            return /Kiwi/i.test(navigator.userAgent);
-        },
-        TornPDA: function() {
-            return /TornPDA/i.test(navigator.userAgent) || 
-                   document.documentElement.classList.contains('tornPDA') ||
-                   document.body.classList.contains('tornPDA') ||
-                   !!document.querySelector('.tornPDA-header');
-        },
-        any: function() {
-            return (isMobile.Android() || isMobile.iOS() || isMobile.Opera() || isMobile.Windows() || 
-                    isMobile.KiwiBrowser() || isMobile.TornPDA());
-        }
-    };
-
-    // Separate detection for PDA and mobile browsers
-    const isTornPDA = isMobile.TornPDA();
-    const isMobileBrowser = isMobile.any() || window.innerWidth < 768;
 
     let guiInitialized = false;
     let domCheckAttempts = 0;
@@ -1631,7 +1598,6 @@
         }
     }
 
-    // Enhance drag functionality to support touch events (modify the dragElement function)
     function dragElement(elmnt) {
         const dragHandle = document.createElement('div');
         dragHandle.className = 'drag-handle';
@@ -1660,13 +1626,8 @@
         document.head.appendChild(style);
 
         let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-        let isTouchDevice = isMobileBrowser;
-
-        // Mouse events
         dragHandle.onmousedown = dragMouseDown;
-        
-        // Touch events
-        dragHandle.addEventListener('touchstart', dragTouchStart, { passive: false });
+        dragHandle.ontouchstart = touchDragStart;
 
         function dragMouseDown(e) {
             e = e || window.event;
@@ -1676,15 +1637,14 @@
             document.onmouseup = closeDragElement;
             document.onmousemove = elementDrag;
         }
-
-        function dragTouchStart(e) {
-            if (e.touches.length === 1) {
+        
+        function touchDragStart(e) {
+            if (e.touches && e.touches.length) {
                 e.preventDefault();
                 pos3 = e.touches[0].clientX;
                 pos4 = e.touches[0].clientY;
-                document.addEventListener('touchend', closeTouchDragElement, { passive: true });
-                document.addEventListener('touchcancel', closeTouchDragElement, { passive: true });
-                document.addEventListener('touchmove', elementTouchDrag, { passive: false });
+                document.ontouchend = closeTouchDrag;
+                document.ontouchmove = elementTouchDrag;
             }
         }
 
@@ -1695,85 +1655,59 @@
             pos2 = pos4 - e.clientY;
             pos3 = e.clientX;
             pos4 = e.clientY;
-            updateElementPosition();
-        }
 
+            // Calculate new position
+            let newTop = elmnt.offsetTop - pos2;
+            let newLeft = elmnt.offsetLeft - pos1;
+            
+            // Apply position with boundaries check
+            elmnt.style.top = newTop + "px";
+            elmnt.style.left = newLeft + "px";
+            
+            // Enforce boundaries during drag for a smoother experience
+            requestAnimationFrame(() => enforceElementBoundaries(elmnt));
+        }
+        
         function elementTouchDrag(e) {
-            if (e.touches.length === 1) {
+            if (e.touches && e.touches.length) {
                 e.preventDefault();
                 pos1 = pos3 - e.touches[0].clientX;
                 pos2 = pos4 - e.touches[0].clientY;
                 pos3 = e.touches[0].clientX;
                 pos4 = e.touches[0].clientY;
-                updateElementPosition();
+
+                // Calculate new position
+                let newTop = elmnt.offsetTop - pos2;
+                let newLeft = elmnt.offsetLeft - pos1;
+                
+                // Apply position with boundaries check
+                elmnt.style.top = newTop + "px";
+                elmnt.style.left = newLeft + "px";
+                
+                // Enforce boundaries during drag for a smoother experience
+                requestAnimationFrame(() => enforceElementBoundaries(elmnt));
             }
-        }
-
-        function updateElementPosition() {
-            // Calculate new position
-            let newTop = elmnt.offsetTop - pos2;
-            let newLeft = elmnt.offsetLeft - pos1;
-
-            // Get window dimensions and element dimensions
-            const windowWidth = window.innerWidth;
-            const windowHeight = window.innerHeight;
-            const elmntWidth = elmnt.offsetWidth;
-            const elmntHeight = elmnt.offsetHeight;
-
-            // Calculate boundaries with padding
-            const padding = 10;
-            const minLeft = padding;
-            const maxLeft = windowWidth - elmntWidth - padding;
-            const minTop = padding;
-            const maxTop = windowHeight - elmntHeight - padding;
-
-            // Apply boundaries
-            newLeft = Math.max(minLeft, Math.min(maxLeft, newLeft));
-            newTop = Math.max(minTop, Math.min(maxTop, newTop));
-
-            // Update position
-            elmnt.style.top = newTop + "px";
-            elmnt.style.left = newLeft + "px";
         }
 
         function closeDragElement() {
             document.onmouseup = null;
             document.onmousemove = null;
-            enforceWindowBoundaries(elmnt);
+            enforceElementBoundaries(elmnt);
+        }
+        
+        function closeTouchDrag() {
+            document.ontouchend = null;
+            document.ontouchmove = null;
+            enforceElementBoundaries(elmnt);
         }
 
-        function closeTouchDragElement() {
-            document.removeEventListener('touchend', closeTouchDragElement);
-            document.removeEventListener('touchcancel', closeTouchDragElement);
-            document.removeEventListener('touchmove', elementTouchDrag);
-            enforceWindowBoundaries(elmnt);
-        }
+        // Initial position enforcement
+        setTimeout(() => enforceElementBoundaries(elmnt), 100);
 
-        function enforceWindowBoundaries(element) {
-            const windowWidth = document.documentElement.clientWidth;
-            const windowHeight = document.documentElement.clientHeight;
-            const elmntWidth = element.offsetWidth;
-            const elmntHeight = element.offsetHeight;
-            const padding = 10;
-
-            let { top, left } = element.getBoundingClientRect();
-
-            // Enforce boundaries
-            if (left < padding) element.style.left = padding + "px";
-            if (top < padding) element.style.top = padding + "px";
-            if (left + elmntWidth > windowWidth - padding) {
-                element.style.left = (windowWidth - elmntWidth - padding) + "px";
-            }
-            if (top + elmntHeight > windowHeight - padding) {
-                element.style.top = (windowHeight - elmntHeight - padding) + "px";
-            }
-        }
-
-        // Add window resize handler with debounce for performance
-        let resizeTimeout;
-        window.addEventListener('resize', () => {
-            clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(() => enforceWindowBoundaries(elmnt), 100);
+        // Add event listeners for window resize and orientation change
+        window.addEventListener('resize', () => enforceElementBoundaries(elmnt));
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => enforceElementBoundaries(elmnt), 300);
         });
     }
 
@@ -3285,7 +3219,6 @@
         */
     }
 
-    // Update the race alert function to use mobile detection
     function updateRaceAlert() {
         const alertEnabled = GM_getValue('raceAlertEnabled', false);
         if (!alertEnabled) {
@@ -3293,10 +3226,15 @@
             return;
         }
 
-        // Use our global mobile detection variable
-        const delay = isMobileBrowser ? 2000 : 500; // 2 seconds for mobile, 0.5 second for desktop
+        // Detect if user is on mobile/PDA
+        const isMobilePDA = navigator.userAgent.includes('PDA') || 
+                            window.innerWidth < 768 || 
+                            document.documentElement.classList.contains('tornPDA');
         
-        console.log(`[Race Detection] Using ${isMobileBrowser ? 'mobile' : 'desktop'} delay: ${delay}ms`);
+        // Use different delays based on platform
+        const delay = isMobilePDA ? 2000 : 500; // 3 seconds for mobile, 1 second for desktop
+        
+        console.log(`[Race Detection] Using ${isMobilePDA ? 'mobile' : 'desktop'} delay: ${delay}ms`);
 
         setTimeout(() => {
             const isInRace = checkRaceStatus();
@@ -3317,7 +3255,6 @@
         }, delay);
     }
 
-    // Enhance showRaceAlert to better detect mobile environments and position accordingly
     function showRaceAlert() {
         let alert = document.getElementById('raceAlert');
         
@@ -3326,9 +3263,7 @@
             alert.id = 'raceAlert';
             alert.className = 'race-alert';
             alert.textContent = 'Not Racing';
-            
-            // Adjust CSS for better touch targets on mobile
-            const baseCss = `
+            alert.style.cssText = `
                 display: inline-flex !important;
                 align-items: center !important;
                 margin-left: 10px !important;
@@ -3337,42 +3272,29 @@
                 pointer-events: auto !important;
             `;
             
-            const mobileCss = isMobileBrowser ? `
-                padding: 8px 12px !important; 
-                font-size: 14px !important;
-                min-height: 20px !important;
-                min-width: 80px !important;
-            ` : '';
-            
-            alert.style.cssText = baseCss + mobileCss;
-            
             const popup = document.createElement('div');
             popup.className = 'quick-launch-popup';
             popup.id = 'quickLaunchPopup';
             alert.appendChild(popup);
             
-            // Add both mouse and touch event listeners
-            alert.addEventListener('click', handleAlertClick);
-            alert.addEventListener('touchend', handleAlertClick);
-            
-            function handleAlertClick(e) {
+            alert.addEventListener('click', (e) => {
                 e.stopPropagation();
                 popup.classList.toggle('show');
                 updateQuickLaunchPopup(popup);
-            }
+            });
             
-            // Handle outside clicks to close popup
-            const closePopupHandler = (e) => {
-                if (!alert.contains(e.target)) {
-                    popup.classList.remove('show');
-                }
-            };
+            document.addEventListener('click', () => {
+                popup.classList.remove('show');
+            });
             
-            document.addEventListener('click', closePopupHandler);
-            document.addEventListener('touchend', closePopupHandler);
+            // Try to find a good place to insert the alert, with special handling for PDA
+            const isMobilePDA = navigator.userAgent.includes('PDA') || 
+                               window.innerWidth < 768 || 
+                               document.documentElement.classList.contains('tornPDA');
             
-            // Place alert in an appropriate container based on platform detection
+            // Special handling for racing page
             if (window.location.href.includes('sid=racing')) {
+                // Look for racing page specific containers
                 const raceToggleRow = document.getElementById('raceToggleRow');
                 if (raceToggleRow) {
                     raceToggleRow.appendChild(alert);
@@ -3380,47 +3302,23 @@
                 }
             }
             
-            // Special handling for Torn PDA
-            if (isTornPDA) {
-                // PDA-specific containers in priority order
+            // Special handling for mobile/PDA
+            if (isMobilePDA) {
+                // Try PDA specific containers
                 const pdaContainers = [
-                    '.tornPDA-header',
                     '.navigationWrapper',
                     '.status-icons-mobile',
-                    '.header-bottom-wrap',
-                    '.header' 
+                    '.tornPDA-header',
+                    '.headerWrapper___f5LgD',
+                    '.headerTopContainer___CfrOY'
                 ];
                 
                 for (const selector of pdaContainers) {
                     const container = document.querySelector(selector);
                     if (container) {
-                        // For PDA, add to the beginning to avoid overflow issues
-                        container.insertBefore(alert, container.firstChild);
-                        console.log(`[Race Alert] Attached to PDA container: ${selector}`);
-                        return;
-                    }
-                }
-            }
-            // Special handling for mobile devices (non-PDA)
-            else if (isMobileBrowser) {
-                // Mobile containers in priority order
-                const mobileContainers = [
-                    '.navigationWrapper',
-                    '.status-icons-mobile',
-                    '.headerWrapper___f5LgD',
-                    '.headerTopContainer___CfrOY',
-                    '.header-wrap',
-                    '.header-content-wrapper',
-                    '.header',
-                    'header'
-                ];
-                
-                for (const selector of mobileContainers) {
-                    const container = document.querySelector(selector);
-                    if (container) {
                         container.appendChild(alert);
                         
-                        // Adjust styling specifically for mobile
+                        // Adjust styling for mobile
                         alert.style.position = 'absolute';
                         alert.style.top = '10px';
                         alert.style.right = '10px';
@@ -3433,7 +3331,7 @@
                 }
             }
             
-            // Try various title elements as fallback
+            // Default handling for other pages - try multiple possible title elements
             const titleSelectors = [
                 '#mainContainer > div.content-wrapper.winter > div.content-title.m-bottom10 h4',
                 '.titleContainer___QrlWP .title___rhtB4',
@@ -3444,6 +3342,7 @@
                 '#react-root > div > div.appHeader___gUnYC.crimes-app-header > h4',
                 'div.appHeader___gUnYC h4',
                 '#skip-to-content',
+                // Add mobile-specific selectors
                 '.header-title',
                 '.mobile-title',
                 '.app-header'
@@ -3461,7 +3360,7 @@
                 }
             }
             
-            // Last resort - fixed position on body
+            // Last resort - append to body with fixed positioning
             if (!alert.parentNode) {
                 alert.style.position = 'fixed';
                 alert.style.top = '10px';
@@ -4538,13 +4437,270 @@
         }
     }
 
+    // Enhanced window boundary enforcement
+    function enforceElementBoundaries(element) {
+        if (!element || !element.getBoundingClientRect) return;
+        
+        // Get viewport dimensions
+        const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+        
+        // Get element dimensions
+        const rect = element.getBoundingClientRect();
+        const elemWidth = rect.width;
+        const elemHeight = rect.height;
+        
+        // Padding from edge of screen
+        const padding = 10;
+        
+        // Calculate new position that keeps element within boundaries
+        let newLeft = rect.left;
+        let newTop = rect.top;
+        
+        // Check left boundary
+        if (newLeft < padding) {
+            newLeft = padding;
+        }
+        
+        // Check right boundary
+        if (newLeft + elemWidth > viewportWidth - padding) {
+            newLeft = viewportWidth - elemWidth - padding;
+        }
+        
+        // Check top boundary
+        if (newTop < padding) {
+            newTop = padding;
+        }
+        
+        // Check bottom boundary
+        if (newTop + elemHeight > viewportHeight - padding) {
+            newTop = viewportHeight - elemHeight - padding;
+        }
+        
+        // Only update position if it changed
+        if (newLeft !== rect.left || newTop !== rect.top) {
+            console.log('[DEBUG] Enforcing boundaries:', 
+                { old: {left: rect.left, top: rect.top}, new: {left: newLeft, top: newTop} });
+            
+            // Use transform for better performance
+            element.style.transform = `translate(${newLeft - rect.left}px, ${newTop - rect.top}px)`;
+            
+            // If element already has a transform, we need to update position directly
+            if (window.getComputedStyle(element).transform === 'none') {
+                element.style.left = `${newLeft}px`;
+                element.style.top = `${newTop}px`;
+            }
+        }
+    }
+    
+    // Fix for dragElement to properly enforce boundaries
+    function dragElement(elmnt) {
+        const dragHandle = document.createElement('div');
+        dragHandle.className = 'drag-handle';
+        dragHandle.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 40px;
+            height: 40px;
+            cursor: move;
+            background: transparent;
+            pointer-events: all;
+        `;
+        elmnt.insertBefore(dragHandle, elmnt.firstChild);
+
+        const style = document.createElement('style');
+        style.textContent = `
+            #closeGUIButton {
+                z-index: 1001;
+                pointer-events: all !important;
+            }
+            .drag-handle {
+                z-index: 1000;
+            }
+        `;
+        document.head.appendChild(style);
+
+        let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+        dragHandle.onmousedown = dragMouseDown;
+        dragHandle.ontouchstart = touchDragStart;
+
+        function dragMouseDown(e) {
+            e = e || window.event;
+            e.preventDefault();
+            pos3 = e.clientX;
+            pos4 = e.clientY;
+            document.onmouseup = closeDragElement;
+            document.onmousemove = elementDrag;
+        }
+        
+        function touchDragStart(e) {
+            if (e.touches && e.touches.length) {
+                e.preventDefault();
+                pos3 = e.touches[0].clientX;
+                pos4 = e.touches[0].clientY;
+                document.ontouchend = closeTouchDrag;
+                document.ontouchmove = elementTouchDrag;
+            }
+        }
+
+        function elementDrag(e) {
+            e = e || window.event;
+            e.preventDefault();
+            pos1 = pos3 - e.clientX;
+            pos2 = pos4 - e.clientY;
+            pos3 = e.clientX;
+            pos4 = e.clientY;
+
+            // Calculate new position
+            let newTop = elmnt.offsetTop - pos2;
+            let newLeft = elmnt.offsetLeft - pos1;
+            
+            // Apply position with boundaries check
+            elmnt.style.top = newTop + "px";
+            elmnt.style.left = newLeft + "px";
+            
+            // Enforce boundaries during drag for a smoother experience
+            requestAnimationFrame(() => enforceElementBoundaries(elmnt));
+        }
+        
+        function elementTouchDrag(e) {
+            if (e.touches && e.touches.length) {
+                e.preventDefault();
+                pos1 = pos3 - e.touches[0].clientX;
+                pos2 = pos4 - e.touches[0].clientY;
+                pos3 = e.touches[0].clientX;
+                pos4 = e.touches[0].clientY;
+
+                // Calculate new position
+                let newTop = elmnt.offsetTop - pos2;
+                let newLeft = elmnt.offsetLeft - pos1;
+                
+                // Apply position with boundaries check
+                elmnt.style.top = newTop + "px";
+                elmnt.style.left = newLeft + "px";
+                
+                // Enforce boundaries during drag for a smoother experience
+                requestAnimationFrame(() => enforceElementBoundaries(elmnt));
+            }
+        }
+
+        function closeDragElement() {
+            document.onmouseup = null;
+            document.onmousemove = null;
+            enforceElementBoundaries(elmnt);
+        }
+        
+        function closeTouchDrag() {
+            document.ontouchend = null;
+            document.ontouchmove = null;
+            enforceElementBoundaries(elmnt);
+        }
+
+        // Initial position enforcement
+        setTimeout(() => enforceElementBoundaries(elmnt), 100);
+
+        // Add event listeners for window resize and orientation change
+        window.addEventListener('resize', () => enforceElementBoundaries(elmnt));
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => enforceElementBoundaries(elmnt), 300);
+        });
+    }
+    
+    // Fix mobile scrolling for the GUI container
+    function fixMobileScrolling() {
+        const gui = document.getElementById('raceConfigGUI');
+        if (!gui) return;
+        
+        // Add passive touch event listeners for better scrolling
+        gui.addEventListener('touchstart', function(e) {
+            // Only stop propagation, don't prevent default so scrolling can happen
+            e.stopPropagation();
+        }, { passive: true });
+        
+        gui.addEventListener('touchmove', function(e) {
+            // Check if target is a scrollable element (like the preset container)
+            let target = e.target;
+            let scrollable = false;
+            
+            // Check if user is scrolling on a scrollable container
+            while (target !== gui && target !== null) {
+                const style = window.getComputedStyle(target);
+                if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
+                    if (target.scrollHeight > target.clientHeight) {
+                        scrollable = true;
+                        break;
+                    }
+                }
+                target = target.parentElement;
+            }
+            
+            // Only prevent default if user is trying to scroll the entire page
+            if (!scrollable) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+    }
+    
+    // Ensure all UI elements stay within viewport when displayed
+    function ensureUIWithinViewport() {
+        // Check for race config GUI
+        const gui = document.getElementById('raceConfigGUI');
+        if (gui && gui.style.display !== 'none') {
+            enforceElementBoundaries(gui);
+        }
+        
+        // Check for quick launch container
+        const quickLaunch = document.getElementById('quickLaunchContainer');
+        if (quickLaunch) {
+            enforceElementBoundaries(quickLaunch);
+        }
+        
+        // Fix race alert position
+        const raceAlert = document.getElementById('raceAlert');
+        if (raceAlert) {
+            enforceElementBoundaries(raceAlert);
+        }
+    }
+    
+    // Add viewport meta tag for better mobile display if not already present
+    function ensureViewportMeta() {
+        if (!document.querySelector('meta[name="viewport"]')) {
+            const meta = document.createElement('meta');
+            meta.name = 'viewport';
+            meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0';
+            document.head.appendChild(meta);
+            console.log('[DEBUG] Added viewport meta tag for mobile');
+        }
+    }
+    
+    // Initialize mobile optimizations
+    function initializeMobileOptimizations() {
+        ensureViewportMeta();
+        fixMobileScrolling();
+        
+        // Make sure UI stays in viewport on scroll/resize/orientation change
+        window.addEventListener('scroll', ensureUIWithinViewport, { passive: true });
+        window.addEventListener('resize', ensureUIWithinViewport, { passive: true });
+        window.addEventListener('orientationchange', () => {
+            setTimeout(ensureUIWithinViewport, 300);
+        }, { passive: true });
+        
+        // Call initially
+        setTimeout(ensureUIWithinViewport, 500);
+    }
+
     function initializeAll() {
         // Ensure document is available before initializing
         if (typeof document !== 'undefined' && document.readyState !== 'loading') {
             init();
+            // Add mobile optimizations
+            initializeMobileOptimizations();
         } else {
             document.addEventListener('DOMContentLoaded', function() {
                 init();
+                // Add mobile optimizations
+                initializeMobileOptimizations();
             });
         }
     }
@@ -4570,311 +4726,6 @@
     }
 
     // Instead of directly calling initializeAll, ensure DOM is ready first
-    if (document.readyState !== 'loading') {
-        initializeAll();
-    } else {
-        document.addEventListener('DOMContentLoaded', initializeAll);
-    }
-
-    // Add additional mobile-friendly styles 
-    function addMobileStyles() {
-        if (!isMobileBrowser) return;
-        
-        const mobileStyle = document.createElement('style');
-        mobileStyle.textContent = `
-            /* Mobile touch-friendly buttons */
-            .gui-button,
-            .preset-button,
-            #toggleRaceGUIButton,
-            #createRaceButton,
-            #closeGUIButton,
-            #setNowButton,
-            .quick-launch-button,
-            .auto-join-preset-button {
-                min-height: 44px !important;
-                padding: 10px 15px !important;
-                margin: 8px !important;
-                font-size: 16px !important;
-                touch-action: manipulation !important;
-            }
-            
-            /* Larger UI elements for touch screens */
-            #raceConfigGUI select,
-            #raceConfigGUI input[type="text"],
-            #raceConfigGUI input[type="number"],
-            #raceConfigGUI input[type="password"] {
-                min-height: 44px !important;
-                font-size: 16px !important;
-                padding: 10px !important;
-            }
-            
-            /* More spacing for checkboxes */
-            #raceConfigGUI input[type="checkbox"] {
-                width: 22px !important;
-                height: 22px !important;
-                margin-right: 10px !important;
-            }
-            
-            /* Ensure popups are easily tappable */
-            .quick-launch-popup .quick-launch-button {
-                display: block !important;
-                width: 100% !important;
-                margin: 8px 0 !important;
-                text-align: center !important;
-            }
-            
-            /* Prevent text selection on buttons */
-            .gui-button, .preset-button, .quick-launch-button, 
-            .auto-join-preset-button, #closeGUIButton, #minimizeQuickLaunchButton,
-            .race-alert {
-                -webkit-user-select: none !important;
-                user-select: none !important;
-                -webkit-touch-callout: none !important;
-            }
-            
-            /* Fix for potential zoom issues with inputs */
-            input, select, textarea {
-                font-size: 16px !important; /* Prevents iOS from zooming on focus */
-            }
-            
-            /* Ensure scrolling is smooth on touch */
-            #raceConfigGUI {
-                -webkit-overflow-scrolling: touch !important;
-            }
-        `;
-        
-        document.head.appendChild(mobileStyle);
-    }
-
-    // Initialize mobile styles when DOM is ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', addMobileStyles);
-    } else {
-        addMobileStyles();
-    }
-
-    // Enhanced PDA-specific styles
-    function addPDAStyles() {
-        if (!isTornPDA) return;
-        
-        const pdaStyle = document.createElement('style');
-        pdaStyle.id = 'tornPDA-custom-styles';
-        pdaStyle.textContent = `
-            /* PDA-specific UI adjustments */
-            #raceConfigGUI {
-                max-width: 95% !important;
-                margin: 0 auto !important;
-                left: 0 !important;
-                right: 0 !important;
-                top: 100px !important;
-            }
-            
-            /* Ensure alerts display correctly in PDA interface */
-            .race-alert {
-                background-color: rgba(255, 68, 68, 0.9) !important;
-                color: white !important;
-                font-weight: bold !important;
-                padding: 8px 12px !important;
-                border-radius: 4px !important;
-                position: absolute !important;
-                top: 10px !important;
-                right: 10px !important;
-                z-index: 999999 !important;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
-            }
-            
-            /* PDA navigation compatibility */
-            .navigationWrapper .race-alert,
-            .status-icons-mobile .race-alert,
-            .tornPDA-header .race-alert {
-                position: relative !important;
-                top: auto !important;
-                right: auto !important;
-                margin: 0 5px !important;
-            }
-            
-            /* Quick launch container adjustments for PDA */
-            .quick-launch-container {
-                max-width: 95% !important;
-            }
-            
-            /* Better button handling for PDA */
-            .preset-button, 
-            .gui-button, 
-            .quick-launch-button {
-                margin: 5px !important;
-                min-height: 40px !important;
-            }
-            
-            /* Fix for PDA navigation */
-            .navigationWrapper,
-            .header-wrap {
-                z-index: 999998 !important;
-                position: relative !important;
-            }
-        `;
-        
-        document.head.appendChild(pdaStyle);
-    }
-
-    // Modify showRaceAlert function to better handle PDA
-    function showRaceAlert() {
-        let alert = document.getElementById('raceAlert');
-        
-        if (!alert) {
-            alert = document.createElement('div');
-            alert.id = 'raceAlert';
-            alert.className = 'race-alert';
-            alert.textContent = 'Not Racing';
-            
-            // Base CSS for all platforms
-            const baseCss = `
-                display: inline-flex !important;
-                align-items: center !important;
-                margin-left: 10px !important;
-                order: 2 !important;
-                z-index: 99999 !important;
-                pointer-events: auto !important;
-            `;
-            
-            // PDA-specific styling takes priority
-            if (isTornPDA) {
-                alert.style.cssText = baseCss + `
-                    position: relative !important;
-                    padding: 8px 12px !important;
-                    font-size: 14px !important;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
-                `;
-            } else if (isMobileBrowser) {
-                alert.style.cssText = baseCss + `
-                    padding: 8px 12px !important; 
-                    font-size: 14px !important;
-                    min-height: 20px !important;
-                    min-width: 80px !important;
-                `;
-            } else {
-                alert.style.cssText = baseCss;
-            }
-            
-            const popup = document.createElement('div');
-            popup.className = 'quick-launch-popup';
-            popup.id = 'quickLaunchPopup';
-            alert.appendChild(popup);
-            
-            // Add both mouse and touch event listeners
-            alert.addEventListener('click', handleAlertClick);
-            alert.addEventListener('touchend', handleAlertClick);
-            
-            function handleAlertClick(e) {
-                e.stopPropagation();
-                popup.classList.toggle('show');
-                updateQuickLaunchPopup(popup);
-            }
-            
-            // Handle outside clicks to close popup
-            const closePopupHandler = (e) => {
-                if (!alert.contains(e.target)) {
-                    popup.classList.remove('show');
-                }
-            };
-            
-            document.addEventListener('click', closePopupHandler);
-            document.addEventListener('touchend', closePopupHandler);
-            
-            // Place alert in an appropriate container based on platform detection
-            if (window.location.href.includes('sid=racing')) {
-                const raceToggleRow = document.getElementById('raceToggleRow');
-                if (raceToggleRow) {
-                    raceToggleRow.appendChild(alert);
-                    return;
-                }
-            }
-            
-            // Special handling for Torn PDA
-            if (isTornPDA) {
-                // PDA-specific containers in priority order
-                const pdaContainers = [
-                    '.tornPDA-header',
-                    '.navigationWrapper',
-                    '.status-icons-mobile',
-                    '.header-bottom-wrap',
-                    '.header' 
-                ];
-                
-                for (const selector of pdaContainers) {
-                    const container = document.querySelector(selector);
-                    if (container) {
-                        // For PDA, add to the beginning to avoid overflow issues
-                        container.insertBefore(alert, container.firstChild);
-                        console.log(`[Race Alert] Attached to PDA container: ${selector}`);
-                        return;
-                    }
-                }
-            }
-            // Special handling for mobile devices (non-PDA)
-            else if (isMobileBrowser) {
-                // Mobile containers in priority order
-                const mobileContainers = [
-                    '.navigationWrapper',
-                    '.status-icons-mobile',
-                    '.headerWrapper___f5LgD',
-                    '.headerTopContainer___CfrOY',
-                    '.header-wrap',
-                    '.header-content-wrapper',
-                    '.header',
-                    'header'
-                ];
-                
-                for (const selector of mobileContainers) {
-                    const container = document.querySelector(selector);
-                    if (container) {
-                        container.appendChild(alert);
-                        
-                        // Adjust styling specifically for mobile
-                        alert.style.position = 'absolute';
-                        alert.style.top = '10px';
-                        alert.style.right = '10px';
-                        alert.style.margin = '0';
-                        alert.style.zIndex = '999999';
-                        
-                        console.log(`[Race Alert] Attached to mobile container: ${selector}`);
-                        return;
-                    }
-                }
-            }
-            
-            // Rest of container checks for all platforms
-            // ...existing code...
-        }
-    }
-
-    // Initialize both mobile and PDA styles when DOM is ready
-    function initializeStyles() {
-        if (isTornPDA) {
-            addPDAStyles();
-        }
-        if (isMobileBrowser && !isTornPDA) {
-            addMobileStyles();
-        }
-    }
-
-    // Add to initialization function
-    function initializeAll() {
-        // Ensure document is available before initializing
-        if (typeof document === 'undefined') {
-            console.error('Document not available. Waiting for it to be ready...');
-            setTimeout(initializeAll, 100);
-            return;
-        }
-        
-        // Apply platform-specific styles first
-        initializeStyles();
-        
-        // Then proceed with normal initialization
-        init();
-    }
-
-    // Override the existing initializeAll at the end
     if (document.readyState !== 'loading') {
         initializeAll();
     } else {
