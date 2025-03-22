@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Manager
-// @version      3.6.7
+// @version      3.6.8
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -3186,228 +3186,99 @@
     }
 
     function checkRaceStatus() {
-        // Method 0: First check for completed race states - these take priority
-        const completedRaceIndicators = [
-            // URL patterns for completed races
-            { type: 'url', pattern: 'sid=racing&tab=finishedRaces' },
-            { type: 'url', pattern: 'step=results' },
-            { type: 'url', pattern: 'step=finished' },
-            
-            // DOM elements for race results
-            { type: 'selector', pattern: '.race-results' },
-            { type: 'selector', pattern: '.finished-race' },
-            { type: 'selector', pattern: '.race-finished-screen' },
-            { type: 'selector', pattern: '.race-summary' },
-            { type: 'selector', pattern: '[class*="raceResults"]' },
-            
-            // Text content for completed races
-            { type: 'text', pattern: 'Race Results' },
-            { type: 'text', pattern: 'You finished' },
-            { type: 'text', pattern: 'Race complete' },
-            { type: 'text', pattern: 'Final position' }
-        ];
-        
-        // Check URL patterns first
-        const currentUrl = window.location.href;
-        
-        for (const indicator of completedRaceIndicators) {
-            if (indicator.type === 'url' && currentUrl.includes(indicator.pattern)) {
-                console.log(`[Race Detection] Race completed detected via URL: ${indicator.pattern}`);
-                return false; // Race is completed, not active
-            }
-            
-            if (indicator.type === 'selector' && document.querySelector(indicator.pattern)) {
-                console.log(`[Race Detection] Race completed detected via element: ${indicator.pattern}`);
-                return false; // Race is completed, not active
-            }
-            
-            if (indicator.type === 'text' && document.body.textContent.includes(indicator.pattern)) {
-                console.log(`[Race Detection] Race completed detected via text: ${indicator.pattern}`);
-                return false; // Race is completed, not active
-            }
+        // Check for specific icon classes first - these are most reliable indicators
+        const activeRaceIcon = document.querySelector('li.icon17___eXCy4');
+        if (activeRaceIcon) {
+            console.log("[Race Detection] Found active race icon (icon17___eXCy4)");
+            return true;
         }
         
-        // Method 1: Check specific mobile selectors for active racing (highest priority)
-        // Check the exact selectors provided by the user
-        const mobileRacingSelectors = [
-            // Specific selector for currently racing/waiting
-            '#sidebar > div > div > div.user-information-mobile___WjXnd > div:nth-child(2) > div > div.swiper-wrapper.swiper___qtI61 > div.swiper-slide.slide___NOBlS.swiper-slide-next > ul > li.icon17___eXCy4 > a',
-            // More generic versions that should be more resilient
-            '#sidebar [class*="user-information-mobile"] [class*="swiper"] [class*="slide"] ul li[class*="icon17"] > a',
-            'a[aria-label="Racing: Currently racing"]',
-            'a[aria-label*="Currently racing"]',
-            'a[aria-label*="Waiting for a race"]'
-        ];
-        
-        for (const selector of mobileRacingSelectors) {
-            const element = document.querySelector(selector);
-            if (element) {
-                const ariaLabel = element.getAttribute('aria-label') || '';
-                console.log(`[Race Detection] Found mobile racing element: ${selector} with aria-label: ${ariaLabel}`);
-                
-                // If it has a racing-related aria-label or the selector is specifically for racing indicators
-                if (ariaLabel.includes('Currently racing') || 
-                    ariaLabel.includes('Waiting for') ||
-                    selector.includes('icon17')) {  // icon17 is specifically for racing status
-                    console.log('[Race Detection] Active race detected via mobile racing indicator');
-                    return true;
-                }
-            }
+        const completedRaceIcon = document.querySelector('li.icon18___iPKVP');
+        if (completedRaceIcon) {
+            console.log("[Race Detection] Found completed race icon (icon18___iPKVP)");
+            return false;
         }
         
-        // Method 2: Check aria-label attribute for both mobile and desktop formats
+        // If specific icons not found, continue with existing detection methods
+        
+        // Method 1: Try the original approach first (works on desktop)
         const raceLink = document.querySelector('a[href="/page.php?sid=racing"]');
         if (raceLink) {
             const ariaLabel = raceLink.getAttribute('aria-label');
             if (ariaLabel) {
-                console.log("[Race Detection] Found aria-label:", ariaLabel);
+                // Check if currently racing or waiting
+                if (ariaLabel === 'Racing: Currently racing' || ariaLabel === 'Racing: Waiting for a race to start') {
+                    console.log("[Race Detection] Found via aria-label");
+                    return true;
+                }
                 
-                // Check for race completion
+                // Check if race finished (will match any position)
                 if (ariaLabel.match(/Racing: You finished \d+[a-z]{2} in the .+ race/)) {
-                    console.log("[Race Detection] Race completion detected via aria-label");
                     return false;
-                }
-                
-                // Check for active racing or waiting state
-                if (ariaLabel === 'Racing: Currently racing' || 
-                    ariaLabel === 'Racing: Waiting for a race to start' ||
-                    ariaLabel.includes('Currently racing') ||
-                    ariaLabel.includes('Waiting for')) {
-                    console.log("[Race Detection] Active race detected via aria-label");
-                    return true;
                 }
             }
         }
         
-        // Look for mobile-specific race navigation elements 
-        const mobileRaceLinks = document.querySelectorAll('a[href*="sid=racing"][aria-label]');
-        for (const link of mobileRaceLinks) {
-            const ariaLabel = link.getAttribute('aria-label');
-            if (ariaLabel) {
-                console.log("[Race Detection] Found mobile race link aria-label:", ariaLabel);
-                
-                // Check for race completion in mobile format
-                if (ariaLabel.match(/Racing: You finished \d+[a-z]{2} in the .+ race/) ||
-                    ariaLabel.includes('Your best lap was')) {
-                    console.log("[Race Detection] Race completion detected via mobile aria-label");
-                    return false;
-                }
-                
-                // Check for active racing in mobile format
-                if (ariaLabel.includes('Currently racing') || 
-                    ariaLabel.includes('Waiting for')) {
-                    console.log("[Race Detection] Active race detected via mobile aria-label");
-                    return true;
-                }
-            }
-        }
-        
-        // Method 3: Check URL patterns that indicate active racing
+        // Method 2: Check URL patterns that indicate active racing
+        const currentUrl = window.location.href;
         if (currentUrl.includes('sid=racing&tab=active') || 
             currentUrl.includes('step=inProgress') || 
-            currentUrl.includes('step=spectating') ||
-            currentUrl.includes('section=setUpCar')) {
-            console.log("[Race Detection] Found active race via racing URL pattern");
+            currentUrl.includes('step=spectating')) {
+            console.log("[Race Detection] Found via racing URL pattern");
             return true;
         }
         
-        // Check racing UI state (prioritize "race results" over "racing")
-        const raceResultElements = [
-            '.race-finish-position',
-            '.race-position-final',
-            '.race-completed',
-            '.position-final',
-            '[class*="raceFinished"]',
-            '[class*="raceComplete"]'
-        ];
-        
-        for (const selector of raceResultElements) {
-            if (document.querySelector(selector)) {
-                console.log(`[Race Detection] Race completion detected via element: ${selector}`);
-                return false;
-            }
-        }
-        
-        // Method 4: Check for race UI elements that would only be present during a race
+        // Method 3: Check for race UI elements that would only be present during a race
         const raceElements = [
             '.car-selected-wrap',                     // Car selection element
             '.race-player',                          // Player in race
-            '.race-list:not(.race-history)',         // Race participants list (exclude history)
+            '.race-list',                            // Race participants list
             '.race-track',                           // Race track view
             '.status-racing',                        // Status indicator
             '.car-selected-stats',                   // Selected car stats
-            '.progress-race',                        // Race progress bar
-            '.race-info.active',                     // Active race info
-            '.racing-main .countdown',               // Race countdown
             '[class*="progressBarFill"]',            // Progress bar (for newer UI)
-            '[class*="raceTrack"]:not([class*="raceTrackSelect"])', // Race track (exclude track selection UI)
-            '.racing-chat-panel.active'              // Active race chat panel
+            '[class*="raceTrack"]',                  // Race track (newer UI)
+            'div.data-list-table:has(.race)'         // Race table with race rows
         ];
         
         for (const selector of raceElements) {
             if (document.querySelector(selector)) {
-                // Double-check if race completion elements are also present
-                const isCompleted = document.body.textContent.includes("Race complete") || 
-                                   document.body.textContent.includes("You finished") ||
-                                   document.body.textContent.includes("Final position");
-                
-                if (isCompleted) {
-                    console.log(`[Race Detection] Race UI elements found but race is completed based on text`);
-                    return false;
-                }
-                
-                console.log(`[Race Detection] Found active racing element: ${selector}`);
+                console.log(`[Race Detection] Found racing element: ${selector}`);
                 return true;
             }
         }
         
-        // Method 5: Additional mobile-specific indicators
-        const additionalMobileSelectors = [
-            // Mobile menu items with race status - must be active
+        // Method 4: Look for mobile-specific racing indicators (Torn PDA)
+        const mobileSelectors = [
+            // Mobile menu items with race status
             '.navigationWrapper a.active[aria-label*="Racing"]',
             // Mobile race status indicators
-            '.status-icons-mobile .racing-status:not(.empty)',
-            // PDA-specific racing indicators
-            '[class*="racingIcon"].active',
-            '[class*="raceStatus"].active',
-            // Race timer elements
-            '.race-timer:not(.hidden)',
-            '[class*="raceCountdown"]:not(.hidden)',
-            // Right side menu racing activity icon
+            '.status-icons-mobile .racing-status',
+            // PDA-specific elements
+            '[class*="racingIcon"]',
+            '[class*="raceStatus"]',
+            // Check for any elements with racing in the class name
+            '[class*="racing"]:not(a):not(li)',
+            // Racing section container (specific to PDA)
+            '.tornPDA-racing-container',
+            // Check for race timer elements
+            '.race-timer',
+            '[class*="raceCountdown"]',
+            // Check the right side menu for racing activity icon
             '.sideMenu___qDOTV .linkActive___vc2pE [class*="racing"]',
-            // Race progress in top menu
-            '.headerProgressBar___O7xbl:not(.hidden)'
+            // Check for the race progress indicator in the top menu
+            '.headerProgressBar___O7xbl'
         ];
         
-        for (const selector of additionalMobileSelectors) {
-            const element = document.querySelector(selector);
-            if (element) {
-                console.log(`[Race Detection] Found additional mobile racing element: ${selector}`);
+        for (const selector of mobileSelectors) {
+            if (document.querySelector(selector)) {
+                console.log(`[Race Detection] Found mobile racing element: ${selector}`);
                 return true;
             }
         }
         
-        // Method 6: Check the global page content for racing indicators
+        // Method 5: Check the global page content for racing indicators
         const pageContent = document.body.textContent || '';
-        
-        // First check for completion text
-        const completionTextIndicators = [
-            'Race Results',
-            'You finished',
-            'Race complete',
-            'Final position',
-            'Race over',
-            'Race has ended'
-        ];
-        
-        for (const text of completionTextIndicators) {
-            if (pageContent.includes(text)) {
-                console.log(`[Race Detection] Race completion detected via text: ${text}`);
-                return false;
-            }
-        }
-        
-        // Then check for active race text
         const raceTextIndicators = [
             'Race in progress',
             'Waiting for race to start',
@@ -3425,26 +3296,26 @@
             }
         }
         
-        // Method 7: Last resort check - look for specific combinations of elements
-        const racingRequiredElements = [
-            // Must have a countdown timer
-            document.querySelector('.countdown-wrap, .countdown, [class*="countdown"], .timer, .race-timer'),
-            // Must have a race track or positions display
-            document.querySelector('.race-track, .track-container, [class*="raceTrack"], .positions-wrap, .race-positions'),
-            // Must have lap indicators
-            document.querySelector('.lap-info, .current-lap, [class*="lapInfo"], [class*="currentLap"]')
-        ];
-        
-        // Only consider it a race if at least 2 of these specific racing elements are present
-        const requiredElementsCount = racingRequiredElements.filter(Boolean).length;
-        
-        if (requiredElementsCount >= 2) {
-            console.log(`[Race Detection] Found ${requiredElementsCount} specific race elements indicating active race`);
-            return true;
+        // Method 6: Last resort for PDA - check any DOM element with "race" in the class or id
+        const allElements = document.querySelectorAll('*');
+        for (const el of allElements) {
+            const classNames = el.className?.toString() || '';
+            const id = el.id || '';
+            
+            if ((classNames.toLowerCase().includes('race') || id.toLowerCase().includes('race')) && 
+                !classNames.includes('race-alert') && // Exclude our own elements
+                el.offsetParent !== null) { // Element is visible
+                
+                // Exclude navigation and menu elements to prevent false positives
+                if (!classNames.includes('menu') && !classNames.includes('nav') && 
+                    !classNames.includes('link') && !classNames.includes('button')) {
+                    console.log(`[Race Detection] Found generic race element: ${classNames || id}`);
+                    return true;
+                }
+            }
         }
         
         // If all methods fail, assume user is not racing
-        console.log(`[Race Detection] No race indicators found, assuming not racing`);
         return false;
     }
 
@@ -3776,7 +3647,7 @@
                     const trackElement = el.querySelector('li.track');
                     if (!trackElement) return '';
                     // Remove the laps text and trim whitespace
-                    return trackElement.textContent.replace(/\(\d+\s*laps?/i, '').trim();
+                    return trackElement.textContent.replace(/\(\d+\s*laps?\)/i, '').trim();
                 };
                 
                 const trackA = getTrackName(a).toLowerCase();
