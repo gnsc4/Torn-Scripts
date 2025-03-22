@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Manager
-// @version      3.6.13
+// @version      3.6.14
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -49,7 +49,7 @@
         '24': 'Convict'
     };
 
-    // Add mobile detection right after trackNames declaration
+    // Improve mobile and PDA detection
     const isMobile = {
         Android: function() {
             return /Android/i.test(navigator.userAgent);
@@ -66,13 +66,21 @@
         KiwiBrowser: function() {
             return /Kiwi/i.test(navigator.userAgent);
         },
+        TornPDA: function() {
+            return /TornPDA/i.test(navigator.userAgent) || 
+                   document.documentElement.classList.contains('tornPDA') ||
+                   document.body.classList.contains('tornPDA') ||
+                   !!document.querySelector('.tornPDA-header');
+        },
         any: function() {
-            return (isMobile.Android() || isMobile.iOS() || isMobile.Opera() || isMobile.Windows() || isMobile.KiwiBrowser());
+            return (isMobile.Android() || isMobile.iOS() || isMobile.Opera() || isMobile.Windows() || 
+                    isMobile.KiwiBrowser() || isMobile.TornPDA());
         }
     };
 
-    // We'll use this variable throughout the code
-    const isMobileBrowser = isMobile.any() || window.innerWidth < 768 || document.documentElement.classList.contains('tornPDA');
+    // Separate detection for PDA and mobile browsers
+    const isTornPDA = isMobile.TornPDA();
+    const isMobileBrowser = isMobile.any() || window.innerWidth < 768;
 
     let guiInitialized = false;
     let domCheckAttempts = 0;
@@ -3372,13 +3380,33 @@
                 }
             }
             
-            // Special handling for mobile devices
-            if (isMobileBrowser) {
-                // Try mobile-specific containers in priority order
+            // Special handling for Torn PDA
+            if (isTornPDA) {
+                // PDA-specific containers in priority order
+                const pdaContainers = [
+                    '.tornPDA-header',
+                    '.navigationWrapper',
+                    '.status-icons-mobile',
+                    '.header-bottom-wrap',
+                    '.header' 
+                ];
+                
+                for (const selector of pdaContainers) {
+                    const container = document.querySelector(selector);
+                    if (container) {
+                        // For PDA, add to the beginning to avoid overflow issues
+                        container.insertBefore(alert, container.firstChild);
+                        console.log(`[Race Alert] Attached to PDA container: ${selector}`);
+                        return;
+                    }
+                }
+            }
+            // Special handling for mobile devices (non-PDA)
+            else if (isMobileBrowser) {
+                // Mobile containers in priority order
                 const mobileContainers = [
                     '.navigationWrapper',
                     '.status-icons-mobile',
-                    '.tornPDA-header',
                     '.headerWrapper___f5LgD',
                     '.headerTopContainer___CfrOY',
                     '.header-wrap',
@@ -4625,7 +4653,212 @@
         addMobileStyles();
     }
 
-    // Enhance initialization to ensure DOM is accessible
+    // Enhanced PDA-specific styles
+    function addPDAStyles() {
+        if (!isTornPDA) return;
+        
+        const pdaStyle = document.createElement('style');
+        pdaStyle.id = 'tornPDA-custom-styles';
+        pdaStyle.textContent = `
+            /* PDA-specific UI adjustments */
+            #raceConfigGUI {
+                max-width: 95% !important;
+                margin: 0 auto !important;
+                left: 0 !important;
+                right: 0 !important;
+                top: 100px !important;
+            }
+            
+            /* Ensure alerts display correctly in PDA interface */
+            .race-alert {
+                background-color: rgba(255, 68, 68, 0.9) !important;
+                color: white !important;
+                font-weight: bold !important;
+                padding: 8px 12px !important;
+                border-radius: 4px !important;
+                position: absolute !important;
+                top: 10px !important;
+                right: 10px !important;
+                z-index: 999999 !important;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
+            }
+            
+            /* PDA navigation compatibility */
+            .navigationWrapper .race-alert,
+            .status-icons-mobile .race-alert,
+            .tornPDA-header .race-alert {
+                position: relative !important;
+                top: auto !important;
+                right: auto !important;
+                margin: 0 5px !important;
+            }
+            
+            /* Quick launch container adjustments for PDA */
+            .quick-launch-container {
+                max-width: 95% !important;
+            }
+            
+            /* Better button handling for PDA */
+            .preset-button, 
+            .gui-button, 
+            .quick-launch-button {
+                margin: 5px !important;
+                min-height: 40px !important;
+            }
+            
+            /* Fix for PDA navigation */
+            .navigationWrapper,
+            .header-wrap {
+                z-index: 999998 !important;
+                position: relative !important;
+            }
+        `;
+        
+        document.head.appendChild(pdaStyle);
+    }
+
+    // Modify showRaceAlert function to better handle PDA
+    function showRaceAlert() {
+        let alert = document.getElementById('raceAlert');
+        
+        if (!alert) {
+            alert = document.createElement('div');
+            alert.id = 'raceAlert';
+            alert.className = 'race-alert';
+            alert.textContent = 'Not Racing';
+            
+            // Base CSS for all platforms
+            const baseCss = `
+                display: inline-flex !important;
+                align-items: center !important;
+                margin-left: 10px !important;
+                order: 2 !important;
+                z-index: 99999 !important;
+                pointer-events: auto !important;
+            `;
+            
+            // PDA-specific styling takes priority
+            if (isTornPDA) {
+                alert.style.cssText = baseCss + `
+                    position: relative !important;
+                    padding: 8px 12px !important;
+                    font-size: 14px !important;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
+                `;
+            } else if (isMobileBrowser) {
+                alert.style.cssText = baseCss + `
+                    padding: 8px 12px !important; 
+                    font-size: 14px !important;
+                    min-height: 20px !important;
+                    min-width: 80px !important;
+                `;
+            } else {
+                alert.style.cssText = baseCss;
+            }
+            
+            const popup = document.createElement('div');
+            popup.className = 'quick-launch-popup';
+            popup.id = 'quickLaunchPopup';
+            alert.appendChild(popup);
+            
+            // Add both mouse and touch event listeners
+            alert.addEventListener('click', handleAlertClick);
+            alert.addEventListener('touchend', handleAlertClick);
+            
+            function handleAlertClick(e) {
+                e.stopPropagation();
+                popup.classList.toggle('show');
+                updateQuickLaunchPopup(popup);
+            }
+            
+            // Handle outside clicks to close popup
+            const closePopupHandler = (e) => {
+                if (!alert.contains(e.target)) {
+                    popup.classList.remove('show');
+                }
+            };
+            
+            document.addEventListener('click', closePopupHandler);
+            document.addEventListener('touchend', closePopupHandler);
+            
+            // Place alert in an appropriate container based on platform detection
+            if (window.location.href.includes('sid=racing')) {
+                const raceToggleRow = document.getElementById('raceToggleRow');
+                if (raceToggleRow) {
+                    raceToggleRow.appendChild(alert);
+                    return;
+                }
+            }
+            
+            // Special handling for Torn PDA
+            if (isTornPDA) {
+                // PDA-specific containers in priority order
+                const pdaContainers = [
+                    '.tornPDA-header',
+                    '.navigationWrapper',
+                    '.status-icons-mobile',
+                    '.header-bottom-wrap',
+                    '.header' 
+                ];
+                
+                for (const selector of pdaContainers) {
+                    const container = document.querySelector(selector);
+                    if (container) {
+                        // For PDA, add to the beginning to avoid overflow issues
+                        container.insertBefore(alert, container.firstChild);
+                        console.log(`[Race Alert] Attached to PDA container: ${selector}`);
+                        return;
+                    }
+                }
+            }
+            // Special handling for mobile devices (non-PDA)
+            else if (isMobileBrowser) {
+                // Mobile containers in priority order
+                const mobileContainers = [
+                    '.navigationWrapper',
+                    '.status-icons-mobile',
+                    '.headerWrapper___f5LgD',
+                    '.headerTopContainer___CfrOY',
+                    '.header-wrap',
+                    '.header-content-wrapper',
+                    '.header',
+                    'header'
+                ];
+                
+                for (const selector of mobileContainers) {
+                    const container = document.querySelector(selector);
+                    if (container) {
+                        container.appendChild(alert);
+                        
+                        // Adjust styling specifically for mobile
+                        alert.style.position = 'absolute';
+                        alert.style.top = '10px';
+                        alert.style.right = '10px';
+                        alert.style.margin = '0';
+                        alert.style.zIndex = '999999';
+                        
+                        console.log(`[Race Alert] Attached to mobile container: ${selector}`);
+                        return;
+                    }
+                }
+            }
+            
+            // Rest of container checks for all platforms
+            // ...existing code...
+        }
+    }
+
+    // Initialize both mobile and PDA styles when DOM is ready
+    function initializeStyles() {
+        if (isTornPDA) {
+            addPDAStyles();
+        }
+        if (isMobileBrowser && !isTornPDA) {
+            addMobileStyles();
+        }
+    }
+
+    // Add to initialization function
     function initializeAll() {
         // Ensure document is available before initializing
         if (typeof document === 'undefined') {
@@ -4634,25 +4867,8 @@
             return;
         }
         
-        // Check if we can access document.body
-        if (!document.body) {
-            console.log('Document body not yet available, waiting...');
-            if (document.readyState !== 'loading') {
-                // If readyState isn't loading but body isn't available, use a short timeout
-                setTimeout(initializeAll, 50);
-            } else {
-                // Use the standard DOMContentLoaded if we're still loading
-                document.addEventListener('DOMContentLoaded', function() {
-                    init();
-                });
-            }
-            return;
-        }
-        
-        // Apply mobile styles first
-        if (isMobileBrowser) {
-            addMobileStyles();
-        }
+        // Apply platform-specific styles first
+        initializeStyles();
         
         // Then proceed with normal initialization
         init();
