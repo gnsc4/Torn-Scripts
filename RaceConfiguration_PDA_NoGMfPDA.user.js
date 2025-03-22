@@ -49,6 +49,31 @@
         '24': 'Convict'
     };
 
+    // Add mobile detection right after trackNames declaration
+    const isMobile = {
+        Android: function() {
+            return /Android/i.test(navigator.userAgent);
+        },
+        iOS: function() {
+            return /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        },
+        Opera: function() {
+            return /Opera Mini/i.test(navigator.userAgent);
+        },
+        Windows: function() {
+            return /IEMobile|WPDesktop/i.test(navigator.userAgent);
+        },
+        KiwiBrowser: function() {
+            return /Kiwi/i.test(navigator.userAgent);
+        },
+        any: function() {
+            return (isMobile.Android() || isMobile.iOS() || isMobile.Opera() || isMobile.Windows() || isMobile.KiwiBrowser());
+        }
+    };
+
+    // We'll use this variable throughout the code
+    const isMobileBrowser = isMobile.any() || window.innerWidth < 768 || document.documentElement.classList.contains('tornPDA');
+
     let guiInitialized = false;
     let domCheckAttempts = 0;
     const MAX_DOM_CHECK_ATTEMPTS = 100;
@@ -1598,6 +1623,7 @@
         }
     }
 
+    // Enhance drag functionality to support touch events (modify the dragElement function)
     function dragElement(elmnt) {
         const dragHandle = document.createElement('div');
         dragHandle.className = 'drag-handle';
@@ -1626,7 +1652,13 @@
         document.head.appendChild(style);
 
         let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+        let isTouchDevice = isMobileBrowser;
+
+        // Mouse events
         dragHandle.onmousedown = dragMouseDown;
+        
+        // Touch events
+        dragHandle.addEventListener('touchstart', dragTouchStart, { passive: false });
 
         function dragMouseDown(e) {
             e = e || window.event;
@@ -1637,6 +1669,17 @@
             document.onmousemove = elementDrag;
         }
 
+        function dragTouchStart(e) {
+            if (e.touches.length === 1) {
+                e.preventDefault();
+                pos3 = e.touches[0].clientX;
+                pos4 = e.touches[0].clientY;
+                document.addEventListener('touchend', closeTouchDragElement, { passive: true });
+                document.addEventListener('touchcancel', closeTouchDragElement, { passive: true });
+                document.addEventListener('touchmove', elementTouchDrag, { passive: false });
+            }
+        }
+
         function elementDrag(e) {
             e = e || window.event;
             e.preventDefault();
@@ -1644,7 +1687,21 @@
             pos2 = pos4 - e.clientY;
             pos3 = e.clientX;
             pos4 = e.clientY;
+            updateElementPosition();
+        }
 
+        function elementTouchDrag(e) {
+            if (e.touches.length === 1) {
+                e.preventDefault();
+                pos1 = pos3 - e.touches[0].clientX;
+                pos2 = pos4 - e.touches[0].clientY;
+                pos3 = e.touches[0].clientX;
+                pos4 = e.touches[0].clientY;
+                updateElementPosition();
+            }
+        }
+
+        function updateElementPosition() {
             // Calculate new position
             let newTop = elmnt.offsetTop - pos2;
             let newLeft = elmnt.offsetLeft - pos1;
@@ -1672,11 +1729,15 @@
         }
 
         function closeDragElement() {
-            // Keep existing code
             document.onmouseup = null;
             document.onmousemove = null;
+            enforceWindowBoundaries(elmnt);
+        }
 
-            // Add boundary check after drag ends
+        function closeTouchDragElement() {
+            document.removeEventListener('touchend', closeTouchDragElement);
+            document.removeEventListener('touchcancel', closeTouchDragElement);
+            document.removeEventListener('touchmove', elementTouchDrag);
             enforceWindowBoundaries(elmnt);
         }
 
@@ -1700,8 +1761,12 @@
             }
         }
 
-        // Add window resize handler
-        window.addEventListener('resize', () => enforceWindowBoundaries(elmnt));
+        // Add window resize handler with debounce for performance
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => enforceWindowBoundaries(elmnt), 100);
+        });
     }
 
     function saveApiKey() {
@@ -3212,6 +3277,7 @@
         */
     }
 
+    // Update the race alert function to use mobile detection
     function updateRaceAlert() {
         const alertEnabled = GM_getValue('raceAlertEnabled', false);
         if (!alertEnabled) {
@@ -3219,15 +3285,10 @@
             return;
         }
 
-        // Detect if user is on mobile/PDA
-        const isMobilePDA = navigator.userAgent.includes('PDA') || 
-                            window.innerWidth < 768 || 
-                            document.documentElement.classList.contains('tornPDA');
+        // Use our global mobile detection variable
+        const delay = isMobileBrowser ? 2000 : 500; // 2 seconds for mobile, 0.5 second for desktop
         
-        // Use different delays based on platform
-        const delay = isMobilePDA ? 2000 : 500; // 3 seconds for mobile, 1 second for desktop
-        
-        console.log(`[Race Detection] Using ${isMobilePDA ? 'mobile' : 'desktop'} delay: ${delay}ms`);
+        console.log(`[Race Detection] Using ${isMobileBrowser ? 'mobile' : 'desktop'} delay: ${delay}ms`);
 
         setTimeout(() => {
             const isInRace = checkRaceStatus();
@@ -3248,6 +3309,7 @@
         }, delay);
     }
 
+    // Enhance showRaceAlert to better detect mobile environments and position accordingly
     function showRaceAlert() {
         let alert = document.getElementById('raceAlert');
         
@@ -3256,7 +3318,9 @@
             alert.id = 'raceAlert';
             alert.className = 'race-alert';
             alert.textContent = 'Not Racing';
-            alert.style.cssText = `
+            
+            // Adjust CSS for better touch targets on mobile
+            const baseCss = `
                 display: inline-flex !important;
                 align-items: center !important;
                 margin-left: 10px !important;
@@ -3265,29 +3329,42 @@
                 pointer-events: auto !important;
             `;
             
+            const mobileCss = isMobileBrowser ? `
+                padding: 8px 12px !important; 
+                font-size: 14px !important;
+                min-height: 20px !important;
+                min-width: 80px !important;
+            ` : '';
+            
+            alert.style.cssText = baseCss + mobileCss;
+            
             const popup = document.createElement('div');
             popup.className = 'quick-launch-popup';
             popup.id = 'quickLaunchPopup';
             alert.appendChild(popup);
             
-            alert.addEventListener('click', (e) => {
+            // Add both mouse and touch event listeners
+            alert.addEventListener('click', handleAlertClick);
+            alert.addEventListener('touchend', handleAlertClick);
+            
+            function handleAlertClick(e) {
                 e.stopPropagation();
                 popup.classList.toggle('show');
                 updateQuickLaunchPopup(popup);
-            });
+            }
             
-            document.addEventListener('click', () => {
-                popup.classList.remove('show');
-            });
+            // Handle outside clicks to close popup
+            const closePopupHandler = (e) => {
+                if (!alert.contains(e.target)) {
+                    popup.classList.remove('show');
+                }
+            };
             
-            // Try to find a good place to insert the alert, with special handling for PDA
-            const isMobilePDA = navigator.userAgent.includes('PDA') || 
-                               window.innerWidth < 768 || 
-                               document.documentElement.classList.contains('tornPDA');
+            document.addEventListener('click', closePopupHandler);
+            document.addEventListener('touchend', closePopupHandler);
             
-            // Special handling for racing page
+            // Place alert in an appropriate container based on platform detection
             if (window.location.href.includes('sid=racing')) {
-                // Look for racing page specific containers
                 const raceToggleRow = document.getElementById('raceToggleRow');
                 if (raceToggleRow) {
                     raceToggleRow.appendChild(alert);
@@ -3295,23 +3372,27 @@
                 }
             }
             
-            // Special handling for mobile/PDA
-            if (isMobilePDA) {
-                // Try PDA specific containers
-                const pdaContainers = [
+            // Special handling for mobile devices
+            if (isMobileBrowser) {
+                // Try mobile-specific containers in priority order
+                const mobileContainers = [
                     '.navigationWrapper',
                     '.status-icons-mobile',
                     '.tornPDA-header',
                     '.headerWrapper___f5LgD',
-                    '.headerTopContainer___CfrOY'
+                    '.headerTopContainer___CfrOY',
+                    '.header-wrap',
+                    '.header-content-wrapper',
+                    '.header',
+                    'header'
                 ];
                 
-                for (const selector of pdaContainers) {
+                for (const selector of mobileContainers) {
                     const container = document.querySelector(selector);
                     if (container) {
                         container.appendChild(alert);
                         
-                        // Adjust styling for mobile
+                        // Adjust styling specifically for mobile
                         alert.style.position = 'absolute';
                         alert.style.top = '10px';
                         alert.style.right = '10px';
@@ -3324,7 +3405,7 @@
                 }
             }
             
-            // Default handling for other pages - try multiple possible title elements
+            // Try various title elements as fallback
             const titleSelectors = [
                 '#mainContainer > div.content-wrapper.winter > div.content-title.m-bottom10 h4',
                 '.titleContainer___QrlWP .title___rhtB4',
@@ -3335,7 +3416,6 @@
                 '#react-root > div > div.appHeader___gUnYC.crimes-app-header > h4',
                 'div.appHeader___gUnYC h4',
                 '#skip-to-content',
-                // Add mobile-specific selectors
                 '.header-title',
                 '.mobile-title',
                 '.app-header'
@@ -3353,7 +3433,7 @@
                 }
             }
             
-            // Last resort - append to body with fixed positioning
+            // Last resort - fixed position on body
             if (!alert.parentNode) {
                 alert.style.position = 'fixed';
                 alert.style.top = '10px';
@@ -4462,6 +4542,123 @@
     }
 
     // Instead of directly calling initializeAll, ensure DOM is ready first
+    if (document.readyState !== 'loading') {
+        initializeAll();
+    } else {
+        document.addEventListener('DOMContentLoaded', initializeAll);
+    }
+
+    // Add additional mobile-friendly styles 
+    function addMobileStyles() {
+        if (!isMobileBrowser) return;
+        
+        const mobileStyle = document.createElement('style');
+        mobileStyle.textContent = `
+            /* Mobile touch-friendly buttons */
+            .gui-button,
+            .preset-button,
+            #toggleRaceGUIButton,
+            #createRaceButton,
+            #closeGUIButton,
+            #setNowButton,
+            .quick-launch-button,
+            .auto-join-preset-button {
+                min-height: 44px !important;
+                padding: 10px 15px !important;
+                margin: 8px !important;
+                font-size: 16px !important;
+                touch-action: manipulation !important;
+            }
+            
+            /* Larger UI elements for touch screens */
+            #raceConfigGUI select,
+            #raceConfigGUI input[type="text"],
+            #raceConfigGUI input[type="number"],
+            #raceConfigGUI input[type="password"] {
+                min-height: 44px !important;
+                font-size: 16px !important;
+                padding: 10px !important;
+            }
+            
+            /* More spacing for checkboxes */
+            #raceConfigGUI input[type="checkbox"] {
+                width: 22px !important;
+                height: 22px !important;
+                margin-right: 10px !important;
+            }
+            
+            /* Ensure popups are easily tappable */
+            .quick-launch-popup .quick-launch-button {
+                display: block !important;
+                width: 100% !important;
+                margin: 8px 0 !important;
+                text-align: center !important;
+            }
+            
+            /* Prevent text selection on buttons */
+            .gui-button, .preset-button, .quick-launch-button, 
+            .auto-join-preset-button, #closeGUIButton, #minimizeQuickLaunchButton,
+            .race-alert {
+                -webkit-user-select: none !important;
+                user-select: none !important;
+                -webkit-touch-callout: none !important;
+            }
+            
+            /* Fix for potential zoom issues with inputs */
+            input, select, textarea {
+                font-size: 16px !important; /* Prevents iOS from zooming on focus */
+            }
+            
+            /* Ensure scrolling is smooth on touch */
+            #raceConfigGUI {
+                -webkit-overflow-scrolling: touch !important;
+            }
+        `;
+        
+        document.head.appendChild(mobileStyle);
+    }
+
+    // Initialize mobile styles when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', addMobileStyles);
+    } else {
+        addMobileStyles();
+    }
+
+    // Enhance initialization to ensure DOM is accessible
+    function initializeAll() {
+        // Ensure document is available before initializing
+        if (typeof document === 'undefined') {
+            console.error('Document not available. Waiting for it to be ready...');
+            setTimeout(initializeAll, 100);
+            return;
+        }
+        
+        // Check if we can access document.body
+        if (!document.body) {
+            console.log('Document body not yet available, waiting...');
+            if (document.readyState !== 'loading') {
+                // If readyState isn't loading but body isn't available, use a short timeout
+                setTimeout(initializeAll, 50);
+            } else {
+                // Use the standard DOMContentLoaded if we're still loading
+                document.addEventListener('DOMContentLoaded', function() {
+                    init();
+                });
+            }
+            return;
+        }
+        
+        // Apply mobile styles first
+        if (isMobileBrowser) {
+            addMobileStyles();
+        }
+        
+        // Then proceed with normal initialization
+        init();
+    }
+
+    // Override the existing initializeAll at the end
     if (document.readyState !== 'loading') {
         initializeAll();
     } else {
