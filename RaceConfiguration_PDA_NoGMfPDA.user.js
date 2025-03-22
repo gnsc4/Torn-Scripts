@@ -5,7 +5,6 @@
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
 // @match        https://www.torn.com/*
-// @match        api.torn.com/*
 // @match        https://api.torn.com/*
 // @grant        GM.xmlHttpRequest
 // @grant        GM_xmlhttpRequest
@@ -1318,7 +1317,7 @@
 
             <div style="text-align: center; margin-top: 20px; color: #888; font-size: 1.2em;">
                 Script created by <a href="https://www.torn.com/profiles.php?XID=268863" target="_blank" style="color: #888; text-decoration: none;">GNSC4 [268863]</a><br>
-                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.6.1 Official Forum Link</a>
+                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.6.3 Official Forum Link</a>
             </div>
         `;
 
@@ -3228,20 +3227,50 @@
             }
         }
         
-        // Method 1: Try the original approach first (works on desktop)
+        // Method 1: Check aria-label attribute for both mobile and desktop formats
         const raceLink = document.querySelector('a[href="/page.php?sid=racing"]');
         if (raceLink) {
             const ariaLabel = raceLink.getAttribute('aria-label');
             if (ariaLabel) {
-                // Check if race finished (will match any position) - this should happen first
+                console.log("[Race Detection] Found aria-label:", ariaLabel);
+                
+                // Enhanced pattern to match both desktop and mobile race completion formats
+                // Desktop: "Racing: You finished 2nd in the Speedway race"
+                // Mobile: "Racing: You finished 2nd in the Speedway race. Your best lap was 00:35.17"
                 if (ariaLabel.match(/Racing: You finished \d+[a-z]{2} in the .+ race/)) {
                     console.log("[Race Detection] Detected race completion via aria-label");
                     return false;
                 }
                 
-                // Check if currently racing or waiting
-                if (ariaLabel === 'Racing: Currently racing' || ariaLabel === 'Racing: Waiting for a race to start') {
+                // Check for active racing or waiting state
+                if (ariaLabel === 'Racing: Currently racing' || 
+                    ariaLabel === 'Racing: Waiting for a race to start' ||
+                    ariaLabel.includes('Currently racing') ||
+                    ariaLabel.includes('Waiting for')) {
                     console.log("[Race Detection] Found active race via aria-label");
+                    return true;
+                }
+            }
+        }
+        
+        // Look for mobile-specific race navigation elements 
+        const mobileRaceLinks = document.querySelectorAll('a[href*="sid=racing"][aria-label]');
+        for (const link of mobileRaceLinks) {
+            const ariaLabel = link.getAttribute('aria-label');
+            if (ariaLabel) {
+                console.log("[Race Detection] Found mobile race link aria-label:", ariaLabel);
+                
+                // Check for race completion in mobile format
+                if (ariaLabel.match(/Racing: You finished \d+[a-z]{2} in the .+ race/) ||
+                    ariaLabel.includes('Your best lap was')) {
+                    console.log("[Race Detection] Detected race completion via mobile aria-label");
+                    return false;
+                }
+                
+                // Check for active racing in mobile format
+                if (ariaLabel.includes('Currently racing') || 
+                    ariaLabel.includes('Waiting for')) {
+                    console.log("[Race Detection] Found active race via mobile aria-label");
                     return true;
                 }
             }
@@ -3304,6 +3333,42 @@
         }
         
         // Method 4: Look for mobile-specific racing indicators (Torn PDA)
+        // Add specific check for mobile links with or without aria-label
+        const mobileSpecificSelectors = [
+            'a[href*="sid=racing"][class*="racing"]',
+            'a[data-is-tooltip-opened][href*="sid=racing"]',
+            '.navigationWrapper a[aria-label*="Racing"]',
+            '.mobile-nav a[href*="racing"]',
+            '.navigation-wrapper a[href*="racing"]'
+        ];
+        
+        for (const selector of mobileSpecificSelectors) {
+            const elements = document.querySelectorAll(selector);
+            if (elements.length > 0) {
+                // For each matching element, check if it indicates a race completion
+                let anyCompleted = false;
+                for (const el of elements) {
+                    const ariaLabel = el.getAttribute('aria-label');
+                    if (ariaLabel && (
+                        ariaLabel.match(/You finished \d+[a-z]{2}/) ||
+                        ariaLabel.includes('Your best lap was')
+                    )) {
+                        console.log(`[Race Detection] Found race completion via mobile element: ${selector}`);
+                        anyCompleted = true;
+                        break;
+                    }
+                }
+                
+                if (anyCompleted) {
+                    return false;
+                } else {
+                    console.log(`[Race Detection] Found active race via mobile element: ${selector}`);
+                    return true;
+                }
+            }
+        }
+        
+        // Continue with existing mobile selectors
         const mobileSelectors = [
             // Mobile menu items with race status
             '.navigationWrapper a.active[aria-label*="Racing"]',
@@ -3327,7 +3392,7 @@
         
         for (const selector of mobileSelectors) {
             if (document.querySelector(selector)) {
-                // Check page content for completion text 
+                // Check if race completion indicators are also present
                 const isCompleted = document.body.textContent.includes("Race complete") || 
                                    document.body.textContent.includes("You finished") ||
                                    document.body.textContent.includes("Final position") ||
@@ -3438,7 +3503,7 @@
         }
 
         const isInRace = checkRaceStatus();
-        console.log("[Race Detection] Final race status determination:", isInRace ? "IN RACE" : "NOT RACING");
+        console.log("[Race Detection] Race status:", isInRace ? "IN RACE" : "NOT RACING");
         
         const existingAlert = document.getElementById('raceAlert');
 
