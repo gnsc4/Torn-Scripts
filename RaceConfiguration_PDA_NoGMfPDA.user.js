@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Manager
-// @version      3.6.6
+// @version      3.6.7
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -3227,18 +3227,44 @@
             }
         }
         
-        // Method 1: Check aria-label attribute for both mobile and desktop formats
+        // Method 1: Check specific mobile selectors for active racing (highest priority)
+        // Check the exact selectors provided by the user
+        const mobileRacingSelectors = [
+            // Specific selector for currently racing/waiting
+            '#sidebar > div > div > div.user-information-mobile___WjXnd > div:nth-child(2) > div > div.swiper-wrapper.swiper___qtI61 > div.swiper-slide.slide___NOBlS.swiper-slide-next > ul > li.icon17___eXCy4 > a',
+            // More generic versions that should be more resilient
+            '#sidebar [class*="user-information-mobile"] [class*="swiper"] [class*="slide"] ul li[class*="icon17"] > a',
+            'a[aria-label="Racing: Currently racing"]',
+            'a[aria-label*="Currently racing"]',
+            'a[aria-label*="Waiting for a race"]'
+        ];
+        
+        for (const selector of mobileRacingSelectors) {
+            const element = document.querySelector(selector);
+            if (element) {
+                const ariaLabel = element.getAttribute('aria-label') || '';
+                console.log(`[Race Detection] Found mobile racing element: ${selector} with aria-label: ${ariaLabel}`);
+                
+                // If it has a racing-related aria-label or the selector is specifically for racing indicators
+                if (ariaLabel.includes('Currently racing') || 
+                    ariaLabel.includes('Waiting for') ||
+                    selector.includes('icon17')) {  // icon17 is specifically for racing status
+                    console.log('[Race Detection] Active race detected via mobile racing indicator');
+                    return true;
+                }
+            }
+        }
+        
+        // Method 2: Check aria-label attribute for both mobile and desktop formats
         const raceLink = document.querySelector('a[href="/page.php?sid=racing"]');
         if (raceLink) {
             const ariaLabel = raceLink.getAttribute('aria-label');
             if (ariaLabel) {
                 console.log("[Race Detection] Found aria-label:", ariaLabel);
                 
-                // Enhanced pattern to match both desktop and mobile race completion formats
-                // Desktop: "Racing: You finished 2nd in the Speedway race"
-                // Mobile: "Racing: You finished 2nd in the Speedway race. Your best lap was 00:35.17"
+                // Check for race completion
                 if (ariaLabel.match(/Racing: You finished \d+[a-z]{2} in the .+ race/)) {
-                    console.log("[Race Detection] Detected race completion via aria-label");
+                    console.log("[Race Detection] Race completion detected via aria-label");
                     return false;
                 }
                 
@@ -3247,7 +3273,7 @@
                     ariaLabel === 'Racing: Waiting for a race to start' ||
                     ariaLabel.includes('Currently racing') ||
                     ariaLabel.includes('Waiting for')) {
-                    console.log("[Race Detection] Found active race via aria-label");
+                    console.log("[Race Detection] Active race detected via aria-label");
                     return true;
                 }
             }
@@ -3263,20 +3289,20 @@
                 // Check for race completion in mobile format
                 if (ariaLabel.match(/Racing: You finished \d+[a-z]{2} in the .+ race/) ||
                     ariaLabel.includes('Your best lap was')) {
-                    console.log("[Race Detection] Detected race completion via mobile aria-label");
+                    console.log("[Race Detection] Race completion detected via mobile aria-label");
                     return false;
                 }
                 
                 // Check for active racing in mobile format
                 if (ariaLabel.includes('Currently racing') || 
                     ariaLabel.includes('Waiting for')) {
-                    console.log("[Race Detection] Found active race via mobile aria-label");
+                    console.log("[Race Detection] Active race detected via mobile aria-label");
                     return true;
                 }
             }
         }
         
-        // Method 2: Check URL patterns that indicate active racing
+        // Method 3: Check URL patterns that indicate active racing
         if (currentUrl.includes('sid=racing&tab=active') || 
             currentUrl.includes('step=inProgress') || 
             currentUrl.includes('step=spectating') ||
@@ -3302,7 +3328,7 @@
             }
         }
         
-        // Method 3: Check for race UI elements that would only be present during a race
+        // Method 4: Check for race UI elements that would only be present during a race
         const raceElements = [
             '.car-selected-wrap',                     // Car selection element
             '.race-player',                          // Player in race
@@ -3326,7 +3352,7 @@
                                    document.body.textContent.includes("Final position");
                 
                 if (isCompleted) {
-                    console.log(`[Race Detection] Race elements found but race is completed based on text`);
+                    console.log(`[Race Detection] Race UI elements found but race is completed based on text`);
                     return false;
                 }
                 
@@ -3335,148 +3361,33 @@
             }
         }
         
-        // Method 4: Look for mobile-specific racing indicators (Torn PDA)
-        // Add specific check for the exact mobile racing indicator selector provided
-        const mobileRacingIndicator = document.querySelector('#sidebar > div > div > div.user-information-mobile___WjXnd > div:nth-child(2) > div > div.swiper-wrapper.swiper___qtI61 > div.swiper-slide.slide___NOBlS.swiper-slide-next > ul > li.icon17___eXCy4 > a');
-        
-        // Also add a more flexible version in case class names change
-        const genericMobileRacingSelector = document.querySelector('#sidebar [class*="user-information-mobile"] [class*="swiper"] [class*="slide"] ul li[class*="icon17"] > a');
-        
-        // Check either of these specific racing indicators
-        const mobileIndicator = mobileRacingIndicator || genericMobileRacingSelector;
-        
-        if (mobileIndicator) {
-            const ariaLabel = mobileIndicator.getAttribute('aria-label');
-            console.log(`[Race Detection] Found specific mobile racing indicator with aria-label: ${ariaLabel}`);
-            
-            // Check for active racing states in the aria-label
-            if (ariaLabel && (
-                ariaLabel.includes('Currently racing') || 
-                ariaLabel.includes('Waiting for') ||
-                ariaLabel === 'Racing: Currently racing')
-            ) {
-                console.log('[Race Detection] Detected active race via specific mobile selector');
-                return true;
-            }
-            
-            // Check for race completion in the aria-label
-            if (ariaLabel && (
-                ariaLabel.match(/You finished \d+[a-z]{2}/) ||
-                ariaLabel.includes('Your best lap was'))
-            ) {
-                console.log('[Race Detection] Race completion detected via mobile aria-label');
-                return false;
-            }
-        }
-        
-        // Add specific exclusions for known false positive elements
-        const excludedSelectors = [
-            // Mobile sidebar navigation item for racing page (but not active racing)
-            '#sidebar > div > div > div.user-information-mobile___WjXnd > div:nth-child(2) > div > div.swiper-wrapper.swiper___qtI61 > div.swiper-slide.slide___NOBlS.swiper-slide-next > ul > li.icon18___iPKVP > a',
-            '#sidebar [class*="user-information-mobile"] [class*="swiper"] [class*="slide"] ul li[class*="icon18"] > a',
-            // Other general navigation elements that may contain "racing" class
-            '.sidebar [class*="navigation"] [class*="racing"]:not([aria-label*="Currently racing"])',
-            '.sidebarMobileWrapper [class*="racing"]:not([aria-label*="Currently racing"])',
-            '.headerMobileWrapper [class*="racing"]:not([aria-label*="Currently racing"])'
-        ];
-        
-        // Check if any of the excluded elements exist (but don't count them as racing indicators)
-        for (const selector of excludedSelectors) {
-            const el = document.querySelector(selector);
-            if (el) {
-                const ariaLabel = el.getAttribute('aria-label') || '';
-                // Don't count these as racing unless they have an explicit racing aria-label
-                if (!ariaLabel.includes('Currently racing') && !ariaLabel.includes('Waiting for')) {
-                    console.log(`[Race Detection] Found excluded element (not counting as race indicator): ${selector}`);
-                    // Do not return here - these should not be used for detection unless they indicate racing
-                } else {
-                    // If they do have racing aria-labels, they should be counted
-                    console.log(`[Race Detection] Found excluded element WITH RACING ARIA-LABEL: ${ariaLabel}`);
-                    return true;
-                }
-            }
-        }
-        
-        // Check other mobile selectors with better validation
-        const mobileSelectors = [
-            // Generic link with racing aria-label anywhere
-            'a[aria-label="Racing: Currently racing"]',
-            'a[aria-label*="Currently racing"]',
-            'a[aria-label*="Waiting for a race"]',
+        // Method 5: Additional mobile-specific indicators
+        const additionalMobileSelectors = [
             // Mobile menu items with race status - must be active
             '.navigationWrapper a.active[aria-label*="Racing"]',
-            // Mobile race status indicators - must have specific text
+            // Mobile race status indicators
             '.status-icons-mobile .racing-status:not(.empty)',
-            // PDA-specific elements that specifically indicate active racing
+            // PDA-specific racing indicators
             '[class*="racingIcon"].active',
             '[class*="raceStatus"].active',
-            // Check for race timer elements - these only appear during active races
+            // Race timer elements
             '.race-timer:not(.hidden)',
             '[class*="raceCountdown"]:not(.hidden)',
-            // Check the right side menu for racing activity icon
+            // Right side menu racing activity icon
             '.sideMenu___qDOTV .linkActive___vc2pE [class*="racing"]',
-            // Check for the race progress indicator in the top menu
+            // Race progress in top menu
             '.headerProgressBar___O7xbl:not(.hidden)'
         ];
         
-        for (const selector of mobileSelectors) {
+        for (const selector of additionalMobileSelectors) {
             const element = document.querySelector(selector);
             if (element) {
-                // Additional validation to prevent false positives
-                // Skip navigation/layout elements unless they specifically indicate racing via aria-label
-                const ariaLabel = element.getAttribute('aria-label') || '';
-                
-                // Skip common UI elements that aren't actually race indicators
-                if (element.classList.contains('racing-navigation') ||
-                    element.classList.contains('racing-menu') ||
-                    element.classList.contains('racing-header') ||
-                    element.classList.contains('racing-layout') ||
-                    element.classList.contains('racing-sidebar') ||
-                    element.parentElement?.classList.contains('navigation')) {
-                    
-                    // Only count navigation elements if they explicitly have racing aria-labels
-                    if (!ariaLabel.includes('Currently racing') && !ariaLabel.includes('Waiting for')) {
-                        continue; // Skip navigation elements without racing indication
-                    }
-                }
-                
-                // Verify it's not just a mobile menu icon without racing context
-                if (element.closest('#sidebar') || 
-                    element.closest('[class*="sidebar"]') ||
-                    element.closest('[class*="navigation"]') ||
-                    element.closest('.headerMobileWrapper')) {
-                    
-                    // For sidebar/navigation items, we need strong evidence it's about active racing
-                    const hasActiveClass = element.classList.contains('active');
-                    const hasActiveIcon = element.querySelector('.icon.active, [class*="Icon"].active');
-                    const hasRacingLabel = ariaLabel.includes('Currently racing') || ariaLabel.includes('Waiting for');
-                    
-                    // Skip if it looks like just a navigation item without racing indication
-                    if (!(hasActiveClass || hasActiveIcon || hasRacingLabel)) {
-                        continue;
-                    }
-                }
-                
-                // Check if race completion indicators are also present
-                const isCompleted = document.body.textContent.includes("Race complete") || 
-                                  document.body.textContent.includes("You finished") ||
-                                  document.body.textContent.includes("Final position") ||
-                                  document.body.textContent.includes("Race results");
-                
-                if (isCompleted) {
-                    console.log(`[Race Detection] Mobile racing elements found but race is completed based on text`);
-                    return false;
-                }
-                
-                console.log(`[Race Detection] Found mobile racing element: ${selector} with aria-label: ${ariaLabel}`);
+                console.log(`[Race Detection] Found additional mobile racing element: ${selector}`);
                 return true;
             }
         }
         
-        // REMOVED: Overly broad selector that causes false positives
-        // No longer checking for generic [class*="racing"]:not(a):not(li) elements
-        
-        // Method 5: Check the global page content for racing indicators
+        // Method 6: Check the global page content for racing indicators
         const pageContent = document.body.textContent || '';
         
         // First check for completion text
@@ -3514,8 +3425,7 @@
             }
         }
         
-        // Method 6: Last resort check - much more restrictive
-        // Look for specific combinations of elements that must be present for active racing
+        // Method 7: Last resort check - look for specific combinations of elements
         const racingRequiredElements = [
             // Must have a countdown timer
             document.querySelector('.countdown-wrap, .countdown, [class*="countdown"], .timer, .race-timer'),
