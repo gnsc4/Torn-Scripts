@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Manager
-// @version      3.6.9
+// @version      3.6.10
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -3219,7 +3219,16 @@
             return;
         }
 
-        // Add a small delay to allow icons to load before checking race status
+        // Detect if user is on mobile/PDA
+        const isMobilePDA = navigator.userAgent.includes('PDA') || 
+                            window.innerWidth < 768 || 
+                            document.documentElement.classList.contains('tornPDA');
+        
+        // Use different delays based on platform
+        const delay = isMobilePDA ? 3000 : 1000; // 3 seconds for mobile, 1 second for desktop
+        
+        console.log(`[Race Detection] Using ${isMobilePDA ? 'mobile' : 'desktop'} delay: ${delay}ms`);
+
         setTimeout(() => {
             const isInRace = checkRaceStatus();
             console.log("[Race Detection] Race status:", isInRace ? "IN RACE" : "NOT RACING");
@@ -3236,7 +3245,7 @@
                 // Remove the alert if racing
                 removeRaceAlert();
             }
-        }, 1000); // 1 second delay to allow icons to load
+        }, delay);
     }
 
     function showRaceAlert() {
