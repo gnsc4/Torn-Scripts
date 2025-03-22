@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Manager
-// @version      3.6.8
+// @version      3.6.9
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -3219,21 +3219,24 @@
             return;
         }
 
-        const isInRace = checkRaceStatus();
-        console.log("[Race Detection] Race status:", isInRace ? "IN RACE" : "NOT RACING");
-        
-        const existingAlert = document.getElementById('raceAlert');
+        // Add a small delay to allow icons to load before checking race status
+        setTimeout(() => {
+            const isInRace = checkRaceStatus();
+            console.log("[Race Detection] Race status:", isInRace ? "IN RACE" : "NOT RACING");
+            
+            const existingAlert = document.getElementById('raceAlert');
 
-        // Only show alert when NOT racing
-        if (!isInRace) {
-            // Create or update the alert
-            if (!existingAlert || !document.body.contains(existingAlert)) {
-                showRaceAlert();
+            // Only show alert when NOT racing
+            if (!isInRace) {
+                // Create or update the alert
+                if (!existingAlert || !document.body.contains(existingAlert)) {
+                    showRaceAlert();
+                }
+            } else {
+                // Remove the alert if racing
+                removeRaceAlert();
             }
-        } else {
-            // Remove the alert if racing
-            removeRaceAlert();
-        }
+        }, 1000); // 1 second delay to allow icons to load
     }
 
     function showRaceAlert() {
