@@ -1,11 +1,10 @@
 // ==UserScript==
 // @name         Torn Race Manager
-// @version      3.6.3
+// @version      3.6.10
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
 // @match        https://www.torn.com/*
-// @match        api.torn.com/*
 // @match        https://api.torn.com/*
 // @grant        GM.xmlHttpRequest
 // @grant        GM_xmlhttpRequest
@@ -3187,122 +3186,30 @@
     }
 
     function checkRaceStatus() {
-        // Method 1: Try the original approach first (works on desktop)
-        const raceLink = document.querySelector('a[href="/page.php?sid=racing"]');
-        if (raceLink) {
-            const ariaLabel = raceLink.getAttribute('aria-label');
-            if (ariaLabel) {
-                // Check if currently racing or waiting
-                if (ariaLabel === 'Racing: Currently racing' || ariaLabel === 'Racing: Waiting for a race to start') {
-                    console.log("[Race Detection] Found via aria-label");
-                    return true;
-                }
-                
-                // Check if race finished (will match any position)
-                if (ariaLabel.match(/Racing: You finished \d+[a-z]{2} in the .+ race/)) {
-                    return false;
-                }
-            }
-        }
-        
-        // Method 2: Check URL patterns that indicate active racing
-        const currentUrl = window.location.href;
-        if (currentUrl.includes('sid=racing&tab=active') || 
-            currentUrl.includes('step=inProgress') || 
-            currentUrl.includes('step=spectating')) {
-            console.log("[Race Detection] Found via racing URL pattern");
+        // Check for specific icon classes first - these are most reliable indicators
+        const activeRaceIcon = document.querySelector('li.icon17___eXCy4');
+        if (activeRaceIcon) {
+            console.log("[Race Detection] Found active race icon (icon17___eXCy4)");
             return true;
         }
         
-        // Method 3: Check for race UI elements that would only be present during a race
-        const raceElements = [
-            '.car-selected-wrap',                     // Car selection element
-            '.race-player',                          // Player in race
-            '.race-list',                            // Race participants list
-            '.race-track',                           // Race track view
-            '.status-racing',                        // Status indicator
-            '.car-selected-stats',                   // Selected car stats
-            '[class*="progressBarFill"]',            // Progress bar (for newer UI)
-            '[class*="raceTrack"]',                  // Race track (newer UI)
-            'div.data-list-table:has(.race)'         // Race table with race rows
-        ];
-        
-        for (const selector of raceElements) {
-            if (document.querySelector(selector)) {
-                console.log(`[Race Detection] Found racing element: ${selector}`);
-                return true;
-            }
+        const completedRaceIcon = document.querySelector('li.icon18___iPKVP');
+        if (completedRaceIcon) {
+            console.log("[Race Detection] Found completed race icon (icon18___iPKVP)");
+            return false;
         }
         
-        // Method 4: Look for mobile-specific racing indicators (Torn PDA)
-        const mobileSelectors = [
-            // Mobile menu items with race status
-            '.navigationWrapper a.active[aria-label*="Racing"]',
-            // Mobile race status indicators
-            '.status-icons-mobile .racing-status',
-            // PDA-specific elements
-            '[class*="racingIcon"]',
-            '[class*="raceStatus"]',
-            // Check for any elements with racing in the class name
-            '[class*="racing"]:not(a):not(li)',
-            // Racing section container (specific to PDA)
-            '.tornPDA-racing-container',
-            // Check for race timer elements
-            '.race-timer',
-            '[class*="raceCountdown"]',
-            // Check the right side menu for racing activity icon
-            '.sideMenu___qDOTV .linkActive___vc2pE [class*="racing"]',
-            // Check for the race progress indicator in the top menu
-            '.headerProgressBar___O7xbl'
-        ];
-        
-        for (const selector of mobileSelectors) {
-            if (document.querySelector(selector)) {
-                console.log(`[Race Detection] Found mobile racing element: ${selector}`);
-                return true;
-            }
-        }
-        
-        // Method 5: Check the global page content for racing indicators
-        const pageContent = document.body.textContent || '';
-        const raceTextIndicators = [
-            'Race in progress',
-            'Waiting for race to start',
-            'Position:',
-            'lap times:',
-            'Race time:',
-            'Countdown:',
-            'Race Progress:'
-        ];
-        
-        for (const text of raceTextIndicators) {
-            if (pageContent.includes(text)) {
-                console.log(`[Race Detection] Found racing text: ${text}`);
-                return true;
-            }
-        }
-        
-        // Method 6: Last resort for PDA - check any DOM element with "race" in the class or id
-        const allElements = document.querySelectorAll('*');
-        for (const el of allElements) {
-            const classNames = el.className?.toString() || '';
-            const id = el.id || '';
-            
-            if ((classNames.toLowerCase().includes('race') || id.toLowerCase().includes('race')) && 
-                !classNames.includes('race-alert') && // Exclude our own elements
-                el.offsetParent !== null) { // Element is visible
-                
-                // Exclude navigation and menu elements to prevent false positives
-                if (!classNames.includes('menu') && !classNames.includes('nav') && 
-                    !classNames.includes('link') && !classNames.includes('button')) {
-                    console.log(`[Race Detection] Found generic race element: ${classNames || id}`);
-                    return true;
-                }
-            }
-        }
-        
-        // If all methods fail, assume user is not racing
+        // If neither specific icon is found, assume not racing as per requirements
+        console.log("[Race Detection] Neither race icon found - assuming not racing");
         return false;
+        
+        // Commented out fallback methods since they're no longer needed
+        // according to the requirement "If neither Icon exists then assume not racing"
+        /*
+        // Method 1: Try the original approach first (works on desktop)
+        const raceLink = document.querySelector('a[href="/page.php?sid=racing"]');
+        // ...rest of fallback detection code...
+        */
     }
 
     function updateRaceAlert() {
@@ -3312,21 +3219,33 @@
             return;
         }
 
-        const isInRace = checkRaceStatus();
-        console.log("[Race Detection] Race status:", isInRace ? "IN RACE" : "NOT RACING");
+        // Detect if user is on mobile/PDA
+        const isMobilePDA = navigator.userAgent.includes('PDA') || 
+                            window.innerWidth < 768 || 
+                            document.documentElement.classList.contains('tornPDA');
         
-        const existingAlert = document.getElementById('raceAlert');
+        // Use different delays based on platform
+        const delay = isMobilePDA ? 3000 : 1000; // 3 seconds for mobile, 1 second for desktop
+        
+        console.log(`[Race Detection] Using ${isMobilePDA ? 'mobile' : 'desktop'} delay: ${delay}ms`);
 
-        // Only show alert when NOT racing
-        if (!isInRace) {
-            // Create or update the alert
-            if (!existingAlert || !document.body.contains(existingAlert)) {
-                showRaceAlert();
+        setTimeout(() => {
+            const isInRace = checkRaceStatus();
+            console.log("[Race Detection] Race status:", isInRace ? "IN RACE" : "NOT RACING");
+            
+            const existingAlert = document.getElementById('raceAlert');
+
+            // Only show alert when NOT racing
+            if (!isInRace) {
+                // Create or update the alert
+                if (!existingAlert || !document.body.contains(existingAlert)) {
+                    showRaceAlert();
+                }
+            } else {
+                // Remove the alert if racing
+                removeRaceAlert();
             }
-        } else {
-            // Remove the alert if racing
-            removeRaceAlert();
-        }
+        }, delay);
     }
 
     function showRaceAlert() {
