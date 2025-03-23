@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Manager
-// @version      3.6.24
+// @version      3.6.25
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -3585,15 +3585,6 @@
         }, 0);
     }
 
-    // Ensure all popup elements stay within viewport
-    function ensureAllPopupsWithinViewport() {
-        // Check race alert popup
-        const raceAlertPopup = document.getElementById('quickLaunchPopup');
-        if (raceAlertPopup && raceAlertPopup.classList.contains('show')) {
-            ensurePopupWithinViewport(raceAlertPopup);
-        }
-    }
-
     // Add global document click handler to close all popups when clicking outside
     document.addEventListener('click', function(event) {
         const popup = document.getElementById('quickLaunchPopup');
@@ -3606,7 +3597,7 @@
         }
     });
 
-    // Define ensureAllPopupsWithinViewport only once
+    // Define ensureAllPopupsWithinViewport only once - this is the ONE definition we'll keep
     function ensureAllPopupsWithinViewport() {
         // Check race alert popup
         const raceAlertPopup = document.getElementById('quickLaunchPopup');
@@ -4772,19 +4763,5 @@
             }
         }
     }
-
-    // Ensure all popup elements stay within viewport
-    function ensureAllPopupsWithinViewport() {
-        // Check race alert popup
-        const raceAlertPopup = document.getElementById('quickLaunchPopup');
-        if (raceAlertPopup && raceAlertPopup.classList.contains('show')) {
-            ensurePopupWithinViewport(raceAlertPopup);
-        }
-        
-        // Add checks for any other popups here
-    }
-
-    // Add this to your window resize event listeners
-    window.addEventListener('resize', ensureAllPopupsWithinViewport, { passive: true });
 
 })();
