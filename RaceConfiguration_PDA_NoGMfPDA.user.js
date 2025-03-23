@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Manager
-// @version      3.6.25
+// @version      3.6.26
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -1360,8 +1360,18 @@
             </div>
         `;
 
+        // Replace the existing touchstart listener with better mobile-specific handling
         gui.addEventListener('touchstart', function(e) {
-            e.stopPropagation();
+            // Only stop propagation if we're touching the drag handle or a button
+            // This allows scrolling to work properly on mobile
+            if (e.target.closest('.drag-handle') || e.target.closest('button')) {
+                e.stopPropagation();
+            }
+        }, { passive: true });
+
+        // Add touchmove listener specifically for scrolling support
+        gui.addEventListener('touchmove', function(e) {
+            // Don't prevent default - allows scrolling to work
         }, { passive: true });
 
         // Restore minimized state if previously minimized
@@ -1649,8 +1659,14 @@
             cursor: move;
             background: transparent;
             pointer-events: all;
+            z-index: 1000; /* Ensure it's above content but below close button */
         `;
         elmnt.insertBefore(dragHandle, elmnt.firstChild);
+
+        // Add mobile-friendly scroll styles to the element
+        elmnt.style.overscrollBehavior = 'contain';
+        elmnt.style.webkitOverflowScrolling = 'touch';
+        elmnt.style.touchAction = 'pan-y';
 
         const style = document.createElement('style');
         style.textContent = `
@@ -1661,14 +1677,38 @@
             .drag-handle {
                 z-index: 1000;
             }
+            /* Mobile-specific improvements */
+            @media (max-width: 767px) {
+                #raceConfigGUI {
+                    -webkit-overflow-scrolling: touch !important;
+                    overflow-y: auto !important;
+                    touch-action: pan-y !important;
+                    overscroll-behavior-y: contain !important;
+                }
+                /* Make scrollbar more visible on mobile */
+                #raceConfigGUI::-webkit-scrollbar {
+                    width: 10px !important;
+                }
+                #raceConfigGUI::-webkit-scrollbar-thumb {
+                    background: #666 !important;
+                    border-radius: 5px !important;
+                    border: 2px solid #222 !important;
+                }
+            }
         `;
         document.head.appendChild(style);
 
         let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+        
+        // Only attach mouse events to the drag handle
+        // Touch events will be managed separately
         dragHandle.onmousedown = dragMouseDown;
 
         function dragMouseDown(e) {
             e = e || window.event;
+            // Only handle mouse events here, not touch events
+            if (e.type === 'touchstart') return;
+            
             e.preventDefault();
             pos3 = e.clientX;
             pos4 = e.clientY;
@@ -1676,6 +1716,48 @@
             document.onmousemove = elementDrag;
         }
 
+        // Add touch event specifically for drag handle
+        dragHandle.addEventListener('touchstart', function(e) {
+            // Store the initial touch position
+            const touch = e.touches[0];
+            pos3 = touch.clientX;
+            pos4 = touch.clientY;
+            
+            // Set up the touch move and end handlers
+            dragHandle.addEventListener('touchmove', handleTouchMove, { passive: false });
+            dragHandle.addEventListener('touchend', handleTouchEnd, { passive: true });
+            
+            // Prevent scroll only when dragging from the handle
+            e.preventDefault();
+        }, { passive: false });
+
+        function handleTouchMove(e) {
+            const touch = e.touches[0];
+            
+            // Calculate the new position
+            pos1 = pos3 - touch.clientX;
+            pos2 = pos4 - touch.clientY;
+            pos3 = touch.clientX;
+            pos4 = touch.clientY;
+            
+            // Set new position
+            elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+            elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+            
+            // Always prevent default for drag
+            e.preventDefault();
+        }
+
+        function handleTouchEnd() {
+            // Clean up the temporary event listeners
+            dragHandle.removeEventListener('touchmove', handleTouchMove);
+            dragHandle.removeEventListener('touchend', handleTouchEnd);
+            
+            // Ensure the element stays within bounds
+            enforceWindowBoundaries(elmnt);
+        }
+
+        // Rest of the existing function remains the same
         function elementDrag(e) {
             e = e || window.event;
             e.preventDefault();
