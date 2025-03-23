@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Manager
-// @version      3.6.20
+// @version      3.6.12
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -1627,7 +1627,6 @@
 
         let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
         dragHandle.onmousedown = dragMouseDown;
-        dragHandle.ontouchstart = touchDragStart;
 
         function dragMouseDown(e) {
             e = e || window.event;
@@ -1636,16 +1635,6 @@
             pos4 = e.clientY;
             document.onmouseup = closeDragElement;
             document.onmousemove = elementDrag;
-        }
-        
-        function touchDragStart(e) {
-            if (e.touches && e.touches.length) {
-                e.preventDefault();
-                pos3 = e.touches[0].clientX;
-                pos4 = e.touches[0].clientY;
-                document.ontouchend = closeTouchDrag;
-                document.ontouchmove = elementTouchDrag;
-            }
         }
 
         function elementDrag(e) {
@@ -1659,56 +1648,60 @@
             // Calculate new position
             let newTop = elmnt.offsetTop - pos2;
             let newLeft = elmnt.offsetLeft - pos1;
-            
-            // Apply position with boundaries check
+
+            // Get window dimensions and element dimensions
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            const elmntWidth = elmnt.offsetWidth;
+            const elmntHeight = elmnt.offsetHeight;
+
+            // Calculate boundaries with padding
+            const padding = 10;
+            const minLeft = padding;
+            const maxLeft = windowWidth - elmntWidth - padding;
+            const minTop = padding;
+            const maxTop = windowHeight - elmntHeight - padding;
+
+            // Apply boundaries
+            newLeft = Math.max(minLeft, Math.min(maxLeft, newLeft));
+            newTop = Math.max(minTop, Math.min(maxTop, newTop));
+
+            // Update position
             elmnt.style.top = newTop + "px";
             elmnt.style.left = newLeft + "px";
-            
-            // Enforce boundaries during drag for a smoother experience
-            requestAnimationFrame(() => enforceElementBoundaries(elmnt));
-        }
-        
-        function elementTouchDrag(e) {
-            if (e.touches && e.touches.length) {
-                e.preventDefault();
-                pos1 = pos3 - e.touches[0].clientX;
-                pos2 = pos4 - e.touches[0].clientY;
-                pos3 = e.touches[0].clientX;
-                pos4 = e.touches[0].clientY;
-
-                // Calculate new position
-                let newTop = elmnt.offsetTop - pos2;
-                let newLeft = elmnt.offsetLeft - pos1;
-                
-                // Apply position with boundaries check
-                elmnt.style.top = newTop + "px";
-                elmnt.style.left = newLeft + "px";
-                
-                // Enforce boundaries during drag for a smoother experience
-                requestAnimationFrame(() => enforceElementBoundaries(elmnt));
-            }
         }
 
         function closeDragElement() {
+            // Keep existing code
             document.onmouseup = null;
             document.onmousemove = null;
-            enforceElementBoundaries(elmnt);
-        }
-        
-        function closeTouchDrag() {
-            document.ontouchend = null;
-            document.ontouchmove = null;
-            enforceElementBoundaries(elmnt);
+
+            // Add boundary check after drag ends
+            enforceWindowBoundaries(elmnt);
         }
 
-        // Initial position enforcement
-        setTimeout(() => enforceElementBoundaries(elmnt), 100);
+        function enforceWindowBoundaries(element) {
+            const windowWidth = document.documentElement.clientWidth;
+            const windowHeight = document.documentElement.clientHeight;
+            const elmntWidth = element.offsetWidth;
+            const elmntHeight = element.offsetHeight;
+            const padding = 10;
 
-        // Add event listeners for window resize and orientation change
-        window.addEventListener('resize', () => enforceElementBoundaries(elmnt));
-        window.addEventListener('orientationchange', () => {
-            setTimeout(() => enforceElementBoundaries(elmnt), 300);
-        });
+            let { top, left } = element.getBoundingClientRect();
+
+            // Enforce boundaries
+            if (left < padding) element.style.left = padding + "px";
+            if (top < padding) element.style.top = padding + "px";
+            if (left + elmntWidth > windowWidth - padding) {
+                element.style.left = (windowWidth - elmntWidth - padding) + "px";
+            }
+            if (top + elmntHeight > windowHeight - padding) {
+                element.style.top = (windowHeight - elmntHeight - padding) + "px";
+            }
+        }
+
+        // Add window resize handler
+        window.addEventListener('resize', () => enforceWindowBoundaries(elmnt));
     }
 
     function saveApiKey() {
@@ -4437,270 +4430,13 @@
         }
     }
 
-    // Enhanced window boundary enforcement
-    function enforceElementBoundaries(element) {
-        if (!element || !element.getBoundingClientRect) return;
-        
-        // Get viewport dimensions
-        const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
-        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-        
-        // Get element dimensions
-        const rect = element.getBoundingClientRect();
-        const elemWidth = rect.width;
-        const elemHeight = rect.height;
-        
-        // Padding from edge of screen
-        const padding = 10;
-        
-        // Calculate new position that keeps element within boundaries
-        let newLeft = rect.left;
-        let newTop = rect.top;
-        
-        // Check left boundary
-        if (newLeft < padding) {
-            newLeft = padding;
-        }
-        
-        // Check right boundary
-        if (newLeft + elemWidth > viewportWidth - padding) {
-            newLeft = viewportWidth - elemWidth - padding;
-        }
-        
-        // Check top boundary
-        if (newTop < padding) {
-            newTop = padding;
-        }
-        
-        // Check bottom boundary
-        if (newTop + elemHeight > viewportHeight - padding) {
-            newTop = viewportHeight - elemHeight - padding;
-        }
-        
-        // Only update position if it changed
-        if (newLeft !== rect.left || newTop !== rect.top) {
-            console.log('[DEBUG] Enforcing boundaries:', 
-                { old: {left: rect.left, top: rect.top}, new: {left: newLeft, top: newTop} });
-            
-            // Use transform for better performance
-            element.style.transform = `translate(${newLeft - rect.left}px, ${newTop - rect.top}px)`;
-            
-            // If element already has a transform, we need to update position directly
-            if (window.getComputedStyle(element).transform === 'none') {
-                element.style.left = `${newLeft}px`;
-                element.style.top = `${newTop}px`;
-            }
-        }
-    }
-    
-    // Fix for dragElement to properly enforce boundaries
-    function dragElement(elmnt) {
-        const dragHandle = document.createElement('div');
-        dragHandle.className = 'drag-handle';
-        dragHandle.style.cssText = `
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 40px;
-            height: 40px;
-            cursor: move;
-            background: transparent;
-            pointer-events: all;
-        `;
-        elmnt.insertBefore(dragHandle, elmnt.firstChild);
-
-        const style = document.createElement('style');
-        style.textContent = `
-            #closeGUIButton {
-                z-index: 1001;
-                pointer-events: all !important;
-            }
-            .drag-handle {
-                z-index: 1000;
-            }
-        `;
-        document.head.appendChild(style);
-
-        let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-        dragHandle.onmousedown = dragMouseDown;
-        dragHandle.ontouchstart = touchDragStart;
-
-        function dragMouseDown(e) {
-            e = e || window.event;
-            e.preventDefault();
-            pos3 = e.clientX;
-            pos4 = e.clientY;
-            document.onmouseup = closeDragElement;
-            document.onmousemove = elementDrag;
-        }
-        
-        function touchDragStart(e) {
-            if (e.touches && e.touches.length) {
-                e.preventDefault();
-                pos3 = e.touches[0].clientX;
-                pos4 = e.touches[0].clientY;
-                document.ontouchend = closeTouchDrag;
-                document.ontouchmove = elementTouchDrag;
-            }
-        }
-
-        function elementDrag(e) {
-            e = e || window.event;
-            e.preventDefault();
-            pos1 = pos3 - e.clientX;
-            pos2 = pos4 - e.clientY;
-            pos3 = e.clientX;
-            pos4 = e.clientY;
-
-            // Calculate new position
-            let newTop = elmnt.offsetTop - pos2;
-            let newLeft = elmnt.offsetLeft - pos1;
-            
-            // Apply position with boundaries check
-            elmnt.style.top = newTop + "px";
-            elmnt.style.left = newLeft + "px";
-            
-            // Enforce boundaries during drag for a smoother experience
-            requestAnimationFrame(() => enforceElementBoundaries(elmnt));
-        }
-        
-        function elementTouchDrag(e) {
-            if (e.touches && e.touches.length) {
-                e.preventDefault();
-                pos1 = pos3 - e.touches[0].clientX;
-                pos2 = pos4 - e.touches[0].clientY;
-                pos3 = e.touches[0].clientX;
-                pos4 = e.touches[0].clientY;
-
-                // Calculate new position
-                let newTop = elmnt.offsetTop - pos2;
-                let newLeft = elmnt.offsetLeft - pos1;
-                
-                // Apply position with boundaries check
-                elmnt.style.top = newTop + "px";
-                elmnt.style.left = newLeft + "px";
-                
-                // Enforce boundaries during drag for a smoother experience
-                requestAnimationFrame(() => enforceElementBoundaries(elmnt));
-            }
-        }
-
-        function closeDragElement() {
-            document.onmouseup = null;
-            document.onmousemove = null;
-            enforceElementBoundaries(elmnt);
-        }
-        
-        function closeTouchDrag() {
-            document.ontouchend = null;
-            document.ontouchmove = null;
-            enforceElementBoundaries(elmnt);
-        }
-
-        // Initial position enforcement
-        setTimeout(() => enforceElementBoundaries(elmnt), 100);
-
-        // Add event listeners for window resize and orientation change
-        window.addEventListener('resize', () => enforceElementBoundaries(elmnt));
-        window.addEventListener('orientationchange', () => {
-            setTimeout(() => enforceElementBoundaries(elmnt), 300);
-        });
-    }
-    
-    // Fix mobile scrolling for the GUI container
-    function fixMobileScrolling() {
-        const gui = document.getElementById('raceConfigGUI');
-        if (!gui) return;
-        
-        // Add passive touch event listeners for better scrolling
-        gui.addEventListener('touchstart', function(e) {
-            // Only stop propagation, don't prevent default so scrolling can happen
-            e.stopPropagation();
-        }, { passive: true });
-        
-        gui.addEventListener('touchmove', function(e) {
-            // Check if target is a scrollable element (like the preset container)
-            let target = e.target;
-            let scrollable = false;
-            
-            // Check if user is scrolling on a scrollable container
-            while (target !== gui && target !== null) {
-                const style = window.getComputedStyle(target);
-                if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
-                    if (target.scrollHeight > target.clientHeight) {
-                        scrollable = true;
-                        break;
-                    }
-                }
-                target = target.parentElement;
-            }
-            
-            // Only prevent default if user is trying to scroll the entire page
-            if (!scrollable) {
-                e.preventDefault();
-            }
-        }, { passive: false });
-    }
-    
-    // Ensure all UI elements stay within viewport when displayed
-    function ensureUIWithinViewport() {
-        // Check for race config GUI
-        const gui = document.getElementById('raceConfigGUI');
-        if (gui && gui.style.display !== 'none') {
-            enforceElementBoundaries(gui);
-        }
-        
-        // Check for quick launch container
-        const quickLaunch = document.getElementById('quickLaunchContainer');
-        if (quickLaunch) {
-            enforceElementBoundaries(quickLaunch);
-        }
-        
-        // Fix race alert position
-        const raceAlert = document.getElementById('raceAlert');
-        if (raceAlert) {
-            enforceElementBoundaries(raceAlert);
-        }
-    }
-    
-    // Add viewport meta tag for better mobile display if not already present
-    function ensureViewportMeta() {
-        if (!document.querySelector('meta[name="viewport"]')) {
-            const meta = document.createElement('meta');
-            meta.name = 'viewport';
-            meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0';
-            document.head.appendChild(meta);
-            console.log('[DEBUG] Added viewport meta tag for mobile');
-        }
-    }
-    
-    // Initialize mobile optimizations
-    function initializeMobileOptimizations() {
-        ensureViewportMeta();
-        fixMobileScrolling();
-        
-        // Make sure UI stays in viewport on scroll/resize/orientation change
-        window.addEventListener('scroll', ensureUIWithinViewport, { passive: true });
-        window.addEventListener('resize', ensureUIWithinViewport, { passive: true });
-        window.addEventListener('orientationchange', () => {
-            setTimeout(ensureUIWithinViewport, 300);
-        }, { passive: true });
-        
-        // Call initially
-        setTimeout(ensureUIWithinViewport, 500);
-    }
-
     function initializeAll() {
         // Ensure document is available before initializing
         if (typeof document !== 'undefined' && document.readyState !== 'loading') {
             init();
-            // Add mobile optimizations
-            initializeMobileOptimizations();
         } else {
             document.addEventListener('DOMContentLoaded', function() {
                 init();
-                // Add mobile optimizations
-                initializeMobileOptimizations();
             });
         }
     }
