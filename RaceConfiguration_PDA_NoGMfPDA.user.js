@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Manager
-// @version      3.6.22
+// @version      3.6.23
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -980,7 +980,7 @@
         }
     `;
 
-    // Enhanced popup positioning styles
+    // Enhanced popup positioning styles - add small screen optimizations
     style.textContent += `
         .quick-launch-popup {
             position: absolute;
@@ -1016,6 +1016,20 @@
             left: 50%;
             transform: translateX(-50%);
             right: auto;
+        }
+        
+        /* Added styles for small screens */
+        .quick-launch-popup.small-screen {
+            position: fixed !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            max-width: 90vw !important;
+            max-height: 70vh !important;
+            width: auto !important;
+            right: auto !important;
+            bottom: auto !important;
+            margin: 0 !important;
         }
 
         .quick-launch-popup.show {
@@ -3273,6 +3287,7 @@
         }, delay);
     }
 
+    // Modified showRaceAlert function to handle popup toggling on small screens better
     function showRaceAlert() {
         let alert = document.getElementById('raceAlert');
         
@@ -3297,19 +3312,29 @@
             
             alert.addEventListener('click', (e) => {
                 e.stopPropagation();
-                popup.classList.toggle('show');
                 
+                // Toggle popup visibility
                 if (popup.classList.contains('show')) {
-                    // Update content and position immediately when shown
+                    popup.classList.remove('show');
+                } else {
+                    popup.classList.add('show');
+                    
+                    // Small screen detection for immediate positioning
+                    const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+                    if (viewportWidth < 450) {
+                        popup.classList.add('small-screen');
+                    }
+                    
+                    // Update content and position
                     updateQuickLaunchPopup(popup);
                     
-                    // Add window resize listener with immediate positioning
+                    // Add resize listener for responsive positioning
                     const resizeHandler = () => {
                         requestAnimationFrame(() => ensurePopupWithinViewport(popup));
                     };
                     window.addEventListener('resize', resizeHandler);
                     
-                    // Remove listeners when popup is hidden
+                    // Close popup when clicking outside
                     const documentClickHandler = (event) => {
                         if (!popup.contains(event.target) && !alert.contains(event.target)) {
                             popup.classList.remove('show');
@@ -3318,7 +3343,7 @@
                         }
                     };
                     
-                    // Use setTimeout to avoid immediate trigger of the click handler
+                    // Use setTimeout to avoid immediate trigger
                     setTimeout(() => {
                         document.addEventListener('click', documentClickHandler);
                     }, 0);
@@ -3440,15 +3465,27 @@
         if (!popup || !popup.classList.contains('show')) return;
         
         // Reset all positioning classes first
-        popup.classList.remove('left-aligned', 'top-aligned', 'center-aligned');
+        popup.classList.remove('left-aligned', 'top-aligned', 'center-aligned', 'small-screen');
         popup.style.transform = '';
         popup.style.left = '';
         popup.style.right = '';
+        popup.style.top = '';
+        popup.style.bottom = '';
+        popup.style.position = '';
         popup.style.maxWidth = '';
+        popup.style.maxHeight = '';
+        popup.style.width = '';
         
         // Get viewport and element dimensions
         const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
         const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+        
+        // Special handling for small screens (under 450px width)
+        if (viewportWidth < 450) {
+            console.log('[Popup Positioning] Small screen detected, using centered fixed positioning');
+            popup.classList.add('small-screen');
+            return;
+        }
         
         // Get elements for positioning calculation
         const alert = document.getElementById('raceAlert');
@@ -3492,7 +3529,7 @@
                 popup.classList.add('center-aligned');
                 
                 // Limit width to fit in viewport
-                popup.style.maxWidth = `${viewportWidth - (padding * 2)}px`
+                popup.style.maxWidth = `${viewportWidth - (padding * 2)}px`;
             }
         }
         
@@ -3531,6 +3568,21 @@
         }
         
         console.log(`[Popup Positioning] Final class list: ${popup.className}`);
+
+        // Final check to ensure no part of the popup is off-screen
+        setTimeout(() => {
+            const finalRect = popup.getBoundingClientRect();
+            const isOffScreen = 
+                finalRect.left < padding ||
+                finalRect.right > viewportWidth - padding ||
+                finalRect.top < padding ||
+                finalRect.bottom > viewportHeight - padding;
+                
+            if (isOffScreen) {
+                console.log('[Popup Positioning] Popup still off-screen, applying emergency centering');
+                popup.className = 'quick-launch-popup show small-screen';
+            }
+        }, 0);
     }
 
     // Ensure all popup elements stay within viewport
