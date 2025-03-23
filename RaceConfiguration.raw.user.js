@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Manager
-// @version      3.6.12
+// @version      3.6.26
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -506,37 +506,19 @@
             margin-top: 5px;
             z-index: 999999;
             min-width: 200px;
+            max-width: 80vw;
             display: none;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .quick-launch-popup.left-aligned {
+            right: auto;
+            left: 0;
         }
 
         .quick-launch-popup.show {
             display: block;
-        }
-
-        .race-active {
-            background-color: #ff4444 !important;
-        }
-
-        .race-active .defaultIcon___iiNis {
-            position: relative;
-            z-index: 2;
-            background-color: transparent !important;
-        }
-
-        .race-active .svgIconWrap___AMIqR {
-            position: relative;
-            z-index: 1;
-            background-color: #cc3333 !important;
-            border-radius: 4px;
-            padding: 2px;
-        }
-
-        .race-active .linkName___FoKha {
-            color: #cc3333 !important;
-        }
-
-        .race-active svg {
-            fill: #fff !important;
         }
     `;
 
@@ -998,6 +980,63 @@
         }
     `;
 
+    // Enhanced popup positioning styles - add small screen optimizations
+    style.textContent += `
+        .quick-launch-popup {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background-color: #222;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 5px;
+            z-index: 999999;
+            min-width: 200px;
+            max-width: 80vw;
+            display: none;
+            max-height: 60vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .quick-launch-popup.left-aligned {
+            right: auto;
+            left: 0;
+        }
+
+        .quick-launch-popup.top-aligned {
+            top: auto;
+            bottom: 100%;
+            margin-top: 0;
+            margin-bottom: 5px;
+        }
+
+        .quick-launch-popup.center-aligned {
+            left: 50%;
+            transform: translateX(-50%);
+            right: auto;
+        }
+        
+        /* Added styles for small screens */
+        .quick-launch-popup.small-screen {
+            position: fixed !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            max-width: 90vw !important;
+            max-height: 70vh !important;
+            width: auto !important;
+            right: auto !important;
+            bottom: auto !important;
+            margin: 0 !important;
+        }
+
+        .quick-launch-popup.show {
+            display: block;
+        }
+    `;
+
     document.head.appendChild(style);
 
     // Main initialization functions
@@ -1317,12 +1356,22 @@
 
             <div style="text-align: center; margin-top: 20px; color: #888; font-size: 1.2em;">
                 Script created by <a href="https://www.torn.com/profiles.php?XID=268863" target="_blank" style="color: #888; text-decoration: none;">GNSC4 [268863]</a><br>
-                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.6.12 Official Forum Link</a>
+                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.6.26 Official Forum Link</a>
             </div>
         `;
 
+        // Replace the existing touchstart listener with better mobile-specific handling
         gui.addEventListener('touchstart', function(e) {
-            e.stopPropagation();
+            // Only stop propagation if we're touching the drag handle or a button
+            // This allows scrolling to work properly on mobile
+            if (e.target.closest('.drag-handle') || e.target.closest('button')) {
+                e.stopPropagation();
+            }
+        }, { passive: true });
+
+        // Add touchmove listener specifically for scrolling support
+        gui.addEventListener('touchmove', function(e) {
+            // Don't prevent default - allows scrolling to work
         }, { passive: true });
 
         // Restore minimized state if previously minimized
@@ -1610,8 +1659,14 @@
             cursor: move;
             background: transparent;
             pointer-events: all;
+            z-index: 1000; /* Ensure it's above content but below close button */
         `;
         elmnt.insertBefore(dragHandle, elmnt.firstChild);
+
+        // Add mobile-friendly scroll styles to the element
+        elmnt.style.overscrollBehavior = 'contain';
+        elmnt.style.webkitOverflowScrolling = 'touch';
+        elmnt.style.touchAction = 'pan-y';
 
         const style = document.createElement('style');
         style.textContent = `
@@ -1622,14 +1677,38 @@
             .drag-handle {
                 z-index: 1000;
             }
+            /* Mobile-specific improvements */
+            @media (max-width: 767px) {
+                #raceConfigGUI {
+                    -webkit-overflow-scrolling: touch !important;
+                    overflow-y: auto !important;
+                    touch-action: pan-y !important;
+                    overscroll-behavior-y: contain !important;
+                }
+                /* Make scrollbar more visible on mobile */
+                #raceConfigGUI::-webkit-scrollbar {
+                    width: 10px !important;
+                }
+                #raceConfigGUI::-webkit-scrollbar-thumb {
+                    background: #666 !important;
+                    border-radius: 5px !important;
+                    border: 2px solid #222 !important;
+                }
+            }
         `;
         document.head.appendChild(style);
 
         let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+        
+        // Only attach mouse events to the drag handle
+        // Touch events will be managed separately
         dragHandle.onmousedown = dragMouseDown;
 
         function dragMouseDown(e) {
             e = e || window.event;
+            // Only handle mouse events here, not touch events
+            if (e.type === 'touchstart') return;
+            
             e.preventDefault();
             pos3 = e.clientX;
             pos4 = e.clientY;
@@ -1637,6 +1716,48 @@
             document.onmousemove = elementDrag;
         }
 
+        // Add touch event specifically for drag handle
+        dragHandle.addEventListener('touchstart', function(e) {
+            // Store the initial touch position
+            const touch = e.touches[0];
+            pos3 = touch.clientX;
+            pos4 = touch.clientY;
+            
+            // Set up the touch move and end handlers
+            dragHandle.addEventListener('touchmove', handleTouchMove, { passive: false });
+            dragHandle.addEventListener('touchend', handleTouchEnd, { passive: true });
+            
+            // Prevent scroll only when dragging from the handle
+            e.preventDefault();
+        }, { passive: false });
+
+        function handleTouchMove(e) {
+            const touch = e.touches[0];
+            
+            // Calculate the new position
+            pos1 = pos3 - touch.clientX;
+            pos2 = pos4 - touch.clientY;
+            pos3 = touch.clientX;
+            pos4 = touch.clientY;
+            
+            // Set new position
+            elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+            elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+            
+            // Always prevent default for drag
+            e.preventDefault();
+        }
+
+        function handleTouchEnd() {
+            // Clean up the temporary event listeners
+            dragHandle.removeEventListener('touchmove', handleTouchMove);
+            dragHandle.removeEventListener('touchend', handleTouchEnd);
+            
+            // Ensure the element stays within bounds
+            enforceWindowBoundaries(elmnt);
+        }
+
+        // Rest of the existing function remains the same
         function elementDrag(e) {
             e = e || window.event;
             e.preventDefault();
@@ -3248,6 +3369,7 @@
         }, delay);
     }
 
+    // Modified showRaceAlert function to handle popup toggling on small screens better
     function showRaceAlert() {
         let alert = document.getElementById('raceAlert');
         
@@ -3272,12 +3394,42 @@
             
             alert.addEventListener('click', (e) => {
                 e.stopPropagation();
-                popup.classList.toggle('show');
-                updateQuickLaunchPopup(popup);
-            });
-            
-            document.addEventListener('click', () => {
-                popup.classList.remove('show');
+                
+                // Toggle popup visibility
+                if (popup.classList.contains('show')) {
+                    popup.classList.remove('show');
+                } else {
+                    popup.classList.add('show');
+                    
+                    // Small screen detection for immediate positioning
+                    const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+                    if (viewportWidth < 450) {
+                        popup.classList.add('small-screen');
+                    }
+                    
+                    // Update content and position
+                    updateQuickLaunchPopup(popup);
+                    
+                    // Add resize listener for responsive positioning
+                    const resizeHandler = () => {
+                        requestAnimationFrame(() => ensurePopupWithinViewport(popup));
+                    };
+                    window.addEventListener('resize', resizeHandler);
+                    
+                    // Close popup when clicking outside
+                    const documentClickHandler = (event) => {
+                        if (!popup.contains(event.target) && !alert.contains(event.target)) {
+                            popup.classList.remove('show');
+                            window.removeEventListener('resize', resizeHandler);
+                            document.removeEventListener('click', documentClickHandler);
+                        }
+                    };
+                    
+                    // Use setTimeout to avoid immediate trigger
+                    setTimeout(() => {
+                        document.addEventListener('click', documentClickHandler);
+                    }, 0);
+                }
             });
             
             // Try to find a good place to insert the alert, with special handling for PDA
@@ -3373,20 +3525,180 @@
 
         if (Object.keys(presets).length === 0) {
             popup.innerHTML = '<div style="padding: 10px; color: #aaa;">No presets available</div>';
+        } else {
+            Object.entries(presets).forEach(([name, preset]) => {
+                const button = document.createElement('button');
+                button.className = 'quick-launch-button';
+                button.textContent = name;
+                button.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    await createRaceFromPreset(preset);
+                });
+                popup.appendChild(button);
+            });
+        }
+        
+        // Important: Position after content is loaded
+        requestAnimationFrame(() => ensurePopupWithinViewport(popup));
+    }
+    
+    // Enhanced function to ensure popup stays within viewport boundaries
+    function ensurePopupWithinViewport(popup) {
+        if (!popup || !popup.classList.contains('show')) return;
+        
+        // Reset all positioning classes first
+        popup.classList.remove('left-aligned', 'top-aligned', 'center-aligned', 'small-screen');
+        popup.style.transform = '';
+        popup.style.left = '';
+        popup.style.right = '';
+        popup.style.top = '';
+        popup.style.bottom = '';
+        popup.style.position = '';
+        popup.style.maxWidth = '';
+        popup.style.maxHeight = '';
+        popup.style.width = '';
+        
+        // Get viewport and element dimensions
+        const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+        
+        // Special handling for small screens (under 450px width)
+        if (viewportWidth < 450) {
+            console.log('[Popup Positioning] Small screen detected, using centered fixed positioning');
+            popup.classList.add('small-screen');
             return;
         }
+        
+        // Get elements for positioning calculation
+        const alert = document.getElementById('raceAlert');
+        if (!alert) return;
+        
+        const alertRect = alert.getBoundingClientRect();
+        
+        // First, position based on default position (right-aligned, below alert)
+        // and then measure to see if it fits
+        popup.classList.remove('left-aligned', 'top-aligned', 'center-aligned');
+        
+        // Force a reflow to ensure getBoundingClientRect shows updated position
+        void popup.offsetWidth;
+        
+        const rect = popup.getBoundingClientRect();
+        const padding = 10; // Padding from screen edges
+        
+        console.log(`[Popup Positioning] Alert position: ${Math.round(alertRect.left)},${Math.round(alertRect.top)} - ${Math.round(alertRect.width)}x${Math.round(alertRect.height)}`);
+        console.log(`[Popup Positioning] Popup size: ${Math.round(rect.width)}x${Math.round(rect.height)}`);
+        console.log(`[Popup Positioning] Viewport: ${viewportWidth}x${viewportHeight}`);
+        
+        // Determine horizontal alignment
+        let horizontalProblem = false;
+        let verticalProblem = false;
+        
+        // Check if overflows right edge
+        if (rect.right > viewportWidth - padding) {
+            console.log('[Popup Positioning] Overflows right edge');
+            horizontalProblem = true;
+            popup.classList.add('left-aligned');
+        }
+        
+        // After applying left alignment, check if it now overflows left edge
+        if (popup.classList.contains('left-aligned')) {
+            const newRect = popup.getBoundingClientRect();
+            if (newRect.left < padding) {
+                console.log('[Popup Positioning] Overflows left edge after left alignment');
+                horizontalProblem = true;
+                // Remove left alignment and try center instead
+                popup.classList.remove('left-aligned');
+                popup.classList.add('center-aligned');
+                
+                // Limit width to fit in viewport
+                popup.style.maxWidth = `${viewportWidth - (padding * 2)}px`;
+            }
+        }
+        
+        // Check for vertical overflow - bottom edge
+        if (rect.bottom > viewportHeight - padding) {
+            console.log('[Popup Positioning] Overflows bottom edge');
+            verticalProblem = true;
+            popup.classList.add('top-aligned');
+        }
+        
+        // After applying top alignment, check if it now overflows top edge
+        if (popup.classList.contains('top-aligned')) {
+            const newRect = popup.getBoundingClientRect();
+            if (newRect.top < padding) {
+                console.log('[Popup Positioning] Overflows top edge after top alignment');
+                
+                // If both vertical and horizontal problems, center in viewport as last resort
+                if (horizontalProblem) {
+                    console.log('[Popup Positioning] Applying centered fallback position');
+                    popup.classList.remove('left-aligned', 'top-aligned');
+                    popup.classList.add('center-aligned');
+                    
+                    // Fixed position in center of viewport
+                    popup.style.position = 'fixed';
+                    popup.style.top = '50%';
+                    popup.style.transform = 'translate(-50%, -50%)';
+                    popup.style.maxHeight = `${viewportHeight - (padding * 4)}px`;
+                    popup.style.maxWidth = `${viewportWidth - (padding * 4)}px`;
+                } else {
+                    // If just vertical problem, remove top alignment and keep it at bottom
+                    // but apply max height to prevent overflow
+                    popup.classList.remove('top-aligned');
+                    popup.style.maxHeight = `${viewportHeight - rect.top - padding}px`;
+                }
+            }
+        }
+        
+        console.log(`[Popup Positioning] Final class list: ${popup.className}`);
 
-        Object.entries(presets).forEach(([name, preset]) => {
-            const button = document.createElement('button');
-            button.className = 'quick-launch-button';
-            button.textContent = name;
-            button.addEventListener('click', async (e) => {
-                e.stopPropagation();
-                await createRaceFromPreset(preset);
-            });
-            popup.appendChild(button);
-        });
+        // Final check to ensure no part of the popup is off-screen
+        setTimeout(() => {
+            const finalRect = popup.getBoundingClientRect();
+            const isOffScreen = 
+                finalRect.left < padding ||
+                finalRect.right > viewportWidth - padding ||
+                finalRect.top < padding ||
+                finalRect.bottom > viewportHeight - padding;
+                
+            if (isOffScreen) {
+                console.log('[Popup Positioning] Popup still off-screen, applying emergency centering');
+                popup.className = 'quick-launch-popup show small-screen';
+            }
+        }, 0);
     }
+
+    // Add global document click handler to close all popups when clicking outside
+    document.addEventListener('click', function(event) {
+        const popup = document.getElementById('quickLaunchPopup');
+        const alert = document.getElementById('raceAlert');
+        
+        if (popup && popup.classList.contains('show') && 
+            alert && !alert.contains(event.target) && 
+            !popup.contains(event.target)) {
+            popup.classList.remove('show');
+        }
+    });
+
+    // Define ensureAllPopupsWithinViewport only once - this is the ONE definition we'll keep
+    function ensureAllPopupsWithinViewport() {
+        // Check race alert popup
+        const raceAlertPopup = document.getElementById('quickLaunchPopup');
+        if (raceAlertPopup && raceAlertPopup.classList.contains('show')) {
+            ensurePopupWithinViewport(raceAlertPopup);
+        }
+        
+        // Add checks for any other popups here
+    }
+
+    // Add this to your window resize event listeners
+    window.addEventListener('resize', ensureAllPopupsWithinViewport, { passive: true });
+
+    // Add visibility change listener to fix popup positioning when tab becomes visible
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') {
+            ensureAllPopupsWithinViewport();
+        }
+    });
 
     function removeRaceAlert() {
         const alert = document.getElementById('raceAlert');
@@ -4466,6 +4778,72 @@
         initializeAll();
     } else {
         document.addEventListener('DOMContentLoaded', initializeAll);
+    }
+
+    // Add this to the existing enforceElementBoundaries function or create it if it doesn't exist
+    function enforceElementBoundaries(element) {
+        if (!element || !element.getBoundingClientRect) return;
+        
+        // Get viewport dimensions
+        const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+        
+        // Get element dimensions
+        const rect = element.getBoundingClientRect();
+        const elemWidth = rect.width;
+        const elemHeight = rect.height;
+        
+        // Padding from edge of screen
+        const padding = 10;
+        
+        // Calculate new position that keeps element within boundaries
+        let newLeft = rect.left;
+        let newTop = rect.top;
+        
+        // Check left boundary
+        if (newLeft < padding) {
+            newLeft = padding;
+        }
+        
+        // Check right boundary
+        if (newLeft + elemWidth > viewportWidth - padding) {
+            newLeft = viewportWidth - elemWidth - padding;
+        }
+        
+        // Check top boundary
+        if (newTop < padding) {
+            newTop = padding;
+        }
+        
+        // Check bottom boundary
+        if (newTop + elemHeight > viewportHeight - padding) {
+            newTop = viewportHeight - elemHeight - padding;
+        }
+        
+        // Only update position if it changed
+        if (newLeft !== rect.left || newTop !== rect.top) {
+            // For fixed/absolute positioned elements
+            if (window.getComputedStyle(element).position === 'fixed' || 
+                window.getComputedStyle(element).position === 'absolute') {
+                element.style.left = `${newLeft}px`;
+                element.style.top = `${newTop}px`;
+            } else {
+                // For other elements, use transform
+                const deltaX = newLeft - rect.left;
+                const deltaY = newTop - rect.top;
+                
+                // Get current transform
+                const style = window.getComputedStyle(element);
+                const currentTransform = style.transform;
+                
+                if (currentTransform === 'none') {
+                    element.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+                } else {
+                    // Append to existing transform
+                    element.style.transform = `${currentTransform} translate(${deltaX}px, ${deltaY}px)`;
+                }
+            }
+        }
     }
 
 })();
