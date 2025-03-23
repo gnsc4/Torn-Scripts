@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Manager
-// @version      3.6.12
+// @version      3.6.21
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -506,7 +506,15 @@
             margin-top: 5px;
             z-index: 999999;
             min-width: 200px;
+            max-width: 80vw;
             display: none;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .quick-launch-popup.left-aligned {
+            right: auto;
+            left: 0;
         }
 
         .quick-launch-popup.show {
@@ -3274,10 +3282,21 @@
                 e.stopPropagation();
                 popup.classList.toggle('show');
                 updateQuickLaunchPopup(popup);
-            });
-            
-            document.addEventListener('click', () => {
-                popup.classList.remove('show');
+                
+                // Add window resize listener when popup is shown
+                if (popup.classList.contains('show')) {
+                    const resizeHandler = () => ensurePopupWithinViewport(popup);
+                    window.addEventListener('resize', resizeHandler);
+                    
+                    // Remove listener when popup is hidden
+                    const hideListener = () => {
+                        if (!popup.classList.contains('show')) {
+                            window.removeEventListener('resize', resizeHandler);
+                            document.removeEventListener('click', hideListener);
+                        }
+                    };
+                    document.addEventListener('click', hideListener);
+                }
             });
             
             // Try to find a good place to insert the alert, with special handling for PDA
@@ -3386,6 +3405,36 @@
             });
             popup.appendChild(button);
         });
+        
+        // Ensure popup stays within screen boundaries after content is added
+        ensurePopupWithinViewport(popup);
+    }
+    
+    // New function to ensure popup stays within viewport boundaries
+    function ensurePopupWithinViewport(popup) {
+        if (!popup || !popup.classList.contains('show')) return;
+        
+        // Reset positioning classes
+        popup.classList.remove('left-aligned');
+        
+        // Get positioning information
+        const rect = popup.getBoundingClientRect();
+        const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+        
+        // Check if popup extends beyond right edge
+        if (rect.right > viewportWidth - 10) {
+            popup.classList.add('left-aligned');
+            
+            // After repositioning, check if it now extends beyond left edge
+            const newRect = popup.getBoundingClientRect();
+            if (newRect.left < 10) {
+                // Center it if it can't fit on either side
+                popup.style.left = '50%';
+                popup.style.right = 'auto';
+                popup.style.transform = 'translateX(-50%)';
+                popup.style.maxWidth = (viewportWidth - 20) + 'px';
+            }
+        }
     }
 
     function removeRaceAlert() {
@@ -4467,5 +4516,85 @@
     } else {
         document.addEventListener('DOMContentLoaded', initializeAll);
     }
+
+    // Add this to the existing enforceElementBoundaries function or create it if it doesn't exist
+    function enforceElementBoundaries(element) {
+        if (!element || !element.getBoundingClientRect) return;
+        
+        // Get viewport dimensions
+        const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+        
+        // Get element dimensions
+        const rect = element.getBoundingClientRect();
+        const elemWidth = rect.width;
+        const elemHeight = rect.height;
+        
+        // Padding from edge of screen
+        const padding = 10;
+        
+        // Calculate new position that keeps element within boundaries
+        let newLeft = rect.left;
+        let newTop = rect.top;
+        
+        // Check left boundary
+        if (newLeft < padding) {
+            newLeft = padding;
+        }
+        
+        // Check right boundary
+        if (newLeft + elemWidth > viewportWidth - padding) {
+            newLeft = viewportWidth - elemWidth - padding;
+        }
+        
+        // Check top boundary
+        if (newTop < padding) {
+            newTop = padding;
+        }
+        
+        // Check bottom boundary
+        if (newTop + elemHeight > viewportHeight - padding) {
+            newTop = viewportHeight - elemHeight - padding;
+        }
+        
+        // Only update position if it changed
+        if (newLeft !== rect.left || newTop !== rect.top) {
+            // For fixed/absolute positioned elements
+            if (window.getComputedStyle(element).position === 'fixed' || 
+                window.getComputedStyle(element).position === 'absolute') {
+                element.style.left = `${newLeft}px`;
+                element.style.top = `${newTop}px`;
+            } else {
+                // For other elements, use transform
+                const deltaX = newLeft - rect.left;
+                const deltaY = newTop - rect.top;
+                
+                // Get current transform
+                const style = window.getComputedStyle(element);
+                const currentTransform = style.transform;
+                
+                if (currentTransform === 'none') {
+                    element.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+                } else {
+                    // Append to existing transform
+                    element.style.transform = `${currentTransform} translate(${deltaX}px, ${deltaY}px)`;
+                }
+            }
+        }
+    }
+
+    // Ensure all popup elements stay within viewport
+    function ensureAllPopupsWithinViewport() {
+        // Check race alert popup
+        const raceAlertPopup = document.getElementById('quickLaunchPopup');
+        if (raceAlertPopup && raceAlertPopup.classList.contains('show')) {
+            ensurePopupWithinViewport(raceAlertPopup);
+        }
+        
+        // Add checks for any other popups here
+    }
+
+    // Add this to your window resize event listeners
+    window.addEventListener('resize', ensureAllPopupsWithinViewport, { passive: true });
 
 })();
