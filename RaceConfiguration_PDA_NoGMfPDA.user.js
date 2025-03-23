@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Manager
-// @version      3.6.21
+// @version      3.6.22
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -520,32 +520,6 @@
         .quick-launch-popup.show {
             display: block;
         }
-
-        .race-active {
-            background-color: #ff4444 !important;
-        }
-
-        .race-active .defaultIcon___iiNis {
-            position: relative;
-            z-index: 2;
-            background-color: transparent !important;
-        }
-
-        .race-active .svgIconWrap___AMIqR {
-            position: relative;
-            z-index: 1;
-            background-color: #cc3333 !important;
-            border-radius: 4px;
-            padding: 2px;
-        }
-
-        .race-active .linkName___FoKha {
-            color: #cc3333 !important;
-        }
-
-        .race-active svg {
-            fill: #fff !important;
-        }
     `;
 
     // Consolidated Racing UI layout styles
@@ -1003,6 +977,49 @@
         /* Ensure the container is always above the button */
         .quick-launch-container {
             z-index: 1 !important;
+        }
+    `;
+
+    // Enhanced popup positioning styles
+    style.textContent += `
+        .quick-launch-popup {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background-color: #222;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 5px;
+            z-index: 999999;
+            min-width: 200px;
+            max-width: 80vw;
+            display: none;
+            max-height: 60vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .quick-launch-popup.left-aligned {
+            right: auto;
+            left: 0;
+        }
+
+        .quick-launch-popup.top-aligned {
+            top: auto;
+            bottom: 100%;
+            margin-top: 0;
+            margin-bottom: 5px;
+        }
+
+        .quick-launch-popup.center-aligned {
+            left: 50%;
+            transform: translateX(-50%);
+            right: auto;
+        }
+
+        .quick-launch-popup.show {
+            display: block;
         }
     `;
 
@@ -3281,21 +3298,30 @@
             alert.addEventListener('click', (e) => {
                 e.stopPropagation();
                 popup.classList.toggle('show');
-                updateQuickLaunchPopup(popup);
                 
-                // Add window resize listener when popup is shown
                 if (popup.classList.contains('show')) {
-                    const resizeHandler = () => ensurePopupWithinViewport(popup);
+                    // Update content and position immediately when shown
+                    updateQuickLaunchPopup(popup);
+                    
+                    // Add window resize listener with immediate positioning
+                    const resizeHandler = () => {
+                        requestAnimationFrame(() => ensurePopupWithinViewport(popup));
+                    };
                     window.addEventListener('resize', resizeHandler);
                     
-                    // Remove listener when popup is hidden
-                    const hideListener = () => {
-                        if (!popup.classList.contains('show')) {
+                    // Remove listeners when popup is hidden
+                    const documentClickHandler = (event) => {
+                        if (!popup.contains(event.target) && !alert.contains(event.target)) {
+                            popup.classList.remove('show');
                             window.removeEventListener('resize', resizeHandler);
-                            document.removeEventListener('click', hideListener);
+                            document.removeEventListener('click', documentClickHandler);
                         }
                     };
-                    document.addEventListener('click', hideListener);
+                    
+                    // Use setTimeout to avoid immediate trigger of the click handler
+                    setTimeout(() => {
+                        document.addEventListener('click', documentClickHandler);
+                    }, 0);
                 }
             });
             
@@ -3392,50 +3418,151 @@
 
         if (Object.keys(presets).length === 0) {
             popup.innerHTML = '<div style="padding: 10px; color: #aaa;">No presets available</div>';
-            return;
-        }
-
-        Object.entries(presets).forEach(([name, preset]) => {
-            const button = document.createElement('button');
-            button.className = 'quick-launch-button';
-            button.textContent = name;
-            button.addEventListener('click', async (e) => {
-                e.stopPropagation();
-                await createRaceFromPreset(preset);
+        } else {
+            Object.entries(presets).forEach(([name, preset]) => {
+                const button = document.createElement('button');
+                button.className = 'quick-launch-button';
+                button.textContent = name;
+                button.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    await createRaceFromPreset(preset);
+                });
+                popup.appendChild(button);
             });
-            popup.appendChild(button);
-        });
+        }
         
-        // Ensure popup stays within screen boundaries after content is added
-        ensurePopupWithinViewport(popup);
+        // Important: Position after content is loaded
+        requestAnimationFrame(() => ensurePopupWithinViewport(popup));
     }
     
-    // New function to ensure popup stays within viewport boundaries
+    // Enhanced function to ensure popup stays within viewport boundaries
     function ensurePopupWithinViewport(popup) {
         if (!popup || !popup.classList.contains('show')) return;
         
-        // Reset positioning classes
-        popup.classList.remove('left-aligned');
+        // Reset all positioning classes first
+        popup.classList.remove('left-aligned', 'top-aligned', 'center-aligned');
+        popup.style.transform = '';
+        popup.style.left = '';
+        popup.style.right = '';
+        popup.style.maxWidth = '';
         
-        // Get positioning information
-        const rect = popup.getBoundingClientRect();
+        // Get viewport and element dimensions
         const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
         
-        // Check if popup extends beyond right edge
-        if (rect.right > viewportWidth - 10) {
+        // Get elements for positioning calculation
+        const alert = document.getElementById('raceAlert');
+        if (!alert) return;
+        
+        const alertRect = alert.getBoundingClientRect();
+        
+        // First, position based on default position (right-aligned, below alert)
+        // and then measure to see if it fits
+        popup.classList.remove('left-aligned', 'top-aligned', 'center-aligned');
+        
+        // Force a reflow to ensure getBoundingClientRect shows updated position
+        void popup.offsetWidth;
+        
+        const rect = popup.getBoundingClientRect();
+        const padding = 10; // Padding from screen edges
+        
+        console.log(`[Popup Positioning] Alert position: ${Math.round(alertRect.left)},${Math.round(alertRect.top)} - ${Math.round(alertRect.width)}x${Math.round(alertRect.height)}`);
+        console.log(`[Popup Positioning] Popup size: ${Math.round(rect.width)}x${Math.round(rect.height)}`);
+        console.log(`[Popup Positioning] Viewport: ${viewportWidth}x${viewportHeight}`);
+        
+        // Determine horizontal alignment
+        let horizontalProblem = false;
+        let verticalProblem = false;
+        
+        // Check if overflows right edge
+        if (rect.right > viewportWidth - padding) {
+            console.log('[Popup Positioning] Overflows right edge');
+            horizontalProblem = true;
             popup.classList.add('left-aligned');
-            
-            // After repositioning, check if it now extends beyond left edge
+        }
+        
+        // After applying left alignment, check if it now overflows left edge
+        if (popup.classList.contains('left-aligned')) {
             const newRect = popup.getBoundingClientRect();
-            if (newRect.left < 10) {
-                // Center it if it can't fit on either side
-                popup.style.left = '50%';
-                popup.style.right = 'auto';
-                popup.style.transform = 'translateX(-50%)';
-                popup.style.maxWidth = (viewportWidth - 20) + 'px';
+            if (newRect.left < padding) {
+                console.log('[Popup Positioning] Overflows left edge after left alignment');
+                horizontalProblem = true;
+                // Remove left alignment and try center instead
+                popup.classList.remove('left-aligned');
+                popup.classList.add('center-aligned');
+                
+                // Limit width to fit in viewport
+                popup.style.maxWidth = `${viewportWidth - (padding * 2)}px`
             }
         }
+        
+        // Check for vertical overflow - bottom edge
+        if (rect.bottom > viewportHeight - padding) {
+            console.log('[Popup Positioning] Overflows bottom edge');
+            verticalProblem = true;
+            popup.classList.add('top-aligned');
+        }
+        
+        // After applying top alignment, check if it now overflows top edge
+        if (popup.classList.contains('top-aligned')) {
+            const newRect = popup.getBoundingClientRect();
+            if (newRect.top < padding) {
+                console.log('[Popup Positioning] Overflows top edge after top alignment');
+                
+                // If both vertical and horizontal problems, center in viewport as last resort
+                if (horizontalProblem) {
+                    console.log('[Popup Positioning] Applying centered fallback position');
+                    popup.classList.remove('left-aligned', 'top-aligned');
+                    popup.classList.add('center-aligned');
+                    
+                    // Fixed position in center of viewport
+                    popup.style.position = 'fixed';
+                    popup.style.top = '50%';
+                    popup.style.transform = 'translate(-50%, -50%)';
+                    popup.style.maxHeight = `${viewportHeight - (padding * 4)}px`;
+                    popup.style.maxWidth = `${viewportWidth - (padding * 4)}px`;
+                } else {
+                    // If just vertical problem, remove top alignment and keep it at bottom
+                    // but apply max height to prevent overflow
+                    popup.classList.remove('top-aligned');
+                    popup.style.maxHeight = `${viewportHeight - rect.top - padding}px`;
+                }
+            }
+        }
+        
+        console.log(`[Popup Positioning] Final class list: ${popup.className}`);
     }
+
+    // Ensure all popup elements stay within viewport
+    function ensureAllPopupsWithinViewport() {
+        // Check race alert popup
+        const raceAlertPopup = document.getElementById('quickLaunchPopup');
+        if (raceAlertPopup && raceAlertPopup.classList.contains('show')) {
+            ensurePopupWithinViewport(raceAlertPopup);
+        }
+    }
+
+    // Add global document click handler to close all popups when clicking outside
+    document.addEventListener('click', function(event) {
+        const popup = document.getElementById('quickLaunchPopup');
+        const alert = document.getElementById('raceAlert');
+        
+        if (popup && popup.classList.contains('show') && 
+            alert && !alert.contains(event.target) && 
+            !popup.contains(event.target)) {
+            popup.classList.remove('show');
+        }
+    });
+
+    // Add this to your window resize event listeners
+    window.addEventListener('resize', ensureAllPopupsWithinViewport, { passive: true });
+
+    // Add visibility change listener to fix popup positioning when tab becomes visible
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') {
+            ensureAllPopupsWithinViewport();
+        }
+    });
 
     function removeRaceAlert() {
         const alert = document.getElementById('raceAlert');
