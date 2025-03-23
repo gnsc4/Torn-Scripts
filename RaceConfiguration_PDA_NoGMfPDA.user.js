@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Manager
-// @version      3.6.23
+// @version      3.6.24
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -3605,6 +3605,17 @@
             popup.classList.remove('show');
         }
     });
+
+    // Define ensureAllPopupsWithinViewport only once
+    function ensureAllPopupsWithinViewport() {
+        // Check race alert popup
+        const raceAlertPopup = document.getElementById('quickLaunchPopup');
+        if (raceAlertPopup && raceAlertPopup.classList.contains('show')) {
+            ensurePopupWithinViewport(raceAlertPopup);
+        }
+        
+        // Add checks for any other popups here
+    }
 
     // Add this to your window resize event listeners
     window.addEventListener('resize', ensureAllPopupsWithinViewport, { passive: true });
