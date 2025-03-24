@@ -1037,6 +1037,155 @@
         }
     `;
 
+    // Add Official Race Join styling to the existing style
+    style.textContent += `
+        .official-races-section {
+            margin-bottom: 25px;
+            padding: 15px;
+            background-color: #2a2a2a;
+            border-radius: 8px;
+            border: 1px solid #444;
+            position: relative;
+            z-index: 999999 !important;
+        }
+
+        .official-track-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 8px;
+            margin: 10px 0;
+        }
+
+        .official-track-button {
+            color: #ddd;
+            background-color: #555;
+            border: 1px solid #777;
+            border-radius: 3px;
+            padding: 8px 15px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .official-track-button:hover {
+            background-color: #3d7a5f;
+            border-color: #2d5a3f;
+        }
+
+        .official-join-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        #officialRaceStatus {
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 4px;
+            text-align: center;
+            display: none;
+        }
+        
+        #officialRaceStatus.success {
+            background-color: #1a472a;
+            border: 1px solid #2d5a3f;
+            display: block;
+        }
+        
+        #officialRaceStatus.error {
+            background-color: #5c1e1e;
+            border: 1px solid #8b2e2e;
+            display: block;
+        }
+        
+        #officialRaceStatus.info {
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            display: block;
+        }
+        
+        .quick-launch-button.official {
+            background-color: #444 !important;
+            border-color: #666 !important;
+        }
+        
+        .quick-launch-button.official:hover {
+            background-color: #3d7a5f !important;
+        }
+    `;
+
+    // Update the Auto-Join styles to match Quick Launch button sizing
+    style.textContent += `
+        /* Unified button styles for all preset types */
+        .quick-launch-button, 
+        .auto-join-preset-button {
+            color: #fff !important;
+            background-color: #555 !important;
+            border: 1px solid #777 !important;
+            border-radius: 3px !important;
+            padding: 5px 10px !important;
+            cursor: pointer !important;
+            font-size: 0.9em !important;
+            white-space: nowrap !important;
+            width: auto !important;
+            display: inline-block !important;
+            transition: all 0.2s ease !important;
+            margin: 2px !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+            flex-shrink: 0 !important;
+            height: 32px !important; /* Fixed height for consistency */
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            min-height: auto !important;
+            min-width: 0 !important; /* Allow button to shrink */
+            max-width: none !important; /* Remove any max-width constraints */
+            flex: 0 0 auto !important; /* Don't grow or shrink, size to content */
+        }
+
+        /* Container styling for all preset types */
+        .button-container,
+        .auto-join-preset-container {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            gap: 5px !important;
+            width: 100% !important;
+            margin: 10px 0 !important;
+            padding: 5px !important;
+            box-sizing: border-box !important;
+        }
+
+        /* Preset button container consistent sizing */
+        .preset-button-container {
+            position: relative !important;
+            display: inline-flex !important;
+            flex-direction: column !important;
+            align-items: flex-start !important; /* Align to start instead of stretch */
+            margin-bottom: 10px !important;
+            text-align: center !important;
+            width: auto !important; /* Auto width based on content */
+            flex: 0 0 auto !important; /* Don't grow or shrink */
+        }
+
+        /* Ensure official race buttons match styling */
+        .auto-join-preset-button.official {
+            background-color: #444 !important;
+            border-color: #666 !important;
+            color: #fff !important;
+        }
+
+        /* Hover effects consistent across all button types */
+        .quick-launch-button:hover,
+        .auto-join-preset-button:hover,
+        .auto-join-preset-button.official:hover {
+            background-color: #3d7a5f !important;
+            border-color: #2d5a3f !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3) !important;
+        }
+    `;
+
     document.head.appendChild(style);
 
     // Main initialization functions
@@ -1055,6 +1204,11 @@
             initializeRacingFeatures();
             initializeRaceFiltering(); 
             resumeAutoJoin(); // Resume auto-join if state exists
+            
+            // Initialize official race section with delay to ensure DOM is ready
+            setTimeout(() => {
+                initializeOfficialRacesSection();
+            }, 1500);
         }
     }
 
@@ -1182,6 +1336,33 @@
                 <div class="settings-toggle" style="margin-top: 10px;">
                     <input type="checkbox" id="raceAlertEnabled" />
                     <label for="raceAlertEnabled">Enable Race Status Alerts</label>
+                </div>
+            </div>
+
+            <!-- New Official Races Section -->
+            <div class="official-races-section config-section">
+                <h4>Join Official Races</h4>
+                <div class="car-input-container">
+                    <div class="car-id-wrapper">
+                        <label for="officialCarId">Car ID:</label>
+                        <input type="text" id="officialCarId" placeholder="Enter Car ID">
+                    </div>
+                    <div class="car-dropdown-wrapper">
+                        <label for="officialCarDropdown">Car:</label>
+                        <select id="officialCarDropdown">
+                            <option value="">Select a car...</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="official-track-buttons" id="officialTrackButtons">
+                    <!-- Will be populated with track buttons -->
+                </div>
+                
+                <div id="officialRaceStatus"></div>
+                
+                <div class="preset-actions">
+                    <button id="saveOfficialPresetButton" class="gui-button">Save As Quick Launch</button>
                 </div>
             </div>
 
@@ -1388,6 +1569,9 @@
         populateTimeDropdowns();
         updateCarDropdown();
         loadPresets();
+        
+        // Initialize official races section
+        initializeOfficialRacesSection();
 
         const apiKeyInput = document.getElementById('apiKeyInput');
         const saveApiKeyButton = document.getElementById('saveApiKeyButton');
@@ -1525,16 +1709,43 @@
             raceAlertCheckbox.checked = GM_getValue('raceAlertEnabled', false);
         }
 
-        // Add car dropdown sync
+        // Add car dropdown sync for all dropdowns including official
         const mainCarDropdown = document.getElementById('carDropdown');
         const autoJoinCarDropdown = document.getElementById('autoJoinCar');
+        const officialCarDropdown = document.getElementById('officialCarDropdown');
         
-        if (mainCarDropdown && autoJoinCarDropdown) {
+        if (mainCarDropdown) {
             mainCarDropdown.addEventListener('change', () => {
-                // Sync options from main dropdown to auto-join dropdown
-                autoJoinCarDropdown.innerHTML = mainCarDropdown.innerHTML;
-                autoJoinCarDropdown.value = mainCarDropdown.value;
+                // Sync options to all dropdowns
+                if (autoJoinCarDropdown) autoJoinCarDropdown.innerHTML = mainCarDropdown.innerHTML;
+                if (officialCarDropdown) officialCarDropdown.innerHTML = mainCarDropdown.innerHTML;
+                
+                if (autoJoinCarDropdown) autoJoinCarDropdown.value = mainCarDropdown.value;
+                if (officialCarDropdown) officialCarDropdown.value = mainCarDropdown.value;
             });
+        }
+        
+        // Add official car dropdown sync
+        if (officialCarDropdown) {
+            officialCarDropdown.addEventListener('change', () => {
+                document.getElementById('officialCarId').value = officialCarDropdown.value;
+            });
+            
+            // Also sync from input to dropdown
+            document.getElementById('officialCarId').addEventListener('input', () => {
+                const value = document.getElementById('officialCarId').value.trim();
+                if (value && officialCarDropdown.querySelector(`option[value="${value}"]`)) {
+                    officialCarDropdown.value = value;
+                } else {
+                    officialCarDropdown.value = '';
+                }
+            });
+        }
+
+        // Add handler for saving official race preset
+        const saveOfficialPresetButton = document.getElementById('saveOfficialPresetButton');
+        if (saveOfficialPresetButton) {
+            saveOfficialPresetButton.addEventListener('click', saveOfficialRacePreset);
         }
 
         // Modify updateCarList to update both dropdowns
@@ -2124,8 +2335,11 @@
         container.innerHTML = '';
         const presets = loadPresets();
         const autoJoinPresets = loadAutoJoinPresets();
+        const officialPresets = loadOfficialRacePresets();
 
-        if (Object.keys(presets).length === 0 && Object.keys(autoJoinPresets).length === 0) {
+        if (Object.keys(presets).length === 0 && 
+            Object.keys(autoJoinPresets).length === 0 &&
+            Object.keys(officialPresets).length === 0) {
             container.style.display = 'none';
             return;
         }
@@ -2162,15 +2376,26 @@
         const autoJoinHeader = document.createElement('div');
         autoJoinHeader.className = 'preset-section-header';
         autoJoinHeader.textContent = 'Auto Join Presets';
+        
+        // New section for official race presets
+        const officialRaceHeader = document.createElement('div');
+        officialRaceHeader.className = 'preset-section-header';
+        officialRaceHeader.textContent = 'Official Race Presets';
 
-        // Create auto-join container
+        // Create containers - use the same button-container class for consistent styling
         const autoJoinContainer = document.createElement('div');
-        autoJoinContainer.className = 'auto-join-preset-container';
+        autoJoinContainer.className = 'button-container';
+        
+        const officialRaceContainer = document.createElement('div');
+        officialRaceContainer.className = 'button-container';
 
+        // Add to container in order
         container.appendChild(quickLaunchHeader);
         container.appendChild(buttonContainer);
         container.appendChild(autoJoinHeader);
         container.appendChild(autoJoinContainer);
+        container.appendChild(officialRaceHeader);
+        container.appendChild(officialRaceContainer);
         container.appendChild(statusDiv);
 
         // Add quick launch buttons
@@ -2199,14 +2424,15 @@
             buttonContainer.appendChild(button);
         });
 
-        // Add auto-join presets
+        // Add auto-join presets - use the same structure as quick launch buttons
         Object.entries(autoJoinPresets).forEach(([name, preset]) => {
-            const buttonContainer = document.createElement('div');
-            buttonContainer.className = 'preset-button-container';
+            const buttonWrapper = document.createElement('div');
+            buttonWrapper.className = 'preset-button-container';
             
             const button = document.createElement('button');
-            button.className = 'auto-join-preset-button';
+            button.className = 'quick-launch-button'; // Use the same class for consistent styling
             button.textContent = name;
+            button.style.width = 'auto'; // Explicitly set width to auto
             
             const carInfo = preset.carName ? 
                 `${preset.carName} (ID: ${preset.selectedCarId})` : 
@@ -2246,9 +2472,69 @@
                 removeAutoJoinPreset(name);
             });
             
-            buttonContainer.appendChild(button);
-            buttonContainer.appendChild(removeButton);
-            autoJoinContainer.appendChild(buttonContainer);
+            buttonWrapper.appendChild(button);
+            buttonWrapper.appendChild(removeButton);
+            autoJoinContainer.appendChild(buttonWrapper);
+        });
+
+        // Add official race presets - use the same structure as quick launch buttons
+        Object.entries(officialPresets).forEach(([name, preset]) => {
+            const buttonWrapper = document.createElement('div');
+            buttonWrapper.className = 'preset-button-container';
+            
+            const button = document.createElement('button');
+            button.className = 'quick-launch-button official'; // Use the same class with 'official' modifier
+            button.textContent = name;
+            button.style.width = 'auto'; // Explicitly set width to auto
+            
+            const carInfo = preset.carName ? 
+                `${preset.carName} (ID: ${preset.carId})` : 
+                `Car ID: ${preset.carId}`;
+            
+            // Fix for missing tracks property
+            let trackNames = "Auto-assigned";
+            // Only attempt to map tracks if the tracks property exists and is an array
+            if (preset.tracks && Array.isArray(preset.tracks)) {
+                trackNames = preset.tracks.map(t => t.name).join(', ');
+            }
+            
+            button.title = `Official race preset: ${name}\nTracks: ${trackNames}\nCar: ${carInfo}`;
+            
+            button.addEventListener('click', function() {
+                showOfficialRaceTrackSelector(preset);
+            });
+
+            const removeButton = document.createElement('a');
+            removeButton.className = 'remove-preset';
+            removeButton.href = '#';
+            removeButton.textContent = '×';
+            removeButton.title = `Remove official race preset: ${name}`;
+            removeButton.style.cssText = `
+                position: absolute !important;
+                top: -8px !important;
+                right: -8px !important;
+                background-color: #955 !important;
+                color: #eee !important;
+                width: 20px !important;
+                height: 20px !important;
+                border-radius: 50% !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                text-decoration: none !important;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+                transition: all 0.2s ease !important;
+                z-index: 100 !important;
+            `;
+            
+            removeButton.addEventListener('click', function(event) {
+                event.preventDefault();
+                removeOfficialRacePreset(name);
+            });
+            
+            buttonWrapper.appendChild(button);
+            buttonWrapper.appendChild(removeButton);
+            officialRaceContainer.appendChild(buttonWrapper);
         });
 
         container.style.display = 'flex';
@@ -2993,7 +3279,8 @@
         try {
             const dropdowns = [
                 document.getElementById('carDropdown'),
-                document.getElementById('autoJoinCar')
+                document.getElementById('autoJoinCar'),
+                document.getElementById('officialCarDropdown')
             ];
 
             // Filter and sort the cars
@@ -4844,6 +5131,586 @@
                 }
             }
         }
+    }
+
+    function initializeOfficialRacesSection() {
+        const officialTrackButtons = document.getElementById('officialTrackButtons');
+        if (!officialTrackButtons) return;
+        
+        // Since official races auto-assign tracks, we'll inform the user instead of showing track buttons
+        officialTrackButtons.innerHTML = `
+            <div style="padding: 10px; background-color: #333; border-radius: 5px; margin-bottom: 10px; text-align: center;">
+                Official races auto-assign tracks. Just select your car and click below to join.
+            </div>
+            <button id="joinOfficialRaceButton" class="official-track-button" style="width: 100%; background-color: #2d5a3f; border-color: #3d7a5f;">
+                Join Official Race
+            </button>
+        `;
+        
+        // Add event listener to the single button
+        const joinButton = document.getElementById('joinOfficialRaceButton');
+        if (joinButton) {
+            joinButton.addEventListener('click', () => {
+                joinOfficialRace(); // No track ID needed
+            });
+        }
+    }
+
+    async function joinOfficialRace() {
+        const carId = document.getElementById('officialCarId').value;
+        if (!carId) {
+            displayOfficialRaceStatus('Please select a car first', 'error');
+            return;
+        }
+        
+        // Get RFC value for the request
+        const rfcValue = getRFC();
+        
+        // First we need to join a race using the correct URL structure
+        // This URL gets us into the race system before we can select a car
+        const joinRaceUrl = `https://www.torn.com/loader.php?sid=racing&tab=race&section=changeRacingCar&step=getInRace`;
+        console.log('[Official Race - Join Race URL]:', joinRaceUrl);
+        
+        displayOfficialRaceStatus('Joining official race...', 'info');
+        
+        try {
+            window.location.href = joinRaceUrl;
+
+            sessionStorage.setItem('pendingOfficialRaceCarId', carId);
+            
+        } catch (error) {
+            displayOfficialRaceStatus(`Error joining race: ${error.message}`, 'error');
+        }
+    }
+
+    function joinOfficialRaceFromPreset(preset) {
+        const carId = preset.carId;
+        if (!carId) {
+            displayQuickLaunchStatus('No car ID in preset', 'error');
+            return;
+        }
+        
+        const rfcValue = getRFC();
+        
+        const joinRaceUrl = `https://www.torn.com/loader.php?sid=racing&tab=race&section=changeRacingCar&step=getInRace`;
+        console.log('[Official Race - Join Race URL from preset]:', joinRaceUrl);
+        
+        displayQuickLaunchStatus('Joining official race...', 'info');
+        
+        try {
+            // Save the car ID in session storage for use after redirect
+            sessionStorage.setItem('pendingOfficialRaceCarId', carId);
+            
+            // Navigate to the join URL
+            window.location.href = joinRaceUrl;
+            
+        } catch (error) {
+            displayQuickLaunchStatus(`Error joining race: ${error.message}`, 'error');
+        }
+    }
+
+    // Add a function to check if we need to select a car after joining an official race
+    function checkPendingOfficialRaceCarSelection() {
+        console.log('[Official Race] Running car selection check');
+        
+        // Check if we have a pending car selection from an official race join
+        const pendingCarId = sessionStorage.getItem('pendingOfficialRaceCarId');
+        
+        if (pendingCarId) {
+            console.log('[Official Race] Found pending car selection:', pendingCarId);
+            
+            // Only proceed if we're on the car selection page
+            if (window.location.href.includes('section=changeRacingCar')) {
+                console.log('[Official Race] On car selection page, preparing to select car');
+                
+                // Add a small delay to ensure the page is fully loaded
+                setTimeout(() => {
+                    try {
+                        console.log('[Official Race] Processing car selection for ID:', pendingCarId);
+                        
+                        // First, check if there's a direct car link we can click
+                        const carLinks = document.querySelectorAll('a[href*="step=changeRacingCar"][href*="id="]');
+                        console.log(`[Official Race] Found ${carLinks.length} car links on page`);
+                        
+                        let foundMatchingLink = false;
+                        
+                        // Try to directly click a link for the car
+                        if (carLinks.length > 0) {
+                            for (const link of carLinks) {
+                                const idMatch = link.href.match(/[?&]id=(\d+)/);
+                                if (idMatch && idMatch[1] === pendingCarId) {
+                                    console.log('[Official Race] Found matching car link, clicking it');
+                                    
+                                    // Clear the pending car ID before clicking to prevent loops
+                                    sessionStorage.removeItem('pendingOfficialRaceCarId');
+                                    
+                                    // Use a small delay before clicking
+                                    setTimeout(() => {
+                                        try {
+                                            link.click();
+                                            foundMatchingLink = true;
+                                        } catch (clickError) {
+                                            console.error('[Official Race] Error clicking car link:', clickError);
+                                        }
+                                    }, 100);
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        // If we didn't find a direct link, fall back to form submission
+                        if (!foundMatchingLink) {
+                            console.log('[Official Race] No direct car link found, trying form submission');
+                            
+                            // Get RFC value for the request - use a more robust method
+                            const rfcValue = getRFCFromPage() || getRFC();
+                            
+                            if (!rfcValue) {
+                                console.error('[Official Race] Failed to get RFC value');
+                                displayOfficialRaceStatus('RFC check failed. Please try again manually.', 'error');
+                                
+                                // Create a fallback button for manual selection
+                                const statusDiv = document.createElement('div');
+                                statusDiv.id = 'officialRaceStatusOverlay';
+                                statusDiv.className = 'error';
+                                statusDiv.textContent = 'RFC check failed. Please select your car manually or try again.';
+                                statusDiv.style.cssText = `
+                                    position: fixed;
+                                    top: 50%;
+                                    left: 50%;
+                                    transform: translate(-50%, -50%);
+                                    z-index: 99999;
+                                    margin-top: 10px;
+                                    padding: 20px;
+                                    border-radius: 5px;
+                                    text-align: center;
+                                    display: block;
+                                    background-color: #5c1e1e;
+                                    border: 1px solid #8b2e2e;
+                                    color: white;
+                                    box-shadow: 0 0 15px rgba(0,0,0,0.5);
+                                `;
+                                
+                                const retryButton = document.createElement('button');
+                                retryButton.textContent = 'Try Again';
+                                retryButton.className = 'torn-btn';
+                                retryButton.style.cssText = `
+                                    margin-top: 10px;
+                                    padding: 8px 15px;
+                                    cursor: pointer;
+                                    background-color: #444;
+                                    border: 1px solid #666;
+                                    color: white;
+                                    border-radius: 3px;
+                                `;
+                                retryButton.onclick = function() {
+                                    try {
+                                        const newRfcValue = document.querySelector('input[name="rfcv"]')?.value 
+                                            || document.querySelector('form')?.querySelector('input[name="rfcv"]')?.value 
+                                            || getRFCFromPage() 
+                                            || getRFC();
+                                            
+                                        if (newRfcValue) {
+                                            console.log('[Official Race] Got new RFC value on retry:', newRfcValue);
+
+                                            const directUrl = `https://www.torn.com/loader.php?sid=racing&tab=cars&section=changeRacingCar&step=changeRacingCar&id=${pendingCarId}&rfcv=${newRfcValue}&type=official`;
+
+                                            sessionStorage.removeItem('pendingOfficialRaceCarId');
+                                            window.location.href = directUrl;
+                                        } else {
+                                            alert('Still unable to get RFC value. Please select your car manually.');
+                                        }
+                                    } catch (error) {
+                                        console.error('[Official Race] Error in retry button:', error);
+                                        alert('Error occurred. Please select your car manually.');
+                                    }
+                                };
+                                statusDiv.appendChild(document.createElement('br'));
+                                statusDiv.appendChild(retryButton);
+
+                                const manualInstructions = document.createElement('div');
+                                manualInstructions.style.cssText = `
+                                    margin-top: 15px;
+                                    font-size: 0.9em;
+                                    color: #ddd;
+                                `;
+                                manualInstructions.innerHTML = 'Or select your car from the list below:<br>';
+
+                                const carSection = document.querySelector('.car-select-wrap, .racingCarsList, .cars-wrap, .car-select-container');
+                                if (carSection) {
+                                    const listItemSelector = '.car-option, .car-item, .car-select-row, li';
+                                    const cars = carSection.querySelectorAll(listItemSelector);
+                                    
+                                    if (cars.length > 0) {
+                                        const linksList = document.createElement('div');
+                                        linksList.style.cssText = `
+                                            margin-top: 10px;
+                                            display: flex;
+                                            flex-wrap: wrap;
+                                            gap: 5px;
+                                            justify-content: center;
+                                        `;
+                                        
+                                        cars.forEach(car => {
+                                            const link = car.querySelector('a');
+                                            if (link && link.href) {
+                                                const button = document.createElement('button');
+                                                const carName = car.textContent.trim().replace(/\s+/g, ' ').substring(0, 30);
+                                                
+                                                button.textContent = carName;
+                                                button.className = 'torn-btn';
+                                                button.style.cssText = `
+                                                    padding: 5px 10px;
+                                                    background-color: #333;
+                                                    border: 1px solid #555;
+                                                    color: white;
+                                                    border-radius: 3px;
+                                                    margin: 2px;
+                                                    cursor: pointer;
+                                                    font-size: 0.8em;
+                                                `;
+                                                
+                                                button.onclick = function() {
+                                                    sessionStorage.removeItem('pendingOfficialRaceCarId');
+                                                    window.location.href = link.href;
+                                                };
+                                                
+                                                linksList.appendChild(button);
+                                            }
+                                        });
+                                        
+                                        manualInstructions.appendChild(linksList);
+                                    }
+                                }
+                                
+                                statusDiv.appendChild(manualInstructions);
+                                document.body.appendChild(statusDiv);
+                                
+                                return;
+                            }
+
+                            try {
+                                const form = document.createElement('form');
+                                form.method = 'POST';
+                                form.action = 'https://www.torn.com/loader.php';
+                                form.style.display = 'none';
+
+                                const params = {
+                                    'sid': 'racing',
+                                    'tab': 'cars',
+                                    'section': 'changeRacingCar',
+                                    'step': 'changeRacingCar',
+                                    'id': pendingCarId,
+                                    'rfcv': rfcValue,
+                                    'type': 'official'
+                                };
+
+                                for (const key in params) {
+                                    if (params.hasOwnProperty(key)) {
+                                        const input = document.createElement('input');
+                                        input.type = 'hidden';
+                                        input.name = key;
+                                        input.value = params[key];
+                                        form.appendChild(input);
+                                    }
+                                }
+
+                                document.body.appendChild(form);
+                                console.log('[Official Race] Submitting car selection form with RFC:', rfcValue);
+
+                                sessionStorage.removeItem('pendingOfficialRaceCarId');
+
+                                form.submit();
+                            } catch (formError) {
+                                console.error('[Official Race] Form submission failed:', formError);
+
+                                try {
+                                    const directUrl = `https://www.torn.com/loader.php?sid=racing&tab=cars&section=changeRacingCar&step=changeRacingCar&id=${pendingCarId}&rfcv=${rfcValue}&type=official`;
+                                    console.log('[Official Race] Trying direct URL navigation:', directUrl);
+
+                                    sessionStorage.removeItem('pendingOfficialRaceCarId');
+                                    
+                                    window.location.href = directUrl;
+                                } catch (navError) {
+                                    console.error('[Official Race] Direct navigation failed:', navError);
+                                    displayOfficialRaceStatus('Failed to select car. Please select it manually.', 'error');
+                                }
+                            }
+                        }
+                        
+                    } catch (error) {
+                        console.error('[Official Race] Error in car selection:', error);
+                        displayOfficialRaceStatus(`Error selecting car: ${error.message}. Please select manually.`, 'error');
+                    }
+                }, 1000);
+            }
+        }
+    }
+
+    function getRFCFromPage() {
+        let rfcValue = null;
+
+        const scripts = document.querySelectorAll('script');
+        for (const script of scripts) {
+            if (!script.textContent) continue;
+            
+            const rfcMatch = script.textContent.match(/var\s+rfcv\s*=\s*['"]([^'"]+)['"]/);
+            if (rfcMatch && rfcMatch[1]) {
+                rfcValue = rfcMatch[1];
+                console.log('[RFC Detection] Found RFC in script tag:', rfcValue);
+                break;
+            }
+        }
+
+        if (!rfcValue) {
+            const rfcInputs = document.querySelectorAll('input[name="rfcv"]');
+            for (const input of rfcInputs) {
+                if (input.value) {
+                    rfcValue = input.value;
+                    console.log('[RFC Detection] Found RFC in input field:', rfcValue);
+                    break;
+                }
+            }
+        }
+
+        if (!rfcValue) {
+            const urlParams = new URLSearchParams(window.location.search);
+            rfcValue = urlParams.get('rfcv');
+            if (rfcValue) {
+                console.log('[RFC Detection] Found RFC in URL parameters:', rfcValue);
+            }
+        }
+
+        if (!rfcValue) {
+            const forms = document.querySelectorAll('form');
+            for (const form of forms) {
+                const rfcInput = form.querySelector('input[name="rfcv"]');
+                if (rfcInput && rfcInput.value) {
+                    rfcValue = rfcInput.value;
+                    console.log('[RFC Detection] Found RFC in form input:', rfcValue);
+                    break;
+                }
+            }
+        }
+        
+        if (!rfcValue) {
+            const elementsWithData = document.querySelectorAll('[data-rfcv]');
+            for (const el of elementsWithData) {
+                if (el.dataset.rfcv) {
+                    rfcValue = el.dataset.rfcv;
+                    console.log('[RFC Detection] Found RFC in data attribute:', rfcValue);
+                    break;
+                }
+            }
+        }
+        
+        return rfcValue;
+    }
+
+    function initializeAll() {
+        console.log('[Initialization] Starting script initialization');
+        
+        if (window.location.href.includes('section=changeRacingCar')) {
+            console.log('[Initialization] On car selection page, checking for pending car selection');
+
+            checkPendingOfficialRaceCarSelection();
+
+            setTimeout(checkPendingOfficialRaceCarSelection, 1500);
+            setTimeout(checkPendingOfficialRaceCarSelection, 3000);
+        }
+
+        if (typeof document !== 'undefined' && document.readyState !== 'loading') {
+            init();
+        } else {
+            document.addEventListener('DOMContentLoaded', function() {
+                init();
+            });
+        }
+        
+        // Also listen for page ready state
+        if (document.readyState === 'complete') {
+            console.log('[Initialization] Document already complete, checking selections');
+            checkPendingOfficialRaceCarSelection();
+        } else {
+            window.addEventListener('load', function() {
+                console.log('[Initialization] Document loaded, checking selections');
+                checkPendingOfficialRaceCarSelection();
+            });
+        }
+    }
+
+    async function joinOfficialRace() {
+        const carId = document.getElementById('officialCarId').value;
+        if (!carId) {
+            displayOfficialRaceStatus('Please select a car first', 'error');
+            return;
+        }
+
+        sessionStorage.setItem('pendingOfficialRaceCarId', carId);
+        console.log('[Official Race] Saved car ID for later selection:', carId);
+        
+        displayOfficialRaceStatus('Joining official race...', 'info');
+        
+        try {
+            const rfcValue = getRFCFromPage() || getRFC();
+            
+            if (!rfcValue) {
+                throw new Error('Failed to get RFC value');
+            }
+            
+            console.log('[Official Race] Got RFC value:', rfcValue);
+
+            const form = document.createElement('form');
+            form.method = 'GET'; 
+            form.action = 'https://www.torn.com/loader.php';
+            form.style.display = 'none';
+            
+            const params = {
+                'sid': 'racing',
+                'tab': 'race',
+                'section': 'changeRacingCar',
+                'step': 'getInRace',
+                'rfcv': rfcValue
+            };
+
+            for (const key in params) {
+                if (params.hasOwnProperty(key)) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = key;
+                    input.value = params[key];
+                    form.appendChild(input);
+                }
+            }
+
+            document.body.appendChild(form);
+            console.log('[Official Race] Submitting join race form with RFC:', rfcValue);
+            form.submit();
+        } catch (error) {
+            displayOfficialRaceStatus(`Error joining race: ${error.message}`, 'error');
+            console.error('[Official Race] Error joining race:', error);
+        }
+    }
+
+    function saveOfficialRacePreset() {
+        const carId = document.getElementById('officialCarId').value;
+        const carDropdown = document.getElementById('officialCarDropdown');
+        
+        if (!carId) {
+            displayOfficialRaceStatus('Please select a car first', 'error');
+            return;
+        }
+        
+        const presetName = prompt("Enter a name for this official race preset:");
+        if (!presetName) {
+            displayOfficialRaceStatus('Preset name cannot be empty', 'error');
+            return;
+        }
+
+        const carOption = carDropdown.querySelector(`option[value="${carId}"]`);
+        const carName = carOption ? carOption.textContent.split(' (ID:')[0] : null;
+        
+        const presetData = {
+            type: 'official',
+            carId: carId,
+            carName: carName,
+
+        };
+        
+        let officialPresets = loadOfficialRacePresets();
+        officialPresets[presetName] = presetData;
+        GM_setValue('official_race_presets', JSON.stringify(officialPresets));
+
+        updateQuickLaunchButtons();
+        displayOfficialRaceStatus(`Official race preset "${presetName}" saved`, 'success');
+    }
+
+    function loadOfficialRacePresets() {
+        try {
+            return JSON.parse(GM_getValue('official_race_presets', '{}'));
+        } catch (e) {
+            console.error('Error loading official race presets:', e);
+            return {};
+        }
+    }
+
+    function showOfficialRaceTrackSelector(preset) {
+        joinOfficialRaceFromPreset(preset);
+    }
+
+    function joinOfficialRaceFromPreset(preset) {
+        const carId = preset.carId;
+        if (!carId) {
+            displayQuickLaunchStatus('No car ID in preset', 'error');
+            return;
+        }
+
+        const rfcValue = getRFCFromPage() || getRFC();
+        
+        if (!rfcValue) {
+            throw new Error('Failed to get RFC value');
+        }
+
+        const form = document.createElement('form');
+        form.method = 'GET';
+        form.action = 'https://www.torn.com/loader.php';
+        form.style.display = 'none';
+
+        const params = {
+            'sid': 'racing',
+            'tab': 'race',
+            'section': 'changeRacingCar',
+            'step': 'getInRace',
+            'rfcv': rfcValue
+        };
+
+        for (const key in params) {
+            if (params.hasOwnProperty(key)) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = params[key];
+                form.appendChild(input);
+            }
+        }
+
+        document.body.appendChild(form);
+        console.log('[Official Race] Submitting join race form from preset with RFC:', rfcValue);
+        form.submit();
+    }
+
+    function removeOfficialRacePreset(presetName) {
+        if (!confirm(`Are you sure you want to remove official race preset "${presetName}"?`)) {
+            return;
+        }
+        
+        let presets = loadOfficialRacePresets();
+        delete presets[presetName];
+        GM_setValue('official_race_presets', JSON.stringify(presets));
+        
+        updateQuickLaunchButtons();
+        displayQuickLaunchStatus(`Official race preset "${presetName}" removed`, 'success');
+    }
+
+    function displayOfficialRaceStatus(message, type = '') {
+        const statusElement = document.getElementById('officialRaceStatus');
+        if (!statusElement) {
+            console.error('Official race status element not found');
+            return;
+        }
+        
+        statusElement.textContent = message;
+        statusElement.className = '';
+        
+        if (type) {
+            statusElement.classList.add(type);
+        }
+
+        statusElement.style.display = 'block';
+        
+        displayStatusMessage(message, type);  
+
+        console.log(`[Official Race Status - ${type}]: ${message}`);
     }
 
 })();
