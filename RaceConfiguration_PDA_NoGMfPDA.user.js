@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Manager
-// @version      3.7.0
+// @version      3.7.1
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -1518,7 +1518,7 @@
 
             <div style="text-align: center; margin-top: 20px; color: #888; font-size: 1.2em;">
                 Script created by <a href="https://www.torn.com/profiles.php?XID=268863" target="_blank" style="color: #888; text-decoration: none;">GNSC4 [268863]</a><br>
-                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.7.0 Official Forum Link</a>
+                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.7.1 Official Forum Link</a>
             </div>
         `;
 
@@ -2289,19 +2289,60 @@
 
         console.log('Creating minimize button');
 
+        // Create a wrapper div for the minimize button to improve click target
+        const minimizeButtonWrapper = document.createElement('div');
+        minimizeButtonWrapper.id = 'minimizeQuickLaunchButtonWrapper';
+        minimizeButtonWrapper.style.cssText = `
+            position: absolute !important;
+            top: 2px !important;
+            right: 2px !important;
+            width: 30px !important;
+            height: 30px !important;
+            z-index: 1000001 !important;
+            cursor: pointer !important;
+            pointer-events: auto !important;
+        `;
+
         const minimizeButton = document.createElement('button');
         minimizeButton.id = 'minimizeQuickLaunchButton';
         minimizeButton.type = 'button';
         minimizeButton.title = 'Minimize Quick Launch Area';
+        minimizeButton.style.cssText = `
+            width: 100% !important;
+            height: 100% !important;
+            background-color: #444 !important;
+            color: white !important;
+            border: 1px solid #666 !important;
+            border-radius: 4px !important;
+            font-size: 16px !important;
+            cursor: pointer !important;
+            z-index: 1000000 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            transition: all 0.2s ease !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3) !important;
+            pointer-events: auto !important;
+        `;
 
         const innerContent = document.createElement('div');
         innerContent.id = 'minimizeQuickLaunchButtonContent';
         innerContent.textContent = '_';
+        innerContent.style.cssText = `
+            pointer-events: none !important;
+            width: 100% !important;
+            height: 100% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        `;
+        
         minimizeButton.appendChild(innerContent);
-
-        container.appendChild(minimizeButton);
+        minimizeButtonWrapper.appendChild(minimizeButton);
+        container.appendChild(minimizeButtonWrapper);
         console.log('Minimize button added to container');
 
+        // Rest of container creation
         const buttonContainer = document.createElement('div');
         buttonContainer.className = 'button-container';
         const statusDiv = document.createElement('div');
@@ -2469,40 +2510,71 @@
 
         container.style.display = 'flex';
 
+        // Replace the button click event handler with a more robust version
         const addButtonListeners = () => {
+            const btnWrapper = document.getElementById('minimizeQuickLaunchButtonWrapper');
             const btn = document.getElementById('minimizeQuickLaunchButton');
-            if (!btn) return;
-
-            const newBtn = btn.cloneNode(true);
-            if (btn.parentNode) {
-                btn.parentNode.replaceChild(newBtn, btn);
+            if (!btnWrapper || !btn) {
+                console.error('Could not find minimize button or wrapper');
+                return;
             }
 
-            newBtn.addEventListener('click', function(e) {
+            // Remove existing listeners to prevent duplication
+            const newWrapper = btnWrapper.cloneNode(true);
+            if (btnWrapper.parentNode) {
+                btnWrapper.parentNode.replaceChild(newWrapper, btnWrapper);
+            }
+
+            // Add event listeners to the wrapper instead of the button
+            newWrapper.addEventListener('click', function(e) {
+                console.log('Minimize button wrapper clicked');
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('Minimize button clicked');
                 toggleQuickLaunchMinimize();
             });
 
-            newBtn.addEventListener('touchstart', function(e) {
+            newWrapper.addEventListener('touchstart', function(e) {
+                console.log('Minimize button wrapper touched');
                 e.preventDefault();
                 e.stopPropagation(); 
-                console.log('Minimize button touched');
                 toggleQuickLaunchMinimize();
             }, { passive: false });
+
+            // Also add to button as a fallback
+            const newBtn = newWrapper.querySelector('#minimizeQuickLaunchButton');
+            if (newBtn) {
+                newBtn.addEventListener('click', function(e) {
+                    console.log('Minimize button clicked directly');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleQuickLaunchMinimize();
+                });
+
+                newBtn.addEventListener('touchstart', function(e) {
+                    console.log('Minimize button touched directly');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleQuickLaunchMinimize();
+                }, { passive: false });
+            }
         };
 
         addButtonListeners();
-        setTimeout(addButtonListeners, 100);
+        setTimeout(addButtonListeners, 100); // Double check after a short delay
 
+        // Apply minimized state if needed
         const minimizedState = GM_getValue('quickLaunchMinimized', false);
         if (minimizedState === true) {
             container.classList.add('minimized');
             const btnContent = document.getElementById('minimizeQuickLaunchButtonContent');
             if (btnContent) btnContent.textContent = '□';
-            minimizeButton.title = 'Expand Quick Launch Area';
+            const minimizeBtn = document.getElementById('minimizeQuickLaunchButton');
+            if (minimizeBtn) minimizeBtn.title = 'Expand Quick Launch Area';
 
+            // Force container height and styling
+            container.style.cssText += "max-height: 35px !important; overflow: hidden !important;";
+            
+            // Hide these elements specifically when minimized
             const buttonContainer = container.querySelector('.button-container');
             const autoJoinContainer = container.querySelector('.auto-join-preset-container');
             const otherHeaders = container.querySelectorAll('.preset-section-header:not(:first-child)');
@@ -2510,10 +2582,6 @@
             if (buttonContainer) buttonContainer.style.display = 'none';
             if (autoJoinContainer) autoJoinContainer.style.display = 'none';
             otherHeaders.forEach(header => header.style.display = 'none');
-            
-            // Force container height
-            container.style.maxHeight = '35px';
-            container.style.overflow = 'hidden';
         }
     }
 
@@ -2523,8 +2591,8 @@
         const minimizeButton = document.getElementById('minimizeQuickLaunchButton');
         const buttonContent = document.getElementById('minimizeQuickLaunchButtonContent');
         
-        if (!container || !minimizeButton) {
-            console.error('Container or button not found');
+        if (!container) {
+            console.error('Container not found');
             return;
         }
         
@@ -2534,9 +2602,10 @@
         if (isCurrentlyMinimized) {
             container.classList.remove('minimized');
             if (buttonContent) buttonContent.textContent = '_';
-            minimizeButton.title = 'Minimize Quick Launch Area';
+            if (minimizeButton) minimizeButton.title = 'Minimize Quick Launch Area';
             GM_setValue('quickLaunchMinimized', false);
 
+            // Show these elements when maximized
             const buttonContainer = container.querySelector('.button-container');
             const autoJoinContainer = container.querySelector('.auto-join-preset-container');
             const otherHeaders = container.querySelectorAll('.preset-section-header:not(:first-child)');
@@ -2545,13 +2614,19 @@
             if (autoJoinContainer) autoJoinContainer.style.display = 'grid';
             otherHeaders.forEach(header => header.style.display = 'block');
             
+            // Reset height constraints
+            container.style.maxHeight = 'none';
+            container.style.padding = '10px';
+            container.style.overflow = 'visible';
+            
             console.log('Container maximized');
         } else {
             container.classList.add('minimized');
             if (buttonContent) buttonContent.textContent = '□';
-            minimizeButton.title = 'Expand Quick Launch Area';
+            if (minimizeButton) minimizeButton.title = 'Expand Quick Launch Area';
             GM_setValue('quickLaunchMinimized', true);
 
+            // Hide these elements when minimized
             const buttonContainer = container.querySelector('.button-container');
             const autoJoinContainer = container.querySelector('.auto-join-preset-container');
             const otherHeaders = container.querySelectorAll('.preset-section-header:not(:first-child)');
@@ -2560,53 +2635,21 @@
             if (autoJoinContainer) autoJoinContainer.style.display = 'none';
             otherHeaders.forEach(header => header.style.display = 'none');
             
+            // Force minimized height
+            container.style.maxHeight = '35px';
+            container.style.padding = '5px';
+            container.style.overflow = 'hidden';
+            
             console.log('Container minimized');
         }
 
-        container.style.maxHeight = isCurrentlyMinimized ? 'none' : '35px';
-        container.style.padding = isCurrentlyMinimized ? '10px' : '5px';
-
+        // Additional force override for minimize state
         if (!isCurrentlyMinimized) {
             container.style.cssText += "max-height: 35px !important; overflow: hidden !important;";
         } else {
             container.style.cssText += "max-height: none !important; overflow: visible !important;";
         }
     }
-
-    style.textContent += `
-        /* Additional force-override styles for minimized state */
-        .quick-launch-container.minimized .button-container,
-        .quick-launch-container.minimized .auto-join-preset-container,
-        .quick-launch-container.minimized .preset-section-header:not(:first-child) {
-            display: none !important;
-            visibility: hidden !important;
-            height: 0 !important;
-            opacity: 0 !important;
-            overflow: hidden !important;
-        }
-
-        .quick-launch-container.minimized {
-            padding: 5px !important;
-            max-height: 35px !important;
-            overflow: hidden !important;
-            position: relative !important;
-        }
-
-        /* Ensure first header stays visible */
-        .quick-launch-container.minimized .preset-section-header:first-child {
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-            margin: 0 !important;
-        }
-
-        /* Make sure minimize button is always visible */
-        #minimizeQuickLaunchButton {
-            display: block !important;
-            z-index: 999999 !important;
-            position: absolute !important;
-        }
-    `;
 
     function saveAutoJoinPreset() {
         const presetName = prompt("Enter a name for this auto-join preset:");
