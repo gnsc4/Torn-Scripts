@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Manager
-// @version      3.6.26
+// @version      3.7.0
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -53,7 +53,6 @@
     const MAX_DOM_CHECK_ATTEMPTS = 100;
     const STORAGE_API_KEY = 'raceConfigAPIKey_release_NoGMf';
 
-    // Initialize Style
     const style = document.createElement('style');
     style.textContent = `
         #raceConfigGUI {
@@ -1488,6 +1487,12 @@
                         <span>-</span>
                         <input type="number" id="maxLaps" placeholder="Max" min="1" max="100">
                     </div>
+                    <div class="drivers-filter">
+                        <label>Drivers Range:</label>
+                        <input type="number" id="autoJoinMinDrivers" placeholder="Min" min="2" max="10">
+                        <span>-</span>
+                        <input type="number" id="autoJoinMaxDrivers" placeholder="Max" min="2" max="10">
+                    </div>
                     <div class="car-filter">
                         <label for="autoJoinCar">Car to Use:</label>
                         <select id="autoJoinCar">
@@ -1497,6 +1502,7 @@
                     <div class="filters">
                         <label><input type="checkbox" id="hidePassworded"> Hide Passworded Races</label>
                         <label><input type="checkbox" id="hideBets"> Hide Races with Bets</label>
+                        <label><input type="checkbox" id="hideFullRacesAutoJoin"> Hide Full Races</label>
                     </div>
                     <div class="auto-join-buttons">
                         <button id="startAutoJoin" class="gui-button">Start Auto-Join</button>
@@ -1512,7 +1518,7 @@
 
             <div style="text-align: center; margin-top: 20px; color: #888; font-size: 1.2em;">
                 Script created by <a href="https://www.torn.com/profiles.php?XID=268863" target="_blank" style="color: #888; text-decoration: none;">GNSC4 [268863]</a><br>
-                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.6.26 Official Forum Link</a>
+                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.7.0 Official Forum Link</a>
             </div>
         `;
 
@@ -2005,17 +2011,19 @@
         }
     }
 
-    function displayStatusMessage(message, type = '') {
-        const statusMessageBox = document.getElementById('statusMessageBox');
-        if (!statusMessageBox) return;
+    function displayStatusMessage(message, type = '', elementId = 'statusMessageBox') {
+        const statusElement = document.getElementById(elementId);
+        if (!statusElement) return;
 
-        statusMessageBox.textContent = message;
-        statusMessageBox.style.display = message ? 'block' : 'none';
+        statusElement.textContent = message;
+        statusElement.className = '';
 
-        statusMessageBox.className = '';
-        if (type === 'error' || type === 'success' || type === 'info') {
-            statusMessageBox.classList.add(type);
+        if (type) {
+            statusElement.classList.add(type);
         }
+
+        statusElement.style.display = message ? 'block' : 'none';
+        console.log(`[Status - ${type}]: ${message}`);
     }
 
     function savePreset() {
@@ -2619,10 +2627,13 @@
             track: document.getElementById('autoJoinTrack').value,
             minLaps: document.getElementById('minLaps').value,
             maxLaps: document.getElementById('maxLaps').value,
+            minDrivers: document.getElementById('autoJoinMinDrivers')?.value || '',
+            maxDrivers: document.getElementById('autoJoinMaxDrivers')?.value || '',
             selectedCarId: selectedCarId,
             carName: carName,
             hidePassworded: document.getElementById('hidePassworded').checked,
-            hideBets: document.getElementById('hideBets').checked
+            hideBets: document.getElementById('hideBets').checked,
+            hideFullRaces: document.getElementById('hideFullRacesAutoJoin')?.checked || false
         };
 
         console.log('[DEBUG] Saving auto-join preset with car:', { id: selectedCarId, name: carName });
@@ -2721,8 +2732,11 @@
                 let autoJoinCar = document.getElementById('autoJoinCar');
                 let hidePassworded = document.getElementById('hidePassworded');
                 let hideBets = document.getElementById('hideBets');
+                let autoJoinMinDrivers = document.getElementById('autoJoinMinDrivers');
+                let autoJoinMaxDrivers = document.getElementById('autoJoinMaxDrivers');
+                let hideFullRaces = document.getElementById('hideFullRacesAutoJoin');
 
-                if (!autoJoinTrack || !minLaps || !maxLaps || !autoJoinCar || !hidePassworded || !hideBets) {
+                if (!autoJoinTrack || !minLaps || !maxLaps || !autoJoinCar || !hidePassworded || !hideBets || !autoJoinMinDrivers || !autoJoinMaxDrivers || !hideFullRaces) {
                     console.log('[DEBUG] Creating auto-join interface elements');
 
                     const racesList = document.querySelector('.custom_events, .events-list, .races-list');
@@ -2773,6 +2787,12 @@
                                 <span>-</span>
                                 <input type="number" id="maxLaps" placeholder="Max" min="1" max="100">
                             </div>
+                            <div class="filter-group drivers-filter">
+                                <label>Drivers Range:</label>
+                                <input type="number" id="autoJoinMinDrivers" placeholder="Min" min="2" max="10">
+                                <span>-</span>
+                                <input type="number" id="autoJoinMaxDrivers" placeholder="Max" min="2" max="10">
+                            </div>
                         </div>
                         <div class="filter-row">
                             <div class="filter-group">
@@ -2788,6 +2808,9 @@
                                 </div>
                                 <div class="checkbox-option">
                                     <label><input type="checkbox" id="hideBets"> Hide Races with Bets</label>
+                                </div>
+                                <div class="checkbox-option">
+                                    <label><input type="checkbox" id="hideFullRacesAutoJoin"> Hide Full Races</label>
                                 </div>
                             </div>
                         </div>
@@ -2808,6 +2831,9 @@
                     autoJoinCar = document.getElementById('autoJoinCar');
                     hidePassworded = document.getElementById('hidePassworded');
                     hideBets = document.getElementById('hideBets');
+                    autoJoinMinDrivers = document.getElementById('autoJoinMinDrivers');
+                    autoJoinMaxDrivers = document.getElementById('autoJoinMaxDrivers');
+                    hideFullRaces = document.getElementById('hideFullRacesAutoJoin');
 
                     const joinButton = document.getElementById('autoJoinNowButton');
                     if (joinButton) {
@@ -2823,7 +2849,10 @@
                     maxLaps,
                     autoJoinCar,
                     hidePassworded,
-                    hideBets
+                    hideBets,
+                    autoJoinMinDrivers,
+                    autoJoinMaxDrivers,
+                    hideFullRaces
                 };
             };
 
@@ -2846,6 +2875,9 @@
             if (elements.maxLaps) elements.maxLaps.value = preset.maxLaps;
             if (elements.hidePassworded) elements.hidePassworded.checked = preset.hidePassworded;
             if (elements.hideBets) elements.hideBets.checked = preset.hideBets;
+            if (elements.autoJoinMinDrivers) elements.autoJoinMinDrivers.value = preset.minDrivers;
+            if (elements.autoJoinMaxDrivers) elements.autoJoinMaxDrivers.value = preset.maxDrivers;
+            if (elements.hideFullRaces) elements.hideFullRaces.checked = preset.hideFullRaces;
 
             if (elements.autoJoinCar && preset.selectedCarId) {
                 const existingOption = elements.autoJoinCar.querySelector(`option[value="${preset.selectedCarId}"]`);
@@ -3232,41 +3264,86 @@
     }
 
     function getRFC() {
-        if (typeof $.cookie !== 'function') {
-            console.error("Error: jQuery Cookie plugin is not loaded correctly!");
-            console.log("Attempting fallback cookie parsing for rfc_v...");
-            let rfc = null;
-            const cookies = document.cookie.split("; ");
-            for (let i in cookies) {
-                let cookie = cookies[i].split("=");
-                if (cookie[0] && cookie[0].trim() === "rfc_v") {
-                    rfc = decodeURIComponent(cookie[1]);
-                    console.log("Fallback cookie parsing successful. rfc_v value:", rfc);
-                    return rfc;
-                }
-            }
-            console.warn("Fallback cookie parsing failed to find rfc_v cookie.");
-            return '';
+        // Try getting RFC from page
+        const rfcFromPage = getRFCFromPage();
+        if (rfcFromPage) {
+            console.log('[RFC] Found from page:', rfcFromPage);
+            return rfcFromPage;
         }
 
-        let rfcValue = $.cookie('rfc_v');
-        if (rfcValue) {
-            return rfcValue;
-        } else {
-            console.log("jQuery.cookie failed to get rfc_v, attempting fallback parsing...");
-            let rfc = null;
-            const cookies = document.cookie.split("; ");
-            for (let i in cookies) {
-                let cookie = cookies[i].split("=");
-                if (cookie[0] && cookie[0].trim() === "rfc_v") {
-                    rfc = decodeURIComponent(cookie[1]);
-                    console.log("Fallback cookie parsing successful. rfc_v value:", rfc);
-                    return rfc;
-                }
+        // Try getting RFC from jQuery cookie
+        if (typeof $.cookie === 'function') {
+            const rfcValue = $.cookie('rfc_v');
+            if (rfcValue) {
+                console.log('[RFC] Found from jQuery cookie:', rfcValue);
+                return rfcValue;
             }
-            console.warn("Fallback cookie parsing failed to find rfc_v cookie.");
-            return '';
         }
+
+        // Fallback to cookie parsing
+        const cookies = document.cookie.split("; ");
+        for (let i in cookies) {
+            const cookie = cookies[i].split("=");
+            if (cookie[0] && cookie[0].trim() === "rfc_v") {
+                console.log('[RFC] Found from document.cookie:', cookie[1]);
+                return cookie[1];
+            }
+        }
+
+        console.warn("[RFC] Failed to find rfc_v cookie or value.");
+        return '';
+    }
+
+    function getRFCFromPage() {
+        // Get RFC from script tags
+        const scripts = document.querySelectorAll('script');
+        for (const script of scripts) {
+            if (!script.textContent) continue;
+            
+            const rfcMatch = script.textContent.match(/var\s+rfcv\s*=\s*['"]([^'"]+)['"]/);
+            if (rfcMatch && rfcMatch[1]) {
+                console.log('[RFC Detection] Found RFC in script tag:', rfcMatch[1]);
+                return rfcMatch[1];
+            }
+        }
+
+        // Get RFC from input fields
+        const rfcInputs = document.querySelectorAll('input[name="rfcv"]');
+        for (const input of rfcInputs) {
+            if (input.value) {
+                console.log('[RFC Detection] Found RFC in input field:', input.value);
+                return input.value;
+            }
+        }
+
+        // Get RFC from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const rfcValue = urlParams.get('rfcv');
+        if (rfcValue) {
+            console.log('[RFC Detection] Found RFC in URL parameters:', rfcValue);
+            return rfcValue;
+        }
+
+        // Get RFC from forms
+        const forms = document.querySelectorAll('form');
+        for (const form of forms) {
+            const rfcInput = form.querySelector('input[name="rfcv"]');
+            if (rfcInput && rfcInput.value) {
+                console.log('[RFC Detection] Found RFC in form:', rfcInput.value);
+                return rfcInput.value;
+            }
+        }
+        
+        // Get RFC from data attributes
+        const elementsWithData = document.querySelectorAll('[data-rfcv]');
+        for (const el of elementsWithData) {
+            if (el.dataset.rfcv) {
+                console.log('[RFC Detection] Found RFC in data attribute:', el.dataset.rfcv);
+                return el.dataset.rfcv;
+            }
+        }
+        
+        return null;
     }
 
     async function createRace() {
@@ -3793,9 +3870,14 @@
                         min: parseInt(document.getElementById('filterMinLaps')?.value) || null,
                         max: parseInt(document.getElementById('filterMaxLaps')?.value) || null
                     },
+                    drivers: {
+                        min: parseInt(document.getElementById('filterMinDrivers')?.value) || null,
+                        max: parseInt(document.getElementById('filterMaxDrivers')?.value) || null
+                    },
                     sortBy: document.getElementById('filterSort')?.value || 'time',
                     hidePassworded: document.getElementById('hidePassworded')?.checked || false,
-                    showSuitableCarsOnly: document.getElementById('showSuitableCarsOnly')?.checked || false
+                    showSuitableCarsOnly: document.getElementById('showSuitableCarsOnly')?.checked || false,
+                    hideFullRaces: document.getElementById('hideFullRaces')?.checked || false
                 };
 
                 const racesList = document.querySelector('.custom_events, .events-list, .races-list');
@@ -3817,7 +3899,16 @@
                     if (shouldShow && filters.laps.max && !this.matchesMaxLapsFilter(race, filters.laps.max)) {
                         shouldShow = false;
                     }
+                    if (shouldShow && filters.drivers.min && !this.matchesMinDriversFilter(race, filters.drivers.min)) {
+                        shouldShow = false;
+                    }
+                    if (shouldShow && filters.drivers.max && !this.matchesMaxDriversFilter(race, filters.drivers.max)) {
+                        shouldShow = false;
+                    }
                     if (shouldShow && filters.hidePassworded && this.isPasswordProtected(race)) {
+                        shouldShow = false;
+                    }
+                    if (shouldShow && filters.hideFullRaces && this.isRaceFull(race)) {
                         shouldShow = false;
                     }
 
@@ -3831,6 +3922,7 @@
                         case 'track': return this.compareTrack(a, b);
                         case 'laps': return this.compareLaps(a, b);
                         case 'bets': return this.compareBets(a, b);
+                        case 'drivers': return this.compareDrivers(a, b);
                         default: return 0;
                     }
                 });
@@ -3874,9 +3966,49 @@
                 return raceLaps <= maxLaps;
             },
 
+            matchesMinDriversFilter(race, minDrivers) {
+                if (!minDrivers) return true;
+                const driversElement = race.querySelector('li.drivers');
+                if (!driversElement) return true;
+                
+                const driversMatch = driversElement.textContent.match(/(\d+)\s*\/\s*(\d+)/);
+                if (!driversMatch) return true;
+                
+                const maxRaceDrivers = parseInt(driversMatch[2]);
+                console.log('[DEBUG] Min drivers check:', { maxRaceDrivers, minDrivers });
+                return maxRaceDrivers >= minDrivers;
+            },
+
+            matchesMaxDriversFilter(race, maxDrivers) {
+                if (!maxDrivers) return true;
+                const driversElement = race.querySelector('li.drivers');
+                if (!driversElement) return true;
+                
+                const driversMatch = driversElement.textContent.match(/(\d+)\s*\/\s*(\d+)/);
+                if (!driversMatch) return true;
+                
+                const maxRaceDrivers = parseInt(driversMatch[2]);
+                console.log('[DEBUG] Max drivers check:', { maxRaceDrivers, maxDrivers });
+                return maxRaceDrivers <= maxDrivers;
+            },
+
             isPasswordProtected(race) {
                 const raceText = race.textContent.toLowerCase();
                 return raceText.includes('password') || race.querySelector('[id^="joinPasswordForm"]') !== null;
+            },
+
+            isRaceFull(race) {
+                const driversElement = race.querySelector('li.drivers');
+                if (!driversElement) return false;
+                
+                const driversMatch = driversElement.textContent.match(/(\d+)\s*\/\s*(\d+)/);
+                if (!driversMatch) return false;
+                
+                const currentDrivers = parseInt(driversMatch[1]);
+                const maxDrivers = parseInt(driversMatch[2]);
+                
+                console.log('[DEBUG] Race full check:', { currentDrivers, maxDrivers });
+                return currentDrivers >= maxDrivers;
             },
 
             compareTime(a, b) {
@@ -3943,6 +4075,19 @@
                     return parseInt(betMatch?.[1]?.replace(/,/g, '')) || 0;
                 };
                 return getBet(b) - getBet(a);
+            },
+
+            compareDrivers(a, b) {
+                const getMaxDrivers = el => {
+                    const driversElement = el.querySelector('li.drivers');
+                    if (!driversElement) return 0;
+                    
+                    const driversMatch = driversElement.textContent.match(/(\d+)\s*\/\s*(\d+)/);
+                    if (!driversMatch) return 0;
+                    
+                    return parseInt(driversMatch[2]) || 0;
+                };
+                return getMaxDrivers(a) - getMaxDrivers(b);
             }
         };
 
@@ -4032,16 +4177,22 @@
         const filterTrack = document.getElementById('filterTrack');
         const filterMinLaps = document.getElementById('filterMinLaps');
         const filterMaxLaps = document.getElementById('filterMaxLaps');
+        const filterMinDrivers = document.getElementById('filterMinDrivers');
+        const filterMaxDrivers = document.getElementById('filterMaxDrivers');
         const filterSort = document.getElementById('filterSort');
         const hidePassworded = document.getElementById('hidePassworded');
         const showSuitableCarsOnly = document.getElementById('showSuitableCarsOnly');
+        const hideFullRaces = document.getElementById('hideFullRaces');
 
         if (filterTrack) filterTrack.value = '';
         if (filterMinLaps) filterMinLaps.value = '';
         if (filterMaxLaps) filterMaxLaps.value = '';
+        if (filterMinDrivers) filterMinDrivers.value = '';
+        if (filterMaxDrivers) filterMaxDrivers.value = '';
         if (filterSort) filterSort.value = 'time';
         if (hidePassworded) hidePassworded.checked = false;
         if (showSuitableCarsOnly) showSuitableCarsOnly.checked = false;
+        if (hideFullRaces) hideFullRaces.checked = false;
 
         const racesList = document.querySelector('.custom_events, .events-list, .races-list');
         if (racesList) {
@@ -4056,9 +4207,12 @@
             track: document.getElementById('filterTrack')?.value || '',
             minLaps: document.getElementById('filterMinLaps')?.value || '',
             maxLaps: document.getElementById('filterMaxLaps')?.value || '',
+            minDrivers: document.getElementById('filterMinDrivers')?.value || '',
+            maxDrivers: document.getElementById('filterMaxDrivers')?.value || '',
             sortBy: document.getElementById('filterSort')?.value || 'time',
             hidePassworded: document.getElementById('hidePassworded')?.checked || false,
             showSuitableCarsOnly: document.getElementById('showSuitableCarsOnly')?.checked || false,
+            hideFullRaces: document.getElementById('hideFullRaces')?.checked || false,
             filtersEnabled: document.getElementById('toggleFilters')?.classList.contains('active') || false
         };
         GM_setValue('raceFilterState', JSON.stringify(state));
@@ -4071,17 +4225,23 @@
             const filterTrack = document.getElementById('filterTrack');
             const filterMinLaps = document.getElementById('filterMinLaps');
             const filterMaxLaps = document.getElementById('filterMaxLaps');
+            const filterMinDrivers = document.getElementById('filterMinDrivers');
+            const filterMaxDrivers = document.getElementById('filterMaxDrivers');
             const filterSort = document.getElementById('filterSort');
             const hidePassworded = document.getElementById('hidePassworded');
             const showSuitableCarsOnly = document.getElementById('showSuitableCarsOnly');
+            const hideFullRaces = document.getElementById('hideFullRaces');
             const toggleFilters = document.getElementById('toggleFilters');
 
             if (filterTrack) filterTrack.value = savedState.track || '';
             if (filterMinLaps) filterMinLaps.value = savedState.minLaps || '';
             if (filterMaxLaps) filterMaxLaps.value = savedState.maxLaps || '';
+            if (filterMinDrivers) filterMinDrivers.value = savedState.minDrivers || '';
+            if (filterMaxDrivers) filterMaxDrivers.value = savedState.maxDrivers || '';
             if (filterSort) filterSort.value = savedState.sortBy || 'time';
             if (hidePassworded) hidePassworded.checked = savedState.hidePassworded || false;
             if (showSuitableCarsOnly) showSuitableCarsOnly.checked = savedState.showSuitableCarsOnly || false;
+            if (hideFullRaces) hideFullRaces.checked = savedState.hideFullRaces || false;
             
             if (toggleFilters) {
                 if (savedState.filtersEnabled) {
@@ -4144,15 +4304,26 @@
                         <span>-</span>
                         <input type="number" id="filterMaxLaps" placeholder="Max" min="1" max="100">
                     </div>
-                    <div class="filter-group">
+                </div>
+                <div class="filter-row">
+                    <div class="filter-group laps-filter">
+                        <label>Drivers:</label>
+                        <input type="number" id="filterMinDrivers" placeholder="Min" min="2" max="10">
+                        <span>-</span>
+                        <input type="number" id="filterMaxDrivers" placeholder="Max" min="2" max="10">
+                    </div>
+                    <div class="filter-group" style="margin-left: 15px;">
                         <label>Sort By:</label>
                         <select id="filterSort">
                             <option value="time">Start Time</option>
                             <option value="track">Track</option>
                             <option value="laps">Laps</option>
                             <option value="bets">Bet Amount</option>
+                            <option value="drivers">Drivers</option>
                         </select>
                     </div>
+                </div>
+                <div class="filter-row">
                     <div class="filter-group checkboxes">
                         <div class="checkbox-option">
                             <label><input type="checkbox" id="hidePassworded"> Hide Passworded</label>
@@ -4160,11 +4331,14 @@
                         <div class="checkbox-option">
                             <label><input type="checkbox" id="showSuitableCarsOnly"> Show Suitable Cars Only</label>
                         </div>
+                        <div class="checkbox-option">
+                            <label><input type="checkbox" id="hideFullRaces"> Hide Full Races</label>
+                        </div>
                     </div>
-                </div>
-                <div class="filter-buttons">
-                    <button id="refreshRaces" class="gui-button">Refresh List</button>
-                    <button id="toggleFilters" class="gui-button active">Disable Filters</button>
+                    <div class="filter-buttons">
+                        <button id="refreshRaces" class="gui-button">Refresh List</button>
+                        <button id="toggleFilters" class="gui-button active">Disable Filters</button>
+                    </div>
                 </div>
             </div>
         `;
@@ -4175,9 +4349,12 @@
             'filterTrack',
             'filterMinLaps', 
             'filterMaxLaps',
+            'filterMinDrivers',
+            'filterMaxDrivers',
             'filterSort',
             'hidePassworded',
-            'showSuitableCarsOnly'
+            'showSuitableCarsOnly',
+            'hideFullRaces'
         ];
 
         filterElements.forEach(id => {
@@ -4242,12 +4419,15 @@
         const track = document.getElementById('autoJoinTrack')?.value || 'all';
         const minLaps = parseInt(document.getElementById('minLaps')?.value) || 0;
         const maxLaps = parseInt(document.getElementById('maxLaps')?.value) || 100;
+        const minDrivers = parseInt(document.getElementById('autoJoinMinDrivers')?.value) || 0;
+        const maxDrivers = parseInt(document.getElementById('autoJoinMaxDrivers')?.value) || 10;
         const selectedCarId = document.getElementById('autoJoinCar')?.value || document.getElementById('carIdInput')?.value;
         const hidePassworded = document.getElementById('hidePassworded')?.checked || false;
         const hideBets = document.getElementById('hideBets')?.checked || false;
+        const hideFullRaces = document.getElementById('hideFullRacesAutoJoin')?.checked || false;
         
         console.log('[DEBUG] Starting Auto-Join process');
-        console.log('[DEBUG] Filter settings:', { track, minLaps, maxLaps, selectedCarId, hidePassworded, hideBets });
+        console.log('[DEBUG] Filter settings:', { track, minLaps, maxLaps, minDrivers, maxDrivers, selectedCarId, hidePassworded, hideBets, hideFullRaces });
 
         if (!selectedCarId) {
             console.log('[DEBUG] No car selected');
@@ -4291,8 +4471,18 @@
                 const [current, max] = driversText.match(/(\d+)\s*\/\s*(\d+)/)?.slice(1).map(Number) || [0, 0];
                 console.log('[DEBUG] Race drivers:', { current, max });
                 
-                if (current >= max) {
+                if (hideFullRaces && current >= max) {
                     console.log('[DEBUG] Race filtered out: Full (' + current + '/' + max + ' drivers)');
+                    isMatch = false;
+                }
+                
+                if (isMatch && minDrivers > 0 && max < minDrivers) {
+                    console.log('[DEBUG] Race filtered out: Max drivers too low (' + max + ' < ' + minDrivers + ')');
+                    isMatch = false;
+                }
+                
+                if (isMatch && maxDrivers > 0 && max > maxDrivers) {
+                    console.log('[DEBUG] Race filtered out: Max drivers too high (' + max + ' > ' + maxDrivers + ')');
                     isMatch = false;
                 }
             }
@@ -4371,9 +4561,12 @@
                 track,
                 minLaps,
                 maxLaps,
+                minDrivers,
+                maxDrivers,
                 selectedCarId,
                 hidePassworded,
                 hideBets,
+                hideFullRaces,
                 active: true
             });
             
@@ -4478,9 +4671,12 @@
                     'autoJoinTrack': autoJoinState.track,
                     'minLaps': autoJoinState.minLaps,
                     'maxLaps': autoJoinState.maxLaps,
+                    'autoJoinMinDrivers': autoJoinState.minDrivers,
+                    'autoJoinMaxDrivers': autoJoinState.maxDrivers,
                     'autoJoinCar': autoJoinState.selectedCarId,
                     'hidePassworded': autoJoinState.hidePassworded,
-                    'hideBets': autoJoinState.hideBets
+                    'hideBets': autoJoinState.hideBets,
+                    'hideFullRacesAutoJoin': autoJoinState.hideFullRaces
                 };
 
                 Object.entries(elements).forEach(([id, value]) => {
@@ -4842,52 +5038,74 @@
         }
     }
 
-    async function joinOfficialRace() {
-        const carId = document.getElementById('officialCarId').value;
+    async function joinOfficialRace(carId = null) {
+        // If carId not provided, get it from the input field
         if (!carId) {
-            displayOfficialRaceStatus('Please select a car first', 'error');
+            carId = document.getElementById('officialCarId').value;
+        }
+        
+        if (!carId) {
+            const errorMsg = 'Please select a car first';
+            displayStatusMessage(errorMsg, 'error', 'officialRaceStatus');
+            displayStatusMessage(errorMsg, 'error', 'quickLaunchStatus');
             return;
         }
 
-        const rfcValue = getRFC();
-
-        const joinRaceUrl = `https://www.torn.com/loader.php?sid=racing&tab=race&section=changeRacingCar&step=getInRace`;
-        console.log('[Official Race - Join Race URL]:', joinRaceUrl);
+        // Save the car ID for later selection
+        sessionStorage.setItem('pendingOfficialRaceCarId', carId);
+        console.log('[Official Race] Saved car ID for later selection:', carId);
         
-        displayOfficialRaceStatus('Joining official race...', 'info');
+        displayStatusMessage('Joining official race...', 'info', 'officialRaceStatus');
+        displayStatusMessage('Joining official race...', 'info', 'quickLaunchStatus');
         
         try {
-            window.location.href = joinRaceUrl;
-
-            sessionStorage.setItem('pendingOfficialRaceCarId', carId);
+            const rfcValue = getRFC();
             
+            if (!rfcValue) {
+                throw new Error('Failed to get RFC value');
+            }
+            
+            console.log('[Official Race] Got RFC value:', rfcValue);
+
+            const joinRaceUrl = 'https://www.torn.com/loader.php';
+            
+            const form = document.createElement('form');
+            form.method = 'GET'; 
+            form.action = joinRaceUrl;
+            form.style.display = 'none';
+            
+            const params = {
+                'sid': 'racing',
+                'tab': 'race',
+                'section': 'changeRacingCar',
+                'step': 'getInRace',
+                'rfcv': rfcValue
+            };
+
+            for (const key in params) {
+                if (params.hasOwnProperty(key)) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = key;
+                    input.value = params[key];
+                    form.appendChild(input);
+                }
+            }
+
+            document.body.appendChild(form);
+            console.log('[Official Race] Submitting join race form with RFC:', rfcValue);
+            form.submit();
         } catch (error) {
-            displayOfficialRaceStatus(`Error joining race: ${error.message}`, 'error');
+            const errorMsg = `Error joining race: ${error.message}`;
+            displayStatusMessage(errorMsg, 'error', 'officialRaceStatus');
+            displayStatusMessage(errorMsg, 'error', 'quickLaunchStatus');
+            console.error('[Official Race] Error joining race:', error);
         }
     }
-
+    
     function joinOfficialRaceFromPreset(preset) {
-        const carId = preset.carId;
-        if (!carId) {
-            displayQuickLaunchStatus('No car ID in preset', 'error');
-            return;
-        }
-        
-        const rfcValue = getRFC();
-        
-        const joinRaceUrl = `https://www.torn.com/loader.php?sid=racing&tab=race&section=changeRacingCar&step=getInRace`;
-        console.log('[Official Race - Join Race URL from preset]:', joinRaceUrl);
-        
-        displayQuickLaunchStatus('Joining official race...', 'info');
-        
-        try {
-            sessionStorage.setItem('pendingOfficialRaceCarId', carId);
-
-            window.location.href = joinRaceUrl;
-            
-        } catch (error) {
-            displayQuickLaunchStatus(`Error joining race: ${error.message}`, 'error');
-        }
+        // Use the unified joinOfficialRace function with the preset's car ID
+        joinOfficialRace(preset.carId);
     }
 
     function checkPendingOfficialRaceCarSelection() {
@@ -5117,66 +5335,6 @@
         }
     }
 
-    function getRFCFromPage() {
-        let rfcValue = null;
-
-        const scripts = document.querySelectorAll('script');
-        for (const script of scripts) {
-            if (!script.textContent) continue;
-            
-            const rfcMatch = script.textContent.match(/var\s+rfcv\s*=\s*['"]([^'"]+)['"]/);
-            if (rfcMatch && rfcMatch[1]) {
-                rfcValue = rfcMatch[1];
-                console.log('[RFC Detection] Found RFC in script tag:', rfcValue);
-                break;
-            }
-        }
-
-        if (!rfcValue) {
-            const rfcInputs = document.querySelectorAll('input[name="rfcv"]');
-            for (const input of rfcInputs) {
-                if (input.value) {
-                    rfcValue = input.value;
-                    console.log('[RFC Detection] Found RFC in input field:', rfcValue);
-                    break;
-                }
-            }
-        }
-
-        if (!rfcValue) {
-            const urlParams = new URLSearchParams(window.location.search);
-            rfcValue = urlParams.get('rfcv');
-            if (rfcValue) {
-                console.log('[RFC Detection] Found RFC in URL parameters:', rfcValue);
-            }
-        }
-
-        if (!rfcValue) {
-            const forms = document.querySelectorAll('form');
-            for (const form of forms) {
-                const rfcInput = form.querySelector('input[name="rfcv"]');
-                if (rfcInput && rfcInput.value) {
-                    rfcValue = rfcInput.value;
-                    console.log('[RFC Detection] Found RFC in form input:', rfcValue);
-                    break;
-                }
-            }
-        }
-        
-        if (!rfcValue) {
-            const elementsWithData = document.querySelectorAll('[data-rfcv]');
-            for (const el of elementsWithData) {
-                if (el.dataset.rfcv) {
-                    rfcValue = el.dataset.rfcv;
-                    console.log('[RFC Detection] Found RFC in data attribute:', rfcValue);
-                    break;
-                }
-            }
-        }
-        
-        return rfcValue;
-    }
-
     function initializeAll() {
         console.log('[Initialization] Starting script initialization');
         
@@ -5266,13 +5424,13 @@
         const carDropdown = document.getElementById('officialCarDropdown');
         
         if (!carId) {
-            displayOfficialRaceStatus('Please select a car first', 'error');
+            displayStatusMessage('Please select a car first', 'error', 'officialRaceStatus');
             return;
         }
         
         const presetName = prompt("Enter a name for this official race preset:");
         if (!presetName) {
-            displayOfficialRaceStatus('Preset name cannot be empty', 'error');
+            displayStatusMessage('Preset name cannot be empty', 'error', 'officialRaceStatus');
             return;
         }
 
@@ -5283,7 +5441,6 @@
             type: 'official',
             carId: carId,
             carName: carName,
-
         };
         
         let officialPresets = loadOfficialRacePresets();
@@ -5291,7 +5448,7 @@
         GM_setValue('official_race_presets', JSON.stringify(officialPresets));
 
         updateQuickLaunchButtons();
-        displayOfficialRaceStatus(`Official race preset "${presetName}" saved`, 'success');
+        displayStatusMessage(`Official race preset "${presetName}" saved`, 'success', 'officialRaceStatus');
     }
 
     function loadOfficialRacePresets() {
