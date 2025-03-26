@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Drug Alert
 // @namespace    http://tampermonkey.net/
-// @version      1.0.4
+// @version      1.0.5
 // @description  Alerts when no drug cooldown is active and allows taking drugs from any page
 // @author       GNSC4
 // @match        https://www.torn.com/*
@@ -330,42 +330,110 @@
         }, 3000);
     }
     
-    // Fetch drugs from items.html
+    // Fetch drugs from item.php page
     function fetchDrugs() {
         return new Promise((resolve, reject) => {
-            // Fetch the items.html page
-            fetch('https://www.torn.com/items.php?pfaction=category&category=Drugs')
+            // Fetch the item.php page
+            fetch('https://www.torn.com/item.php')
                 .then(response => response.text())
                 .then(html => {
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(html, 'text/html');
                     
-                    // Find all drug items
-                    const drugItems = [];
-                    const itemElements = doc.querySelectorAll('.items-cont .items-wrap .items-link');
+                    // Try to find and click the drugs tab if needed
+                    const drugsTab = doc.querySelector('a.drugs-category-icon, a[data-title="Drugs"], a[href="#drugs-items"]');
                     
-                    itemElements.forEach(item => {
-                        const nameElem = item.querySelector('.name');
-                        if (!nameElem) return;
-                        
-                        const name = nameElem.textContent.trim();
-                        // Extract item ID from the onclick attribute
-                        const onclick = item.getAttribute('onclick');
-                        if (onclick) {
-                            const match = onclick.match(/item_\((\d+),/);
-                            if (match && match[1]) {
-                                drugItems.push({
-                                    id: parseInt(match[1]),
-                                    name: name
-                                });
+                    // Find all drug items - try multiple possible selectors
+                    const drugItems = [];
+                    
+                    // Try multiple possible selectors for drug items
+                    const possibleItemSelectors = [
+                        // Modern UI
+                        '.drugs-items .item-cont',
+                        // Tab content
+                        '#drugs-items .item',
+                        // Generic item selectors that might contain drugs
+                        '.item-info-wrap[data-category="Drugs"]',
+                        '.items-wrap[data-items-type="Drugs"] .item',
+                        // Fallback to any elements that might be drug items
+                        '.item-cont[data-item]',
+                        '.item[data-item]'
+                    ];
+                    
+                    // Try each selector until we find items
+                    for (const selector of possibleItemSelectors) {
+                        const items = doc.querySelectorAll(selector);
+                        if (items.length > 0) {
+                            items.forEach(item => {
+                                // Try to extract name and ID using different methods
+                                let name = '';
+                                let id = null;
+                                
+                                // Try to get name from various elements
+                                const nameElem = item.querySelector('.name, .title, .item-name, .torn-item-name, [class*="itemName"]');
+                                if (nameElem) {
+                                    name = nameElem.textContent.trim();
+                                }
+                                
+                                // Try to get ID from data attributes
+                                if (item.dataset.item) {
+                                    id = parseInt(item.dataset.item);
+                                } else if (item.dataset.itemid) {
+                                    id = parseInt(item.dataset.itemid);
+                                } else {
+                                    // Try to extract from onclick attribute
+                                    const clickableElem = item.querySelector('[onclick*="item_"]') || item;
+                                    const onclick = clickableElem.getAttribute('onclick');
+                                    if (onclick) {
+                                        const match = onclick.match(/item_\((\d+),/);
+                                        if (match && match[1]) {
+                                            id = parseInt(match[1]);
+                                        }
+                                    }
+                                }
+                                
+                                // Check if this is actually a drug (keyword check)
+                                const isDrug = name && (
+                                    name.includes('Xanax') || 
+                                    name.includes('Cannabis') || 
+                                    name.includes('Ecstasy') || 
+                                    name.includes('Ketamine') || 
+                                    name.includes('LSD') || 
+                                    name.includes('Opium') || 
+                                    name.includes('PCP') || 
+                                    name.includes('Shrooms') || 
+                                    name.includes('Speed') || 
+                                    name.includes('Vicodin') ||
+                                    // General category indicator
+                                    item.classList.contains('drug') ||
+                                    item.closest('[data-category="Drugs"]') !== null
+                                );
+                                
+                                if (name && id && isDrug) {
+                                    drugItems.push({
+                                        id: id,
+                                        name: name
+                                    });
+                                }
+                            });
+                            
+                            // If we found drug items, stop searching
+                            if (drugItems.length > 0) {
+                                break;
                             }
                         }
-                    });
+                    }
                     
-                    if (drugItems.length > 0) {
-                        resolve(drugItems);
+                    // Remove duplicates based on ID
+                    const uniqueDrugs = Array.from(
+                        new Map(drugItems.map(item => [item.id, item])).values()
+                    );
+                    
+                    if (uniqueDrugs.length > 0) {
+                        resolve(uniqueDrugs);
                     } else {
                         // Fallback if no drugs found
+                        console.log('No drugs found in page, using fallback drug list');
                         resolve(fallbackDrugs);
                     }
                 })
