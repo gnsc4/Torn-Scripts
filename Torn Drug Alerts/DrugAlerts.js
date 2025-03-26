@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Drug Alert
 // @namespace    http://tampermonkey.net/
-// @version      1.0.2
+// @version      1.0.3
 // @description  Alerts when no drug cooldown is active and allows taking drugs from any page
 // @author       GNSC4
 // @match        https://www.torn.com/*
@@ -12,7 +12,7 @@
 
 (function() {
     'use strict';
-
+    
     // Add CSS
     GM_addStyle(`
         .drug-alert {
@@ -49,7 +49,7 @@
             border-bottom: 1px solid #444;
             padding-bottom: 10px;
         }
-
+        
         .drug-search {
             width: 100%;
             padding: 8px;
@@ -59,7 +59,7 @@
             color: white;
             border-radius: 3px;
         }
-
+        
         .drug-search::placeholder {
             color: #aaa;
         }
@@ -83,7 +83,7 @@
         .drug-item:hover {
             background-color: #444;
         }
-
+        
         .drug-notification {
             position: fixed;
             bottom: 70px;
@@ -109,7 +109,7 @@
             background-color: #2196F3;
         }
     `);
-
+    
     // Fallback drug list in case fetch fails
     const fallbackDrugs = [
         { id: 196, name: "Xanax" },
@@ -122,25 +122,51 @@
         { id: 203, name: "PCP" },
         { id: 204, name: "Cannabis" }
     ];
-
+    
     let alertElements = null;
     let drugList = []; // Will hold our drugs
-
+    
     // Check if drug cooldown is active
     function hasDrugCooldown() {
-        // Look for any of the drug cooldown icons by ID
-        const drugIcons = [
+        // Look for drug cooldown icons by both ID and class
+        
+        // Check for ID-based icons (older format)
+        const idBasedIcons = [
             document.getElementById('icon49'), // Drug cooldown (0-10m)
             document.getElementById('icon50'), // Drug cooldown (10-60m)
             document.getElementById('icon51'), // Drug cooldown (1-2hr)
             document.getElementById('icon52'), // Drug cooldown (2-5hr)
             document.getElementById('icon53')  // Drug cooldown (5hr+)
         ];
-
-        // Return true if any of the icons are found
-        return drugIcons.some(icon => icon !== null);
+        
+        // Check for class-based icons (newer format)
+        const classBasedIcons = [
+            document.querySelector('.icon49___'), // Using partial class name match
+            document.querySelector('.icon50___'),
+            document.querySelector('.icon51___'),
+            document.querySelector('.icon52___'),
+            document.querySelector('.icon53___')
+        ];
+        
+        // More specific selectors for the new format
+        const specificClassIcons = [
+            document.querySelector('[class*="icon49_"]'), // Using attribute selector with wildcard
+            document.querySelector('[class*="icon50_"]'),
+            document.querySelector('[class*="icon51_"]'),
+            document.querySelector('[class*="icon52_"]'),
+            document.querySelector('[class*="icon53_"]')
+        ];
+        
+        // Also check for elements with aria-labels that mention drug cooldown
+        const ariaLabelIcons = document.querySelector('a[aria-label*="Drug Cooldown"]');
+        
+        // Return true if any of the checks find a drug icon
+        return idBasedIcons.some(icon => icon !== null) || 
+               classBasedIcons.some(icon => icon !== null) ||
+               specificClassIcons.some(icon => icon !== null) ||
+               ariaLabelIcons !== null;
     }
-
+    
     // Find header element on any page
     function findHeader() {
         // Try multiple possible header selectors that exist on various pages
@@ -158,7 +184,7 @@
             document.querySelector('.mainStatsContainer___TXO7F'), // City page
             document.querySelector('div[role="heading"]') // Many modern pages
         ];
-
+        
         // Return the first found header
         return possibleHeaders.find(header => header !== null);
     }
@@ -167,7 +193,7 @@
     function createFixedHeader() {
         // Check if we already created a fixed header
         let fixedHeader = document.getElementById('torn-drug-fixed-header');
-
+        
         if (!fixedHeader) {
             fixedHeader = document.createElement('div');
             fixedHeader.id = 'torn-drug-fixed-header';
@@ -182,7 +208,7 @@
             fixedHeader.style.alignItems = 'center';
             document.body.appendChild(fixedHeader);
         }
-
+        
         return fixedHeader;
     }
 
@@ -190,20 +216,20 @@
     function createAlert(drugs) {
         // Find the header element
         let header = findHeader();
-
+        
         // If no standard header found, create our fixed header
         if (!header) {
             header = createFixedHeader();
         }
-
+        
         // Create alert element
         const alert = document.createElement('div');
         alert.className = 'drug-alert';
         alert.textContent = 'No Drugs';
-
+        
         // Insert alert into header
         header.appendChild(alert);
-
+        
         // Create GUI
         const gui = document.createElement('div');
         gui.className = 'drug-gui';
@@ -213,13 +239,13 @@
             <div class="drug-list"></div>
         `;
         document.body.appendChild(gui);
-
+        
         // Add search functionality
         const searchInput = gui.querySelector('.drug-search');
         searchInput.addEventListener('input', (e) => {
             const searchTerm = e.target.value.toLowerCase();
             const drugItems = gui.querySelectorAll('.drug-item');
-
+            
             drugItems.forEach(item => {
                 const name = item.textContent.toLowerCase();
                 if (name.includes(searchTerm)) {
@@ -229,7 +255,7 @@
                 }
             });
         });
-
+        
         // Populate drug list
         const drugListElement = gui.querySelector('.drug-list');
         drugs.forEach(drug => {
@@ -238,28 +264,28 @@
             drugItem.textContent = drug.name;
             drugItem.dataset.id = drug.id;
             drugListElement.appendChild(drugItem);
-
+            
             // Add click handler
             drugItem.addEventListener('click', () => {
                 useDrug(drug.id, drug.name);
             });
         });
-
+        
         // Toggle GUI on alert click
         alert.addEventListener('click', () => {
             gui.style.display = gui.style.display === 'none' || gui.style.display === '' ? 'block' : 'none';
         });
-
+        
         // Close GUI when clicking elsewhere
         document.addEventListener('click', (e) => {
             if (!gui.contains(e.target) && !alert.contains(e.target) && gui.style.display === 'block') {
                 gui.style.display = 'none';
             }
         });
-
+        
         return { alert, gui };
     }
-
+    
     // Function to use a drug
     function useDrug(id, name) {
         // Using fetch to call the Torn API
@@ -288,21 +314,21 @@
             console.error('Error using drug:', error);
         });
     }
-
+    
     // Function to show notifications
     function showNotification(message, type = 'info') {
         const notification = document.createElement('div');
         notification.className = `drug-notification ${type}`;
         notification.textContent = message;
         document.body.appendChild(notification);
-
+        
         // Remove after 3 seconds
         setTimeout(() => {
             notification.style.opacity = '0';
             setTimeout(() => notification.remove(), 500);
         }, 3000);
     }
-
+    
     // Fetch drugs from items.html
     function fetchDrugs() {
         return new Promise((resolve, reject) => {
@@ -312,15 +338,15 @@
                 .then(html => {
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(html, 'text/html');
-
+                    
                     // Find all drug items
                     const drugItems = [];
                     const itemElements = doc.querySelectorAll('.items-cont .items-wrap .items-link');
-
+                    
                     itemElements.forEach(item => {
                         const nameElem = item.querySelector('.name');
                         if (!nameElem) return;
-
+                        
                         const name = nameElem.textContent.trim();
                         // Extract item ID from the onclick attribute
                         const onclick = item.getAttribute('onclick');
@@ -334,7 +360,7 @@
                             }
                         }
                     });
-
+                    
                     if (drugItems.length > 0) {
                         resolve(drugItems);
                     } else {
@@ -349,11 +375,11 @@
                 });
         });
     }
-
+    
     // Check for drug cooldown and manage alert
     function checkDrugCooldown() {
         const hasCooldown = hasDrugCooldown();
-
+        
         // If no cooldown and alert doesn't exist, create it
         if (!hasCooldown && !alertElements) {
             alertElements = createAlert(drugList);
@@ -365,14 +391,14 @@
             alertElements = null;
         }
     }
-
+    
     // Initialize the script
     fetchDrugs().then(fetchedDrugs => {
         drugList = fetchedDrugs;
-
+        
         // Initial check
         setTimeout(checkDrugCooldown, 2000); // Wait for page to fully load
-
+        
         // Set up a mutation observer to detect when the header might appear/change
         const observer = new MutationObserver((mutations) => {
             // If we already have alert elements but the header changed, we might need to recreate
@@ -386,11 +412,11 @@
                     newAlert.className = 'drug-alert';
                     newAlert.textContent = 'No Drugs';
                     header.appendChild(newAlert);
-
+                    
                     // Update reference and event listener
                     alertElements.alert = newAlert;
                     newAlert.addEventListener('click', () => {
-                        alertElements.gui.style.display = alertElements.gui.style.display === 'none' ||
+                        alertElements.gui.style.display = alertElements.gui.style.display === 'none' || 
                                                         alertElements.gui.style.display === '' ? 'block' : 'none';
                     });
                 }
@@ -399,13 +425,13 @@
                 checkDrugCooldown();
             }
         });
-
+        
         // Observe the entire body for changes to catch header appearances
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true
+        observer.observe(document.body, { 
+            childList: true, 
+            subtree: true 
         });
-
+        
         // Periodic check
         setInterval(checkDrugCooldown, 60000);
     });
