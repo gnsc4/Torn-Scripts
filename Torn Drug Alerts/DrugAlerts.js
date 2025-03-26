@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Drug Alert
 // @namespace    http://tampermonkey.net/
-// @version      1.0.3
+// @version      1.0.4
 // @description  Alerts when no drug cooldown is active and allows taking drugs from any page
 // @author       GNSC4
 // @match        https://www.torn.com/*
@@ -112,7 +112,7 @@
     
     // Fallback drug list in case fetch fails
     const fallbackDrugs = [
-        { id: 196, name: "Xanax" },
+        { id: 206, name: "Xanax" },
         { id: 197, name: "Ecstasy" },
         { id: 198, name: "Ketamine" },
         { id: 199, name: "LSD" },
@@ -120,7 +120,8 @@
         { id: 201, name: "Shrooms" },
         { id: 202, name: "Speed" },
         { id: 203, name: "PCP" },
-        { id: 204, name: "Cannabis" }
+        { id: 204, name: "Cannabis" },
+        { id: 205, name: "Vicodin" }
     ];
     
     let alertElements = null;
