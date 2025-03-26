@@ -1,0 +1,9 @@
+:root .dark-mode {
+    --cache-item-background: transparent linear-gradient(180deg, #333333 0%, #404040 100%) 0% 0% no-repeat padding-box;
+    --cache-item-box-shadow: inset 0px 2px 4px #00000040;
+    --cache-item-border: 1px solid #5B5B5B;
+    --single-unique-item-background: transparent linear-gradient(0deg, #555555 0%, #333333 100%) 0% 0% no-repeat padding-box;
+    --single-unique-item-box-shadow: inset 0px 2px 4px #00000040;
+    --single-unique-item-border: 1px solid #5B5B5B;
+    --single-unique-item-border-radius: 5px;
+}

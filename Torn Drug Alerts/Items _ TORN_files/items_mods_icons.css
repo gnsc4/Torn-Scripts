@@ -1,0 +1,383 @@
+.d [class*=mod-icon-large-] {
+    background: url("/images/v2/items/mods/weapon_mods_130x80.png") no-repeat;
+    display: inline-block;
+    width: 130px;
+    height: 80px;
+}
+
+.d .mod-icon-large-reflex-sight {
+    background-position: 0 0;
+}
+
+.d .mod-icon-large-holographic-sight {
+    background-position: -130px 0;
+}
+
+.d .mod-icon-large-acog-sight {
+    background-position: -260px 0;
+}
+
+.d .mod-icon-large-thermal-sight {
+    background-position: -390px 0;
+}
+
+.d .mod-icon-large-1mw-laser {
+    background-position: 0 -80px;
+}
+
+.d .mod-icon-large-5mw-laser {
+    background-position: -130px -80px;
+}
+
+.d .mod-icon-large-30mw-laser {
+    background-position: -260px -80px;
+}
+
+.d .mod-icon-large-100mw-laser {
+    background-position: -390px -80px;
+}
+
+.d .mod-icon-large-small-suppressor {
+    background-position: 0 -160px;
+}
+
+.d .mod-icon-large-standard-suppressor {
+    background-position: -130px -160px;
+}
+
+.d .mod-icon-large-large-suppressor {
+    background-position: -260px -160px;
+}
+
+.d .mod-icon-large-extended-mags {
+    background-position: 0 -240px;
+}
+
+.d .mod-icon-large-high-capacity-mags {
+    background-position: -130px -240px;
+}
+
+.d .mod-icon-large-extra-clip-x1 {
+    background-position: 0 -320px;
+}
+
+.d .mod-icon-large-extra-clip-x2 {
+    background-position: -130px -320px;
+}
+
+.d .mod-icon-large-adjustable-trigger {
+    background-position: 0 -400px;
+}
+
+.d .mod-icon-large-hair-trigger {
+    background-position: -130px -400px;
+}
+
+.d .mod-icon-large-bipod {
+    background-position: 0 -480px;
+}
+
+.d .mod-icon-large-tripod {
+    background-position: -130px -480px;
+}
+
+.d .mod-icon-large-custom-grip {
+    background-position: 0 -560px;
+}
+
+.d .mod-icon-large-skeet-choke {
+    background-position: 0 -640px;
+}
+
+.d .mod-icon-large-improved-choke {
+    background-position: -130px -640px;
+}
+
+.d .mod-icon-large-full-choke {
+    background-position: -260px -640px;
+}
+
+.d .mod-icon-large-recoil-pad {
+    background-position: 0 -720px;
+}
+
+.d .mod-icon-large-standard-break {
+    background-position: 0 -800px;
+}
+
+.d .mod-icon-large-heavy-duty-break {
+    background-position: -130px -800px;
+}
+
+.d .mod-icon-large-tactical-break {
+    background-position: -260px -800px;
+}
+
+.d .mod-icon-large-small-light {
+    background-position: 0 -880px;
+}
+
+.d .mod-icon-large-precision-light {
+    background-position: -130px -880px;
+}
+
+.d .mod-icon-large-tactical-illuminator {
+    background-position: -260px -880px;
+}
+
+.d [class*=bg-mod-icon-large-] {
+    background: url("/images/v2/items/mods/missions_mod_bg.png") no-repeat;
+    display: inline-block;
+    width: 130px;
+    height: 67px;
+    cursor: pointer;
+}
+
+.d .bg-mod-icon-large-reflex-sight {
+    background-position: 0 0;
+}
+
+.d .bg-mod-icon-large-holographic-sight {
+    background-position: -130px 0;
+}
+
+.d .bg-mod-icon-large-acog-sight {
+    background-position: -260px 0;
+}
+
+.d .bg-mod-icon-large-thermal-sight {
+    background-position: -390px 0;
+}
+
+.d .bg-mod-icon-large-1mw-laser {
+    background-position: 0 -80px;
+}
+
+.d .bg-mod-icon-large-5mw-laser {
+    background-position: -130px -70px;
+}
+
+.d .bg-mod-icon-large-30mw-laser {
+    background-position: -260px -70px;
+}
+
+.d .bg-mod-icon-large-100mw-laser {
+    background-position: -390px -70px;
+}
+
+.d .bg-mod-icon-large-small-suppressor {
+    background-position: 0 -140px;
+}
+
+.d .bg-mod-icon-large-standard-suppressor {
+    background-position: -130px -140px;
+}
+
+.d .bg-mod-icon-large-large-suppressor {
+    background-position: -260px -140px;
+}
+
+.d .bg-mod-icon-large-extended-mags {
+    background-position: 0 -210px;
+}
+
+.d .bg-mod-icon-large-high-capacity-mags {
+    background-position: -130px -210px;
+}
+
+.d .bg-mod-icon-large-extra-clip-x1 {
+    background-position: 0 -280px;
+}
+
+.d .bg-mod-icon-large-extra-clip-x2 {
+    background-position: -130px -280px;
+}
+
+.d .bg-mod-icon-large-adjustable-trigger {
+    background-position: 0 -350px;
+}
+
+.d .bg-mod-icon-large-hair-trigger {
+    background-position: -130px -350px;
+}
+
+.d .bg-mod-icon-large-bipod {
+    background-position: 0 -420px;
+}
+
+.d .bg-mod-icon-large-tripod {
+    background-position: -130px -420px;
+}
+
+.d .bg-mod-icon-large-custom-grip {
+    background-position: 0 -490px;
+}
+
+.d .bg-mod-icon-large-skeet-choke {
+    background-position: 0 -560px;
+}
+
+.d .bg-mod-icon-large-improved-choke {
+    background-position: -130px -560px;
+}
+
+.d .bg-mod-icon-large-full-choke {
+    background-position: -260px -560px;
+}
+
+.d .bg-mod-icon-large-recoil-pad {
+    background-position: 0 -630px;
+}
+
+.d .bg-mod-icon-large-standard-break {
+    background-position: 0 -700px;
+}
+
+.d .bg-mod-icon-large-heavy-duty-break {
+    background-position: -130px -700px;
+}
+
+.d .bg-mod-icon-large-tactical-break {
+    background-position: -260px -700px;
+}
+
+.d .bg-mod-icon-large-small-light {
+    background-position: 0 -770px;
+}
+
+.d .bg-mod-icon-large-precision-light {
+    background-position: -130px -770px;
+}
+
+.d .bg-mod-icon-large-tactical-illuminator {
+    background-position: -260px -770px;
+}
+
+
+.d [class*=mod-icon-small-] {
+    background: url("/images/v2/items/mods/weapon_mods_65x50.png") no-repeat;
+    display: inline-block;
+    width: 65px;
+    height: 50px;
+}
+
+.d .mod-icon-small-reflex-sight {
+    background-position: 0 0;
+}
+
+.d .mod-icon-small-holographic-sight {
+    background-position: -65px 0;
+}
+
+.d .mod-icon-small-acog-sight {
+    background-position: -130px 0;
+}
+
+.d .mod-icon-small-thermal-sight {
+    background-position: -195px 0;
+}
+
+.d .mod-icon-small-1mw-laser {
+    background-position: 0 -50px;
+}
+
+.d .mod-icon-small-5mw-laser {
+    background-position: -65px -50px;
+}
+
+.d .mod-icon-small-30mw-laser {
+    background-position: -130px -50px;
+}
+
+.d .mod-icon-small-100mw-laser {
+    background-position: -195px -50px;
+}
+
+.d .mod-icon-small-small-suppressor {
+    background-position: 0 -100px;
+}
+
+.d .mod-icon-small-standard-suppressor {
+    background-position: -65px -100px;
+}
+
+.d .mod-icon-small-large-suppressor {
+    background-position: -130px -100px;
+}
+
+.d .mod-icon-small-extended-mags {
+    background-position: 0 -150px;
+}
+
+.d .mod-icon-small-high-capacity-mags {
+    background-position: -65px -150px;
+}
+
+.d .mod-icon-small-extra-clip-x1 {
+    background-position: 0 -200px;
+}
+
+.d .mod-icon-small-extra-clip-x2 {
+    background-position: -65px -200px;
+}
+
+.d .mod-icon-small-adjustable-trigger {
+    background-position: 0 -250px;
+}
+
+.d .mod-icon-small-hair-trigger {
+    background-position: -65px -250px;
+}
+
+.d .mod-icon-small-bipod {
+    background-position: 0 -300px;
+}
+
+.d .mod-icon-small-tripod {
+    background-position: -65px -300px;
+}
+
+.d .mod-icon-small-custom-grip {
+    background-position: 0 -350px;
+}
+
+.d .mod-icon-small-skeet-choke {
+    background-position: 0 -400px;
+}
+
+.d .mod-icon-small-improved-choke {
+    background-position: -65px -400px;
+}
+
+.d .mod-icon-small-full-choke {
+    background-position: -130px -400px;
+}
+
+.d .mod-icon-small-recoil-pad {
+    background-position: 0 -450px;
+}
+
+.d .mod-icon-small-standard-break {
+    background-position: 0 -500px;
+}
+
+.d .mod-icon-small-heavy-duty-break {
+    background-position: -65px -500px;
+}
+
+.d .mod-icon-small-tactical-break {
+    background-position: -130px -500px;
+}
+
+.d .mod-icon-small-small-light {
+    background-position: 0 -550px;
+}
+
+.d .mod-icon-small-precision-light {
+    background-position: -65px -550px;
+}
+
+.d .mod-icon-small-tactical-illuminator {
+    background-position: -130px -550px;
+}
+

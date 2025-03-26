@@ -1,0 +1,179 @@
+$.ajaxSetup({ cache: true })
+
+var $contentWrapper = null;
+
+$(function () {
+    $contentWrapper = $('.content-wrapper');
+});
+
+function checkPageStatus(result) {
+    try {
+        if (typeof result == 'string') {
+            var data = JSON.parse(result);
+        }
+        else {
+            var data = result;
+        }
+        if (data.redirect != undefined) {
+            if (data.redirect === true) {
+                location.href = location.protocol + '//' + location.hostname + '/' + data.url;
+            } else if (data.redirect === false) {
+                $contentWrapper.html(data.content);
+            }
+            return false;
+        } else
+            return true;
+    } catch (e) {
+        if (result == 'Wrong RFC. ') {
+            $contentWrapper.html(result);
+            return false;
+        }
+        return true;
+    }
+}
+
+function getRFC() {
+    var rfc = $.cookie('rfc_v');
+    if (!rfc) {
+        var cookies = document.cookie.split('; ');
+        for (var i in cookies) {
+            var cookie = cookies[i].split('=');
+            if (cookie[0] == 'rfc_v') {
+                return cookie[1];
+            }
+        }
+    }
+    return rfc;
+}
+
+function addRFC(url) {
+    var url = url || '';
+    url += ((url.split('?').length > 1) ? '&' : '?') + 'rfcv=' + getRFC();
+    return url;
+}
+
+function informationMessageTemplate(elementAfter, isTopDelimiterRequired, isBottomDelimiterRequired, color) {
+    var infoMsg = $('.info-msg-cont');
+    var exceptionsInfoMsg = $('.travel-home-content .info-msg-cont');
+    var infoMsgCount = (infoMsg) ? infoMsg.length : 0;
+    var exceptionsInfoMsgCount = (exceptionsInfoMsg) ? exceptionsInfoMsg.length : 0;
+
+    if (infoMsgCount === 0 || ((infoMsgCount - exceptionsInfoMsgCount) == 0)) {
+        if (color === undefined) {
+            color = "";
+        }
+        var delimiter = '<hr class="delimiter-999 m-top10 m-bottom10">';
+        var htmlTemplate = '<div class="info-msg-cont ' + color + ' border-round">' +
+          '<div class="info-msg border-round">' +
+          '<i class="info-icon"></i>' +
+          '<div class="delimiter">' +
+          '<div class="msg right-round" role="alert" aria-live="polite">' +
+          '<span class="ajax-preloader"></span>' +
+          '</div>' +
+          '</div>' +
+          '</div>' +
+          '</div>';
+        if (isTopDelimiterRequired) {
+            htmlTemplate = delimiter + htmlTemplate;
+        }
+        if (isBottomDelimiterRequired) {
+            htmlTemplate += delimiter;
+        }
+        elementAfter.after(htmlTemplate);
+    }
+}
+
+function informationMessageTemplateIn(elementIn, isTopDelimiterRequired, isBottomDelimiterRequired, color) {
+    var info_msg = elementIn.find('.info-msg-cont');
+    if (info_msg.length === 0) {
+        if (color === undefined) {
+            color = "";
+        }
+        var delimiter = '<hr class="delimiter-999 m-top10 m-bottom10">';
+        var htmlTemplate = '<div class="info-msg-cont ' + color + ' border-round">' +
+          '<div class="info-msg border-round">' +
+          '<i class="info-icon"></i>' +
+          '<div class="delimiter">' +
+          '<div class="msg right-round" role="alert" aria-live="polite">' +
+          '<span class="ajax-preloader"></span>' +
+          '</div>' +
+          '</div>' +
+          '</div>' +
+          '</div>';
+        if (isTopDelimiterRequired) {
+            htmlTemplate = delimiter + htmlTemplate;
+        }
+        if (isBottomDelimiterRequired) {
+            htmlTemplate += delimiter;
+        }
+        elementIn.append(htmlTemplate);
+    } else {
+        if (color)
+            info_msg.removeClass("green red blue").addClass(color);
+    }
+}
+
+function onAjaxError(xhr, ajaxOptions, thrownError) {
+    if (xhr.status > 0) {
+        var o = $('.content-title');
+        if (o.length) {
+            o.nextAll().remove();
+        } else {
+            o = $contentWrapper.html('');
+        }
+
+        if (o.length) {
+            informationMessageTemplate(o, false, false, 'red common-action-error');
+            o.nextAll('.common-action-error').find('.msg').html(xhr.status + ' ' + thrownError);
+        }
+        setTimeout(function () {
+            location.reload();
+        }, 5000);
+    }
+}
+
+function getAction(obj) {
+    obj.success = obj.success || function () {
+    };
+    obj.error = obj.error || onAjaxError;
+    obj.before = obj.before || function () {
+    };
+    obj.complete = obj.complete || function () {
+    };
+
+    var url = obj.action || (window.location.protocol + '//' + window.location.hostname + location.pathname);
+
+    var options = {
+        url: addRFC(url),
+        type: obj.type || "get",
+        data: obj.data || {},
+        async: typeof obj.async !== 'undefined' ? obj.async : true,
+        beforeSend: function (xhr) {
+            obj.before(xhr);
+        },
+        success: function (msg) {
+            if (!checkPageStatus(msg))
+                return;
+
+            obj.success(msg);
+        },
+        error: function (xhr, ajaxOptions, thrownError) {
+            if (typeof (xhr.error) === "function") {
+                obj.error(xhr, ajaxOptions, thrownError);
+            } else {
+                informationMessageTemplateIn(xhr.error, true, false, "red");
+                $(".info-msg .msg").text("Request error. Please try again.");
+            }
+        },
+        complete: function (data) {
+            obj.complete(data);
+        }
+    };
+
+    if (obj.file) {
+        options.cache = false;
+        options.contentType = false;
+        options.processData = false;
+    }
+    return $.ajax(options);
+}

@@ -1,0 +1,60 @@
+/* Start main background styles */
+.d.dark-mode .custom-bg-desktop,
+.d.dark-mode .custom-bg-mobile {
+    opacity: 30%;
+    filter: invert(1);
+}
+
+.d.dark-mode[data-layout="jail"] .backdrops-container:before,
+.d.dark-mode[data-layout="hospital"] .backdrops-container:before,
+.d.dark-mode[data-abroad="true"] .backdrops-container:before {
+    display: none;
+}
+/* End main background styles */
+
+/* Start Top Header styles */
+.d.dark-mode[data-layout="jail"] .header .header-wrapper-top {
+    background: linear-gradient(180deg, #575748 0%, #131304 100%);
+}
+
+.d.dark-mode[data-layout="jail"] .header .header-wrapper-bottom {
+    background: #242415;
+}
+
+.d.dark-mode[data-layout="jail"] .header .ac-main .ac-search.ui-autocomplete-input,
+.d.dark-mode[data-layout="jail"] .header #search-type-wrapper > .select-wrapper.search.search-new-layout {
+    border-top-color: #393831;
+}
+/* End Top Header styles */
+
+/* Start pagination styles */
+.d.dark-mode a.disable .pagination-right:before,
+.d.dark-mode a.disable .pagination-left:before {
+    border-left-color: #000;
+}
+
+.d.dark-mode a.disable .pagination-left:after,
+.d.dark-mode a.disable .pagination-right:after {
+    border-right-color: #000;
+}
+
+.d.dark-mode .pagination .page-number.active,
+.d.dark-mode .pagination .page-number:hover {
+    border-left-color: transparent;
+    border-right-color: transparent;
+}
+
+.d.dark-mode .pagination .page-number.active {
+    --default-color: #fff;
+}
+/* End pagination styles */
+
+.d.dark-mode .content-title a,
+.d.dark-mode .content-title .tutorial-switcher {
+    text-shadow: none;
+}
+
+.d.dark-mode .cont-black,
+.d.dark-mode .cont-black10 {
+    border-bottom-color: transparent;
+}

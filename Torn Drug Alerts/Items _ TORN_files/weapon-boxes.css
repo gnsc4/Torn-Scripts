@@ -1,0 +1,174 @@
+.d .w-b-container {
+    color: #999;
+	color: var(--default-gray-9-color);
+}
+
+.d .player-weapon {
+    margin: -2px -1px 0 -3px;
+}
+
+.d .w-b-container {
+    position: absolute;
+    top: 2px;
+    left: 6px;
+    width: 151px;
+}
+
+.d .w-b-container li {
+    height: 21px;
+}
+
+.d .w-b-top {
+    padding: 0 4px;
+}
+
+.d .w-b-top li,
+.d .w-b-bottom li {
+    float: left;
+}
+
+.d .w-b-top li {
+    width: 17px;
+    text-align: center;
+}
+
+.d .weapon-box {
+    text-decoration: none;
+}
+
+.d .weapon-box .w-b-bottom li {
+    margin-top: 4px;
+}
+
+.d .w-b-bottom li {
+    width: 42px;
+}
+
+.d .w-b-top .central,
+.d .w-b-bottom .central {
+    width: 67px;
+    text-align: center;
+    font-size: 11px;
+}
+
+.d .w-b-top .central {
+    color: #333;
+    color: var(--default-color);
+    margin-top: 3px;
+    width: 74px;
+}
+
+.d .w-b-bottom .central {
+    font-size: 11px;
+    color: #666;
+    color: var(--default-gray-6-color);
+}
+
+.d .w-b-top .title-temporary {
+    margin-right: 41px;
+}
+
+.d .w-b-container .weapon {
+    padding: 4px 0;
+    height: 50px;
+    text-align: center;
+}
+
+.d .w-b-top li i {
+    margin-top: 5px;
+}
+
+.d .w-b-bottom li i {
+    vertical-align: text-top;
+    margin: 0 2px 0 0;
+}
+
+.d .w-b-bottom li {
+    line-height: 16px;
+    font-size: 11px;
+}
+
+.d .active .w-b-bottom .central,
+.d .active .w-b-top .central {
+    text-shadow: 0 1px 2px #660000;
+    color: #FFF;
+}
+
+.d .active .w-b-container {
+    color: #660000;
+}
+
+.d .weapon-box {
+    top: 0;
+    right: 0;
+    position: relative;
+    width: 163px;
+    display: block;
+}
+
+.d .enemy .weapon-box {
+    cursor: default;
+}
+
+.d .weapon-box-l,
+.d .weapon-box-c,
+.d .weapon-box-r {
+    margin-bottom: -3px;
+}
+
+.d .weapon-box-l,
+.d .weapon-box-c,
+.d .weapon-box-r {
+    height: 104px;
+}
+
+.d .weapon-box-l,
+.d .weapon-box-r {
+    width: 81px;
+}
+
+.d .weapon-box-c {
+    width: 1px;
+}
+
+.d .disable .weapon-box:hover .weapon-box-l,
+.d .weapon-box-l {
+    background: url(/images/v2/attack/weapon_box/weaponbox_left.png) left top no-repeat;
+}
+
+.d .disable .weapon-box:hover .weapon-box-c,
+.d .weapon-box-c {
+    background: url(/images/v2/attack/weapon_box/weaponbox_middle.png) left top repeat-x;
+}
+
+.d .disable .weapon-box:hover .weapon-box-r,
+.d .weapon-box-r {
+    background: url(/images/v2/attack/weapon_box/weaponbox_right.png) right top no-repeat;
+}
+
+.d .weapon-box:hover .weapon-box-l {
+    background: url(/images/v2/attack/weapon_box/weaponbox_over_left.png) left top no-repeat;
+}
+
+.d .weapon-box:hover .weapon-box-c {
+    background: url(/images/v2/attack/weapon_box/weaponbox_over_middle.png) left top repeat-x;
+}
+
+.d .weapon-box:hover .weapon-box-r {
+    background: url(/images/v2/attack/weapon_box/weaponbox_over_right.png) right top no-repeat;
+}
+
+.d .active .weapon-box:hover .weapon-box-l,
+.d .active .weapon-box-l {
+    background: url(/images/v2/attack/weapon_box/weaponbox_enemy_left.png) left top no-repeat;
+}
+
+.d .active .weapon-box:hover .weapon-box-c,
+.d .active .weapon-box-c {
+    background: url(/images/v2/attack/weapon_box/weaponbox_enemy_middle.png) left top repeat-x;
+}
+
+.d .active .weapon-box:hover .weapon-box-r,
+.d .active .weapon-box-r {
+    background: url(/images/v2/attack/weapon_box/weaponbox_enemy_right.png) right top no-repeat;
+}

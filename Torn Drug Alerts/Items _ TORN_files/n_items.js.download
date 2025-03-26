@@ -1,0 +1,2775 @@
+function loadEquippedItems() {
+    return getAction({
+        type: "post",
+        data: {
+            step: 'equippedItems'
+        },
+        success: function (str) {
+            var w = $('.equipped-items-wrap');
+            w.html(str);
+        }
+    });
+}
+
+/* global jQuery, $ */
+jQuery(function () {
+
+    var $bookTimer = $('.book-timer');
+    $bookTimer.countdown({
+        until: $bookTimer.attr('data-time'),
+        padZeroes: true,
+        format: 'DHMS',
+        layout: '{dnn} days, {hnn} hours, {mnn} minutes and {snn} seconds',
+    });
+
+    var timer = $(".item-count-down");
+    if (timer.length) {
+        var times = timer.attr("data-time");
+        timer.countdown({
+            until: times,
+            layout: "{hnn}:{mnn}:{snn}",
+            padZeroes: true,
+            compact: true,
+            format: "HMS",
+            onExpiry: function () {
+                refreshTopOfSidebar();
+            }
+        });
+    }
+
+    var hasOwn = {}.hasOwnProperty;
+
+    const loadouts = window.loadouts;
+
+    function classNames() {
+        var classes = [];
+
+        for (var i = 0; i < arguments.length; i++) {
+            var arg = arguments[i];
+            if (!arg) continue;
+
+            var argType = typeof arg;
+
+            if (argType === 'string' || argType === 'number') {
+                classes.push(arg);
+            } else if (Array.isArray(arg) && arg.length) {
+                var inner = classNames.apply(null, arg);
+                if (inner) {
+                    classes.push(inner);
+                }
+            } else if (argType === 'object') {
+                for (var key in arg) {
+                    if (hasOwn.call(arg, key) && arg[key]) {
+                        classes.push(key);
+                    }
+                }
+            }
+        }
+
+        return classes.join(' ');
+    }
+
+    function isAllItemsTab(attr) {
+        return attr === 'all-items'
+    }
+
+    function isSearchItemsTab(attr) {
+        return attr === 'items-search-tab'
+    }
+
+    function checkTabItemsAmount(list) {
+        var childrens = list.children('li:not(.clear)');
+        if (!childrens.length) {
+            var listId = list.attr('id');
+            list.parent().find('.ui-tabs-nav>li[aria-controls=' + listId + ']').addClass('ui-state-disabled');
+            list.prepend('<li class="last-row p10">No items in this category</li>');
+        }
+    }
+
+    var BONUS_BLANK_ICON_CLASS = 'bonus-attachment-blank-bonus-25';
+    window.debagItemMode = false;
+    var itemPageLink = 'item.php';
+
+    var contentWrapper = $('.main-items-cont-wrap');
+
+    var accordionBlockSelectors = ('.image-wrap img');
+    var itemsWrap = $('.items-wrap');
+
+    var isDesktop = false;
+    var isTablet = false;
+    var isMobile = false;
+    var isInitAccordion = false;
+    var isThumbnailsMode = false;
+
+    function initAccordion(itemsWrap, forceInit) {
+        if (getBrowserWidth() <= getMaxTabletSize() && (!isInitAccordion || forceInit)) {
+            initializeItemsWrapAccordion($('.current-cont:visible'));
+            initializeItemsWrapAccordion(itemsWrap);
+            isInitAccordion = true;
+        }
+        if (getBrowserWidth() > getMaxTabletSize() && isInitAccordion) {
+            destroyAccordion(itemsWrap);
+            destroyInnerAccordions();
+            isInitAccordion = false;
+        }
+    }
+
+    function destroyAccordion(itemsWrap) {
+        try {
+            if (itemsWrap.hasClass("ui-accordion") || !!itemsWrap.data("ui-accordion"))
+                itemsWrap.accordion('destroy');
+        } catch (e) {
+            console.warn(e);
+        }
+    }
+
+    function destroyInnerAccordions() {
+        $('.items-cont li').each(function() {
+            try {
+                $(this).accordion('destroy');
+            } catch (e) {}
+        })
+    }
+
+    function addRoundedCorners(activeRow) {
+        if (!$('.thumbnails-icon').hasClass('active')) { // only for rows, not for thumbnails
+            unselectActiveRow();
+
+            var isContentActive = activeRow.find('.ui-accordion-content').hasClass('ui-accordion-content-active'),
+                isItemInfoActive = activeRow.next().hasClass('show-item-info');
+
+            if (isItemInfoActive || isContentActive) {
+                activeRow.addClass('item-active');
+                activeRow.prev().addClass('bottom-round');
+            }
+
+            if (isItemInfoActive) {
+                activeRow.addClass('top-round');
+                activeRow.next().addClass('bottom-round');
+                activeRow.next().next().addClass('top-round');
+            } else if (isContentActive) {
+                activeRow.addClass('border-round');
+                activeRow.next().addClass('top-round');
+            }
+        }
+    }
+
+    function initializeItemsWrapAccordion(itemsWrap) {
+        itemsWrap.accordion({
+            header: ".title-wrap",
+            active: true,
+            animated: false,
+            collapsible: true,
+            heightStyle: "content",
+            beforeActivate: function (event, ui) {
+
+                if (!ui.newPanel.find('.bonuses-wrap>li:not(.clear)').length && getBrowserWidth() <= getMinTabletSize()) {
+                    ui.newPanel.find('.bonuses').hide();
+                } else {
+                    ui.newPanel.find('.bonuses').show();
+                }
+
+                if (typeof event.originalEvent === "undefined") return false;
+
+                var $currentTarget = $(event.originalEvent.target),
+                    flag = true;
+
+                if ($(ui.newHeader.context).find(accordionBlockSelectors)[0] == $currentTarget[0]) {
+                    flag = false;
+                    return false;
+                }
+
+                if (ui.newHeader.length == 0) {
+                    itemsWrap.find('.show-item-info').detach();
+                }
+                hideItemInfo();
+                return flag;
+            }
+        }).bind('accordionchange', function (event, ui) {
+            var activeRow = ui.newHeader.closest('li');
+            addRoundedCorners(activeRow);
+        });
+    }
+
+    function unselectActiveRow() {
+        itemsWrap.find(".items-cont > li").removeClass('border-round bottom-round top-round item-active');
+    }
+
+    function iniAccordionOnTabSwitch(isAccordion, tabs) {
+        var isAllLoaded = tabs || true;
+        if (isAccordion && isAllLoaded) {
+            destroyAccordion(itemsWrap);
+            isInitAccordion = false;
+            initAccordion(itemsWrap);
+        } else {
+            initAccordion(itemsWrap);
+        }
+    }
+
+    function sortList($id) {
+        $id.find('> li:not(".thumbnail-actions"):not(".action-wrap")').tsort({attr: 'data-sort'});
+        $id.find('> li:not(".thumbnail-actions"):not(".action-wrap")').tsort({attr: 'data-equipped', order: 'desc' });
+    }
+
+    function removeOpenContainersOnTabSwitch() {
+        $('.show-item-info').remove();
+        $('.thumbnail-actions').remove();
+        $('.items-cont > li').removeClass('thumbnail-active');
+        hideActionsWrapper()
+        $('.equipped-weapons ul > li').removeClass('act');
+    }
+
+    var loadingTabFlag = {};
+
+    window.getItemsList = function (id, name, reloadTab) {
+        var $li = $("a[href*=" + id + "]").closest('li');
+        var $id = $('#' + id);
+        var $elem = $('#category-wrap .' + id);
+        name = name || $elem.attr('data-info');
+
+        loadItemsGroup($id, function () {
+            $li.attr('data-loaded', 1);
+        }, name, reloadTab);
+
+    }
+
+    function htmlEntities(str) {
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function getSearchItemsList(id, name) {
+        var cont = $('#' + id);
+        if (!loadingTabFlag[id]) {
+            loadingTabFlag[id] = true;
+            var from = +cont.attr('data-from');
+            if (cont.attr('data-query') !== name) {
+                from = 0;
+                cont.html('')
+            }
+
+            xhrLoadingLink = getAction({
+                type: "post",
+                action: itemPageLink,
+                data: {
+                    step: "getSearchList",
+                    q: name,
+                    start: from,
+                    test: true
+                },
+                success: function (str) {
+                    cont.find('li>.ajax-preloader').parent().remove();
+                    try {
+                        var json = JSON.parse(str);
+                        if (json.count) {
+                            var conflictElements = appendFilteredItems(cont, json.html);
+                            if (conflictElements) {
+                                cont.attr('data-from', 0);
+                                cont.attr('data-all', 0);
+                                cont.attr('data-total', 0);
+                                cont.html('')
+                                loadingTabFlag[id] = false;
+                                loadItemsGroup(cont, undefined, name);
+                                return;
+                            } else {
+
+                            }
+                            cont.attr('data-from', json.start);
+                            cont.attr('data-total', json.total);
+                            sortList(cont);
+
+                            classReset(cont);
+                            iniAccordionOnTabSwitch(isInitAccordion);
+                            $('#load-more-items').html('<span id="load-more-items-desc" role="button" tabindex="0" data-id="' + cont.attr('id') + '">Load more ' + cont.attr("data-info") + ' items</span>');
+                        } else {
+                            $('#load-more-items').html('<span id="load-more-items-desc" tabindex="0" data-id="' + cont.attr('id') + '">' + cont.attr("data-info") + ' tab is full</span>');
+                            cont.attr('data-all', '1');
+
+                        }
+
+                        if (json.total == 0) {
+                            cont.html('<li class="show-item-info bottom-round">' +
+                                '<div class="item-cont">' +
+                                '<div class="info-msg">' +
+                                'No items matching <strong>"' + htmlEntities(name.toUpperCase().slice(0, 50)) + '"</strong> were found' +
+                                '</div>' +
+                                '</div> ' +
+                                '</li>');
+                        }
+                        cont.attr('data-query', name);
+
+                        changeItemsSize(cont, 'small', 'medium');
+
+                    } catch (e) {
+                        console.error(e);
+                    }
+                    loadingTabFlag[id] = false;
+
+                },
+                before: function () {
+                    cont.find('li.action-wrap').remove();
+
+                    cont.append('<li class="ajax-item-loader" style="display: list-item;"><span class="ajax-preloader m-top10 m-bottom10"></span></li>');
+                }
+            });
+        }
+    }
+
+    function getAllItemsList() {
+        var $tabs = contentWrapper.find('.items-wrap .category-wrap ul').children('li').not(".no-items, [data-loaded='1'], .t-show, .m-show");
+        var $unloadedTabs = $tabs.find('a').not("#all-items");
+        var $allItems = $("#all-items");
+        loadAllItemsGroup($allItems, function () {
+            iniAccordionOnTabSwitch(isInitAccordion, $unloadedTabs.length);
+        });
+    }
+
+    function setUserItemsCookie(attr) {
+        var $itemTitlesActive = {
+            userItemsEquippedWeapons: $('#equipped-weapons').hasClass('active'),
+            userItemsEquippedArmour: $('#equipped-armour').hasClass('active'),
+            userItemsWeapon: $('#weapon').hasClass('active'),
+            userItemsThumbnails: $('.thumbnails-icon').hasClass('active'),
+            userItemsActiveTab: attr
+        };
+
+        var userItemsCookieName = 'userItemsPreferences';
+        $.cookie(userItemsCookieName, null);
+        $.cookie(userItemsCookieName, JSON.stringify($itemTitlesActive), {expires: 18262});
+    }
+
+    function renderPanelTab($el) {
+        var $parent = $el.closest('.category-wrap');
+        var attr;
+        var tabName;
+        var tabContentType;
+        if ($el.hasClass('ui-state-default')) {
+            attr = $el.find('a').attr('href').replace('#', '');
+            tabName = $el.find('a').attr('data-title');
+            tabContentType = $el.find('a').attr('data-info');
+        } else {
+            attr = $el.attr('href');
+            if (attr) {
+                attr = attr.replace('#', '');
+            } else {
+                return;
+            }
+            tabName = $el.attr('data-title');
+            tabContentType = $el.attr('data-info');
+        }
+
+        $el.closest('.items-wrap').find('.items-name').text(tabName);
+        var $itemsCont = $parent.find('.items-cont');
+        if (isAllItemsTab(attr)) {
+            $itemsCont.addClass('show-all');
+            $itemsCont.removeClass('current-cont');
+            removeOpenContainersOnTabSwitch();
+            getAllItemsList();
+            return;
+        } else if (isSearchItemsTab(attr)) {
+            $itemsCont.addClass('show-all');
+            $itemsCont.removeClass('current-cont');
+
+            getSearchItemsList(attr, tabContentType);
+
+        } else {
+            $itemsCont.removeClass('show-all');
+            removeOpenContainersOnTabSwitch();
+            $("#" + attr).addClass('current-cont');
+            getItemsList(attr, tabContentType);
+        }
+    }
+
+    var loadAllItemsGroup = function (cont, callback, silentLoading) {
+        var name = 'All';
+        if (!loadingTabFlag[name]) {
+            loadingTabFlag[name] = true;
+            var queue = cont.attr('data-queue');
+            var from = +cont.attr('data-from');
+            xhrLoadingLink = getAction({
+                type: "post",
+                action: itemPageLink,
+                dataType: "json",
+                data: {
+                    step: "getNotAllItemsListWithoutGroups",
+                    start: from,
+                    queue: queue
+                },
+                success: function (str) {
+                    cont.find('li>.ajax-preloader').parent().remove();
+                    try {
+                        var json = JSON.parse(str);
+                        if (json.count) {
+
+                            if(silentLoading) cont.html('')
+                            var conflictElements = appendFilteredItems(cont, json.html);
+                            if (conflictElements) {
+                                cont.attr('data-from', 0);
+                                cont.attr('data-all', 0);
+                                cont.attr('data-total', 0);
+                                cont.html('')
+                                loadingTabFlag[name] = false;
+                                loadAllItemsGroup(cont, callback, silentLoading);
+                                return;
+                            } else {
+
+                            }
+
+                            cont.attr('data-from', json.start);
+                            cont.attr('data-queue', json.queue);
+
+                            sortList(cont);
+                            classReset(cont);
+                            iniAccordionOnTabSwitch(isInitAccordion);
+
+                            $('#load-more-items').html('<span id="load-more-items-desc" role="button" tabindex="0" data-id="' + cont.attr('id') + '">Load more ' + cont.attr("data-info") + ' items</span>');
+                        } else {
+                            $('#load-more-items').html('<span id="load-more-items-desc" tabindex="0" data-id="' + cont.attr('id') + '">' + cont.attr("data-info") + ' tab is full</span>');
+                            cont.attr('data-all', '1');
+                        }
+
+                        changeItemsSize(cont, 'small', 'medium');
+
+                    } catch (e) {
+                        console.error(e);
+                    }
+                    if (callback) {
+                        callback();
+                    }
+                    loadingTabFlag[name] = false;
+                    if (checkIsWaypointElementInViewport()) {
+                        $(window).scroll()
+                    }
+                },
+                before: function () {
+                    if (silentLoading) return
+                    cont.find('li.action-wrap').remove();
+
+                    cont.append('<li style="display: list-item;" class="ajax-item-loader">' +
+                        '<span class="ajax-preloader m-top10 m-bottom10"></span>' +
+                        '</li>');
+                }
+            });
+        } else {
+            console.warn("loading already in progress");
+        }
+    };
+
+    function appendFilteredItems(cont, appendElements) {
+        var domEl = $(document.createElement('ul')).append(appendElements)
+
+        var existedKeys = cont.children().map(function (index, el) {
+            return el.dataset.rowkey;
+        }).toArray();
+        var originAppendedAmount = domEl.children().length;
+
+        var appendingElements = domEl.children().filter(function (index, el) {
+            return existedKeys.indexOf(el.dataset.rowkey) === -1
+        });
+
+        cont.append(appendingElements);
+
+        var keys = appendingElements.map(function (_, el) {
+            return $(el).data('rowkey')
+        }).toArray();
+
+        initAccordion(cont.children().filter(function (i) {
+            return keys.indexOf($(this).data('rowkey')) > -1;
+        }), true);
+
+        var conflictElementsAmount = originAppendedAmount - appendingElements.length;
+        return conflictElementsAmount;
+    }
+
+    var loadItemsGroup = function (cont, callback, name, silentLoading) {
+        if (!loadingTabFlag[name]) {
+            loadingTabFlag[name] = true;
+            var from = +cont.attr('data-from');
+            var ptotal = (!isNaN(+cont.attr('data-total'))) ? +cont.attr('data-total') : 0;
+
+            xhrLoadingLink = getAction({
+                type: "post",
+                action: itemPageLink,
+                data: {
+                    step: "getCategoryList",
+                    itemName: name,
+                    start: from,
+                    test: true,
+                    prevtotal: ptotal
+                },
+                success: function (str) {
+                    cont.find('li>.ajax-preloader').parent().remove();
+                    if (silentLoading) {
+                        cont.html('')
+                    }
+                    try {
+                        var json = JSON.parse(str);
+                        if(json.prevtotal>0 && json.prevtotal != json.total){
+                            cont.attr('data-from', 0);
+                            cont.attr('data-all', 0);
+                            cont.attr('data-total', 0);
+                            cont.html('')
+                            loadingTabFlag[name] = false;
+                            loadItemsGroup(cont, callback, name);
+                            return;
+                        }
+                        if (json.count) {
+
+                            var conflictElements = appendFilteredItems(cont, json.html);
+                            if (conflictElements) {
+                                cont.attr('data-from', 0);
+                                cont.attr('data-all', 0);
+                                cont.attr('data-total', 0);
+                                cont.html('')
+                                loadingTabFlag[name] = false;
+                                loadItemsGroup(cont, callback, name);
+                                return;
+                            }
+                            cont.attr('data-from', json.start);
+                            cont.attr('data-total', json.total);
+                            sortList(cont);
+                            classReset(cont);
+                            iniAccordionOnTabSwitch(isInitAccordion);
+                            $('#load-more-items').html('<span id="load-more-items-desc" role="button" tabindex="0" data-id="' + cont.attr('id') + '">Load more ' + cont.attr("data-info") + ' items</span>');
+                        } else {
+                            $('#load-more-items').html('<span id="load-more-items-desc" tabindex="0" data-id="' + cont.attr('id') + '">' + cont.attr("data-info") + ' tab is full</span>');
+                            cont.attr('data-all', '1');
+
+                        }
+
+                        if (json.total == 0) {
+                            cont.parent().tabs('disable', '#' + cont.attr('id'));
+
+                            cont.html('<li class="show-item-info bottom-round">' +
+                                '<div class="item-cont">' +
+                                '<div class="info-msg">' +
+                                'No items available in this category' +
+                                '</div>' +
+                                '</div> ' +
+                                '</li>');
+                        }
+
+                        changeItemsSize(cont, 'small', 'medium');
+                    } catch (e) {
+                        console.error(e);
+                    }
+                    loadingTabFlag[name] = false;
+                },
+                before: function () {
+                    if (silentLoading) return
+
+                    cont.find('li.action-wrap').remove();
+
+                    cont.append('<li class="ajax-item-loader" style="display: list-item;"><span class="ajax-preloader m-top10 m-bottom10"></span></li>');
+                }
+            });
+        } else {
+            console.warn("loading already in progress");
+        }
+    };
+
+    var checkWaypointElement = document.getElementById('item-waypoint');
+
+
+    function checkIsWaypointElementInViewport() {
+        var el = checkWaypointElement;
+        var top = el.offsetTop;
+        var left = el.offsetLeft;
+        var width = el.offsetWidth;
+        var height = el.offsetHeight;
+
+        while (el.offsetParent) {
+            el = el.offsetParent;
+            top += el.offsetTop;
+            left += el.offsetLeft;
+        }
+
+        return (
+            top >= window.pageYOffset &&
+            left >= window.pageXOffset &&
+            (top + height) <= (window.pageYOffset + window.innerHeight) &&
+            (left + width) <= (window.pageXOffset + window.innerWidth)
+        );
+
+    }
+
+    (function () {
+
+        var selector = $('#category-wrap');
+
+
+        function elementInViewport(el) {
+            return checkIsWaypointElementInViewport()
+        }
+
+        function lastAddedLiveFunc() {
+            var cont = selector.find('.items-cont[aria-hidden=false]');
+            if (cont.data('full') != '1') {
+                var attr = cont.attr('id');
+
+                if (isAllItemsTab(attr)) {
+                    loadAllItemsGroup(cont);
+                    iniAccordionOnTabSwitch(isInitAccordion);
+                } else if (isSearchItemsTab(attr)) {
+
+                } else {
+                    loadItemsGroup(cont, undefined, cont.data('info'));
+                }
+            }
+        }
+
+        selector.on('click', '#load-more-items [role="button"]', function (event) {
+            event.preventDefault();
+            if (selector.find('.items-cont[aria-hidden=false]').data('all') != '1') {
+                lastAddedLiveFunc();
+            }
+        });
+
+        $(window).scroll(function () {
+            var cont = selector.find('.items-cont[aria-hidden=false]');
+            if (elementInViewport(checkWaypointElement) && cont.attr('data-all') == '0') {
+                lastAddedLiveFunc();
+            }
+        });
+    })();
+
+    function getTabsWithoutItems() {
+        var $tabs = contentWrapper.find('.items-wrap .category-wrap ul').children('li.no-items');
+        var arr = [];
+        $tabs.each(function () {
+            arr.push($(this).index());
+        });
+        return arr;
+    }
+
+    var hash = window.location.hash;
+    var linkTab = contentWrapper.find('.category-wrap ul > li>a[href=' + hash + ']').parent();
+    if (linkTab.length) {
+        contentWrapper.find('.category-wrap ul > li.ui-state-active').removeClass("ui-state-active");
+        createActiveTab = contentWrapper.find('.category-wrap ul > li').index(linkTab);
+    } else {
+        createActiveTab = contentWrapper.find('.category-wrap ul > li').index(contentWrapper.find('.category-wrap ul > li.ui-state-active'));
+    }
+
+    initializeAutocompleteSearch();
+
+    var $autocompleteInstance = $('#items_search');
+
+    $autocompleteInstance.on('autocompleteselect', function (e, u) {
+        iMarketSearchCache.set(u.item);
+    });
+
+    $autocompleteInstance.on('keyup', function (e, U) {
+        var name = e.target.value.trim();
+
+        itemsSearchSubmitHandler(name, e.type === 'blur')
+    })
+
+    $("#category-wrap").tabs({
+        event: 'click',
+        active: createActiveTab,
+        disabled: getTabsWithoutItems(),
+        create: function (event, ui) {
+            if (ui.tab.hasClass('no-items') || isSearchItemsTab(ui.panel.attr('id'))) {
+                var $allItems = $("a[href*=all-items]").trigger('click').trigger('touchend');
+                renderPanelTab($allItems);
+            } else {
+                renderPanelTab(ui.tab);
+            }
+        },
+        beforeActivate: function (event, ui) {
+            removeUsedItems();
+        },
+        activate: function (event, ui) {
+            if (!ui.newTab.hasClass('ui-state-disabled')) {
+                $link = ui.newTab.find('a');
+                renderPanelTab($link);
+                var attr = $link.attr('href');
+                if (!attr)
+                    return;
+                attr = attr.replace("#", "");
+                if (!isSearchItemsTab(attr)) {
+                    setUserItemsCookie(attr);
+                    $autocompleteInstance.val('')
+                }
+                if (!isAllItemsTab(attr)) {
+                    classReset($("#" + attr).addClass('current-cont'));
+                }
+
+                if ($(this).find('.items-cont[aria-hidden=false]').data('all') != '1') {
+                    $('#load-more-items').html('<span id="load-more-items-desc" role="button" tabindex="0" data-id="' + ui.newPanel.attr('id') + '">Load more ' + ui.newPanel.attr("data-info") + ' items</span>');
+                } else {
+                    $('#load-more-items').html('<span id="load-more-items-desc" tabindex="0" data-id="' + ui.newPanel.attr('id') + '">' + ui.newPanel.attr("data-info") + ' tab is full</span>');
+                }
+            }
+        }
+    });
+
+    function setCountDounTimer(selectors) {
+        selectors.each(function (index, item) {
+            var selector = $(item),
+                date_until = +selector.attr('data-time');
+            (function (item, until) {
+                item.countdown({
+                    until: until,
+                    format: 'HMS',
+                    layout: '{hnn}:{mnn}:{snn}',
+                    onExpiry: function () {
+                        location.reload();
+                    }
+                });
+            })(selector, date_until);
+        });
+    }
+
+    function checkItemsNumber(allItems, itemNumber) {
+        return classNames({
+            "first-in-row": itemNumber % 10 == 1,
+            "last-in-row": itemNumber % 10 == 0,
+            "m-last-in-row": itemNumber % 4 == 0,
+            "m-first-in-row": itemNumber % 4 == 1,
+            "t-last-in-row": itemNumber % 5 == 0,
+            "t-first-in-row": itemNumber % 5 == 1,
+            "last-row": isThumbnailsMode && itemNumber > Math.floor((allItems - 1) / 10) * 10 || itemNumber == allItems,
+            "t-last-row": isThumbnailsMode && itemNumber > Math.floor((allItems - 1) / 5) * 5,
+            "m-last-row": isThumbnailsMode && itemNumber > Math.floor((allItems - 1) / 4) * 4,
+        })
+    }
+
+    function classReset($current) {
+        var $children = $current.children('li:not(.show-item-info, .thumbnail-actions)'),
+            total = $children.length,
+            emptyBloodBagId = 731;
+
+        $children.each(function (el) {
+            var $el = $(this);
+            var classes = classNames(
+                {
+                    "bg-green h": $el.hasClass('bg-green'),
+                    "act item-active item-info-active thumbnail-active top-round": $el.attr('data-item') == emptyBloodBagId && $el.hasClass('item-info-active'),
+                },
+                checkItemsNumber(total, el + 1),
+                $el.attr('data-class')
+            );
+            $el.attr('class', classes);
+        });
+    }
+
+    function getItemInformation(selector) {
+        var info = {};
+        info.selector = selector;
+        info.loaded = selector.attr('data-loaded');
+        info.itemID = selector.attr('data-item');
+        info.armouryID = selector.attr('data-armoryid');
+        info.weaponInfo = selector.attr('data-weaponinfo');
+        return info;
+    }
+
+    function getItemInfo($parent, info) {
+        var $itemInfo = $parent.nextAll('.show-item-info');
+        if (!$itemInfo.length) {
+            $itemInfo = $parent.closest("ul").nextAll().find('.show-item-info').first();
+        }
+        if ($parent.hasClass('opened')) {
+            $parent.removeClass('opened');
+            return closeItemInfoContainer($itemInfo.find('.close-icon'));
+        }
+        if (info.loaded === '0') {
+            getAction({
+                type: "post",
+                action: '/page.php?sid=inventory',
+                data: {
+                    itemID: info.itemID,
+                    armouryID: info.armouryID,
+                },
+                success: function (json) {
+                    const props = {
+                        ...window.mapItemInfoProps(json),
+                        onClose: () =>  closeItemInfoContainer($itemInfo.find('[data-close-button]')),
+                    }
+                    $parent.addClass('opened')
+                    window.renderItemInfo($itemInfo.get(0), props)
+                },
+                before: function() {
+                    $itemInfo.html('<span class="ajax-preloader m-top10 m-bottom10"></span>');
+                }
+            });
+        }
+    }
+
+    function showEquippedItemInfo(selector, parent, touchAppendBefore) {
+        contentWrapper.on('click', selector, function (event) {
+            event.preventDefault();
+
+            var $el = $(this);
+            var isActive = $el.hasClass('act');
+
+            if ($el.hasClass('empty-box')) {
+                return;
+            }
+
+            if ($('.items-wrap .show-item-info').is(':visible')) {
+                $('.items-cont > li').removeClass('act').removeClass('thumbnail-active');
+            }
+
+            var info = getItemInformation($el);
+            var $parent = $el.parents(parent);
+            var itemInfoCont = $el.find('.view-item-info');
+            hideEquippedItemInfo();
+            hideActionsWrapper()
+
+
+            /* close info on second click */
+            if (isActive)
+                return;
+
+            if (($el.nextAll(touchAppendBefore).length) && getBrowserWidth() <= getMaxTabletSize()) {
+                var itemInfo = $("<li class='show-item-info'>" + itemInfoCont.html() + "</li>");
+                $parent.find(touchAppendBefore).before(itemInfo);
+                if ($el.attr('data-loaded') != '0')
+                    itemInfoHandler(itemInfo);
+            } else {
+                var itemInfo = "";
+                if (itemInfoCont.html()) {
+                    itemInfo = $("<li class='show-item-info'>" + itemInfoCont.html() + "</li>");
+                }
+                $parent.append(itemInfo);
+                if ($el.attr('data-loaded') != '0')
+                    itemInfoHandler(itemInfo);
+            }
+            $el.addClass('act');
+            if (info.itemID > 0) {
+                getItemInfo($el, info);
+            } else {
+                var noequiptemplate = Handlebars.templates['no-equiped-wrap'];
+                var item = $el.find('.w-b-top .central span');
+                var text = "";
+                if (item.length) {
+                    text = noequiptemplate({text: item.text()});
+                } else {
+                    text = noequiptemplate({text: 'this armour'});
+                }
+                var itemInfo = $el.nextAll('.show-item-info').html(text);
+                $el.find('.view-item-info').html(text);
+                itemInfoHandler(itemInfo);
+            }
+        });
+    }
+
+
+    showEquippedItemInfo('.player-weapon > li:not(.show-item-info)', '.player-weapon', '.mobile-delimiter');
+    showEquippedItemInfo('.player-armor > li:not(.show-item-info)', '.player-armor', '.penultimate');
+
+
+    contentWrapper.on('click', '.title-toggle', function () {
+        $(this).toggleClass('active');
+        if ($(this).hasClass('active')) {
+            $(this).next().show();
+        } else {
+            $(this).next().hide();
+        }
+
+        setUserItemsCookie($('#category-wrap .ui-tabs-active a').attr('href').replace("#", ""));
+    });
+
+    function getUserItemsCookie() {
+        if ($.cookie('userItemsPreferences')) {
+            var cookies = $.parseJSON($.cookie('userItemsPreferences'));
+            var itemsEquippedWeapons = $('#equipped-weapons');
+            var itemsEquippedArmour = $('#equipped-armour');
+            var thumbnailsIcon = $('.thumbnails-icon');
+            var itemsRowsIcon = $('.items-rows-icon');
+            cookies.userItemsEquippedWeapons || cookies.userItemsEquippedWeapons == undefined ? itemsEquippedWeapons.addClass('active') : itemsEquippedWeapons.removeClass('active').next().hide();
+            cookies.userItemsEquippedArmour || cookies.userItemsEquippedWeapons == undefined ? itemsEquippedArmour.addClass('active') : itemsEquippedArmour.removeClass('active').next().hide();
+            if (cookies.userItemsThumbnails) {
+                thumbnailsModeTurnOnItems(thumbnailsIcon);
+                itemsWrap.addClass('thumbnails');
+                isThumbnailsMode = true;
+            } else {
+                rowsModeTurnOnItems(itemsRowsIcon);
+                itemsWrap.removeClass('thumbnails');
+                isThumbnailsMode = false;
+            }
+
+        }
+    }
+
+    getUserItemsCookie();
+
+    function hideEquippedItemInfo() {
+        $('.content-wrapper .act').removeClass('act');
+        $('.show-item-info').remove();
+    }
+
+    function hideItemInfo(isActionOnThumbnail) {
+        $('#category-wrap li.item-info-active').removeClass('item-info-active');
+        $('.items-cont > li').siblings('.action-wrap.act').remove();
+        $('.content-wrapper .act').removeClass('act');
+
+        if (!isActionOnThumbnail) {
+            $('.thumbnail-actions').remove();
+            $('.thumbnail-active').removeClass('thumbnail-active');
+        }
+
+        $('.show-item-info').remove();
+        hideActionsWrapper();
+    }
+
+    function removeUsedItems() {
+        contentWrapper.find('.items-cont > li.remove-act').fadeOut(500, function () {
+            var $this = $(this);
+            $this.next('li.show-item-info').remove();
+            $this.remove();
+            if ($this.closest('ul.all-items')) {
+                classReset($('ul.items-cont'));
+            } else {
+                classReset($('ul.current-cont'));
+            }
+            var $category = $('li[aria-selected = "true"]');
+            var $categoryAttr = $category.find('a').attr('data-info');
+            var $itemlength = $('ul[data-info = "' + $categoryAttr + '"]').find('li[data-category]').length;
+            if ($itemlength < 1) {
+                $category.addClass('ui-state-disabled');
+            }
+        });
+    }
+
+    function markAsRemoveAction($parent, amount) {
+
+        var li = getParentLi($parent);
+        var a = decrementAmount(li, amount);
+        if (a < 1) {
+            li.addClass('remove-act');
+            $parent.find('.close-act').addClass('remove-act');
+            disableItem(li);
+        }
+    }
+
+    function hideActionsWrapper(parent) {
+        var categoryWrapper;
+        if (!parent) {
+            categoryWrapper = $('#category-wrap');
+        }
+
+        categoryWrapper.find('.action-wrap').map(function (index, el) {
+            if ($(el).is('li')) {
+                $(el).remove()
+            } else {
+                $(el).hide()
+            }
+        })
+    }
+
+    function preloadResponseImages(preloadImages) {
+        preloadImages.map(function (_, el) {
+            var image = new Image()
+            image.src = $(el).attr('data-preload')
+        })
+
+    }
+
+    function getEquippedArmourData() {
+        getAction({
+            type: "post",
+            action: itemPageLink,
+            data: {
+                step: "getCategoryList",
+                itemName: "EquipedArmor",
+            },
+            success: function (str) {
+                var msg = JSON.parse(str);
+                Object.keys(msg).forEach(key => {
+                    var $el = $("i[data-bonusid='" + key + "']");
+                    $el.attr('title', msg[key].bonuses);
+                })
+            }
+        })
+    }
+
+    function showConfirmationMessageForItemAction(selectorClassName, func) {
+        contentWrapper.on('click', '.items-cont .' + selectorClassName, function (event) {
+
+            var $el = $(this);
+            var $parent = $el.closest('.items-cont>li');
+            var itemId = $el.data('item');
+            var isArmourFromSet = $el.data('armour-from-set');
+            var group = $parent.data('group');
+            var action = $el.attr('data-action');
+            var qtyAmount = parseInt($parent.find('.item-amount').text().replace(/[,x]/g, ''));
+            var self = this;
+
+            if (self.wasSent || $el.hasClass('disabled')) return;
+            if (action === 'send') {
+                $.cookie(action, itemId);
+            }
+
+            if ($(this).find('i').length || $(this).find('.wai-btn').length) {
+                if ($el.attr('data-url')) {
+                    window.location = addRFC($el.attr('data-url'));
+                    return;
+                }
+
+                if ($('#category-wrap li.item-info-active') && !$('span.thumbnails').hasClass('active')) {
+                    hideItemInfo()
+                }
+
+                if ((!$parent.hasClass('act') || !$parent.hasClass('thumbnail-active')) && !$parent.hasClass('thumbnail-actions')) {
+                    hideItemInfo();
+                    $parent.removeClass('act');
+                }
+
+                var actionsBox = $el.closest('.actions');
+                var data = {
+                    step: 'actionForm',
+                    item_id: itemId,
+                    group: group
+                };
+                var $acSearch = $el.siblings('.ac-wrapper').find('.user-id.ac-search');
+
+                if ($acSearch.length) {
+                    $.extend(data, {target: $acSearch.val()});
+                    actionsBox = $el.closest('.cont-wrap').find('.actions');
+                }
+
+                $el.each(function () {
+                    $.each(this.attributes, function () {
+                        if (this.specified && this.name.match(/data-/g)) {
+                            data[this.name.replace('data-', '')] = this.value;
+                        }
+                    });
+                });
+
+                getAction({
+                    type: "post",
+                    action: itemPageLink,
+                    data: data,
+                    success: function (str) {
+                        self.wasSent = false;
+                        var s = $(str);
+
+                        var preloadImages = s.find('[data-preload]')
+
+                        if (preloadImages.length) {
+                            preloadResponseImages(preloadImages)
+                        }
+                        var contentContainer;
+                        if ($parent.parents('.thumbnails').length) {
+                            contentContainer = $('.items-cont > li').siblings('.action-wrap.act');
+                            contentContainer.addClass(s.attr('class')).html(s.html());
+                            if ($acSearch.length) {
+                                $('.items-cont > li').siblings('.action-wrap.act').find('.next-act').attr('data-target', data.target);
+                            }
+                        } else {
+                            actionsBox.nextAll('.action-wrap').remove();
+                            removeUsedItems();
+
+                            actionsBox.after(s);
+                            contentContainer = s;
+                            if ($acSearch.length) {
+                                actionsBox.nextAll('.action-wrap').find('.next-act').attr('data-target', data.target);
+                            }
+
+                            contentContainer.toggle();
+                        }
+                        $parent.find('input[data-money]').length && $parent.find('input[data-money]').tornInputMoney({
+                            onAfterChange: function (data) {
+
+                            },
+                            buttonElement: $parent.find('.torn-btn:not(.no-disable)')
+                        });
+
+                        $parent.find('input[name="amount"]').tornInputMoney({
+                            buttonElement: $parent.find('.action-wrap .btn-wrap')
+                        });
+
+                        initializeAutocompleteSearch();
+
+                        if (s.data('status') !== undefined && func !== undefined) {
+                            func($el, $(str));
+                        }
+
+                        highlightElement();
+                        var parcelItemsWrapper = s.find('.parcels-list-wrapper');
+                        if (parcelItemsWrapper.length) {
+                            var parcelsAmount = parcelItemsWrapper.find('.parcel-items').length;
+                            if (parcelsAmount !== qtyAmount) {
+                                $parent.find('.item-amount').text(parcelsAmount);
+                                $parent.find('.title .qty').text(parcelsAmount > 1 ? 'x' + parcelsAmount : '');
+                            }
+                        }
+
+                        $('.action-wrap .close-icon').focus();
+
+                        // Halloween basket slides
+                        if (contentContainer.find('.updates-grid') && getBrowserWidth() <= getMaxTabletSize()) {
+                            contentContainer.find('.updates-grid').flexslider({
+                                selector: '.updates-grid-slides-wrapper .updates-grid-slide-wrapper',
+                                animation: 'slide',
+                                slideshow: false,
+                                controlNav: false,
+                                isFirefox: true,
+                                fadeFirstSlide: false,
+                                animationLoop: false,
+                                customDirectionNav: contentContainer.find('.updates-grid .left-nav, .updates-grid .right-nav')
+                            })
+                        }
+
+                        if (isArmourFromSet) {
+                            getEquippedArmourData();
+                        }
+                    },
+                    before: function () {
+                        self.wasSent = true;
+
+                        if ($parent.parents('.thumbnails').length) {
+                            $('.items-cont > li').siblings('.action-wrap.act').remove();
+                            var infoCont = '<li class="action-wrap act"><span class="ajax-preloader"></span></li>';
+                            appendContainerDependsOnView($parent, infoCont, '.first-in-row', '.t-first-in-row', '.m-first-in-row');
+                        } else {
+                            $('.items-cont > li').removeClass('act').find('.action-wrap').hide();
+                            if (getBrowserWidth() > getMaxTabletSize()) {
+                                $parent.toggleClass('act');
+                            }
+                            actionsBox.nextAll('.action-wrap').remove();
+                            actionsBox.after('<div class="action-wrap"><span class="ajax-preloader"></span></div>');
+                            $parent.find('.action-wrap').toggle();
+                        }
+                    }
+                });
+            }
+            event.preventDefault();
+        });
+    }
+
+    contentWrapper.on('click', '.action-wrap.equipped-act .next-act', function (event) {
+        event.preventDefault();
+        var data = {
+            step: 'actionForm',
+            confirm: 1,
+            action: 'equip',
+            id: $(this).data('id'),
+            item_id: $(this).data('item_id')
+        };
+        var $this = $(this);
+        var $parent, $el;
+        var row = $(this).closest('.items-cont>li');
+
+        if ($this.closest('.items-wrap').hasClass('thumbnails')) {
+            $parent = $this.parents('.items-cont > li.action-wrap');
+            $el = row.siblings('.thumbnail-actions').find('li.equipped, li.unequipped');
+        } else {
+            $parent = $this.parents('.items-cont > li');
+            $el = row.find('li.equipped, li.unequipped');
+        }
+        var actionsBox = row.find('.actions');
+
+        getAction({
+            type: "post",
+            action: itemPageLink,
+            data: data,
+            success: function (str) {
+                self.wasSent = false;
+                var s = $(str);
+                if ($parent.parents('.thumbnails').length) {
+                    $parent.html(s.html())
+                } else {
+                    actionsBox.nextAll('.action-wrap').remove();
+                    actionsBox.after(s);
+                    s.toggle();
+                }
+                $('input[data-money]').tornInputMoney({
+                    onAfterChange: function (data) {
+
+                    }
+                });
+
+                initializeAutocompleteSearch();
+
+                EquipFunc($el, s);
+
+                highlightElement();
+            },
+
+            before: function () {
+                self.wasSent = true;
+
+                if ($parent.parents('.thumbnails').length) {
+                    $parent.html('<span  class="ajax-preloader"></span>')
+                }
+            }
+        });
+    });
+
+    function decrementAmount(parent, am) {
+        var am = am || 1;
+
+        if (parent.hasClass('action-wrap')) {
+            parent = parent.prevAll('.thumbnail-active');
+        }
+
+        var amount = itemDisappear(parent.data('item'), am, parent.data('armoryid'));
+
+        return amount;
+    }
+
+    showConfirmationMessageForItemAction('send');
+
+    var flagToIgnoreReloadAfterItemEquip = false;
+    // #NEWCODE
+    loadouts && loadouts.subscribe.onEquippedItemsChange(function (previousItems, currentItems) {
+        if (flagToIgnoreReloadAfterItemEquip) {
+            flagToIgnoreReloadAfterItemEquip = false;
+            return;
+        }
+
+        var types = currentItems.map(function (item) {
+            return item.type
+        }).concat(previousItems.map(function (item) {
+            return item.type
+        }));
+
+        var uniqueTypes = types.filter(function onlyUnique(value, index, self) {
+            return self.indexOf(value) === index;
+        });
+
+        var tabs = $("#category-wrap");
+
+        var activeTab = tabs.find('.items-cont[aria-hidden=false]');
+
+        uniqueTypes.forEach(function (type) {
+            var tab = tabs.children('[data-info="' + type + '"]');
+
+            tab.attr('data-from', 0);
+            if (activeTab.data('info') === type) {
+                getItemsList(tab.attr('id'), type, true)
+            }
+        })
+
+        var $allItems = tabs.children('.all-items');
+        $allItems.attr('data-from', 0).attr('data-all', 0);
+
+        loadAllItemsGroup($allItems, function () {}, true);
+    })
+
+    loadouts && loadouts.subscribe.onModsChanged(function(item, mods) {
+        var $modsHolder = $("li[data-attachments-itemid='" + item['armoryId'] + "']");
+        var modsIcons = '';
+        mods.forEach(function(mod) {
+            if (mod) {
+                modsIcons = modsIcons + "<i class='bonus-attachment-" + mod.icon + "' title='" + mod.hoverover + "'></i>"
+            } else {
+                modsIcons = modsIcons + "<i class='bonus-attachment-blank-bonus-25'></i>"
+            }
+        })
+        $modsHolder.html(modsIcons);
+    })
+
+    function EquipFunc($el, $str) {
+        if (loadouts) {
+            // #NEWCODE
+            loadouts.actions.getEquippedItemsRequestAction()
+            flagToIgnoreReloadAfterItemEquip = true
+        } else {
+            loadEquippedItems();
+        }
+
+        if ($str.attr('data-status') == '1') {
+            var unequippedItem = $str.attr('data-unequippedItem') && $str.attr('data-unequippedItem').toString().split(',');
+            var unequippedArmoury = $str.attr('data-unequippedArmoury') && $str.attr('data-unequippedArmoury').toString().split(',');
+
+            unequippedItem && unequippedItem.forEach(function (itemID) {
+                if (!itemID)
+                    return;
+
+                var t = $el.closest('.items-wrap').find('.items-cont > li  [data-action=equip][data-item=' + itemID + ']');
+
+                t.html('<span title="Equip this Item" class="icon-h equip">'
+                    + '<button aria-label="Equip this Item" class="option-equip wai-btn"></button>'
+                    + '<span class="opt-name">Equip <span class="t-hide">this Item</span></span>'
+                    + '</span>');
+
+                var rowElement = t.closest('.items-cont > li');
+                rowElement.find('.bonuses-wrap .bonus.testtest i').attr('class', BONUS_BLANK_ICON_CLASS);
+
+                rowElement.removeClass('bg-green h')
+                    .attr('data-equipped', false)
+                    .find('.actions-wrap > li .icon-h > i')
+                    .removeClass('option-unequip')
+                    .addClass('option-equip');
+
+                if (rowElement.attr('data-class')) {
+                    rowElement.attr('data-class', rowElement.attr('data-class').replace('bg-green', ''))
+                }
+            });
+
+
+            unequippedArmoury && unequippedArmoury.forEach(function (itemID) {
+                if (!itemID)
+                    return;
+                var t = $el.closest('.items-wrap').find('.items-cont > li [data-type=' + $el.attr('data-type') + '][data-id=' + itemID + ']');
+
+                t.html('<span title="Equip this Item" class="icon-h equip">'
+                    + '<button aria-label="Equip this Item" class="option-equip wai-btn button-btn"></button>'
+                    + '<span class="opt-name">Equip <span class="t-hide">this Item</span></span>'
+                    + '</span>');
+
+                var rowElement = t.closest('.items-cont > li');
+                rowElement.find('.bonuses-wrap .bonus.testtest i').attr('class', BONUS_BLANK_ICON_CLASS);
+
+                rowElement.removeClass('bg-green h')
+                    .attr('data-equipped', false)
+                    .find('.actions-wrap > li .icon-h > i')
+                    .removeClass('option-unequip')
+                    .addClass('option-equip');
+
+                if (rowElement.attr('data-class')) {
+                    rowElement.attr('data-class', rowElement.attr('data-class').replace('bg-green', ''))
+                }
+            });
+
+            var equippedArmoury = $str.attr('data-equippedArmoury') && $str.attr('data-equippedArmoury').toString().split(',');
+            equippedArmoury && equippedArmoury.forEach(function (itemID) {
+                if (!itemID)
+                    return;
+
+                var t = $el.closest('.items-wrap').find('.items-cont > li [data-type=' + $el.attr('data-type') + '][data-id=' + itemID + ']');
+                t.empty().append('<span title="Unequip this Item" class="icon-h unequip" role="button">'
+                    + '<i class="option-unequip"></i>'
+                    + '<span class="opt-name">Unequip <span class="t-hide">this Item</span></span>'
+                    + '</span>');
+
+                t.closest('.items-cont > li')
+                    .addClass('bg-green h')
+                    .attr('data-class', classNames(t.attr('data-class'), 'bg-green'))
+                    .attr('data-equipped', true)
+                    .find('.actions-wrap > li .icon-h > i')
+                    .removeClass('option-equip')
+                    .addClass('option-unequip')
+
+
+                t.closest('.items-cont > li.thumbnail-active').addClass('bg-green h');
+
+                t.removeClass('unequipped').addClass('equipped');
+            });
+
+            var equippedItem = $str.attr('data-equippedItem') && $str.attr('data-equippedItem').toString().split(',');
+            equippedItem && equippedItem.forEach(function (itemID) {
+                if (!itemID)
+                    return;
+
+                var t = $el.closest('.items-wrap').find('.items-cont > li [data-type=' + $el.attr('data-type') + '][data-item=' + itemID + '][data-rowkey=' + $el.attr('data-rowkey') + ']');
+                t.empty().append('<span title="Unequip this Item" class="icon-h unequip" role="button">'
+                    + '<i class="option-unequip"></i>'
+                    + '<span class="opt-name">Unequip <span class="t-hide">this Item</span></span>'
+                    + '</span>');
+
+                t.closest('.items-cont > li')
+                    .addClass('bg-green h')
+                    .attr('data-equipped', true)
+                    .find('.actions-wrap > li .icon-h > i')
+                    .removeClass('option-equip')
+                    .addClass('option-unequip')
+
+
+                t.closest('.items-cont > li.thumbnail-active').addClass('bg-green h');
+
+                t.removeClass('unequipped').addClass('equipped');
+            });
+        }
+
+    }
+
+    showConfirmationMessageForItemAction('equipped', EquipFunc);
+    showConfirmationMessageForItemAction('unequipped', EquipFunc);
+    showConfirmationMessageForItemAction('sell');
+    showConfirmationMessageForItemAction('dump');
+    showConfirmationMessageForItemAction('use');
+    showConfirmationMessageForItemAction('donate');
+    showConfirmationMessageForItemAction('return');
+
+    function disableItem($parent) {
+        $parent.find('.title>span:last').addClass('t-gray-c');
+        var actions = $parent.find('.actions .actions-wrap>li');
+        actions.addClass('disabled');
+        actions.addClass('empty-item');
+
+        var itemId = actions.attr('data-id');
+        actions.closest('li[data-item="' + itemId + '"]').removeClass('act');
+    }
+
+    contentWrapper.on('click', '.actions-wrap .empty-item', function () {
+        var $el = $(this);
+
+        var itemId = $el.attr('data-id');
+
+        if (!$el.closest('.cont-wrap').find('.action-wrap').length) {
+            $el.closest('.cont-wrap').find('.actions').after('<div class="action-wrap"></div>');
+        }
+
+        var $noUse = $el.closest('.cont-wrap').find('.action-wrap');
+
+        $noUse.closest('li').removeClass('act');
+        $noUse.empty();
+        $noUse.append('<div class="use-act-wrap">' +
+            '<p>You have already used this item.</p>' +
+            '<p><a class="close-act t-blue h" href="#">Close</a></p>' +
+            '</div>');
+        $('.items-cont > li').removeClass('act').find('.action-wrap').hide();
+        $el.closest('li[data-item="' + itemId + '"]').addClass('act');
+        $el.closest('.cont-wrap').find('.action-wrap').show();
+    });
+
+    function getParentLi($parent) {
+        if ($parent.is('li')) {
+            return $parent.prevAll('.thumbnail-active');
+        } else {
+            return $parent.parents('.items-cont > li');
+        }
+    }
+
+    function removeContainerOnItemsActionComplete() {
+        $('.show-item-info').remove();
+        $('li.thumbnail-actions').remove();
+    }
+
+    contentWrapper.on('click', '.action-wrap.sell-act .next-act', function (event) {
+        event.preventDefault();
+        var $el = $(this);
+
+        var form = $el.closest('form');
+
+        var $amount = form.find('[name=amount]');
+        var amount = $amount.val();
+        if (isIntNumber(amount) && amount > 0) {
+            $amount.removeClass('error');
+        } else {
+            $amount.addClass('error');
+            return false;
+        }
+
+        var $parent = $el.parents('.action-wrap');
+        var li = getParentLi($parent);
+        var data = {
+            step: "sellItemAction"
+        };
+        form.find('[name]').each(function () {
+            data[$(this).attr('name')] = $(this).val();
+        });
+
+        getAction({
+            type: "post",
+            action: itemPageLink,
+            data: data,
+            success: function (str) {
+                try {
+                    var msg = JSON.parse(str);
+                    if (msg.logs != undefined) {
+                        msg.text = msg.logs.join(' ');
+                    }
+                    var template = Handlebars.templates['box-use-act'];
+                    $parent.empty().append(template(msg));
+
+                    if (msg.success) {
+                        markAsRemoveAction($parent, amount)
+                    }
+                    removeContainerOnItemsActionComplete();
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+        });
+
+    });
+
+    contentWrapper.on('click', '.action-wrap.return-act .next-act', function (event) {
+        event.preventDefault();
+        var data = {
+            step: 'returnToFaction',
+            XID: $(this).data('id'),
+            itemID: $(this).data('item'),
+            qty: $(this).data('qty')
+        };
+        var $parent = $(this).parents('.action-wrap');
+        var decrement = $(this).hasClass('decrement-amount');
+
+        getAction({
+            type: "post",
+            action: itemPageLink,
+            data: data,
+            success: function (str) {
+                try {
+                    var msg = JSON.parse(str)
+                    $parent
+                        .empty()
+                        .append(Handlebars.templates['box-use-act'](msg));
+
+                    if (msg.success && decrement) {
+                        markAsRemoveAction($parent, data.qty);
+                    }
+
+                    removeContainerOnItemsActionComplete();
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+        });
+    });
+
+    contentWrapper.on('submit', '.action-wrap.propose-act form, .action-wrap.dirty-bomb-act form', function (event) {
+        event.preventDefault();
+
+        var form = $(this);
+        var data = {
+            step: form.attr('data-action')
+        };
+
+        form.find('[name]').each(function () {
+            data[$(this).attr('name')] = $(this).val();
+        });
+        var $parent = form.parents('.action-wrap');
+
+        getAction({
+            type: "post",
+            action: itemPageLink,
+            data: data,
+            success: function (str) {
+                $parent.html(str);
+                initializeAutocompleteSearch();
+            },
+            before: function () {
+                $parent.html('<span class="ajax-preloader"></span>');
+            }
+        });
+    });
+
+    contentWrapper.on('click', '.action-wrap.propose-act .next-act, .action-wrap.dirty-bomb-act .next-act', function (event) {
+        event.preventDefault();
+        var el = $(this);
+
+        var form = el.closest('form'), decrement = el.hasClass('decrement-amount');
+
+        var data = {
+            step: form.attr('data-action')
+        };
+
+        form.find('[name]').each(function () {
+            data[$(this).attr('name')] = $(this).val();
+        });
+        var $parent = form.parents('.action-wrap');
+        getAction({
+            type: "post",
+            action: itemPageLink,
+            data: data,
+            success: function (str) {
+                try {
+                    var msg = JSON.parse(str);
+                    var template = Handlebars.templates['box-use-act'];
+                    $parent.html(template(msg));
+
+                    if (msg.success && decrement) {
+                        markAsRemoveAction($parent, 1)
+                    }
+
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+        });
+    });
+
+    contentWrapper.on('click', '.action-wrap.wrap-act .next-act', function (event) {
+        event.preventDefault();
+        var data = {
+            step: 'wrapParcelAction',
+            parcel: $(this).attr('data-item'),
+            itemID: $(this).attr('data-id')
+        };
+
+        var $parent = $(this).parents('.action-wrap');
+        getAction({
+            type: "post",
+            action: itemPageLink,
+            data: data,
+            success: function (str) {
+                try {
+                    var msg = JSON.parse(str);
+                    var template = Handlebars.templates['box-use-act'];
+                    $parent.empty().append(template(msg));
+
+                    if (msg.success) {
+                        if (msg.items) {
+                            itemsAppearDisappearHandler(msg.items, true);
+                        }
+                        $parent.find('.close-act').addClass('refresh-act');
+                    }
+
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+        });
+    });
+
+    contentWrapper.on('click', '.action-wrap.use-act.use-cache .open-parcel-act', function (event) {
+        event.preventDefault();
+        var data = {
+            step: 'openParcelAction',
+            parcel: $(this).attr('data-item'),
+            itemID: $(this).attr('data-id')
+        };
+        var $el = $(this);
+        getAction({
+            type: "post",
+            action: itemPageLink,
+            data: data,
+            success: function (str) {
+                var $parent = $el.closest('.action-wrap');
+                var s = $(str);
+                var preloadImages = s.find('[data-preload]');
+
+                if (preloadImages.length) {
+                    preloadResponseImages(preloadImages);
+                }
+
+                $parent.html(s.html());
+            }
+        });
+    });
+
+    function buffer(func, wait, scope) {
+        var timer = null;
+        return function () {
+            if (timer) clearTimeout(timer);
+            var args = arguments;
+            timer = setTimeout(function () {
+                timer = null;
+                func.apply(scope, args);
+            }, wait);
+        };
+    };
+
+
+    var itemsSearchSubmitHandler = buffer(function (name, withCache) {
+        var tabs = $("#category-wrap");
+        var tabElement = tabs.find('li[aria-controls="items-search-tab"] a')
+        tabElement.attr('data-info', name);
+
+        if (withCache) {
+            iMarketSearchCache.set({
+                label: Handlebars.templates['search-header-template']({
+                    search: 'imarket',
+                    list: {
+                        name: name,
+                    }
+                }),
+                value: name,
+                id: 0
+            });
+        }
+        if (tabs.tabs('option', 'selected') === 26) {
+            renderPanelTab(tabs.find('li[aria-controls="items-search-tab"] a'));
+        } else {
+            tabElement.trigger('click');
+        }
+
+    }, 200)
+
+
+    contentWrapper.on('submit', '.items-wrap form[name=itemsSearchForm]', function (event) {
+        event.preventDefault();
+        var form = $(this);
+        var name = form.find('input').val();
+        itemsSearchSubmitHandler(name, true)
+    })
+
+    contentWrapper.on('submit', '.action-wrap.use-form-action form', function (event) {
+        event.preventDefault();
+        var $parent = $(this).parents('.action-wrap'),
+            form = $(this),
+            data = {
+                step: form.attr('data-action') || "useItem"
+            };
+
+        form.find('[name]').each(function () {
+            data[$(this).attr('name')] = $(this).val();
+        });
+
+        getAction({
+            type: "post",
+            action: itemPageLink,
+            data: data,
+            success: function (str) {
+                self.was_clicked = false;
+                try {
+                    if (data.step === "useItem") {
+                        var msg = JSON.parse(str);
+                        if (msg.items) {
+                            itemsAppearDisappearHandler(msg.items, true);
+                        }
+
+                        $parent.html(msg.text);
+
+                        refreshTopOfSidebar();
+                        changeItemsSize($('.main-items-cont-wrap .image-wrap'), 'small', 'medium');
+                    } else {
+                        $parent.html(str);
+                        initializeAutocompleteSearch();
+                    }
+
+                } catch (e) {
+                    console.error(e);
+                }
+            },
+            before: function () {
+                self.was_clicked = true;
+                $parent.html('<span class="ajax-preloader m-top10 m-bottom10"></span>');
+            }
+        });
+
+    });
+
+    contentWrapper.on('click', '.action-wrap.use-halloween-basket .next-act, .action-wrap.use-halloween-basket .updates-grid button', function (event) {
+        event.preventDefault();
+        var self = this;
+        if (self.submitting)
+            return;
+
+        self.submitting = true;
+
+        var $parent = $(this).parents('.action-wrap'),
+            el = $(this),
+            data = {
+                step: "useItem"
+            };
+
+        el.each(function () {
+            $.each(this.attributes, function () {
+                if (this.specified && this.name.match(/data-/g)) {
+                    data[this.name.replace('data-', '')] = this.value;
+                }
+            });
+        });
+
+        getAction({
+            type: "post",
+            action: itemPageLink,
+            data: data,
+            success: function (str) {
+                try {
+                    var nextConfirmationBox =$(str).find('.confirmation-box');
+                    $parent.find('.confirmation-box').html(nextConfirmationBox.html())
+                    if (nextConfirmationBox.hasClass('confirmation-result')) {
+                        $parent.find('.confirmation-box').addClass('confirmation-result');
+                    } else {
+                        $parent.find('.confirmation-box').removeClass('confirmation-result');
+                    }
+
+                    if (nextConfirmationBox.attr('data-animation')) {
+                        $parent.find('.animation-container')
+                            .removeClass('blood-animation spider-animation ghost-animation')
+                            .addClass(nextConfirmationBox.attr('data-animation'))
+                    }
+
+                    if(nextConfirmationBox.attr('data-update').length) {
+                        $parent.find('button.exchange-btn').attr('disabled','disabled')
+                    } else {
+                        $parent.find('button.exchange-btn').removeAttr('disabled')
+                        $parent.find('.basket-update').removeClass('selected')
+                    }
+
+                    $parent.find('.treats-bar').html($(str).find('.treats-bar').html())
+                    var $updatesBox = $parent.find('.basket-update');
+                    $(str).find('.basket-update').each(function (i, e) {
+                        if ($(e).hasClass('unlocked')) {
+                            $updatesBox.each(function (_i, ce) {
+                                if ($(ce).data('upgradeid') === $(e).data('upgradeid')) {
+                                    $(ce).addClass('unlocked')
+                                }
+                            })
+                        }
+                    })
+
+                    if ($(str).find('textarea[name=itemsAppear]').length) {
+                        var jsonResponse = $(str).find('textarea[name=itemsAppear]').val();
+                        itemsAppearDisappearHandler({
+                            itemAppear: JSON.parse(jsonResponse)
+                        }, true);
+                    }
+
+                } catch (e) {
+                    console.error(e);
+                    self.submitting = false;
+                }
+                self.submitting = false;
+
+            },
+            before: function () {
+                if (el.hasClass('basket-update')) {
+                    $parent.find('.basket-update').removeClass('selected')
+                    el.addClass('selected')
+                }
+            },
+        });
+
+    });
+
+    function submitUseCacheForm(event) {
+        event.preventDefault();
+        if (this.submitting) return;
+
+        const $parent = $(this).parents('.action-wrap');
+        const form = $(this);
+        const data = {
+            step: form.attr('data-action') || "useItem",
+            useanother: ['373', '374', '375', '376'].indexOf(form.attr('data-itemid')) === -1 && form.attr('data-useanother')
+        };
+
+        this.submitting = true;
+
+        form.find('[name]').each(function () {
+            data[$(this).attr('name')] = $(this).val();
+        });
+
+        getAction({
+            type: "post",
+            action: itemPageLink,
+            data: data,
+            success: function (str) {
+                try {
+                    if (data.useanother) {
+                        $parent.find('.cache-frame').removeClass('cache-animation');
+                    }
+
+                    if (data.step !== "useItem") {
+                        $parent.html($(str).html());
+                        return;
+                    }
+
+                    setTimeout(function () {
+                        $parent.find('.pack-open-content').removeClass('unique-only')
+                        $parent.find('.pack-open-content').addClass('disabled-link');
+
+                        const msg = JSON.parse(str);
+
+                        if (!msg.success) {
+                            return $parent.html(Handlebars.templates['inventory-cache-open-error']({errorMessage: msg.text}));
+                        }
+
+                        if (msg.items) {
+                            const items = msg['items'];
+                            const text = msg['text'];
+                            const isAnotherAvailable = msg['isAnotherAvailable'];
+                            const itemID = msg['itemID'];
+                            const armoryID = msg['armoryID'];
+                            const nextArmoryId = msg['nextArmoryId'];
+                            const isParcel = msg['isParcel'];
+                            const itemAppear = items['itemAppear'];
+                            const viewData = {
+                                items: itemAppear,
+                                text: text,
+                                isAnotherAvailable: isAnotherAvailable,
+                                isUnique: itemAppear.some(function (o) {
+                                    return o.stats
+                                }),
+                                itemID: itemID,
+                                armoryID: armoryID,
+                                nextArmoryId: nextArmoryId,
+                                isParcel: isParcel,
+                                formAction: isParcel ? 'actionForm' : 'useItem'
+                            };
+
+                            itemsAppearDisappearHandler(items, true);
+
+                            $parent.find('.pack-open-content').addClass('expanded');
+                            $parent.find('.cache-frame').addClass('cache-animation');
+
+                            if (viewData.isUnique) {
+                                //$parent.find('.pack-open-content').addClass('unique-only');
+                            }
+
+                            const content = Handlebars.templates['cacheUseResultContent-new'](viewData);
+                            $parent.find('.pack-open-content').html(content);
+                            $parent.find('.arrow-divider').addClass('animated');
+                            $parent.find('.pack-open-result-divider').addClass('visible');
+                            setTimeout(function(){
+                                $parent.find('.pack-open-content').removeClass('disabled-link')
+                            }, 2000);
+                        }
+
+                        refreshTopOfSidebar();
+                        changeItemsSize($('.main-items-cont-wrap .image-wrap'), 'small', 'medium');
+                    }, 0)
+
+                } catch (e) {
+                    console.error(e);
+                    self.submitting = false;
+                }
+            },
+        });
+    }
+
+    contentWrapper.on('submit', '.action-wrap.use-cache form', submitUseCacheForm);
+
+    contentWrapper.on('click', '.action-wrap.use-action .submit-act', function (event) {
+        event.preventDefault();
+
+        $(this).closest('form').trigger('submit');
+    });
+
+    contentWrapper.on('click', '.action-wrap.use-form-action .next-act, .action-wrap.use-cache .next-act', function (event) {
+        event.preventDefault();
+
+        $(this).closest('form').trigger('submit');
+    });
+
+    contentWrapper.on('click', '.open-another-cache', function (event) {
+        event.preventDefault();
+
+        $(this).closest('form').trigger('submit');
+    });
+
+    contentWrapper.on('click', '.action-wrap.use-action .next-act, .action-wrap .link-act', function (event) {
+        event.preventDefault();
+        var el = $(this);
+        if (this.was_clicked) {
+            return;
+        }
+        var self = this;
+        var decrement = el.hasClass('decrement-amount');
+        var data = {
+            step: 'useItem',
+            itemID: $(this).attr('data-item'),
+            energy: $(this).attr('data-energy'),
+            okay: $(this).attr('data-okay')
+        };
+
+        el.each(function () {
+            $.each(this.attributes, function () {
+                if (this.specified && this.name.match(/data-/g)) {
+                    data[this.name.replace('data-', '')] = this.value;
+                }
+            });
+        });
+
+        if (el.attr('data-target')) {
+            $.extend(data, {target: el.attr('data-target')});
+        }
+
+        if (el.attr('data-fac') == '1') {
+            data.fac = 1;
+        }
+
+        var $parent = $(this).parents('.action-wrap');
+        getAction({
+            type: "post",
+            action: itemPageLink,
+            data: data,
+            success: function (str) {
+                self.was_clicked = false;
+                try {
+                    var msg = JSON.parse(str);
+
+                    var template = Handlebars.templates['box-use-holder']
+
+                    $parent.empty().append(template(msg));
+                    setCountDounTimer($parent.find('.counter-wrap'));
+
+                    if (msg.items && msg.itemCreate && !msg.itemBloodBag) {
+                        $('a[class*=-category-icon] span').remove();
+                        itemsAppearDisappearHandler(msg.items, true);
+                    }
+
+                    if (msg.success && decrement && !msg.itemCreate) {
+                        markAsRemoveAction($parent, 1)
+
+                        if (msg.page_refresh) {
+                            $parent.find('.close-act').addClass('refresh-act');
+                        }
+                    }
+
+                    // this is done so that Ladso Eye activation
+                    // can invalidate these 3 tabs, books, all, search
+                    // these are the categories where books can appear
+                    // setting data-from to 0 will reload refetch the lists
+                    if (msg.reload_items) {
+                        $('#all-items').attr('data-from', 0);
+                        $('#items-search-tab').attr('data-from', 0);
+                        $('#books-items').attr('data-from', 0);
+                    }
+
+                } catch (e) {
+                    console.error(e);
+                }
+            },
+            before: function () {
+                self.was_clicked = true;
+                $parent.html('<span class="ajax-preloader m-top10 m-bottom10"></span>');
+            }
+        });
+
+
+    });
+
+    contentWrapper.on('submit', '.action-wrap.send-act form', function (event) {
+        event.preventDefault();
+        var form = $(this);
+
+        var $amount = form.find('[name=amount]');
+
+        $amount.val();
+
+        if (form.find('.btn-wrap').hasClass('disable')) {
+            return
+        }
+
+        if ($amount.length) {
+            var amount = parsePrettyNumberToInt($amount.val());
+            if (amount && amount > 0) {
+                $amount.removeClass('error');
+            } else {
+                $amount.addClass('error');
+                return false;
+            }
+        }
+
+        var $parent = form.closest('.action-wrap');
+        var data = {
+            step: "sendItemAction",
+            confirm: form.data('confirm')
+        };
+        form.find('[name]').each(function () {
+            data[$(this).attr('name')] = $(this).val();
+        });
+
+        data['amount'] = parsePrettyNumberToInt(data['amount']);
+        var parentList = $parent.closest('#category-wrap>ul');
+
+        getAction({
+            type: "post",
+            action: itemPageLink,
+            data: data,
+            success: function (str) {
+                try {
+                    var msg = JSON.parse(str);
+                    if (msg.confirm) {
+                        var template = Handlebars.templates['box-send-confirm-act'];
+                        $parent.html(template(msg));
+                    } else {
+                        var template = Handlebars.templates['box-use-act'];
+                        $parent.html(template(msg));
+
+
+                        if (msg.success) {
+                            markAsRemoveAction($parent, amount)
+
+                            $parent.find('.close-act').addClass('refresh-act');
+                            checkTabItemsAmount(parentList);
+                        }
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+        });
+
+        $('.action-wrap .close-act').focus();
+    });
+
+    contentWrapper.on('click', '.action-wrap.send-act .next-act', function (event) {
+        event.preventDefault();
+        var $this = $(this);
+
+        if (!$this.hasClass('disabled')) {
+            $this.addClass('disabled');
+            $this.closest('form').submit();
+        }
+    });
+
+    contentWrapper.on('click', '.action-wrap.send-act .next-send-act', function (e) {
+        e.preventDefault();
+        var $this = $(this);
+        var XID = $this.data('id');
+        var type = $this.data('type');
+        var name = $this.data('name');
+
+        var parent = $this.closest('.action-wrap');
+
+        getAction({
+            type: "post",
+            action: itemPageLink,
+            data: {
+                id: XID,
+                step: 'actionForm',
+                action: 'send',
+                type: type,
+                name: name
+            },
+            success: function (str) {
+                try {
+                    var parcel = $(str);
+                    parent.html(parcel.html());
+                    initializeAutocompleteSearch();
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+        });
+
+    });
+
+    contentWrapper.on('click', '.action-wrap.dump-act .next-act', function (event) {
+        event.preventDefault();
+        var $el = $(this);
+
+        var form = $el.closest('form');
+
+        var $amount = form.find('[name=amount]');
+        var amount = $amount.val();
+
+        var button = form.find('.btn-wrap');
+
+        if (amount == 0 || button.hasClass('disable')) {
+            return false;
+        }
+
+        var $parent = $el.parents('.action-wrap');
+        var li = getParentLi($parent);
+        var data = {
+            step: "trashItemAction"
+        };
+        form.find('[name]').each(function () {
+            data[$(this).attr('name')] = $(this).val();
+        });
+
+        getAction({
+            type: "post",
+            action: itemPageLink,
+            data: data,
+            success: function (str) {
+                try {
+                    var msg = JSON.parse(str);
+                    if (msg.logs != undefined) {
+                        msg.text = msg.logs.join(' ');
+                    }
+                    var template = Handlebars.templates['box-use-act'];
+                    $parent.empty().append(template(msg));
+
+                    if (msg.success) {
+                        markAsRemoveAction($parent, amount)
+                    }
+                    removeContainerOnItemsActionComplete();
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+        });
+
+    });
+
+    contentWrapper.on('click', '.action-wrap.donate-act .next-act', function (event) {
+        event.preventDefault();
+        var $el = $(this);
+
+        var form = $el.closest('form');
+
+        var $amount = form.find('[name=amount]');
+        var amount = $amount.val();
+
+        var $amountSource = form.find('[type=text]');
+        var amountSource = $amountSource.val();
+
+        if (!isPrettyNumber(amountSource) || amountSource == 0 || amount == 0) {
+            return false;
+        }
+
+        var $parent = $el.parents('.action-wrap');
+        var li = getParentLi($parent);
+
+        var data = {
+            step: "donateItemAction"
+        };
+        form.find('[name]').each(function () {
+            data[$(this).attr('name')] = $(this).val();
+        });
+        getAction({
+            type: "post",
+            action: itemPageLink,
+            data: data,
+            success: function (str) {
+                try {
+                    var msg = JSON.parse(str);
+                    if (msg.logs != undefined) {
+                        msg.text = msg.logs.join(' ');
+                    }
+                    var template = Handlebars.templates['box-use-act'];
+                    $parent.empty().append(template(msg));
+
+                    if (msg.success) {
+                        markAsRemoveAction($parent, amount)
+                    }
+
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+        });
+
+    });
+
+    // Add a keypress event handler to the "amount" field
+    contentWrapper.on('keypress', '.action-wrap.donate-act form .amount', function (event) {
+        if (event.which === 13) { // Check if Enter key (key code 13) is pressed
+            event.preventDefault(); // Prevent the default form submission
+            // Submit the form using the same action from the click event
+            $(this).closest('form').find('.next-act').click();
+        }
+    });
+
+    // Add a keypress event handler to the "amount" field
+    contentWrapper.on('keypress', '.action-wrap.dump-act form .amount', function (event) {
+        if (event.which === 13) { // Check if Enter key (key code 13) is pressed
+            event.preventDefault(); // Prevent the default form submission
+            // Submit the form using the same action from the click event
+            $(this).closest('form').find('.next-act').click();
+        }
+    });
+
+    function checkVisibleCont($el, $liAct) {
+        if ($('.show-item-info').is(":visible")) {
+            $el.closest('li:not(.show-item-info)').addClass('act');
+        }
+        if ($('.action-wrap').is(":visible")) {
+            $liAct.addClass('act');
+        } else {
+            $el.closest('li.action-wrap').remove();
+        }
+
+    }
+
+    contentWrapper.on('click', '.items-cont .close-act', function (event) {
+
+        event.preventDefault();
+        var $el = $(this);
+        if ($el.hasClass('remove-act')) {
+            var parent = $el.closest('#category-wrap>ul');
+            getParentLi($el.parents('.action-wrap')).fadeOut(500, function () {
+                var $this = $(this);
+                $this.closest('li.item-info-active').next('li.show-item-info').remove();
+                $this.remove();
+                if ($el.closest('ul.all-items')) {
+                    classReset($('ul.items-cont'));
+                } else {
+                    classReset($('ul.current-cont'));
+                }
+                checkTabItemsAmount(parent);
+            });
+
+        }
+        removeUsedItems();
+
+        if ($el.parents('.action-wrap').hasClass('act')) {
+            hideItemInfo(true);
+        } else {
+            $('.items-cont > li').removeClass('act').find('.action-wrap').hide();
+        }
+        checkVisibleCont($el, $('.items-cont > li.act'));
+    });
+
+    function appendContainerDependsOnView(itemsList, infoCont, desktopAppendBefore, tabletAppendBefore, mobileAppendBefore) {
+        if (itemsList.nextAll(desktopAppendBefore).first().length && getBrowserWidth() > getMaxTabletSize()) {
+            itemsList.nextAll(desktopAppendBefore).first().before(infoCont);
+        } else if (itemsList.nextAll(tabletAppendBefore).first().length && getBrowserWidth() <= getMaxTabletSize() && getBrowserWidth() > getMinTabletSize()) {
+            itemsList.nextAll(tabletAppendBefore).first().before(infoCont);
+        } else if (itemsList.nextAll(mobileAppendBefore).first().length && getBrowserWidth() <= getMinTabletSize()) {
+            itemsList.nextAll(mobileAppendBefore).first().before(infoCont);
+        } else {
+            itemsList.parents('.items-cont').append(infoCont);
+        }
+        itemInfoHandler($('.show-item-info'));
+    }
+
+    function showItemInfo(selector, toShowCont, classWrap, desktopAppendBefore, tabletAppendBefore, mobileAppendBefore) {
+        contentWrapper.on('click', selector, function (event) {
+            var isItemTitle = $('.items-cont > li:not([data-group="parent"]) .title-wrap .name-wrap').index(selector) === 0;
+
+            if (belowMaxTabletSize() && isItemTitle) {
+                return false;
+            }
+
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+
+            removeUsedItems();
+
+            $('.ui-accordion-header-active').click();
+            var $el = $(this);
+            var $parent = $el.parents('.items-cont > li');
+            var info = getItemInformation($parent);
+            var $infoCont = $parent.find(toShowCont);
+            var canvas = $infoCont.find('canvas');
+            var infoCont = "<li class='" + classWrap + "'>" + $infoCont.html() + "</li>";
+
+            hideItemInfo();
+
+            if ($parent.parents('.thumbnails').length) {
+                appendContainerDependsOnView($parent, infoCont, desktopAppendBefore, tabletAppendBefore, mobileAppendBefore);
+                itemInfoHandler($('.show-item-info'));
+                $('.thumbnail-actions .actions-wrap').find('.wai-btn').first().focus();
+            } else {
+                if (!$parent.hasClass('item-info-active')) {
+                    var act = $parent.addClass('act item-info-active').after(infoCont);
+                    if (info.loaded !== '0') {
+                        itemInfoHandler(act.next());
+                        canvas.length && $parent.next().find('canvas').replaceWith(canvas);
+                    }
+                } else {
+                    $parent.removeClass('item-info-active');
+                }
+            }
+
+            $parent.addClass('thumbnail-active');
+            getItemInfo($parent, info);
+            addRoundedCorners($parent);
+        });
+    }
+
+    showItemInfo('.items-cont .hover > .item-options', '.actions', 'thumbnail-actions', '.first-in-row', '.t-first-in-row', '.m-first-in-row');//'.last-in-row', '.t-last-in-row', '.m-last-in-row'
+    showItemInfo('.items-cont .hover > .item-info', '.view-item-info', 'show-item-info', '.first-in-row', '.t-first-in-row', '.m-first-in-row');
+    showItemInfo('.items-cont>li:not([data-group="parent"]) .title-wrap .image-wrap', '.view-item-info', 'show-item-info', '.first-in-row', '.t-first-in-row', '.m-first-in-row');//'.last-in-row', '.t-last-in-row', '.m-last-in-row'
+
+    bindClickForItemInfoOnDesktop();
+
+    function bindClickForItemInfoOnDesktop() {
+        if (getBrowserWidth() > getMaxTabletSize()) {
+            showItemInfo('.items-cont > li:not([data-group="parent"]) .title-wrap .name-wrap', '.view-item-info', 'show-item-info', '.first-in-row', '.t-first-in-row', '.m-first-in-row');
+        }
+    }
+
+    function moveOrRemoveLiContainers(element, move, remove) {
+        var showInfoContainer = element.nextAll('.show-item-info');
+        var thumbnailActionContainer = element.nextAll('.thumbnail-actions');
+        if (remove) {
+            showInfoContainer.remove();
+            thumbnailActionContainer.remove();
+        } else if (move > 1) {
+            showInfoContainer.insertAfter(showInfoContainer.prevAll().slice(move - 1, move));
+            thumbnailActionContainer.insertAfter(thumbnailActionContainer.prevAll().slice(move - 1, move));
+        }
+    }
+
+    contentWrapper.on('focusin', '.thumbnail-wrap', function (event) {
+
+        $('.thumbnail-wrap').removeClass('wai-hover');
+        $(this).addClass('wai-hover');
+
+    });
+
+    contentWrapper.on('click', 'li[data-group="parent"] .title, li[data-group="parent"] .item-group', function (event) {
+        event.stopPropagation();
+        var $el = $(this).closest('li'),
+            parent = $el.parent();
+
+        var _this = $el[0];
+        if (_this.loading) {
+            return;
+        }
+        _this.loading = true;
+        var itemId = $el.data('item');
+        var $titleWrap = $el.find('.title-wrap');
+        var titleWrapContent = $titleWrap.html();
+
+        getAction({
+            type: "post",
+            action: itemPageLink,
+            data: {
+                step: 'getItemsListByItemId',
+                item_id: itemId
+            },
+            success: function (str) {
+                try {
+                    var msg = JSON.parse(str);
+                    var newElements = $(msg.html).filter('li');
+                    moveOrRemoveLiContainers($el, newElements.length, true);
+                    $el.after(newElements);
+                    $el.remove();
+
+                    changeItemsSize(parent, 'small', 'medium');
+
+                    classReset(parent, true);
+                    contentWrapper.find('.items-cont > li[data-group="item"]');
+                    destroyAccordion(itemsWrap);
+
+                    isInitAccordion = false;
+                    initAccordion(itemsWrap);
+                } catch (e) {
+                    $titleWrap.html(titleWrapContent);
+                    console.error(e);
+                }
+            },
+            before: function () {
+                hideActionsWrapper()
+
+                $titleWrap.html('<span class="ajax-preloader m-top10"></span>');
+            },
+            error: function () {
+                _this.loading = false;
+            }
+        });
+    });
+
+
+    function resetItemListsClasses() {
+        $("#category-wrap>ul.tab-menu-cont").each(function (index, ul) {
+            classReset($(ul));
+        })
+    }
+
+    $('.items-rows-mode').click(function () {
+        removeUsedItems();
+        $(this).find('.items-rows-icon').addClass('active');
+        $('.thumbnails-icon').removeClass('active');
+        $('.items-wrap').removeClass('thumbnails');
+        isThumbnailsMode = false;
+        $("#category-wrap>ul.tab-menu-cont>li.action-wrap").remove();
+        resetItemListsClasses();
+        if (getBrowserWidth() <= getMaxTabletSize()) {
+            initAccordion(itemsWrap);
+        }
+
+
+        hideEquippedItemInfo();
+        hideItemInfo();
+        setUserItemsCookie($('#category-wrap .ui-tabs-active a').attr('href').replace("#", ""));
+    });
+
+    $('.thumbnails-mode').click(function () {
+        removeUsedItems();
+        $(this).find('.thumbnails-icon').addClass('active');
+        $('.items-rows-icon').removeClass('active');
+        $('.items-wrap').addClass('thumbnails');
+        isThumbnailsMode = true;
+        $("#category-wrap>ul.tab-menu-cont>li.action-wrap").remove();
+        resetItemListsClasses();
+        $('.action-wrap').hide();
+        if (getBrowserWidth() <= getMaxTabletSize()) {
+            destroyAccordion(itemsWrap);
+
+        }
+        isInitAccordion = false;
+
+        hideEquippedItemInfo();
+        hideItemInfo();
+        setUserItemsCookie($('#category-wrap .ui-tabs-active a').attr('href').replace("#", ""));
+    });
+
+    function closeItemInfoContainer($el) {
+        var $li = $('.items-cont > li');
+        var $liAct = $('.items-cont > li.act');
+        if ($el.closest('.show-item-info').length) {
+            $el.closest('.show-item-info').remove();
+            $li.removeClass('thumbnail-active').removeClass('act');
+        } else {
+            $li.removeClass('act').find('.action-wrap').hide();
+        }
+        if ($el.closest('li').hasClass('action-wrap')) {
+            $el.closest('li').remove();
+        }
+        $('.player-armor > li').removeClass('act');
+        $('.player-weapon  > li').removeClass('act');
+        checkVisibleCont($el, $liAct);
+
+        addRoundedCorners($liAct);
+        addRoundedCorners($('.ui-accordion-header-active').closest('li'));
+    }
+
+    $(".content-wrapper").on('click', '.close-icon', function (event) {
+        event.preventDefault();
+        var $el = $(this);
+        closeItemInfoContainer($el)
+    });
+
+    function changeOnResize() {
+        initAccordion(itemsWrap);
+        unselectActiveRow();
+
+        if ((getBrowserWidth() <= getMaxTabletSize() && getBrowserWidth() > getMinTabletSize()) && !isTablet) {
+            isDesktop = false;
+            isTablet = true;
+            isMobile = false;
+            hideEquippedItemInfo();
+            hideItemInfo();
+            hideActionsWrapper();
+        }
+
+        if (getBrowserWidth() <= getMinTabletSize() && !isMobile) {
+            isDesktop = false;
+            isTablet = false;
+            isMobile = true;
+            hideEquippedItemInfo();
+            hideItemInfo();
+            hideActionsWrapper();
+        }
+
+        if (getBrowserWidth() > getMaxTabletSize() && !isDesktop) {
+            isDesktop = true;
+            isTablet = false;
+            isMobile = false;
+            hideEquippedItemInfo();
+            hideItemInfo();
+            hideActionsWrapper()
+            $('.cont-wrap').show();
+            bindClickForItemInfoOnDesktop();
+        }
+    }
+
+    $('.items-cont').on('click', '.action-message', function (event) {
+
+        var $el = $(this);
+        var activeClass = 'msg-active';
+
+        var $messageWrap = $el.closest('.action-wrap.send-act');
+        var $message = $messageWrap.find('.message-wrap .message');
+
+        $message.val('');
+        $messageWrap.toggleClass(activeClass);
+        $message.focus();
+
+        return false;
+    });
+
+    contentWrapper.on('blur keyup touchend', '.action-wrap.donate-act form .amount', function (event) {
+        var $el = $(this);
+        var $max = parseInt($el.attr('data-max'));
+        if ($max > 0 && parsePrettyNumberToInt($el.val()) > $max) {
+            var $hiddenInput = $el.next();
+
+            $el.attr('value', $max);
+            $hiddenInput.attr('value', $max);
+        }
+    });
+
+    contentWrapper.on('blur keyup touchend', '.action-wrap.send-act form .amount', function (event) {
+        var $el = $(this);
+        var $max = parseInt($el.attr('data-max'));
+        if ($max > 0 && parsePrettyNumberToInt($el.val()) > $max) {
+            var $hiddenInput = $el.next();
+
+            $el.attr('value', $max);
+            $hiddenInput.attr('value', $max);
+        }
+    });
+
+    contentWrapper.on('blur keyup touchend', '.action-wrap.dump-act form .amount', function (event) {
+        var $el = $(this);
+        var $max = parseInt($el.attr('data-max'));
+        if ($max > 0 && parsePrettyNumberToInt($el.val()) > $max) {
+            var $hiddenInput = $el.next();
+
+            $el.attr('value', $max);
+            $hiddenInput.attr('value', $max);
+        }
+    });
+
+    contentWrapper.on('blur keyup touchend', '.action-wrap.sell-act form .amount', function (event) {
+        var $el = $(this);
+        var $max = parseInt($el.attr('data-max'));
+        if ($max > 0 && parsePrettyNumberToInt($el.val()) > $max) {
+            var $hiddenInput = $el.next();
+
+            $el.attr('value', $max);
+            $hiddenInput.attr('value', $max);
+        }
+    });
+
+    function itemsAppearDisappearHandler(items, withTabAmountNotifications) {
+        if (withTabAmountNotifications === undefined)
+            withTabAmountNotifications = true;
+
+        Array.isArray(items.itemAppear) && $.each(items.itemAppear, function (i, val) {
+            itemAppear(val.ID, val.type, val.qty, val.armouryID);
+        });
+
+        Array.isArray(items.itemDisappear) && $.each(items.itemDisappear, function (i, val) {
+            itemDisappear(val.ID, val.qty, val.armoryId);
+        });
+
+        if (withTabAmountNotifications) {
+            ItemNotifications(items.itemAppear, 'appear');
+            ItemNotifications(items.itemDisappear, 'disappear');
+        }
+    }
+
+    function itemAppear(itemID, type, itemQty, armouryID) {
+        if (armouryID !== undefined)
+            return;//TODO: fix part with unique items
+
+        var tabs = $('#category-wrap ul.items-cont');
+        var currentTab = tabs.filter('[aria-expanded="true"]')
+
+        var info = currentTab.attr('data-info');
+
+        itemQty = parseInt(itemQty) || 1;
+        var tabItem = tabs.children('li[data-item="' + itemID + '"]');
+
+        if (tabItem.length) {
+            tabItem.map(function (_i, element) {
+                var item = $(element);
+                var amount = item.find('.qty').first().text();
+                if(!amount) amount = amount.replace(/[,x]/g, '');
+                if(!amount) item.data('qty', qty);
+                if (isNaN(amount) || !(amount)) {
+                    amount = 1;
+                }
+                var qty = parseInt(amount) + itemQty;
+
+                if (qty > 0) {
+                    item.find('.qty').text('x' + qty);
+                    item.find('.item-amount').text(qty);
+                    item.data('qty', qty).attr('data-qty',qty);
+                } else {
+                    item.find('.qty').text('');
+                    item.addClass('remove-act');
+                }
+                return qty
+            })
+        } else if (info === type || info === 'All') {
+            getAction({
+                type: "post",
+                action: itemPageLink,
+                data: {
+                    step: "getCategoryList",
+                    itemName: type,
+                    itemID: itemID,
+                    start: 0,
+                    test: true,
+                    asAllOrdering: info === 'All'
+                },
+                success: function (data) {
+                    try {
+                        var msg = JSON.parse(data);
+                        currentTab.append((msg.html) ? msg.html : '');
+                    } catch (e) {
+                        console.error(e);
+                    }
+
+                    sortList(currentTab);
+
+                    changeItemsSize($('.main-items-cont-wrap .image-wrap'), 'small', 'medium');
+                }
+            });
+        } else if (!tabItem.length) {
+            $('.itemsList[data-info="' + type + '"]').attr('data-from', 0);
+        }
+    }
+
+    function itemDisappear(itemID, qty, armoryId) {
+        var tab = $('#category-wrap ul.items-cont');
+        var itemQty = parseInt(qty);
+        var itemRowElement;
+        if (armoryId > 0) {
+            itemRowElement = tab.children('li[data-rowkey="u' + armoryId + '"]')
+        } else {
+            itemRowElement = tab.children('li[data-item="' + itemID + '"]')
+        }
+
+        var list = itemRowElement.map(function (_i, element) {
+            var item = $(element)
+            var amount = item.data('qty');
+            var category = item.data('category');
+            var ignoreCat = ['Primary','Secondary','Melee','Defensive'];
+            if (isNaN(amount)) {
+                amount = 1;
+            }
+            var qty = parseInt(amount) - itemQty;
+
+            if (qty > 0 && !ignoreCat.includes(category)) {
+                item.find('.qty').text('x' + qty);
+                item.find('.item-amount').text(qty);
+            } else {
+                item.find('.qty').text('');
+                item.addClass('remove-act');
+            }
+
+            item.data('qty', qty);
+            return qty
+        }).toArray()
+
+
+        return list[0]
+    }
+
+    function ItemNotifications(items, method) {
+        if (!Array.isArray(items))
+            return;
+
+        var newItemsObject = {};
+        var itemClass = 'increased';
+        var operator = '+';
+
+        $.each(items, function (key, value) {
+            if (isNaN(newItemsObject[value.type])) {
+                newItemsObject[value.type] = 0;
+            }
+            newItemsObject[value.type] += parseInt(value.qty);
+        });
+
+        if (method == 'disappear') {
+            itemClass = 'decreased';
+            operator = '-';
+        }
+
+        $.each(newItemsObject, function (key, value) {
+            if (value > 0) {
+                var $a = $('a[data-info="' + key + '"]');
+                var $li = $a.parent('li');
+                const className = 'chosen';
+                const $currentChosens = $a.find(`.${className}`)
+
+                function handleTwoFirst(handler) {
+                    $.each([0, 1], (_, index) => {
+                        handler($currentChosens.eq(index));
+                    });
+                }
+
+                if ($currentChosens.length >= 5) {
+                    handleTwoFirst(($currentChosen) => {
+                        $currentChosen.fadeOut(500, function() {
+                            $(this).remove();
+                        });
+                    });
+                } else if ($currentChosens.length >= 6) {
+                    handleTwoFirst(($currentChosen) => {
+                        $currentChosen.remove()
+                    });
+                }
+
+                var $span = $('<span/>', {
+                    'class': className + ' ' + itemClass,
+                    'text': operator + value,
+                });
+
+                if ($li.hasClass('ui-state-disabled')) {
+                    $li.removeClass('ui-state-disabled');
+                }
+
+                let $indicatorsContainer = $a.find('.indicatorsContainer').first();
+                if (!$indicatorsContainer.length) {
+                    $indicatorsContainer = $('<div class="indicatorsContainer"></div>');
+
+                    $a.append($indicatorsContainer)
+                }
+
+                $span.appendTo($indicatorsContainer);
+
+                setTimeout(function () {
+                    $span.fadeOut(500, function() {
+                        $(this).remove()
+                    });
+                }, 4000);
+            }
+        });
+
+    }
+
+
+    $(window).resize(changeOnResize).resize();
+});

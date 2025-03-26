@@ -1,0 +1,370 @@
+/*Chart functionality*/
+(function(){
+	var D= new Date('2011-06-02T09:34:29+02:00');
+	if(!D || +D!== 1307000069000){
+		Date.fromISO= function(s){
+			var day, tz,
+				rx=/^(\d{4}\-\d\d\-\d\d([tT ][\d:\.]*)?)([zZ]|([+\-])(\d\d):(\d\d))?$/,
+				p= rx.exec(s) || [];
+			if(p[1]){
+				day= p[1].split(/\D/);
+				for(var i= 0, L= day.length; i<L; i++){
+					day[i]= parseInt(day[i], 10) || 0;
+				}
+				day[1]-= 1;
+				day= new Date(Date.UTC.apply(Date, day));
+				if(!day.getDate()) return NaN;
+				if(p[5]){
+					tz= (parseInt(p[5], 10)*60);
+					if(p[6]) tz+= parseInt(p[6], 10);
+					if(p[4]== '+') tz*= -1;
+					if(tz) day.setUTCMinutes(day.getUTCMinutes()+ tz);
+				}
+				return day;
+			}
+			return NaN;
+		}
+	}
+	else{
+		Date.fromISO= function(s){
+			return new Date(s);
+		}
+	}
+})();
+
+function showTooltip(x, y, contents) {
+	$("<div id='white-tooltip' class='white-tooltip'></div>")
+		.append('<div class="ui-tooltip-content">' + contents + '<div class="tooltip-arrow left bottom"></div></div>')
+		.appendTo("body")
+		.fadeIn(200);
+
+	var $tooltip = $("#white-tooltip");
+	var tooltipWidth = $tooltip.width();
+	var tooltipHeight = $tooltip.height();
+	$tooltip.css({
+		position: "absolute",
+		top: y - tooltipHeight - 20,
+		left: x - tooltipWidth/2
+	})
+};
+
+$(document).on("change", '#dark-mode-state', function (event) {
+	updateChart('.chart-placeholder');
+});
+
+var generalDataSetLight = {
+	series: {
+		lines: {
+			show: true,
+			fill: 0.2
+		},
+		points: {
+			show: true
+		}
+	},
+	grid: {
+		hoverable: true,
+		clickable: true,
+		color: "#bbb",
+		backgroundColor: "#f2f2f2",
+		show: true,
+		aboveData: false,
+		margin: {top: 10, right: 10, bottom: 10, left: 10},
+		borderWidth: 2,
+		borderColor: "#ddd",
+		minBorderMargin: 10
+	},
+	legend: {
+		show: true,
+		position: "nw",
+		margin: [5,5]
+	},
+	selection: {
+		mode: "xy"
+	}
+};
+
+var defaultAxisDataSetLight = {
+	yaxis: {
+		ticks: function(val) {
+			var stepCount = 10;
+			var values = [];
+			var meanValue = ((val.min + val.max)/stepCount);
+			var roundValue = Math.pow(10, (Math.round(meanValue).toString().length - 2));
+			meanValue = Math.round(((val.min + val.max)/stepCount)/roundValue)*roundValue;
+			for (var i = 0; i < stepCount + 1 ; i++) {
+				values[i] = meanValue * i;
+			}
+			return values;
+		},
+		tickFormatter: function(x) {
+			x = Math.round(x*100)/100;
+			return prefix+x.toString().replace(/\B(?=(?:\d{3})+(?!\d))/g, ",");
+        }
+	},
+	xaxis: {
+		mode: "time",
+		minTickSize: [1, "day"],
+		timeformat: "%b %d <p>%Y</p>"
+	}
+},
+prefix = '$';
+
+var generalDataSetDark = {
+	grid: {
+		color: "#CCC",
+		backgroundColor: "#333",
+		borderColor: "#222"
+	}
+};
+
+var defaultAxisDataSetDark = {
+	yaxis: {
+		font: {
+			color: "#CCC"
+		}
+	},
+	xaxis: {
+		font: {
+			color: "#CCC"
+		}
+	}
+};
+
+function getTruncatedYear(date) {
+	return date.getUTCFullYear().toString().substr(-2)
+}
+
+function toDate(timestamp) {
+	var month = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+	var date = new Date(timestamp);
+	return date.getUTCDate() + " " + month[date.getUTCMonth()] + " '" + (getTruncatedYear(date));
+};
+
+var day_xaxis = {
+	mode: "time",
+	minTickSize: [1, "hour"],
+	timeformat: "%h:00"
+};
+
+var last_url = '';
+
+function clone(obj) {
+    if (null == obj || "object" != typeof obj)
+    	return obj;
+    var copy = obj.constructor();
+    for (var attr in obj) {
+        if (obj.hasOwnProperty(attr))
+        	copy[attr] = clone(obj[attr]);
+    }
+    return copy;
+}
+
+var charts = {};
+
+function updateChart(placeholder, axisData, data, portfolio, bg_color) {
+	var $placeholder = $(placeholder);
+	var	pre = $placeholder.attr('prefix');
+	prefix = pre != undefined ? pre : '$';
+
+	var generalDataSet = {}, defaultAxisDataSet = {};
+
+	var isDarkMode = $('body').hasClass('dark-mode');
+
+	if (isDarkMode) {
+		$.extend( true, generalDataSet, generalDataSetLight, generalDataSetDark);
+		$.extend( true, defaultAxisDataSet, defaultAxisDataSetLight, defaultAxisDataSetDark);
+	}
+	else {
+		generalDataSet = generalDataSetLight;
+		defaultAxisDataSet = defaultAxisDataSetLight;
+	}
+
+	var axisDataInstance = axisData || defaultAxisDataSet;
+
+	$.extend(generalDataSet, axisDataInstance);
+
+	var url = data || $placeholder.attr('action');
+  if(!url) {
+    return;
+  }
+	var url_obj = queryStringToObj(url.split('?')[1]);
+	if(url_obj.period && !portfolio) {
+		$placeholder.attr('action', url);
+		var $graphWrapper = $placeholder.closest('.graphs-stock-wrap')
+		if ($graphWrapper.find('input[name='+url_obj.type+']:checked').val() !== url_obj.period) {
+			$graphWrapper.find("input[value='" + url_obj.period + "']").prop('checked', true)
+		}
+	}
+
+
+	function oncomplete(ch_data) {
+		if (!ch_data) return;
+		charts[url] = ch_data;
+		var data = ch_data.data ? ch_data.data : ch_data
+			max_val = -1,
+			max = -1,
+			min = 1000000000,
+			sum = 0;
+
+		for(var i in data){
+			var item = data[i];
+			if(typeof item[0] === 'number')
+				item[0] = new Date(item[0]*1000);
+			min = Math.min(min, item[1]);
+			max_val = Math.max(max_val, item[1]);
+			sum += item[1];
+		}
+
+		min = ch_data.min ? ch_data.min : Math.max(min - (max_val-min)*0.05,0);
+		max = ch_data.max ? ch_data.max : Math.min(/*sum*10/data.length,*/ max_val + (max_val - min)*0.05);
+
+		if(min===max) {
+			min=min-1;
+			max=max+1;
+		}
+
+		$.extend(generalDataSet.yaxis, {
+			ticks: null,
+			min: min,
+			datamin: min,
+			max: max,
+			datamax: max
+		});
+		if(url_obj.period == 'day' || (new Date().getTime() - url_obj.from*1000)/86400000<2)
+			generalDataSet.xaxis = day_xaxis;
+		else if(url_obj.from && url_obj.to) {
+			var days = (url_obj.to - url_obj.from)/86400;
+			if(days < 5 && days > 1) {
+				generalDataSet.xaxis.timeformat = '%h:00 ' +generalDataSet.xaxis.timeformat
+				generalDataSet.xaxis.minTickSize = [1, "hour"];
+			} else if(days <= 1) {
+				generalDataSet.xaxis = day_xaxis;
+			}
+		}
+		if(!data) return;
+		generalDataSet.series.points.show = data.length <= 2 ? true : false;
+
+		var tempDataSet = clone(generalDataSet);
+
+		if(portfolio) {
+			tempDataSet.yaxis.ticks = 0;
+			tempDataSet.xaxis.ticks = 0;
+			tempDataSet.grid.margin = {top: 3, right: 3, bottom: 3, left: 3};
+			tempDataSet.grid.minBorderMargin = 3;
+		}
+		if (bg_color) {
+			tempDataSet.grid.backgroundColor = bg_color;
+			tempDataSet.grid.borderColor = '#434343';
+		}
+
+		// disable selection for portfolio and item graphs
+		if (portfolio || url_obj.type) {
+			tempDataSet.selection = undefined;
+		}
+
+		var plot = $.plot(placeholder, [{
+			data: data,
+			color: portfolio ? '#999999' : '#b2ddf2'
+		}], tempDataSet);
+
+		checkAxisYear();
+	}
+/*
+	if(portfolio){
+		oncomplete(portfolio_chart_data[url_obj.ID]);
+		return;
+	}
+*/
+
+	if ($placeholder.attr('is_static')) {
+		var static_data = JSON.parse($placeholder.attr('chart_data'));
+		oncomplete(static_data);
+	} else {
+
+		if((url == last_url && !portfolio) || charts[url]) {
+			oncomplete(charts[url]);
+		} else {
+			ajaxWrapper({
+				url: url,
+				oncomplete: function(resp){
+					var data = JSON.parse(resp.responseText);
+					oncomplete(data);
+				}
+			});
+		}
+		last_url = url;
+	}
+
+	//return plot;
+};
+
+
+function checkAxisYear() {
+	var $year = $('.flot-text .year');
+	$year.first().text() == $year.last().text() ? $year.hide() : $year.show();
+};
+
+function initialiseChart(placeholderClass, axisData, data, portfolio, bg_color) {
+	var placeholder = placeholderClass;
+	var $placeholder = $(placeholder);
+
+	var plot = updateChart(placeholder, axisData, data, portfolio, bg_color);
+
+	var previousPoint = null;
+
+	$placeholder.bind("plothover", function (event, pos, item) {
+
+        var textTooltip = $(this).attr('data-tooltip') || $('#type-stats-button .ui-selectmenu-status').text();
+
+		if (item) {
+			if (previousPoint != item.dataIndex) {
+				previousPoint = item.dataIndex;
+				$("#white-tooltip").remove();
+				var x = Math.round(item.datapoint[0].toFixed(2)),
+					y = item.datapoint[1],
+					dec = Math.round((y - Math.floor(y))*1000);
+					dec = (dec < 10) ? '00' + dec : ((dec < 100) ? '0' + dec : dec);
+				showTooltip(item.pageX, item.pageY,
+					"<p class='bold m-bottom3'>"/*+item.series.label.split('[')[0] + " - "*/ + toDate(x) + "</p>"
+						+ textTooltip + toNumberFormat(Math.floor(y)) + (dec > 0 ? '.' + dec : '') );
+			}
+		} else {
+			$("#white-tooltip").remove();
+			previousPoint = null;
+		}
+	});
+
+	if(!portfolio && !($placeholder.hasClass('value-chart-placeholder') || $placeholder.hasClass('circulation-chart-placeholder') )){
+		$placeholder.bind("plotselected", function (event, ranges) {
+			if (ranges.xaxis.to - ranges.xaxis.from < 0.00001) {
+				ranges.xaxis.to = ranges.xaxis.from + 0.00001;
+			}
+			if (ranges.yaxis.to - ranges.yaxis.from < 0.00001) {
+				ranges.yaxis.to = ranges.yaxis.from + 0.00001;
+			}
+
+			var axisDataSet = {
+				yaxis: { min: ranges.yaxis.from, max: ranges.yaxis.to },
+				xaxis: { min: ranges.xaxis.from, max: ranges.xaxis.to,
+					mode: "time", timeformat: "%b %d<p class='year'>%Y</p>", minTickSize: [1, "day"]}
+			};
+
+			updateChart(placeholder, axisDataSet, $placeholder.attr('prefixaction')+'&from='+Math.round(ranges.xaxis.from/1000)+'&to='+Math.round(ranges.xaxis.to/1000));
+		});
+
+		$placeholder.bind("dblclick", function (event, ranges) {
+			updateChart(placeholder);
+		});
+	}
+
+	checkAxisYear();
+
+	$(".chart-wrap").resizable();
+
+	$(window).resize(function() {
+		checkAxisYear();
+	});
+
+	return plot;
+};

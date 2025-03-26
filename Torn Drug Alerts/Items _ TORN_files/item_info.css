@@ -1,0 +1,869 @@
+.d .item-header {
+    padding: 10px 5px;
+    border-bottom: 1px solid;
+    border-bottom-color: #CCC;
+    border-bottom-color: var(--default-panel-divider-outer-side-color);
+    background: url(/images/v2/properties/divider.png) center center no-repeat;
+    font-size: 0;
+}
+
+.d .item-header .item-previous,
+.d .item-header .item-next {
+    display: inline-block;
+    vertical-align: middle;
+    height: 14px;
+    width: 12px;
+    margin: 0 5px;
+    cursor: pointer;
+}
+
+.d .item-header .item-previous,
+.d .item-header .item-next {
+    background: url(/images/v2/main/pagination_first_last.png) left top no-repeat;
+}
+
+.d .item-header .item-previous {
+    background-position: left -28px;
+}
+
+.d .item-header .item-next {
+    background-position: right -28px;
+}
+
+.d .item-header .item-previous:hover {
+    background-position: left -42px;
+}
+
+.d .item-header .item-next:hover {
+    background-position: right -42px;
+}
+
+.d .item-footer {
+    padding: 10px 2px;
+    border-top: 1px solid;
+    border-top-color: #FFF;
+    border-top-color: var(--default-panel-divider-inner-side-color);
+}
+
+.d .item-footer a:hover .view-icon {
+    background-position: center bottom;
+}
+
+.d .item-header .prev-item,
+.d .item-header .next-item {
+    display: inline-block;
+    vertical-align: middle;
+    width: 362px;
+    font-size: 12px;
+}
+
+.d .item-header .prev-item {
+    text-align: left;
+    padding-left: 3px;
+}
+
+.d .item-header .next-item {
+    text-align: right;
+    padding-right: 3px;
+}
+
+.d .item-gray .info-cont,
+.d .item-gray.info-cont {
+    border-top: 1px solid;
+    border-top-color: #CCC;
+    border-top-color: var(--default-panel-divider-outer-side-color);
+}
+
+.d .item-gray .additional-info,
+.d .item-gray.additional-info {
+    border-bottom: none;
+}
+
+.d .item-gray .info-cont li,
+.d .item-gray.info-cont li,
+.d .item-gray .additional-info li,
+.d .item-gray.additional-info li {
+    background: #F2F2F2;
+    background: var(--default-bg-panel-color);
+    border-top: 1px solid;
+    border-top-color: #FFF;
+    border-top-color: var(--default-panel-divider-inner-side-color);
+}
+
+.d .item-gray .additional-info li,
+.d .item-gray.additional-info li {
+    border-bottom: 1px solid;
+    border-bottom-color: #CCC;
+    border-bottom-color: var(--default-panel-divider-outer-side-color);
+}
+
+.d .info-cont .additional-bonus-item {
+    display: flex;
+    justify-content: space-between;
+}
+
+.d .info-cont .additional-bonus-item .desc {
+    margin-right: 5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow-x: hidden;
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+}
+
+.d .info-cont .additional-bonus-item .desc .label-value{
+    flex: 1;
+}
+.d .info-cont .additional-bonus-item .desc i{
+    margin-right: 2px;
+}
+
+.d .item-cont .img-wrap img {
+    height: 50px;
+    width: 100px;
+}
+
+body.d .show-item-info .item-cont .img-wrap .item-plate,
+body.d .sortable-list .show-item-info .item-cont .item-plate {
+    /* margin: auto; */
+}
+
+.d .item-cont .img-wrap .book-info {
+    display: block;
+    position: relative;
+    margin: 0 10px 10px;
+}
+
+.d .item-cont .img-wrap .book-info img {
+    height: 135px;
+    margin: 0;
+    -moz-box-shadow: 1px 1px 2px rgba(0,0,0,0.65);
+    -webkit-box-shadow: 1px 1px 2px rgba(0,0,0,0.65);
+    box-shadow: 1px 1px 2px rgba(0,0,0,0.65);
+    background: none;
+    cursor: pointer;
+}
+
+.d .item-cont .img-wrap .book-info:hover img {
+    -moz-box-shadow: 0 0 2px rgba(0,0,0,0.65);
+    -webkit-box-shadow: 0 0 2px rgba(0,0,0,0.65);
+    box-shadow: 0 0 2px rgba(0,0,0,0.65);
+}
+
+.d .info-wrap.info-book .item-cont .img-wrap img,
+.d .info-wrap.info-book .item-cont .img-wrap canvas.torn-item {
+    height: auto;
+    width: 175px;
+}
+
+.d .item-cont .img-wrap .book-info .hover {
+    cursor: pointer;
+}
+
+.d .item-cont .img-wrap .book-info img:hover + .hover,
+.d .item-cont .img-wrap .book-info .hover:hover {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 2px;
+    background: rgba(242, 242, 242, 0.9) url(/images/v2/mobile/zoom.png) center center no-repeat;
+}
+
+.d .info-wrap.info-book .item-cont .info-msg {
+    width: 567px;
+    vertical-align: top;
+}
+
+.d .category-wrap .books-items .info-wrap .info-cont > li:first-child .desc {
+    width: 115px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.d .items-wrap.thumbnails .items-cont .info-wrap.info-book .item-wrap {
+    border-top: 1px solid;
+    border-top-color: #CCC;
+    border-top-color: var(--default-panel-divider-outer-side-color);
+}
+
+.d .item-cont .item-wrap {
+    position: relative;
+    top: 0;
+    left: 0;
+    font-size: 0;
+    width: 100%;
+    border-top: 1px solid;
+    border-top-color: #FFF;
+    border-top-color: var(--default-panel-divider-inner-side-color);
+}
+
+.d .info-wrap .item-cont .item-wrap.no-thumb .img-wrap {
+    display: none;
+}
+
+.d .info-wrap .item-cont .item-wrap.no-thumb .info-msg {
+    width: 754px;
+}
+
+.d .item-cont .img-wrap,
+.d .item-cont .info-msg {
+    font-size: 12px;
+}
+
+.d .item-cont .img-wrap {
+    display: table-cell;
+    width: 100px;
+    line-height: 12px;
+    padding: 10px 12px 10px 10px;
+}
+
+.d .buy-show-item-info .item-plate {
+    margin: auto;
+}
+
+.d .item-cont .img-wrap.missions-img {
+    border-right: none;
+}
+
+.d .item-cont .info-msg {
+    padding: 10px;
+    display: table-cell;
+    width: 632px;
+    line-height: 16px;
+    background-image: none;
+    white-space: normal;
+}
+
+.d .item-wrap.no-thumb .t-delimiter,
+.d .item-wrap.no-thumb .b-delimiter {
+    display: none;
+}
+
+.d .info-cont,
+.d .additional-info {
+    width: 100%;
+    background-color: #FFF;
+    background-color: var(--items-cont-description-bg-color);
+    list-style: none;
+    padding-inline-start: unset;
+}
+
+.d .additional-info {
+    font-size: 0;
+    border-bottom: 1px solid;
+    border-bottom-color: #CCC;
+    border-bottom-color: var(--default-panel-divider-outer-side-color);
+}
+
+.d .additional-info li > * {
+    font-size: 12px;
+}
+
+.d .info-cont li,
+.d .additional-info li {
+    height: 34px;
+    line-height: 33px;
+    border-left: 1px solid;
+    border-left-color: transparent;
+    border-right: 1px solid;
+    border-right-color: #CCC;
+    border-right-color: var(--items-cont-description-border-right-color);
+    border-top: 1px solid;
+    border-top-color: #CCC;
+    border-top-color: var(--items-cont-description-border-top-color);
+    background: #FFF;
+    background: var(--items-cont-description-bg-active-color);
+}
+
+.d .item-cont .delimiter,
+.d .item-delimiter {
+    height: 10px;
+    border-top: 1px solid;
+    border-top-color: #FFF;
+    border-top-color: var(--default-panel-divider-inner-side-color);
+}
+
+.d .info-cont li {
+    float: left;
+    width: 197px;
+    box-sizing: border-box;
+}
+
+.d .additional-info li {
+    overflow: hidden;
+    width: 391px;
+}
+
+.d .additional-info li.left {
+    border-left: none;
+}
+
+.d .additional-info li.right {
+    border-right: none;
+}
+
+.d .info-cont li:first-child {
+    border-left: none;
+}
+
+.d .info-cont li.last {
+    width: 193px;
+}
+
+.d .info-cont li.last {
+    border-right: none;
+}
+
+.d .info-cont li.clear,
+.d .additional-info li.clear {
+    float: none;
+    height: 0;
+    width: 0;
+    line-height: 0;
+    font-size: 0;
+    border: none;
+}
+
+.d .info-cont li .title {
+    margin: 0 5px 0 10px;
+    font-weight: bold;
+}
+
+.d .info-cont li .title,
+.d .info-cont li .desc {
+    float: left;
+}
+
+.d .info-cont li .desc {
+    font-weight: normal;
+}
+
+.d .info-cont li .desc.bonus-decrease {
+    color: #D83500;
+    color: var(--default-red-color);
+}
+
+.d.dark-mode .info-cont li .desc.bonus-decrease > :not(.color-name) {
+    filter: invert(24%) sepia(82%) saturate(5749%) hue-rotate(21deg) brightness(99%) contrast(103%);
+}
+
+.d .info-cont li .desc.bonus-increase {
+    color: #678C00;
+    color: var(--default-green-color);
+}
+
+.d.dark-mode .info-cont li .desc.bonus-increase > :not(.color-name) {
+    filter: invert(59%) sepia(92%) saturate(385%) hue-rotate(43deg) brightness(98%) contrast(92%);
+}
+
+.d .dark .info-cont:first-child li .desc i {
+    vertical-align: middle;
+    margin-top: 2px;
+}
+
+.d .info-cont .item-rarity-color-overlay {
+    text-transform: capitalize;
+    margin-left: 4px;
+    color: initial;
+}
+
+.d .info-cont .item-rarity-color-overlay.yellow {
+    color: #CA9800;
+    color: var(--default-yellow-color);
+}
+
+.d .info-cont .item-rarity-color-overlay.orange {
+    color: #E67700;
+    color: var(--default-orange-color);
+}
+
+.d .info-cont .item-rarity-color-overlay.red {
+    color: #D83500;
+    color: var(--default-red-color);
+}
+
+.d .info-cont li .desc .bonus-attachment-item-defence-bonus,
+.d .info-cont li .desc .bonus-attachment-item-accuracy-bonus {
+    vertical-align: middle;
+    margin-bottom: 2px;
+}
+
+.d .info-cont li.global .desc {
+    float: right;
+    width: 102px;
+    max-width: 102px;
+}
+
+.d .bar-wrap {
+    position: relative;
+}
+
+.d .red .bar-wrap,
+.d .purple .bar-wrap,
+.d .green .bar-wrap,
+.d .blue .bar-wrap,
+.d .orange .bar-wrap,
+.d .brown .bar-wrap,
+.d .dark-blue .bar-wrap,
+.d .bar-gray-wrap {
+    left: 0;
+    overflow: hidden;
+    position: absolute;
+    top: 0;
+}
+
+.d .bar-wrap,
+.d .bar-gray-wrap,
+.d .bar-gray {
+    height: 34px;
+}
+
+.d .red .bar-wrap,
+.d .red .bar,
+.d .purple .bar-wrap,
+.d .purple .bar,
+.d .green .bar-wrap,
+.d .green .bar,
+.d .blue .bar-wrap,
+.d .blue .bar,
+.d .orange .bar-wrap,
+.d .orange .bar,
+.d .brown .bar-wrap,
+.d .brown .bar,
+.d .dark-blue .bar-wrap,
+.d .dark-blue .bar,
+.d .bar-gray-wrap,
+.d .bar-gray {
+    background: url(/images/v2/items/progress_bars.png) left top no-repeat;
+    background-image: var(--items-progress-bar-background);
+}
+
+.d .bar-wrap {
+    margin: 0 0 0 -10px;
+    width: 90px;
+}
+
+.d .red .bar-wrap,
+.d .purple .bar-wrap,
+.d .green .bar-wrap,
+.d .blue .bar-wrap,
+.d .orange .bar-wrap,
+.d .brown .bar-wrap,
+.d .dark-blue .bar-wrap,
+.d .bar-gray-wrap {
+    width: 118px;
+}
+
+.d .bar-gray {
+    margin-left: 26px;
+    width: 92px;
+}
+
+.d .bar-gray-wrap {
+    background-position: left -3px;
+}
+
+.d .bar-gray {
+    background-position: right -44px;
+}
+
+.d .red .bar-wrap,
+.d .red .bar,
+.d .purple .bar-wrap,
+.d .purple .bar,
+.d .green .bar-wrap,
+.d .green .bar,
+.d .blue .bar-wrap,
+.d .blue .bar,
+.d .orange .bar-wrap,
+.d .orange .bar,
+.d .brown .bar-wrap,
+.d .brown .bar,
+.d .dark-blue .bar-wrap,
+.d .dark-blue .bar {
+    height: 11px;
+}
+
+.d .red .bar-wrap,
+.d .purple .bar-wrap,
+.d .green .bar-wrap,
+.d .blue .bar-wrap,
+.d .orange .bar-wrap,
+.d .brown .bar-wrap,
+.d .dark-blue .bar-wrap {
+    margin: 12px 0 0 14px;
+}
+
+.d .red .bar-wrap {
+    background-position: -14px -97px;
+}
+
+.d .purple .bar-wrap {
+    background-position: -14px -179px;
+}
+
+.d .orange .bar-wrap {
+    background-position: -14px -261px;
+}
+
+.d .blue .bar-wrap {
+    background-position: -14px -343px;
+}
+
+.d .brown .bar-wrap {
+    background-position: -14px -425px;
+}
+
+.d .dark-blue .bar-wrap {
+    background-position: -14px -507px;
+}
+
+.d .green .bar-wrap {
+    background-position: -14px -589px;
+}
+
+.d .red .bar,
+.d .purple .bar,
+.d .green .bar,
+.d .blue .bar,
+.d .orange .bar,
+.d .brown .bar,
+.d .dark-blue .bar {
+    margin-left: 8px;
+}
+
+.d .red .bar {
+    background-position: -222px -138px;
+}
+
+.d .purple .bar {
+    background-position: -222px -220px;
+}
+
+.d .orange .bar {
+    background-position: -222px -302px;
+}
+
+.d .blue .bar {
+    background-position: -222px -384px;
+}
+
+.d .brown .bar {
+    background-position: -222px -466px;
+}
+
+.d .dark-blue .bar {
+    background-position: -222px -548px;
+}
+
+.d .green .bar {
+    background-position: -222px -630px;
+}
+
+.d .additional-info .icon-wrap i {
+    vertical-align: top;
+}
+
+.d .additional-info .icon-wrap {
+    display: inline-block;
+    vertical-align: middle;
+    border-right: 1px solid;
+    border-right-color: #CCC;
+    border-right-color: var(--default-panel-divider-outer-side-color);
+}
+
+.d .additional-info .icon-wrap.big {
+    height: 29px;
+    width: 29px;
+    padding: 2px 3px 3px 2px;
+}
+
+.d .additional-info .icon-wrap.small {
+    height: 11px;
+    width: 11px;
+    padding: 12px 11px 12px 12px;
+}
+
+.d .additional-info .desc {
+    display: inline-block;
+    vertical-align: middle;
+    padding-left: 10px;
+    border-left: 1px solid #FFF;
+	border-left-color: var(--default-panel-divider-inner-side-color);
+}
+
+.d .item-cont .close-icon {
+    position: absolute;
+    z-index: 1;
+    display: none;
+    cursor: pointer;
+    top: 10px;
+    right: 0;
+    padding: 0 10px;
+}
+
+.d .sortable-list .show-item-info .info-cont li.t-right {
+    border-right: none;
+}
+
+.d .equipped-weapons .experience-wrap {
+    position: relative;
+    height: 6px;
+    margin: 10px 0 0 2px;
+    width: 159px;
+    text-align: center;
+}
+
+.d .equipped-weapons .experience-wrap .progress-cont {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background-position: left -6px;
+}
+
+.d .equipped-weapons .experience-wrap .progress,
+.d .equipped-weapons .experience-wrap .progress-cont {
+    background: url(/images/v2/items/weapon_experience.png) left top no-repeat;
+}
+
+.d .equipped-weapons .experience-wrap .progress-wrap,
+.d .equipped-weapons .experience-wrap .progress-cont,
+.d .equipped-weapons .experience-wrap .progress {
+    height: 6px;
+}
+
+.d .equipped-weapons .experience-wrap .progress {
+    margin-left: 2px;
+    background-position: -3px 0;
+}
+
+.d .equipped-weapons .experience-wrap .progress-cont.pos {
+    background-position: 0 -18px;
+}
+
+.d .equipped-weapons .experience-wrap .pos .progress {
+    background-position: -3px -12px;
+}
+
+@media screen and (max-width: 784px) {
+    .r .t-hide {
+        display: none;
+    }
+
+    .r .item-cont .info-msg {
+        width: 234px;
+        font-size: 13px;
+        white-space: normal;
+    }
+
+    .r .item-cont .info-msg p {
+        display: inline;
+    }
+
+    .r .info-cont li.t-left {
+        border-left: none;
+    }
+
+    .r .info-cont li.t-right {
+        border-right: none;
+    }
+
+    .r .info-cont li.t-left,
+    .r .info-cont li.t-right {
+        width: 192px;
+    }
+
+    .r .additional-info li {
+        border-left: none;
+        border-right: none;
+        width: 386px;
+    }
+
+    .r .additional-info li.empty {
+        display: none;
+    }
+
+    .r .item-header .prev-item,
+    .r .item-header .next-item {
+        width: 163px;
+    }
+
+    .r .item-gray .info-wrap {
+        border-top: 1px solid #CCC;
+	    border-top-color: var(--default-panel-divider-outer-side-color);
+        border-bottom: none;
+    }
+
+    .r .item-gray .info-cont {
+        border-top: none;
+    }
+
+    .r .item-gray .info-cont > li {
+        border-bottom: 1px solid #CCC;
+	    border-bottom-color: var(--default-panel-divider-outer-side-color);
+        border-top: 1px solid #FFF;
+	    border-top-color: var(--default-panel-divider-inner-side-color);
+    }
+
+    .r .item-gray .info-cont > li.clear {
+        border: none;
+    }
+
+    .r .info-cont li.global .title {
+        width: 65px;
+        margin: 0;
+        text-align: left;
+        padding-left: 10px;
+        line-height: 33px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        overflow-x: hidden;
+    }
+
+    .r .info-wrap .item-cont .item-wrap.no-thumb .info-msg {
+        width: 355px;
+    }
+
+    .r .info-wrap.info-book .item-cont .img-wrap {
+        border-right: 0;
+        display: inline;
+    }
+
+    .r .info-wrap.info-book .item-cont .img-wrap img,
+    .r .info-wrap.info-book .item-cont .img-wrap canvas.torn-item {
+        width: 115px;
+        float: left;
+        display: block;
+        margin: 0 10px 0 0;
+    }
+
+    .r .info-wrap.info-book .item-cont .info-msg {
+        padding: 0;
+        width: auto;
+        display: inline;
+    }
+
+    .r .info-wrap.info-book .item-cont .item-wrap {
+        line-height: 16px;
+        padding: 10px;
+    }
+
+    .r .info-cont > li,
+    .r .info-cont li.last {
+        float: left;
+        width: 192px;
+    }
+
+    .r .info-cont > li:nth-child(2n) {
+        border-right: 0;
+    }
+}
+
+@media screen and (max-width: 386px) {
+
+    .r .item-cont .info-msg {
+        width: 168px;
+    }
+
+    .r .info-cont > li,
+    .r .info-cont > li.t-left,
+    .r .info-cont > li.t-right,
+    .r .info-cont li.last {
+        width: 159px;
+    }
+
+    .r .additional-info li {
+        width: 320px;
+        float: none;
+    }
+
+    .r .info-cont li.global .desc {
+        width: 90px;
+    }
+
+    .r .bar-wrap {
+        width: 77px;
+    }
+
+    .r .bar-gray {
+        width: 77px;
+    }
+
+    .r .red .bar-wrap,
+    .r .purple .bar-wrap,
+    .r .green .bar-wrap,
+    .r .blue .bar-wrap,
+    .r .orange .bar-wrap,
+    .r .brown .bar-wrap,
+    .r .dark-blue .bar-wrap,
+    .r .bar-gray-wrap {
+        width: 95px;
+    }
+
+    .r .info-cont li.global .title {
+        width: 58px;
+    }
+
+    .r .red .bar {
+        background-position: -236px -138px;
+    }
+
+    .r .purple .bar {
+        background-position: -236px -220px;
+    }
+
+    .r .orange .bar {
+        background-position: -236px -302px;
+    }
+
+    .r .blue .bar {
+        background-position: -236px -384px;
+    }
+
+    .r .brown .bar {
+        background-position: -236px -466px;
+    }
+
+    .r .dark-blue .bar {
+        background-position: -236px -548px;
+    }
+
+    .r .green .bar {
+        background-position: -236px -630px;
+    }
+
+    .r .item-header .prev-item,
+    .r .item-header .next-item {
+        width: 130px;
+    }
+
+    .r .equipped-weapons .experience-wrap {
+        width: 139px;
+        margin-left: 10px;
+    }
+
+    .r .equipped-weapons .experience-wrap .progress {
+        background-position: -23px 0;
+    }
+
+    .r .equipped-weapons .experience-wrap .pos .progress {
+        background-position: -23px -12px;
+    }
+
+    .r .info-wrap .item-cont .item-wrap.no-thumb .info-msg {
+        width: 289px;
+    }
+
+    .r .info-wrap.info-book .item-cont .img-wrap img,
+    .r .info-wrap.info-book .item-cont .img-wrap canvas.torn-item {
+        width: 84px;
+    }
+
+    .r .category-wrap .books-items .info-wrap .info-cont > li:first-child .desc {
+        width: 84px;
+    }
+}

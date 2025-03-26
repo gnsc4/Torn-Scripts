@@ -1,0 +1,9 @@
+:root {
+    --cache-item-background: transparent linear-gradient(0deg, #EBEBEB 0%, #DDDDDD 100%) 0% 0% no-repeat padding-box;
+    --cache-item-box-shadow: inset 0px 2px 4px #00000040, 0px 1px 0px #FFFFFF;
+    --cache-item-border: none;
+    --single-unique-item-background: transparent linear-gradient(0deg, #EBEBEB 0%, #DDDDDD 100%) 0% 0% no-repeat padding-box;
+    --single-unique-item-box-shadow: inset 0px 2px 4px #00000040, 0px 1px 0px #FFFFFF;
+    --single-unique-item-border: none;
+    --single-unique-item-border-radius: 5px;
+}
