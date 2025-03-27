@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Manager
-// @version      3.7.1
+// @version      3.7.3
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -18,7 +18,7 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=torn.com
 // @license      MIT
-// @namespace torn.raceconfigguipda
+// @namespace    torn.raceconfigguipda
 // ==/UserScript==
 
 (function() {
@@ -1518,7 +1518,7 @@
 
             <div style="text-align: center; margin-top: 20px; color: #888; font-size: 1.2em;">
                 Script created by <a href="https://www.torn.com/profiles.php?XID=268863" target="_blank" style="color: #888; text-decoration: none;">GNSC4 [268863]</a><br>
-                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.7.1 Official Forum Link</a>
+                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.7.3 Official Forum Link</a>
             </div>
         `;
 
@@ -5094,9 +5094,9 @@
             return;
         }
 
-        // Save the car ID for later selection
+        // Store car ID for direct selection
         sessionStorage.setItem('pendingOfficialRaceCarId', carId);
-        console.log('[Official Race] Saved car ID for later selection:', carId);
+        console.log('[Official Race] Saved car ID for car selection:', carId);
         
         displayStatusMessage('Joining official race...', 'info', 'officialRaceStatus');
         displayStatusMessage('Joining official race...', 'info', 'quickLaunchStatus');
@@ -5105,11 +5105,13 @@
             const rfcValue = getRFC();
             
             if (!rfcValue) {
-                throw new Error('Failed to get RFC value');
+                displayStatusMessage('Failed to get RFC value', 'error', 'officialRaceStatus');
+                return;
             }
             
             console.log('[Official Race] Got RFC value:', rfcValue);
 
+            // First join the race
             const joinRaceUrl = 'https://www.torn.com/loader.php';
             
             const form = document.createElement('form');
@@ -5126,14 +5128,22 @@
             };
 
             for (const key in params) {
-                if (params.hasOwnProperty(key)) {
-                    const input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = key;
-                    input.value = params[key];
-                    form.appendChild(input);
-                }
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = params[key];
+                form.appendChild(input);
             }
+
+            // Add event listener to navigate to car selection URL after form submission
+            window.addEventListener('beforeunload', () => {
+                // We need to immediately navigate to car selection URL afterward
+                setTimeout(() => {
+                    const directUrl = `https://www.torn.com/loader.php?sid=racing&tab=cars&section=changeRacingCar&step=changeRacingCar&id=${carId}&rfcv=${rfcValue}&type=official`;
+                    console.log('[Official Race] Redirecting to car selection URL:', directUrl);
+                    window.location.href = directUrl;
+                }, 100);
+            }, { once: true });
 
             document.body.appendChild(form);
             console.log('[Official Race] Submitting join race form with RFC:', rfcValue);
@@ -5145,7 +5155,7 @@
             console.error('[Official Race] Error joining race:', error);
         }
     }
-    
+
     function joinOfficialRaceFromPreset(preset) {
         // Use the unified joinOfficialRace function with the preset's car ID
         joinOfficialRace(preset.carId);
@@ -5160,220 +5170,20 @@
             console.log('[Official Race] Found pending car selection:', pendingCarId);
 
             if (window.location.href.includes('section=changeRacingCar')) {
-                console.log('[Official Race] On car selection page, preparing to select car');
-
-                setTimeout(() => {
-                    try {
-                        console.log('[Official Race] Processing car selection for ID:', pendingCarId);
-
-                        const carLinks = document.querySelectorAll('a[href*="step=changeRacingCar"][href*="id="]');
-                        console.log(`[Official Race] Found ${carLinks.length} car links on page`);
-                        
-                        let foundMatchingLink = false;
-
-                        if (carLinks.length > 0) {
-                            for (const link of carLinks) {
-                                const idMatch = link.href.match(/[?&]id=(\d+)/);
-                                if (idMatch && idMatch[1] === pendingCarId) {
-                                    console.log('[Official Race] Found matching car link, clicking it');
-
-                                    sessionStorage.removeItem('pendingOfficialRaceCarId');
-
-                                    setTimeout(() => {
-                                        try {
-                                            link.click();
-                                            foundMatchingLink = true;
-                                        } catch (clickError) {
-                                            console.error('[Official Race] Error clicking car link:', clickError);
-                                        }
-                                    }, 100);
-                                    break;
-                                }
-                            }
-                        }
-
-                        if (!foundMatchingLink) {
-                            console.log('[Official Race] No direct car link found, trying form submission');
-
-                            const rfcValue = getRFCFromPage() || getRFC();
-                            
-                            if (!rfcValue) {
-                                console.error('[Official Race] Failed to get RFC value');
-                                displayOfficialRaceStatus('RFC check failed. Please try again manually.', 'error');
-
-                                const statusDiv = document.createElement('div');
-                                statusDiv.id = 'officialRaceStatusOverlay';
-                                statusDiv.className = 'error';
-                                statusDiv.textContent = 'RFC check failed. Please select your car manually or try again.';
-                                statusDiv.style.cssText = `
-                                    position: fixed;
-                                    top: 50%;
-                                    left: 50%;
-                                    transform: translate(-50%, -50%);
-                                    z-index: 99999;
-                                    margin-top: 10px;
-                                    padding: 20px;
-                                    border-radius: 5px;
-                                    text-align: center;
-                                    display: block;
-                                    background-color: #5c1e1e;
-                                    border: 1px solid #8b2e2e;
-                                    color: white;
-                                    box-shadow: 0 0 15px rgba(0,0,0,0.5);
-                                `;
-                                
-                                const retryButton = document.createElement('button');
-                                retryButton.textContent = 'Try Again';
-                                retryButton.className = 'torn-btn';
-                                retryButton.style.cssText = `
-                                    margin-top: 10px;
-                                    padding: 8px 15px;
-                                    cursor: pointer;
-                                    background-color: #444;
-                                    border: 1px solid #666;
-                                    color: white;
-                                    border-radius: 3px;
-                                `;
-                                retryButton.onclick = function() {
-                                    try {
-                                        const newRfcValue = document.querySelector('input[name="rfcv"]')?.value 
-                                            || document.querySelector('form')?.querySelector('input[name="rfcv"]')?.value 
-                                            || getRFCFromPage() 
-                                            || getRFC();
-                                            
-                                        if (newRfcValue) {
-                                            console.log('[Official Race] Got new RFC value on retry:', newRfcValue);
-
-                                            const directUrl = `https://www.torn.com/loader.php?sid=racing&tab=cars&section=changeRacingCar&step=changeRacingCar&id=${pendingCarId}&rfcv=${newRfcValue}&type=official`;
-
-                                            sessionStorage.removeItem('pendingOfficialRaceCarId');
-                                            window.location.href = directUrl;
-                                        } else {
-                                            alert('Still unable to get RFC value. Please select your car manually.');
-                                        }
-                                    } catch (error) {
-                                        console.error('[Official Race] Error in retry button:', error);
-                                        alert('Error occurred. Please select your car manually.');
-                                    }
-                                };
-                                statusDiv.appendChild(document.createElement('br'));
-                                statusDiv.appendChild(retryButton);
-
-                                const manualInstructions = document.createElement('div');
-                                manualInstructions.style.cssText = `
-                                    margin-top: 15px;
-                                    font-size: 0.9em;
-                                    color: #ddd;
-                                `;
-                                manualInstructions.innerHTML = 'Or select your car from the list below:<br>';
-
-                                const carSection = document.querySelector('.car-select-wrap, .racingCarsList, .cars-wrap, .car-select-container');
-                                if (carSection) {
-                                    const listItemSelector = '.car-option, .car-item, .car-select-row, li';
-                                    const cars = carSection.querySelectorAll(listItemSelector);
-                                    
-                                    if (cars.length > 0) {
-                                        const linksList = document.createElement('div');
-                                        linksList.style.cssText = `
-                                            margin-top: 10px;
-                                            display: flex;
-                                            flex-wrap: wrap;
-                                            gap: 5px;
-                                            justify-content: center;
-                                        `;
-                                        
-                                        cars.forEach(car => {
-                                            const link = car.querySelector('a');
-                                            if (link && link.href) {
-                                                const button = document.createElement('button');
-                                                const carName = car.textContent.trim().replace(/\s+/g, ' ').substring(0, 30);
-                                                
-                                                button.textContent = carName;
-                                                button.className = 'torn-btn';
-                                                button.style.cssText = `
-                                                    padding: 5px 10px;
-                                                    background-color: #333;
-                                                    border: 1px solid #555;
-                                                    color: white;
-                                                    border-radius: 3px;
-                                                    margin: 2px;
-                                                    cursor: pointer;
-                                                    font-size: 0.8em;
-                                                `;
-                                                
-                                                button.onclick = function() {
-                                                    sessionStorage.removeItem('pendingOfficialRaceCarId');
-                                                    window.location.href = link.href;
-                                                };
-                                                
-                                                linksList.appendChild(button);
-                                            }
-                                        });
-                                        
-                                        manualInstructions.appendChild(linksList);
-                                    }
-                                }
-                                
-                                statusDiv.appendChild(manualInstructions);
-                                document.body.appendChild(statusDiv);
-                                
-                                return;
-                            }
-
-                            try {
-                                const form = document.createElement('form');
-                                form.method = 'POST';
-                                form.action = 'https://www.torn.com/loader.php';
-                                form.style.display = 'none';
-
-                                const params = {
-                                    'sid': 'racing',
-                                    'tab': 'cars',
-                                    'section': 'changeRacingCar',
-                                    'step': 'changeRacingCar',
-                                    'id': pendingCarId,
-                                    'rfcv': rfcValue,
-                                    'type': 'official'
-                                };
-
-                                for (const key in params) {
-                                    if (params.hasOwnProperty(key)) {
-                                        const input = document.createElement('input');
-                                        input.type = 'hidden';
-                                        input.name = key;
-                                        input.value = params[key];
-                                        form.appendChild(input);
-                                    }
-                                }
-
-                                document.body.appendChild(form);
-                                console.log('[Official Race] Submitting car selection form with RFC:', rfcValue);
-
-                                sessionStorage.removeItem('pendingOfficialRaceCarId');
-
-                                form.submit();
-                            } catch (formError) {
-                                console.error('[Official Race] Form submission failed:', formError);
-
-                                try {
-                                    const directUrl = `https://www.torn.com/loader.php?sid=racing&tab=cars&section=changeRacingCar&step=changeRacingCar&id=${pendingCarId}&rfcv=${rfcValue}&type=official`;
-                                    console.log('[Official Race] Trying direct URL navigation:', directUrl);
-
-                                    sessionStorage.removeItem('pendingOfficialRaceCarId');
-                                    
-                                    window.location.href = directUrl;
-                                } catch (navError) {
-                                    console.error('[Official Race] Direct navigation failed:', navError);
-                                    displayOfficialRaceStatus('Failed to select car. Please select it manually.', 'error');
-                                }
-                            }
-                        }
-                        
-                    } catch (error) {
-                        console.error('[Official Race] Error in car selection:', error);
-                        displayOfficialRaceStatus(`Error selecting car: ${error.message}. Please select manually.`, 'error');
-                    }
-                }, 1000);
+                // We're on the car selection page, use direct URL to select car
+                const rfcValue = getRFC();
+                if (rfcValue) {
+                    const directUrl = `https://www.torn.com/loader.php?sid=racing&tab=cars&section=changeRacingCar&step=changeRacingCar&id=${pendingCarId}&rfcv=${rfcValue}&type=official`;
+                    console.log('[Official Race] Redirecting to car selection URL:', directUrl);
+                    
+                    // Clear pending car ID to avoid loops
+                    sessionStorage.removeItem('pendingOfficialRaceCarId');
+                    
+                    // Navigate directly to select the car
+                    window.location.href = directUrl;
+                } else {
+                    console.error('[Official Race] Failed to get RFC value for car selection');
+                }
             }
         }
     }
@@ -5505,47 +5315,6 @@
 
     function showOfficialRaceTrackSelector(preset) {
         joinOfficialRaceFromPreset(preset);
-    }
-
-    function joinOfficialRaceFromPreset(preset) {
-        const carId = preset.carId;
-        if (!carId) {
-            displayQuickLaunchStatus('No car ID in preset', 'error');
-            return;
-        }
-
-        const rfcValue = getRFCFromPage() || getRFC();
-        
-        if (!rfcValue) {
-            throw new Error('Failed to get RFC value');
-        }
-
-        const form = document.createElement('form');
-        form.method = 'GET';
-        form.action = 'https://www.torn.com/loader.php';
-        form.style.display = 'none';
-
-        const params = {
-            'sid': 'racing',
-            'tab': 'race',
-            'section': 'changeRacingCar',
-            'step': 'getInRace',
-            'rfcv': rfcValue
-        };
-
-        for (const key in params) {
-            if (params.hasOwnProperty(key)) {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = key;
-                input.value = params[key];
-                form.appendChild(input);
-            }
-        }
-
-        document.body.appendChild(form);
-        console.log('[Official Race] Submitting join race form from preset with RFC:', rfcValue);
-        form.submit();
     }
 
     function removeOfficialRacePreset(presetName) {
