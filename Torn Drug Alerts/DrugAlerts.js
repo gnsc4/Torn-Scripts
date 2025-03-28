@@ -136,16 +136,40 @@
         }
     }
     
-    // Replace the complex hasDrugCooldown function with a simpler, more reliable version
+    // Replace the hasDrugCooldown function with an improved version
     function hasDrugCooldown() {
         debugLog('Checking for drug cooldown...');
         
-        // Simple direct check for the drug cooldown aria-label
+        // Look for the drug cooldown aria-label - main detection method
         const drugCooldown = document.querySelector("[aria-label^='Drug Cooldown:']");
-        const hasCooldown = drugCooldown !== null;
+        if (drugCooldown) {
+            debugLog('Found drug cooldown via aria-label');
+            return true;
+        }
         
-        debugLog('Drug cooldown detected:', hasCooldown);
-        return hasCooldown;
+        // Secondary checks for different UI variations
+        const statusIcons = document.querySelectorAll('.status-icons__wrap a, .status-icons li, .user-icons__wrap a');
+        for (const icon of statusIcons) {
+            // Check icon tooltip text
+            const ariaLabel = icon.getAttribute('aria-label') || '';
+            const title = icon.getAttribute('title') || '';
+            
+            if ((ariaLabel.includes('Drug') && ariaLabel.includes('Cooldown')) || 
+                (title.includes('Drug') && title.includes('Cooldown'))) {
+                debugLog('Found drug cooldown in status icons via tooltip text');
+                return true;
+            }
+            
+            // Check for drug icon class patterns
+            if (icon.className && /icon5[0-9]/.test(icon.className)) {
+                debugLog('Found drug cooldown icon via class name pattern');
+                return true;
+            }
+        }
+        
+        // If we haven't found any cooldown, it's not active
+        debugLog('No drug cooldown detected');
+        return false;
     }
 
     function positionDrugAlert(alert, header) {
@@ -521,42 +545,68 @@
             debugLog('Adding quick use buttons');
             addQuickUseButtons();
             
-            debugLog('Setting up initial cooldown check');
-            setTimeout(() => {
+            // Run initial check with a retry mechanism
+            const checkCooldownWithRetry = (retryCount = 0) => {
+                const maxRetries = 3;
                 const hasCooldown = hasDrugCooldown();
+                
+                debugLog(`Cooldown check (attempt ${retryCount + 1}): ${hasCooldown ? 'ON COOLDOWN' : 'NO COOLDOWN'}`);
+                
                 if (!hasCooldown) {
-                    alertElements = createAlert(drugList);
-                }
-            }, 2000);
-            
-            debugLog('Setting up mutation observer');
-            const observer = new MutationObserver(() => {
-                const hasCooldown = hasDrugCooldown();
-                if (!hasCooldown && !alertElements) {
-                    alertElements = createAlert(drugList);
-                } else if (hasCooldown && alertElements) {
+                    // No cooldown detected, show alert
+                    if (!alertElements) {
+                        alertElements = createAlert(drugList);
+                        debugLog('Created "No Drugs" alert');
+                    }
+                } else if (alertElements) {
+                    // Cooldown detected but alert exists, remove it
                     alertElements.alert.remove();
                     alertElements.gui.remove();
                     alertElements = null;
+                    debugLog('Removed "No Drugs" alert due to cooldown');
+                } else if (retryCount < maxRetries && !hasCooldown && !alertElements) {
+                    // If we didn't find cooldown but also didn't create alert, retry
+                    setTimeout(() => checkCooldownWithRetry(retryCount + 1), 1000);
+                    return;
+                }
+            };
+            
+            // Initial check with delay to let page fully load
+            setTimeout(() => checkCooldownWithRetry(), 2000);
+            
+            // Set up observer for DOM changes
+            const observer = new MutationObserver((mutations) => {
+                // Only check when potentially relevant changes occur
+                const shouldCheck = mutations.some(mutation => {
+                    // Check if status icons area changed
+                    if (mutation.target.className && mutation.target.className.includes('status-icons')) {
+                        return true;
+                    }
+                    // Look for added/removed nodes that could be cooldown indicators
+                    return Array.from(mutation.addedNodes).some(node => 
+                        node.nodeType === 1 && (
+                            node.className && (
+                                node.className.includes('icon') || 
+                                node.className.includes('status')
+                            )
+                        )
+                    );
+                });
+                
+                if (shouldCheck) {
+                    checkCooldownWithRetry();
                 }
             });
             
             observer.observe(document.body, { 
                 childList: true, 
-                subtree: true 
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['class', 'aria-label', 'title'] 
             });
             
-            debugLog('Setting up periodic check');
-            setInterval(() => {
-                const hasCooldown = hasDrugCooldown();
-                if (!hasCooldown && !alertElements) {
-                    alertElements = createAlert(drugList);
-                } else if (hasCooldown && alertElements) {
-                    alertElements.alert.remove();
-                    alertElements.gui.remove();
-                    alertElements = null;
-                }
-            }, 60000);
+            // Regular checks on interval
+            setInterval(checkCooldownWithRetry, 30000);
             
             console.log('%c Drug Alerts Initialized ', 'background: #4CAF50; color: white; padding: 2px 5px; border-radius: 3px;');
         });
