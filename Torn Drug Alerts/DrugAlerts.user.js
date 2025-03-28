@@ -1,14 +1,13 @@
 // ==UserScript==
-// @name         Torn Drug Alerts
-// @version      1.0.8
+// @name         Torn Drug Alert
+// @namespace    http://tampermonkey.net/
+// @version      1.0.11
 // @description  Alerts when no drug cooldown is active and allows taking drugs from any page
 // @author       GNSC4
 // @match        https://www.torn.com/*
 // @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Torn%20Drug%20Alerts/DrugAlerts.user.js
 // @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Torn%20Drug%20Alerts/DrugAlerts.user.js
 // @grant        GM_addStyle
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=torn.com
-// @license      MIT
 // ==/UserScript==
 
 (function() {
@@ -111,16 +110,16 @@
         }
     `);
     
-    // Fallback drug list in case fetch fails
+    // Fallback drug list in case fetch fails - FIX INCORRECT IDS
     const fallbackDrugs = [
         { id: 196, name: "Cannabis" },
         { id: 197, name: "Ecstasy" },
         { id: 198, name: "Ketamine" },
         { id: 199, name: "LSD" },
         { id: 200, name: "Opium" },
+        { id: 201, name: "PCP" },
         { id: 203, name: "Shrooms" },
-        { id: 204, name: "Speed" },
-        { id: 205, name: "PCP" },
+        { id: 204, name: "Speed" }, 
         { id: 205, name: "Vicodin" },
         { id: 206, name: "Xanax" }
     ];
@@ -331,6 +330,450 @@
         tryDirectUseMethod(id, name);
     }
 
+    // Method to use drugs directly by navigating to the item.php page
+    function tryDirectUseMethod(id, name) {
+        debugLog('Attempting direct use method based on manual workflow');
+        
+        // Store drug use data for navigation tracking
+        sessionStorage.setItem('drugUseInProgress', JSON.stringify({
+            id: id,
+            name: name,
+            timestamp: Date.now(),
+            method: 'direct',
+            navigations: 0,
+            visitedItemPage: false
+        }));
+        
+        // Handle whether we're on the item page or not
+        if (!window.location.href.includes('item.php')) {
+            debugLog('Not on item.php, navigating there first');
+            window.location.href = `https://www.torn.com/item.php#drugs-items`;
+            return; // Navigation will happen, no need to continue
+        }
+        
+        // We're already on the item page, proceed with finding and clicking
+        debugLog('Already on item.php, proceeding with drug search and use');
+        findAndClickDrug(id, name);
+    }
+
+    // Enhanced method to find and click drug items
+    function findAndClickDrug(id, name) {
+        debugLog(`Looking for ${name} (ID: ${id})`);
+        
+        // First, make sure we're on the drugs tab
+        const drugsTab = document.querySelector('a[href="#drugs-items"], .drugs-category-icon, [data-category="Drugs"]');
+        if (drugsTab) {
+            // Check if drugs tab is already active
+            const isActive = drugsTab.classList.contains('active') || 
+                          drugsTab.classList.contains('ui-tabs-active') || 
+                          document.querySelector('#drugs-items:not(.ui-tabs-hide)') !== null;
+            
+            if (!isActive) {
+                debugLog('Drugs tab found but not active, clicking it');
+                drugsTab.click();
+                
+                // Wait for tab to activate before continuing
+                setTimeout(() => searchAndUseDrug(id, name), 1000);
+                return;
+            }
+        }
+        
+        // If we're already on drugs tab or can't find any tabs, proceed with searching
+        searchAndUseDrug(id, name);
+    }
+
+    // Improved search function to handle more UI variations
+    function searchAndUseDrug(id, name) {
+        debugLog(`Searching for drug: ${name} (ID: ${id})`);
+        
+        // Try to find the drug by specific selectors first
+        const drugsContainer = document.querySelector('#drugs-items');
+        if (!drugsContainer) {
+            debugLog('Could not find drugs container (#drugs-items)');
+            tryAPIMethod(id, name);
+            return;
+        }
+        
+        // First, try to find by ID which is most reliable
+        let drugItem = drugsContainer.querySelector(`li[data-item="${id}"], li[data-itemid="${id}"]`);
+        
+        // If not found by ID, try to find by name
+        if (!drugItem) {
+            // Get all possible drug items
+            const allDrugItems = drugsContainer.querySelectorAll('li');
+            
+            // Loop through each item to find our drug by name
+            for (let i = 0; i < allDrugItems.length; i++) {
+                const item = allDrugItems[i];
+                const nameElement = item.querySelector('.name, .name-wrap .name, .title .name');
+                
+                if (nameElement && nameElement.textContent.includes(name)) {
+                    drugItem = item;
+                    debugLog(`Found drug ${name} by name content`);
+                    break;
+                }
+            }
+        }
+        
+        if (!drugItem) {
+            debugLog('Could not find drug item, trying API method');
+            tryAPIMethod(id, name);
+            return;
+        }
+        
+        debugLog('Found drug item:', drugItem);
+        
+        // Find the use button for this drug
+        const useButton = drugItem.querySelector('.use button, .left.use button, button[class*="use"], button[rel="use"]');
+        
+        if (!useButton) {
+            debugLog('Could not find use button, trying API method');
+            tryAPIMethod(id, name);
+            return;
+        }
+        
+        debugLog('Found use button, clicking it');
+        try {
+            useButton.click();
+            
+            // Wait for the confirmation dialog
+            setTimeout(() => {
+                clickConfirmButton(id, name);
+            }, 1000);
+        } catch (error) {
+            debugLog('Error clicking use button:', error);
+            tryAPIMethod(id, name);
+        }
+    }
+
+    // Function to click the confirmation button
+    function clickConfirmButton(id, name) {
+        debugLog('Looking for confirmation button');
+        
+        // Try to find the confirmation button using various selectors
+        const confirmSelectors = [
+            '.next-act.bold.t-blue',
+            'a.next-act',
+            '.action-wrap.use-act a',
+            '.use-action a',
+            '.confirmation a',
+            'button.confirm',
+            'a.confirm',
+            'a.yes'
+        ];
+        
+        let confirmButton = null;
+        
+        for (const selector of confirmSelectors) {
+            const buttons = document.querySelectorAll(selector);
+            for (const button of buttons) {
+                if (button.textContent.includes('Yes') || 
+                    button.textContent.includes('Confirm') || 
+                    button.textContent.includes('Use')) {
+                    confirmButton = button;
+                    break;
+                }
+            }
+            if (confirmButton) break;
+        }
+        
+        if (!confirmButton) {
+            // Try a direct, very specific selector from the example
+            confirmButton = document.querySelector('#drugs-items > li.act > div.cont-wrap > div.action-wrap.use-act > div > p > a.next-act');
+            
+            if (!confirmButton) {
+                debugLog('Could not find confirmation button, trying API method');
+                tryAPIMethod(id, name);
+                return;
+            }
+        }
+        
+        debugLog('Found confirmation button, clicking it');
+        
+        try {
+            confirmButton.click();
+            
+            // Check if drug was successfully used
+            setTimeout(() => {
+                const hasCooldown = hasDrugCooldown();
+                
+                if (hasCooldown) {
+                    debugLog('Drug cooldown detected, use was successful');
+                    showNotification(`Used ${name} successfully!`, 'success');
+                    sessionStorage.removeItem('drugUseInProgress');
+                    
+                    // Remove any existing alert since we now have a cooldown
+                    if (alertElements) {
+                        alertElements.alert.remove();
+                        alertElements.gui.remove();
+                        alertElements = null;
+                    }
+                } else {
+                    debugLog('No cooldown detected, drug use may have failed');
+                    showNotification(`Failed to use ${name}`, 'error');
+                }
+            }, 1500);
+        } catch (error) {
+            debugLog('Error clicking confirm button:', error);
+            tryAPIMethod(id, name);
+        }
+    }
+
+    // Much better direct API method using direct fetch call
+    function tryAPIMethod(id, name) {
+        debugLog(`Trying direct API method for ${name} (ID: ${id})`);
+        
+        // Track attempts
+        const attempts = parseInt(sessionStorage.getItem('apiMethodAttempts') || '0');
+        if (attempts > 2) {
+            debugLog('Too many API method attempts, giving up');
+            showNotification(`Failed to use ${name} after multiple attempts`, 'error');
+            sessionStorage.removeItem('drugUseInProgress');
+            sessionStorage.removeItem('apiMethodAttempts');
+            return;
+        }
+        
+        sessionStorage.setItem('apiMethodAttempts', (attempts + 1).toString());
+        
+        // Store that we're using the API method
+        sessionStorage.setItem('drugUseInProgress', JSON.stringify({
+            id: id,
+            name: name,
+            timestamp: Date.now(),
+            method: 'api',
+            navigations: 0
+        }));
+        
+        // Try to extract CSRF token - this may be null but we'll try anyway
+        const csrf = extractCSRFTokenFromPage();
+        debugLog('Found CSRF token:', csrf || 'None');
+        
+        // Try a completely different approach that works more reliably
+        const url = `https://www.torn.com/item.php?step=useItem&ID=${id}&itemID=${id}`;
+        
+        debugLog('Navigating to direct use URL:', url);
+        window.location.href = url;
+    }
+
+    // Function to extract CSRF token from the page
+    function extractCSRFTokenFromPage() {
+        debugLog('Extracting CSRF token from page content');
+        
+        const inputs = document.querySelectorAll('input[name="csrf"]');
+        for (const input of inputs) {
+            if (input.value) {
+                return input.value;
+            }
+        }
+        
+        const scripts = document.querySelectorAll('script');
+        for (const script of scripts) {
+            if (!script.textContent) continue;
+            
+            const match = script.textContent.match(/csrf['":\s]+(["'])([\w\d]+)\1/);
+            if (match && match[2]) {
+                return match[2];
+            }
+        }
+        
+        if (typeof $ !== 'undefined' && typeof $.cookie === 'function') {
+            const jqueryCookie = $.cookie('csrf');
+            if (jqueryCookie) {
+                return jqueryCookie;
+            }
+        }
+        
+        if (typeof window.csrf !== 'undefined') {
+            return window.csrf;
+        }
+        
+        return null;
+    }
+
+    // Improve the checkForPendingDrugUse function to better handle navigation
+    function checkForPendingDrugUse() {
+        try {
+            // Check if there was a drug use in progress
+            const pendingDrugUse = sessionStorage.getItem('drugUseInProgress');
+            if (!pendingDrugUse) return;
+            
+            const drugData = JSON.parse(pendingDrugUse);
+            const timestamp = drugData.timestamp;
+            const now = Date.now();
+            
+            // Only consider recent attempts (within last 60 seconds)
+            if (now - timestamp > 60000) {
+                debugLog('Pending drug use expired, removing');
+                sessionStorage.removeItem('drugUseInProgress');
+                return;
+            }
+            
+            // Check for navigation cycles - if we've been redirected too many times
+            const navigations = parseInt(drugData.navigations || 0);
+            if (navigations > 3) {
+                debugLog('Too many navigation attempts, stopping to prevent infinite loop');
+                showNotification('Failed to use drug after multiple attempts', 'error');
+                sessionStorage.removeItem('drugUseInProgress');
+                return;
+            }
+            
+            debugLog('Detected pending drug use:', drugData);
+            
+            // If we're on the items page, this could be part of our direct method
+            if (window.location.href.includes('item.php')) {
+                // If we've already been to the item.php page, try directly using the drug
+                // instead of trying to click through the UI again
+                if (drugData.method === 'direct' && drugData.visitedItemPage) {
+                    debugLog('Already visited item page once, trying API method instead');
+                    tryAPIMethod(drugData.id, drugData.name);
+                    return;
+                }
+                
+                // Mark that we've visited the item page
+                drugData.visitedItemPage = true;
+                drugData.navigations = navigations + 1;
+                sessionStorage.setItem('drugUseInProgress', JSON.stringify(drugData));
+                
+                debugLog('On item.php with pending drug use, continuing the process');
+                
+                // Wait a moment to make sure the page is fully loaded
+                setTimeout(() => {
+                    // Skip success/error checks initially and try to continue the process
+                    findAndClickDrug(drugData.id, drugData.name);
+                }, 1000);
+                return;
+            }
+            
+            // If we're not on the items page, check for cooldown as success indicator
+            const hasCooldown = hasDrugCooldown();
+            if (hasCooldown) {
+                debugLog('Drug cooldown detected, assuming success');
+                showNotification(`Used ${drugData.name} successfully!`, 'success');
+                sessionStorage.removeItem('drugUseInProgress');
+            } else {
+                // Not on items page and no cooldown
+                // Increment navigation counter
+                drugData.navigations = navigations + 1;
+                sessionStorage.setItem('drugUseInProgress', JSON.stringify(drugData));
+                
+                debugLog('Not on item.php and no cooldown, restarting process');
+                tryDirectUseMethod(drugData.id, drugData.name);
+            }
+        } catch (e) {
+            debugLog('Error in checkForPendingDrugUse:', e);
+            sessionStorage.removeItem('drugUseInProgress');
+        }
+    }
+
+    function addQuickUseButtons() {
+        const quickUseContainer = document.createElement('div');
+        quickUseContainer.className = 'quick-use-container';
+        quickUseContainer.style.cssText = `
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            background-color: rgba(34, 34, 34, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 9998;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        `;
+        
+        // Fix the quick use drugs IDs - they were incorrect
+        const quickUseDrugs = [
+            { id: 206, name: "Xanax", color: "#4CAF50" },
+            { id: 197, name: "Ecstasy", color: "#2196F3" },
+            { id: 196, name: "Cannabis", color: "#8BC34A" } 
+        ];
+        
+        // Create all the drug buttons
+        const drugButtons = [];
+        quickUseDrugs.forEach(drug => {
+            const button = document.createElement('button');
+            button.textContent = drug.name;
+            button.className = 'drug-quick-button';
+            button.style.cssText = `
+                background-color: ${drug.color};
+                color: white;
+                border: none;
+                padding: 5px 10px;
+                border-radius: 3px;
+                cursor: pointer;
+                font-weight: bold;
+                margin-bottom: 5px;
+                text-align: center;
+            `;
+            button.addEventListener('click', () => useDrug(drug.id, drug.name));
+            drugButtons.push(button);
+            quickUseContainer.appendChild(button);
+        });
+        
+        const toggleButton = document.createElement('button');
+        toggleButton.textContent = 'X';
+        toggleButton.style.cssText = `
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background-color: #f44336;
+            color: white;
+            border: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 10px;
+            font-weight: bold;
+        `;
+        
+        // Get saved minimized state
+        let isMinimized = localStorage.getItem('drugAlertMinimized') === 'true';
+        
+        // Apply initial state - do this consistently for all buttons
+        function applyMinimizedState() {
+            drugButtons.forEach(btn => {
+                btn.style.display = isMinimized ? 'none' : 'block';
+            });
+            
+            quickUseContainer.style.padding = isMinimized ? '2px' : '10px';
+            toggleButton.textContent = isMinimized ? '+' : 'X';
+        }
+        
+        // Apply the state immediately
+        applyMinimizedState();
+        
+        toggleButton.addEventListener('click', () => {
+            isMinimized = !isMinimized;
+            
+            // Apply state change to all buttons
+            applyMinimizedState();
+            
+            // Save state to localStorage
+            localStorage.setItem('drugAlertMinimized', isMinimized);
+        });
+        
+        quickUseContainer.appendChild(toggleButton);
+        document.body.appendChild(quickUseContainer);
+    }
+
+    function showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.className = `drug-notification ${type}`;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            setTimeout(() => notification.remove(), 500);
+        }, 3000);
+    }
+
+    // Function to fetch drugs from the item page
     function fetchDrugs() {
         debugLog('Fetching drugs list');
         return new Promise((resolve, reject) => {
@@ -339,8 +782,6 @@
                 .then(html => {
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(html, 'text/html');
-                    
-                    const drugsTab = doc.querySelector('a.drugs-category-icon, a[data-title="Drugs"], a[href="#drugs-items"]');
                     
                     const drugItems = [];
                     
@@ -414,127 +855,25 @@
                     );
                     
                     if (uniqueDrugs.length > 0) {
+                        debugLog(`Found ${uniqueDrugs.length} drugs in Torn's item page`);
                         resolve(uniqueDrugs);
                     } else {
-                        console.log('No drugs found in page, using fallback drug list');
+                        debugLog('No drugs found in page, using fallback drug list');
                         resolve(fallbackDrugs);
                     }
                 })
                 .catch(error => {
-                    console.error('Error fetching drugs:', error);
+                    debugLog('Error fetching drugs:', error);
                     resolve(fallbackDrugs);
                 });
         });
     }
 
-    function addQuickUseButtons() {
-        const quickUseContainer = document.createElement('div');
-        quickUseContainer.className = 'quick-use-container';
-        quickUseContainer.style.cssText = `
-            position: fixed;
-            top: 100px;
-            right: 20px;
-            background-color: rgba(34, 34, 34, 0.8);
-            padding: 10px;
-            border-radius: 5px;
-            z-index: 9998;
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-        `;
-        
-        const quickUseDrugs = [
-            { id: 206, name: "Xanax", color: "#4CAF50" },
-            { id: 197, name: "Ecstasy", color: "#2196F3" },
-            { id: 204, name: "Cannabis", color: "#8BC34A" }
-        ];
-        
-        quickUseDrugs.forEach(drug => {
-            const button = document.createElement('button');
-            button.textContent = drug.name;
-            button.style.cssText = `
-                background-color: ${drug.color};
-                color: white;
-                border: none;
-                padding: 5px 10px;
-                border-radius: 3px;
-                cursor: pointer;
-                font-weight: bold;
-                margin-bottom: 5px;
-                text-align: center;
-            `;
-            button.addEventListener('click', () => useDrug(drug.id, drug.name));
-            quickUseContainer.appendChild(button);
-        });
-        
-        const toggleButton = document.createElement('button');
-        toggleButton.textContent = 'X';
-        toggleButton.style.cssText = `
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            background-color: #f44336;
-            color: white;
-            border: none;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-size: 10px;
-            font-weight: bold;
-        `;
-        
-        // Get saved minimized state
-        let isMinimized = localStorage.getItem('drugAlertMinimized') === 'true';
-        
-        // Apply initial state
-        if (isMinimized) {
-            const buttons = quickUseContainer.querySelectorAll('button:not(:last-child)');
-            buttons.forEach(btn => btn.style.display = 'none');
-            quickUseContainer.style.padding = '2px';
-            toggleButton.textContent = '+';
-        }
-        
-        toggleButton.addEventListener('click', () => {
-            const buttons = quickUseContainer.querySelectorAll('button:not(:last-child)');
-            isMinimized = !isMinimized;
-            
-            if (isMinimized) {
-                buttons.forEach(btn => btn.style.display = 'none');
-                quickUseContainer.style.padding = '2px';
-                toggleButton.textContent = '+';
-            } else {
-                buttons.forEach(btn => btn.style.display = 'block');
-                quickUseContainer.style.padding = '10px';
-                toggleButton.textContent = 'X';
-            }
-            
-            // Save state to localStorage
-            localStorage.setItem('drugAlertMinimized', isMinimized);
-        });
-        
-        quickUseContainer.appendChild(toggleButton);
-        document.body.appendChild(quickUseContainer);
-    }
-
-    function showNotification(message, type = 'info') {
-        const notification = document.createElement('div');
-        notification.className = `drug-notification ${type}`;
-        notification.textContent = message;
-        document.body.appendChild(notification);
-        
-        setTimeout(() => {
-            notification.style.opacity = '0';
-            setTimeout(() => notification.remove(), 500);
-        }, 3000);
-    }
-
     function initializeWithPendingCheck() {
         debugLog('Initializing Drug Alerts with pending operation check');
+        
+        // Check for any pending drug uses from previous sessions
+        checkForPendingDrugUse();
         
         // Clear any existing drug alerts first to prevent duplicates
         removeExistingAlerts();
@@ -580,16 +919,18 @@
                 // Only check when potentially relevant changes occur
                 const shouldCheck = mutations.some(mutation => {
                     // Check if status icons area changed
-                    if (mutation.target.className && mutation.target.className.includes('status-icons')) {
+                    if (mutation.target && mutation.target.className && 
+                        typeof mutation.target.className === 'string' && 
+                        mutation.target.className.includes('status-icons')) {
                         return true;
                     }
                     // Look for added/removed nodes that could be cooldown indicators
                     return Array.from(mutation.addedNodes).some(node => 
-                        node.nodeType === 1 && (
-                            node.className && (
+                        node.nodeType === 1 && node.className && (
+                            (typeof node.className === 'string' && (
                                 node.className.includes('icon') || 
                                 node.className.includes('status')
-                            )
+                            ))
                         )
                     );
                 });
