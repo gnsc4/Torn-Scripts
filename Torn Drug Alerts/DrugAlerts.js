@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Drug Alert
 // @namespace    http://tampermonkey.net/
-// @version      1.0.9
+// @version      1.0.10
 // @description  Alerts when no drug cooldown is active and allows taking drugs from any page
 // @author       GNSC4
 // @match        https://www.torn.com/*
@@ -689,9 +689,12 @@
             { id: 196, name: "Cannabis", color: "#8BC34A" } 
         ];
         
+        // Create all the drug buttons
+        const drugButtons = [];
         quickUseDrugs.forEach(drug => {
             const button = document.createElement('button');
             button.textContent = drug.name;
+            button.className = 'drug-quick-button';
             button.style.cssText = `
                 background-color: ${drug.color};
                 color: white;
@@ -704,6 +707,7 @@
                 text-align: center;
             `;
             button.addEventListener('click', () => useDrug(drug.id, drug.name));
+            drugButtons.push(button);
             quickUseContainer.appendChild(button);
         });
         
@@ -730,27 +734,24 @@
         // Get saved minimized state
         let isMinimized = localStorage.getItem('drugAlertMinimized') === 'true';
         
-        // Apply initial state
-        if (isMinimized) {
-            const buttons = quickUseContainer.querySelectorAll('button:not(:last-child)');
-            buttons.forEach(btn => btn.style.display = 'none');
-            quickUseContainer.style.padding = '2px';
-            toggleButton.textContent = '+';
+        // Apply initial state - do this consistently for all buttons
+        function applyMinimizedState() {
+            drugButtons.forEach(btn => {
+                btn.style.display = isMinimized ? 'none' : 'block';
+            });
+            
+            quickUseContainer.style.padding = isMinimized ? '2px' : '10px';
+            toggleButton.textContent = isMinimized ? '+' : 'X';
         }
         
+        // Apply the state immediately
+        applyMinimizedState();
+        
         toggleButton.addEventListener('click', () => {
-            const buttons = quickUseContainer.querySelectorAll('button:not(:last-child)');
             isMinimized = !isMinimized;
             
-            if (isMinimized) {
-                buttons.forEach(btn => btn.style.display = 'none');
-                quickUseContainer.style.padding = '2px';
-                toggleButton.textContent = '+';
-            } else {
-                buttons.forEach(btn => btn.style.display = 'block');
-                quickUseContainer.style.padding = '10px';
-                toggleButton.textContent = 'X';
-            }
+            // Apply state change to all buttons
+            applyMinimizedState();
             
             // Save state to localStorage
             localStorage.setItem('drugAlertMinimized', isMinimized);
