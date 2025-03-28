@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Drug Alert
 // @namespace    http://tampermonkey.net/
-// @version      1.0.10
+// @version      1.0.11
 // @description  Alerts when no drug cooldown is active and allows taking drugs from any page
 // @author       GNSC4
 // @match        https://www.torn.com/*
@@ -919,16 +919,18 @@
                 // Only check when potentially relevant changes occur
                 const shouldCheck = mutations.some(mutation => {
                     // Check if status icons area changed
-                    if (mutation.target.className && mutation.target.className.includes('status-icons')) {
+                    if (mutation.target && mutation.target.className && 
+                        typeof mutation.target.className === 'string' && 
+                        mutation.target.className.includes('status-icons')) {
                         return true;
                     }
                     // Look for added/removed nodes that could be cooldown indicators
                     return Array.from(mutation.addedNodes).some(node => 
-                        node.nodeType === 1 && (
-                            node.className && (
+                        node.nodeType === 1 && node.className && (
+                            (typeof node.className === 'string' && (
                                 node.className.includes('icon') || 
                                 node.className.includes('status')
-                            )
+                            ))
                         )
                     );
                 });
