@@ -1,13 +1,14 @@
 // ==UserScript==
-// @name         Torn Drug Alert
-// @namespace    http://tampermonkey.net/
-// @version      1.0.7
+// @name         Torn Drug Alerts
+// @version      1.0.8
 // @description  Alerts when no drug cooldown is active and allows taking drugs from any page
 // @author       GNSC4
 // @match        https://www.torn.com/*
 // @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Torn%20Drug%Alerts/DrugAlerts.js
 // @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Torn%20Drug%Alerts/DrugAlerts.js
 // @grant        GM_addStyle
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=torn.com
+// @license      MIT
 // ==/UserScript==
 
 (function() {
