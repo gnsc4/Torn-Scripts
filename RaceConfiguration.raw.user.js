@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Manager
-// @version      3.7.8
+// @version      3.7.10
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -209,7 +209,7 @@
         #createRaceButton {
             background-color: #2d5a3f !important;
             border-color: #3d7a5f !important;
-            font-size: 16px !important;
+            font-size: 14px !important;
             padding: 12px 24px !important;
             margin: 15px auto !important;
             display: block !important;
@@ -498,6 +498,747 @@
             user-select: none !important;
             vertical-align: middle !important;
             order: 2 !important;
+        }
+
+        .quick-launch-popup {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background-color: #222;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 5px;
+            z-index: 999999;
+            min-width: 200px;
+            max-width: 80vw;
+            display: none;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .quick-launch-popup.left-aligned {
+            right: auto;
+            left: 0;
+        }
+
+        .quick-launch-popup.show {
+            display: block;
+        }
+    `;
+
+    style.textContent += `
+        #raceToggleRow {
+            display: flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+            width: 100% !important;
+            flex-direction: row !important;
+            position: relative !important;
+            z-index: 100 !important;
+            margin-bottom: 5px !important;
+        }
+
+        .button-container-wrapper {
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+            margin-right: auto !important;
+        }
+    `;
+
+    style.textContent += `
+        .time-config {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .time-selector {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .time-save-option {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 5px;
+            padding: 5px;
+            background: #333;
+            border-radius: 4px;
+        }
+
+        .time-save-option input[type="checkbox"] {
+            margin: 0;
+        }
+        
+        .auto-join-section {
+            margin-top: 15px;
+        }
+
+        .car-select-section .car-input-container {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .car-select-section .car-id-wrapper {
+            flex: 0 0 30%;
+        }
+
+        .car-select-section .car-dropdown-wrapper {
+            flex: 0 0 70%;
+        }
+
+        .car-select-section input,
+        .car-select-section select {
+            width: 100% !important;
+            box-sizing: border-box;
+        }
+    `;
+
+    style.textContent += `
+        .filter-options {
+            margin-bottom: 10px;
+        }
+
+        .filter-row {
+            display: flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+            margin-bottom: 10px !important;
+            padding: 10px;
+            background: #2a2a2a;
+            border-radius: 5px;
+        }
+
+        .filter-buttons {
+            margin-left: auto;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .filter-row select {
+            min-width: 150px;
+        }
+
+        .filter-row .gui-button {
+            padding: 5px 10px;
+            height: 30px;
+            margin-left: auto;
+        }
+
+        .gui-button.active {
+            background-color: #2d5a3f !important;
+            border-color: #3d7a5f !important;
+        }
+
+        .races-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .race-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            border-bottom: 1px solid #444;
+        }
+
+        .race-info {
+            display: flex;
+            gap: 15px;
+        }
+
+        .join-race-btn {
+            padding: 4px 8px;
+            background: #2d5a3f;
+            border: 1px solid #3d7a5f;
+            color: white;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+
+        .join-race-btn:hover {
+            background: #3d7a5f;
+        }
+    `;
+
+    style.textContent += `
+        .race-filter-controls {
+            background-color: #2a2a2a !important;
+            border: 1px solid #444 !important;
+            border-radius: 8px !important;
+            padding: 10px !important;
+            margin-bottom: 15px !important;
+        }
+        
+        .race-filter-controls .filter-row {
+            background-color: transparent !important;
+            padding: 0 !important;
+            gap: 10px !important;
+            flex-wrap: wrap !important;
+            margin-bottom: 5px !important;
+        }
+
+        .race-filter-controls .filter-group {
+            flex: 1 !important;
+            min-width: 200px !important;
+            margin-bottom: 5px !important;
+        }
+        
+        .race-filter-controls .filter-group.laps-filter {
+            min-width: 140px !important;
+            display: flex !important;
+            gap: 5px !important;
+            align-items: center !important;
+        }
+        
+        .race-filter-controls .filter-group.laps-filter input[type="number"] {
+            width: 50px !important;
+            padding: 8px 5px !important;
+            text-align: center !important;
+        }
+
+        .race-filter-controls .filter-buttons {
+            flex: 0 0 100% !important;
+            display: flex !important;
+            justify-content: flex-end !important;
+            gap: 5px !important;
+            margin-top: 5px !important;
+        }
+
+        .race-filter-controls .checkboxes {
+            display: flex !important;
+            flex-direction: row !important;
+            gap: 15px !important;
+            margin-bottom: 0 !important;
+        }
+
+        .race-filter-controls select,
+        .race-filter-controls input[type="number"] {
+            background-color: #333 !important;
+            color: #eee !important;
+            border: 1px solid #555 !important;
+            border-radius: 4px !important;
+            padding: 5px !important;
+        }
+
+        .race-filter-controls select:focus,
+        .race-filter-controls input[type="number"]:focus {
+            border-color: #666 !important;
+            outline: none !important;
+            box-shadow: 0 0 5px rgba(85, 85, 85, 0.5) !important;
+        }
+
+        .race-filter-controls label {
+            color: #ccc !important;
+            font-size: 0.9em !important;
+        }
+
+        .race-filter-controls .checkbox-option {
+            color: #ccc !important;
+        }
+
+        .race-filter-controls .gui-button {
+            background-color: #444 !important;
+            color: #eee !important;
+            border: 1px solid #555 !important;
+        }
+
+        .race-filter-controls .gui-button:hover {
+            background-color: #555 !important;
+        }
+
+        .race-filter-controls .gui-button.active {
+            background-color: #2d5a3f !important;
+            border-color: #3d7a5f !important;
+        }
+    `;
+
+    style.textContent += `
+        .auto-join-buttons {
+            display: flex !important;
+            gap: 10px !important;
+            margin-top: 10px !important;
+            justify-content: center !important;
+            position: relative !important;
+            z-index: 999999 !important;
+        }
+
+        .auto-join-buttons button {
+            flex: 1 !important;
+            max-width: 200px !important;
+            position: relative !important;
+            z-index: 999999 !important;
+        }
+
+        #saveAutoJoinPreset {
+            background-color: #2d5a3f !important;
+            border-color: #3d7a5f !important;
+            color: #fff !important;
+            padding: 8px 15px !important;
+            cursor: pointer !important;
+            font-size: 0.9em !important;
+            border-radius: 3px !important;
+            transition: all 0.2s ease !important;
+            display: block !important;
+            position: relative !important;
+            z-index: 999999 !important;
+        }
+
+        #saveAutoJoinPreset:hover {
+            background-color: #3d7a5f !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3) !important;
+        }
+
+        .preset-section-header {
+            color: #fff !important;
+            font-size: 14px !important;
+            margin: 15px 0 5px 0 !important;
+            padding: 5px 10px !important;
+            background-color: #2a2a2a !important;
+            border-radius: 3px !important;
+            border: 1px solid #444 !important;
+        }
+
+        .auto-join-preset-container {
+            display: grid !important;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
+            gap: 8px !important;
+            margin: 10px 0 !important;
+            padding: 5px !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
+        .auto-join-preset-button {
+            color: #ddd !important;
+            background-color: #555 !important;
+            border: 1px solid #777 !important;
+            border-radius: 3px !important;
+            padding: 8px 15px !important;
+            cursor: pointer !important;
+            font-size: 0.9em !important;
+            transition: all 0.2s ease !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            text-align: center !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+            min-height: 32px !important;
+            width: 100% !important;
+        }
+
+        .auto-join-preset-button:hover,
+        .quick-launch-button:hover {
+            background-color: #3d7a5f !important;
+            border-color: #2d5a3f !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3) !important;
+        }
+    `;
+
+    style.textContent += `
+        /* Enhanced button styles for full clickability and hover effects */
+        #minimizeQuickLaunchButton {
+            position: absolute !important;
+            top: 2px !important;
+            right: 2px !important;
+            width: 30px !important;
+            height: 30px !important;
+            background-color: #444 !important;
+            color: white !important;
+            border: 1px solid #666 !important;
+            border-radius: 4px !important;
+            font-size: 16px !important;
+            text-align: center !important;
+            line-height: 30px !important;
+            cursor: pointer !important;
+            z-index: 1000000 !important; /* Increased z-index */
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            transition: all 0.2s ease !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3) !important;
+            user-select: none !important;
+            pointer-events: auto !important; /* Ensure button is clickable */
+        }
+
+        #minimizeQuickLaunchButton:hover {
+            background-color: #555 !important;
+            border-color: #888 !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.4) !important;
+        }
+
+        #minimizeQuickLaunchButton:active {
+            transform: translateY(0px) !important;
+            background-color: #333 !important;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.4) !important;
+        }
+
+        #minimizeQuickLaunchButtonContent {
+            pointer-events: none !important;
+            width: 100% !important;
+            height: 100% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        /* Minimized container overrides */
+        .quick-launch-container.minimized {
+            padding: 5px !important;
+            max-height: 35px !important;
+            overflow: hidden !important;
+            position: relative !important;
+        }
+
+        .quick-launch-container.minimized .button-container,
+        .quick-launch-container.minimized .auto-join-preset-container,
+        .quick-launch-container.minimized .preset-section-header:not(:first-child) {
+            display: none !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            opacity: 0 !important;
+            overflow: hidden !important;
+        }
+
+        /* Ensure first header stays visible */
+        .quick-launch-container.minimized .preset-section-header:first-child {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            margin: 0 !important;
+        }
+
+        /* Make sure the section header doesn't interfere with the button */
+        .quick-launch-container .preset-section-header:first-child {
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+            padding-right: 40px !important;
+            z-index: 1 !important;
+            pointer-events: none !important;
+        }
+
+        /* Add clickable areas for section headers */
+        .quick-launch-container .preset-section-header:first-child > span {
+            pointer-events: auto !important;
+            display: inline-block !important;
+        }
+    `;
+
+    style.textContent += `
+        /* Additional force-override styles for minimized state */
+        .quick-launch-container.minimized .button-container,
+        .quick-launch-container.minimized .auto-join-preset-container,
+        .quick-launch-container.minimized .preset-section-header:not(:first-child) {
+            display: none !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            opacity: 0 !important;
+            overflow: hidden !important;
+        }
+
+        .quick-launch-container.minimized {
+            padding: 5px !important;
+            max-height: 35px !important;
+            overflow: hidden !important;
+            position: relative !important;
+        }
+
+        /* Ensure first header stays visible */
+        .quick-launch-container.minimized .preset-section-header:first-child {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            margin: 0 !important;
+        }
+
+        /* Make sure minimize button is always visible */
+        #minimizeQuickLaunchButton {
+            display: block !important;
+            z-index: 1000000 !important; /* Increased z-index */
+            position: absolute !important;
+            pointer-events: auto !important; /* Ensure button is clickable */
+        }
+
+        /* Ensure the container is always above the button */
+        .quick-launch-container {
+            z-index: 1 !important;
+        }
+    `;
+
+    style.textContent += `
+        .quick-launch-popup {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background-color: #222;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 5px;
+            z-index: 999999;
+            min-width: 200px;
+            max-width: 80vw;
+            display: none;
+            max-height: 60vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .quick-launch-popup.left-aligned {
+            right: auto;
+            left: 0;
+        }
+
+        .quick-launch-popup.top-aligned {
+            top: auto;
+            bottom: 100%;
+            margin-top: 0;
+            margin-bottom: 5px;
+        }
+
+        .quick-launch-popup.center-aligned {
+            left: 50%;
+            transform: translateX(-50%);
+            right: auto;
+        }
+        
+        /* Added styles for small screens */
+        .quick-launch-popup.small-screen {
+            position: fixed !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            max-width: 90vw !important;
+            max-height: 70vh !important;
+            width: auto !important;
+            right: auto !important;
+            bottom: auto !important;
+            margin: 0 !important;
+        }
+
+        .quick-launch-popup.show {
+            display: block;
+        }
+    `;
+
+    style.textContent += `
+        .official-races-section {
+            margin-bottom: 25px;
+            padding: 15px;
+            background-color: #2a2a2a;
+            border-radius: 8px;
+            border: 1px solid #444;
+            position: relative;
+            z-index: 999999 !important;
+        }
+
+        .official-track-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 8px;
+            margin: 10px 0;
+        }
+
+        .official-track-button {
+            color: #ddd;
+            background-color: #555;
+            border: 1px solid #777;
+            border-radius: 3px;
+            padding: 8px 15px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .official-track-button:hover {
+            background-color: #3d7a5f;
+            border-color: #2d5a3f;
+        }
+
+        .official-join-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        #officialRaceStatus {
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 4px;
+            text-align: center;
+            display: none;
+        }
+        
+        #officialRaceStatus.success {
+            background-color: #1a472a;
+            border: 1px solid #2d5a3f;
+            display: block;
+        }
+        
+        #officialRaceStatus.error {
+            background-color: #5c1e1e;
+            border: 1px solid #8b2e2e;
+            display: block;
+        }
+        
+        #officialRaceStatus.info {
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            display: block;
+        }
+        
+        .quick-launch-button.official {
+            background-color: #444 !important;
+            border-color: #666 !important;
+        }
+        
+        .quick-launch-button.official:hover {
+            background-color: #3d7a5f !important;
+        }
+
+        /* New styles for official race buttons */
+        .official-race-button-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: 0px;
+            margin-bottom: 10px;
+        }
+
+        .join-official-race-button {
+            flex: 1;
+            background-color: #2d5a3f !important;
+            border: 1px solid #3d7a5f !important;
+            color: #fff !important;
+            border-radius: 4px !important;
+            padding: 10px 15px !important;
+            font-size: 0.8em !important;
+            font-weight: bold !important;
+            cursor: pointer !important;
+            text-align: center !important;
+            transition: all 0.2s ease !important;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+        }
+
+        .join-official-race-button:hover {
+            background-color: #3d7a5f !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3) !important;
+        }
+
+        .save-official-preset-button {
+            flex: 1;
+            background-color: #555 !important;
+            border: 1px solid #777 !important;
+            color: #fff !important;
+            border-radius: 4px !important;
+            padding: 10px 15px !important;
+            font-size: 0.8em !important;
+            cursor: pointer !important;
+            text-align: center !important;
+            transition: all 0.2s ease !important;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+        }
+
+        .save-official-preset-button:hover {
+            background-color: #777 !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3) !important;
+        }
+
+        .official-races-description {
+            padding: 10px;
+            background-color: #333;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            text-align: center;
+            color: #ddd;
+            font-size: 0.8em;
+            border: 1px solid #444;
+        }
+    `;
+
+    style.textContent += `
+        /* Unified button styles for all preset types */
+        .quick-launch-button, 
+        .auto-join-preset-button {
+            color: #fff !important;
+            background-color: #555 !important;
+            border: 1px solid #777 !important;
+            border-radius: 3px !important;
+            padding: 5px 10px !important;
+            cursor: pointer !important;
+            font-size: 0.9em !important;
+            white-space: nowrap !important;
+            width: auto !important;
+            display: inline-block !important;
+            transition: all 0.2s ease !important;
+            margin: 2px !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+            flex-shrink: 0 !important;
+            height: 32px !important; /* Fixed height for consistency */
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            min-height: auto !important;
+            min-width: 0 !important; /* Allow button to shrink */
+            max-width: none !important; /* Remove any max-width constraints */
+            flex: 0 0 auto !important; /* Don't grow or shrink, size to content */
+        }
+
+        /* Container styling for all preset types */
+        .button-container,
+        .auto-join-preset-container {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            gap: 5px !important;
+            width: 100% !important;
+            margin: 10px 0 !important;
+            padding: 5px !important;
+            box-sizing: border-box !important;
+        }
+
+        /* Preset button container consistent sizing */
+        .preset-button-container {
+            position: relative !important;
+            display: inline-flex !important;
+            flex-direction: column !important;
+            align-items: flex-start !important; /* Align to start instead of stretch */
+            margin-bottom: 10px !important;
+            text-align: center !important;
+            width: auto !important; /* Auto width based on content */
+            flex: 0 0 auto !important; /* Don't grow or shrink */
+        }
+
+        /* Ensure official race buttons match styling */
+        .auto-join-preset-button.official {
+            background-color: #444 !important;
+            border-color: #666 !important;
+            color: #fff !important;
+        }
+
+        /* Hover effects consistent across all button types */
+        .quick-launch-button:hover,
+        .auto-join-preset-button:hover,
+        .auto-join-preset-button.official:hover {
+            background-color: #3d7a5f !important;
+            border-color: #2d5a3f !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3) !important;
         }
     `;
 
@@ -1891,9 +2632,23 @@
         // Apply minimized state if needed
         const minimizedState = GM_getValue('quickLaunchMinimized', false);
         if (minimizedState === true) {
-            // Don't use the CSS class approach - directly call the toggle function
-            // so that all styles get applied consistently
-            setTimeout(() => toggleQuickLaunchMinimize(), 0);
+            container.classList.add('minimized');
+            const btnContent = document.getElementById('minimizeQuickLaunchButtonContent');
+            if (btnContent) btnContent.textContent = '□';
+            const minimizeBtn = document.getElementById('minimizeQuickLaunchButton');
+            if (minimizeBtn) minimizeBtn.title = 'Expand Quick Launch Area';
+
+            // Force container height and styling
+            container.style.cssText += "max-height: 35px !important; overflow: hidden !important;";
+            
+            // Hide these elements specifically when minimized
+            const buttonContainer = container.querySelector('.button-container');
+            const autoJoinContainer = container.querySelector('.auto-join-preset-container');
+            const otherHeaders = container.querySelectorAll('.preset-section-header:not(:first-child)');
+            
+            if (buttonContainer) buttonContainer.style.display = 'none';
+            if (autoJoinContainer) autoJoinContainer.style.display = 'none';
+            otherHeaders.forEach(header => header.style.display = 'none');
         }
     }
 
@@ -1912,79 +2667,57 @@
         console.log('Current state:', isCurrentlyMinimized ? 'minimized' : 'maximized');
         
         if (isCurrentlyMinimized) {
-            // EXPANDING
             container.classList.remove('minimized');
             if (buttonContent) buttonContent.textContent = '_';
             if (minimizeButton) minimizeButton.title = 'Minimize Quick Launch Area';
             GM_setValue('quickLaunchMinimized', false);
+
+            // Show these elements when maximized
+            const buttonContainer = container.querySelector('.button-container');
+            const autoJoinContainer = container.querySelector('.auto-join-preset-container');
+            const otherHeaders = container.querySelectorAll('.preset-section-header:not(:first-child)');
             
-            // Show all elements
-            const buttonContainers = container.querySelectorAll('.button-container');
-            const sectionHeaders = container.querySelectorAll('.preset-section-header');
-            const statusElement = container.querySelector('.quick-launch-status');
+            if (buttonContainer) buttonContainer.style.display = 'flex';
+            if (autoJoinContainer) autoJoinContainer.style.display = 'grid';
+            otherHeaders.forEach(header => header.style.display = 'block');
             
-            // Make sure all headers are visible
-            sectionHeaders.forEach(header => {
-                header.style.display = 'block';
-            });
-            
-            // Show all button containers
-            buttonContainers.forEach(btnContainer => {
-                btnContainer.style.display = 'flex';
-            });
-            
-            // Ensure status element is visible
-            if (statusElement) {
-                statusElement.style.display = 'block';
-            }
-            
-            // Restore normal container styling
-            container.style.maxHeight = '';
-            container.style.height = 'auto';
-            container.style.minHeight = '';
+            // Reset height constraints
+            container.style.maxHeight = 'none';
             container.style.padding = '10px';
             container.style.overflow = 'visible';
             
             console.log('Container maximized');
         } else {
-            // MINIMIZING
             container.classList.add('minimized');
             if (buttonContent) buttonContent.textContent = '□';
             if (minimizeButton) minimizeButton.title = 'Expand Quick Launch Area';
             GM_setValue('quickLaunchMinimized', true);
+
+            // Hide these elements when minimized
+            const buttonContainer = container.querySelector('.button-container');
+            const autoJoinContainer = container.querySelector('.auto-join-preset-container');
+            const otherHeaders = container.querySelectorAll('.preset-section-header:not(:first-child)');
             
-            // Hide everything except the first header and status
-            const buttonContainers = container.querySelectorAll('.button-container');
-            const sectionHeaders = container.querySelectorAll('.preset-section-header');
-            const statusElement = container.querySelector('.quick-launch-status');
+            if (buttonContainer) buttonContainer.style.display = 'none';
+            if (autoJoinContainer) autoJoinContainer.style.display = 'none';
+            otherHeaders.forEach(header => header.style.display = 'none');
             
-            // Hide all elements first
-            buttonContainers.forEach(btnContainer => {
-                btnContainer.style.display = 'none';
-            });
-            
-            // Hide all section headers except the first one
-            sectionHeaders.forEach((header, index) => {
-                header.style.display = index === 0 ? 'block' : 'none';
-            });
-            
-            // Keep the status message visible if it has content
-            if (statusElement) {
-                if (statusElement.textContent.trim() !== '') {
-                    statusElement.style.display = 'block';
-                }
-            }
-            
-            // Set minimized container styling
+            // Force minimized height
             container.style.maxHeight = '35px';
-            container.style.height = '35px';
-            container.style.minHeight = '35px';
-            container.style.padding = '5px 10px';
+            container.style.padding = '5px';
             container.style.overflow = 'hidden';
             
             console.log('Container minimized');
         }
+
+        // Additional force override for minimize state
+        if (!isCurrentlyMinimized) {
+            container.style.cssText += "max-height: 35px !important; overflow: hidden !important;";
+        } else {
+            container.style.cssText += "max-height: none !important; overflow: visible !important;";
+        }
     }
+
 
     function displayQuickLaunchStatus(message, type = '') {
         const statusElement = document.querySelector('.quick-launch-status');
@@ -4250,45 +4983,16 @@
         if (!officialTrackButtons) return;
 
         officialTrackButtons.innerHTML = `
-            <div style="padding: 10px; background-color: #333; border-radius: 5px; margin-bottom: 10px; text-align: center;">
+            <div class="official-races-description">
                 Official races auto-assign tracks. Just select your car and click below to join.
             </div>
-            <div style="display: flex; justify-content: space-between; gap: 10px; margin-top: 15px;">
-                <button id="joinOfficialRaceButton" class="gui-button" style="
-                    flex: 1;
-                    background-color: #2d5a3f !important;
-                    border-color: #3d7a5f !important;
-                    padding: 8px 15px !important;
-                    margin: 0 !important;
-                    height: auto !important;
-                ">Join Official Race</button>
-                
-                <button id="saveOfficialPresetButton" class="gui-button" style="
-                    flex: 1;
-                    padding: 8px 15px !important;
-                    margin: 0 !important;
-                    height: auto !important;
-                ">Save As Quick Launch</button>
+            <div class="official-race-button-container">
+                <button id="joinOfficialRaceButton" class="join-official-race-button">Join Official Race</button>
+                <button id="saveOfficialPresetButton" class="save-official-preset-button">Save As Quick Launch</button>
             </div>
-            <div id="officialRaceStatus" style="margin-top: 15px;"></div>
+            <br>
+            <div id="officialRaceStatus"></div>
         `;
-
-        // Add a highlight effect on hover
-        const styleEl = document.createElement('style');
-        styleEl.textContent = `
-            #joinOfficialRaceButton:hover {
-                background-color: #3d7a5f !important;
-                transform: translateY(-1px) !important;
-                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3) !important;
-            }
-            
-            #saveOfficialPresetButton:hover {
-                background-color: #777 !important;
-                transform: translateY(-1px) !important;
-                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3) !important;
-            }
-        `;
-        document.head.appendChild(styleEl);
 
         // Add event listeners to the buttons
         const joinButton = document.getElementById('joinOfficialRaceButton');
