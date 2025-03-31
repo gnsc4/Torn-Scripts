@@ -1,7 +1,6 @@
 // ==UserScript==
 // @name         Torn Drug Alert
-// @namespace    http://tampermonkey.net/
-// @version      1.0.12
+// @version      1.0.13
 // @description  Alerts when no drug cooldown is active and allows taking drugs from any page
 // @author       GNSC4
 // @match        https://www.torn.com/*
