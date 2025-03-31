@@ -1891,23 +1891,9 @@
         // Apply minimized state if needed
         const minimizedState = GM_getValue('quickLaunchMinimized', false);
         if (minimizedState === true) {
-            container.classList.add('minimized');
-            const btnContent = document.getElementById('minimizeQuickLaunchButtonContent');
-            if (btnContent) btnContent.textContent = '□';
-            const minimizeBtn = document.getElementById('minimizeQuickLaunchButton');
-            if (minimizeBtn) minimizeBtn.title = 'Expand Quick Launch Area';
-
-            // Force container height and styling
-            container.style.cssText += "max-height: 35px !important; overflow: hidden !important;";
-            
-            // Hide these elements specifically when minimized
-            const buttonContainer = container.querySelector('.button-container');
-            const autoJoinContainer = container.querySelector('.auto-join-preset-container');
-            const otherHeaders = container.querySelectorAll('.preset-section-header:not(:first-child)');
-            
-            if (buttonContainer) buttonContainer.style.display = 'none';
-            if (autoJoinContainer) autoJoinContainer.style.display = 'none';
-            otherHeaders.forEach(header => header.style.display = 'none');
+            // Don't use the CSS class approach - directly call the toggle function
+            // so that all styles get applied consistently
+            setTimeout(() => toggleQuickLaunchMinimize(), 0);
         }
     }
 
@@ -1926,55 +1912,108 @@
         console.log('Current state:', isCurrentlyMinimized ? 'minimized' : 'maximized');
         
         if (isCurrentlyMinimized) {
+            // EXPANDING
             container.classList.remove('minimized');
             if (buttonContent) buttonContent.textContent = '_';
             if (minimizeButton) minimizeButton.title = 'Minimize Quick Launch Area';
             GM_setValue('quickLaunchMinimized', false);
-
-            // Show these elements when maximized
-            const buttonContainer = container.querySelector('.button-container');
-            const autoJoinContainer = container.querySelector('.auto-join-preset-container');
-            const otherHeaders = container.querySelectorAll('.preset-section-header:not(:first-child)');
             
-            if (buttonContainer) buttonContainer.style.display = 'flex';
-            if (autoJoinContainer) autoJoinContainer.style.display = 'grid';
-            otherHeaders.forEach(header => header.style.display = 'block');
+            // Show all elements
+            const buttonContainers = container.querySelectorAll('.button-container');
+            const sectionHeaders = container.querySelectorAll('.preset-section-header');
+            const statusElement = container.querySelector('.quick-launch-status');
             
-            // Reset height constraints
-            container.style.maxHeight = 'none';
+            // Make sure all headers are visible
+            sectionHeaders.forEach(header => {
+                header.style.display = 'block';
+            });
+            
+            // Show all button containers
+            buttonContainers.forEach(btnContainer => {
+                btnContainer.style.display = 'flex';
+            });
+            
+            // Ensure status element is visible
+            if (statusElement) {
+                statusElement.style.display = 'block';
+            }
+            
+            // Restore normal container styling
+            container.style.maxHeight = '';
+            container.style.height = 'auto';
+            container.style.minHeight = '';
             container.style.padding = '10px';
             container.style.overflow = 'visible';
             
             console.log('Container maximized');
         } else {
+            // MINIMIZING
             container.classList.add('minimized');
             if (buttonContent) buttonContent.textContent = '□';
             if (minimizeButton) minimizeButton.title = 'Expand Quick Launch Area';
             GM_setValue('quickLaunchMinimized', true);
-
-            // Hide these elements when minimized
-            const buttonContainer = container.querySelector('.button-container');
-            const autoJoinContainer = container.querySelector('.auto-join-preset-container');
-            const otherHeaders = container.querySelectorAll('.preset-section-header:not(:first-child)');
             
-            if (buttonContainer) buttonContainer.style.display = 'none';
-            if (autoJoinContainer) autoJoinContainer.style.display = 'none';
-            otherHeaders.forEach(header => header.style.display = 'none');
+            // Hide everything except the first header and status
+            const buttonContainers = container.querySelectorAll('.button-container');
+            const sectionHeaders = container.querySelectorAll('.preset-section-header');
+            const statusElement = container.querySelector('.quick-launch-status');
             
-            // Force minimized height
+            // Hide all elements first
+            buttonContainers.forEach(btnContainer => {
+                btnContainer.style.display = 'none';
+            });
+            
+            // Hide all section headers except the first one
+            sectionHeaders.forEach((header, index) => {
+                header.style.display = index === 0 ? 'block' : 'none';
+            });
+            
+            // Keep the status message visible if it has content
+            if (statusElement) {
+                if (statusElement.textContent.trim() !== '') {
+                    statusElement.style.display = 'block';
+                }
+            }
+            
+            // Set minimized container styling
             container.style.maxHeight = '35px';
-            container.style.padding = '5px';
+            container.style.height = '35px';
+            container.style.minHeight = '35px';
+            container.style.padding = '5px 10px';
             container.style.overflow = 'hidden';
             
             console.log('Container minimized');
         }
+    }
 
-        // Additional force override for minimize state
-        if (!isCurrentlyMinimized) {
-            container.style.cssText += "max-height: 35px !important; overflow: hidden !important;";
-        } else {
-            container.style.cssText += "max-height: none !important; overflow: visible !important;";
+    function displayQuickLaunchStatus(message, type = '') {
+        const statusElement = document.querySelector('.quick-launch-status');
+        if (!statusElement) return;
+        
+        statusElement.textContent = message;
+        statusElement.className = 'quick-launch-status';
+        
+        if (type) {
+            statusElement.classList.add(type);
+            statusElement.classList.add('show');
         }
+        
+        // If container is minimized, make sure status is still visible
+        if (message && message.trim() !== '') {
+            const container = document.getElementById('quickLaunchContainer');
+            if (container && container.classList.contains('minimized')) {
+                statusElement.style.display = 'block';
+                
+                // Adjust container height to fit status message
+                setTimeout(() => {
+                    const statusHeight = statusElement.scrollHeight || 20;
+                    container.style.maxHeight = `${Math.max(35, statusHeight + 40)}px`;
+                    container.style.height = `${Math.max(35, statusHeight + 40)}px`;
+                }, 10);
+            }
+        }
+
+        displayStatusMessage(message, type);
     }
 
     function saveAutoJoinPreset() {
@@ -2835,21 +2874,6 @@
         } catch (error) {
             displayQuickLaunchStatus(`Error creating race: ${error.message}`, 'error');
         }
-    }
-
-    function displayQuickLaunchStatus(message, type = '') {
-        const statusElement = document.querySelector('.quick-launch-status');
-        if (!statusElement) return;
-        
-        statusElement.textContent = message;
-        statusElement.className = 'quick-launch-status';
-        
-        if (type) {
-            statusElement.classList.add(type);
-            statusElement.classList.add('show');
-        }
-
-        displayStatusMessage(message, type);
     }
 
     function set_value(key, value) {
