@@ -12,6 +12,15 @@
 (function() {
     'use strict';
     
+    // Check if we're on an attack page and exit early if true
+    if (window.location.href.includes('sid=getInAttack') || 
+        window.location.href.includes('sid=attack') || 
+        window.location.href.includes('loader2.php') ||
+        window.location.pathname.includes('loader2.php')) {
+        console.log('Drug Alerts: Not initializing on attack page');
+        return;
+    }
+    
     // Add CSS
     GM_addStyle(`
         .drug-alert {
@@ -111,6 +120,29 @@
         .drug-notification.info {
             background-color: #2196F3;
         }
+
+        .settings-section {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #333;
+            border-radius: 5px;
+            border: 1px solid #444;
+        }
+
+        .settings-toggle {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .settings-toggle label {
+            margin-left: 8px;
+            cursor: pointer;
+        }
+
+        .settings-toggle input[type="checkbox"] {
+            cursor: pointer;
+        }
     `);
     
     // Fallback drug list in case fetch fails - FIX INCORRECT IDS
@@ -129,6 +161,7 @@
     
     let alertElements = null;
     let drugList = []; // Will hold our drugs
+    let useFactionDrugs = false; // New setting for faction drugs
 
     // Add debug mode toggle and log function
     let DEBUG_MODE = true; // Set to true to see verbose logging in console
@@ -139,42 +172,6 @@
         }
     }
     
-    // Replace the hasDrugCooldown function with an improved version
-    function hasDrugCooldown() {
-        debugLog('Checking for drug cooldown...');
-        
-        // Look for the drug cooldown aria-label - main detection method
-        const drugCooldown = document.querySelector("[aria-label^='Drug Cooldown:']");
-        if (drugCooldown) {
-            debugLog('Found drug cooldown via aria-label');
-            return true;
-        }
-        
-        // Secondary checks for different UI variations
-        const statusIcons = document.querySelectorAll('.status-icons__wrap a, .status-icons li, .user-icons__wrap a');
-        for (const icon of statusIcons) {
-            // Check icon tooltip text
-            const ariaLabel = icon.getAttribute('aria-label') || '';
-            const title = icon.getAttribute('title') || '';
-            
-            if ((ariaLabel.includes('Drug') && ariaLabel.includes('Cooldown')) || 
-                (title.includes('Drug') && title.includes('Cooldown'))) {
-                debugLog('Found drug cooldown in status icons via tooltip text');
-                return true;
-            }
-            
-            // Check for drug icon class patterns
-            if (icon.className && /icon5[0-9]/.test(icon.className)) {
-                debugLog('Found drug cooldown icon via class name pattern');
-                return true;
-            }
-        }
-        
-        // If we haven't found any cooldown, it's not active
-        debugLog('No drug cooldown detected');
-        return false;
-    }
-
     function positionDrugAlert(alert, header) {
         header.appendChild(alert);
         
@@ -284,18 +281,27 @@
         // Position the alert
         positionDrugAlert(alert, header);
         
-        // Check if we're on the items page
+        // Check if we're on the items page or faction armoury page
         const isItemsPage = window.location.href.includes('torn.com/item.php');
+        const isFactionArmouryPage = window.location.href.includes('factions.php') && 
+                                     window.location.href.includes('armoury') && 
+                                     window.location.href.includes('sub=drugs');
         
-        // Create GUI only if on the items page
+        // Create GUI only if on the appropriate page
         let gui = null;
-        if (isItemsPage) {
+        if (isItemsPage || (isFactionArmouryPage && useFactionDrugs)) {
             // Create the drug GUI
             gui = document.createElement('div');
             gui.className = 'drug-gui';
             gui.id = 'drugGui';
             gui.innerHTML = `
                 <h3>Take Drugs</h3>
+                <div class="settings-section">
+                    <div class="settings-toggle">
+                        <input type="checkbox" id="useFactionDrugs" ${useFactionDrugs ? 'checked' : ''}>
+                        <label for="useFactionDrugs">Use Faction Armoury Drugs</label>
+                    </div>
+                </div>
                 <div class="drug-list" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;"></div>
             `;
             
@@ -317,6 +323,19 @@
             gui.style.border = '1px solid #444';
             
             document.body.appendChild(gui);
+            
+            // Add event listener for faction drugs checkbox
+            const factionDrugsCheckbox = gui.querySelector('#useFactionDrugs');
+            if (factionDrugsCheckbox) {
+                factionDrugsCheckbox.addEventListener('change', function() {
+                    useFactionDrugs = this.checked;
+                    localStorage.setItem('useFactionDrugs', useFactionDrugs);
+                    debugLog(`Using faction drugs set to: ${useFactionDrugs}`);
+                    
+                    // Update UI immediately if needed
+                    showNotification(`${useFactionDrugs ? 'Using faction armoury drugs' : 'Using personal inventory drugs'}`, 'info');
+                });
+            }
             
             // Populate drug list
             const drugListElement = gui.querySelector('.drug-list');
@@ -359,20 +378,24 @@
         
         // Add click handler based on page context
         alert.onclick = function(event) {
-            debugLog(`Alert clicked. On items page: ${isItemsPage}`);
+            debugLog(`Alert clicked. On items page: ${isItemsPage}, On faction armoury: ${isFactionArmouryPage}, Using faction drugs: ${useFactionDrugs}`);
             event.stopPropagation();
             
-            if (isItemsPage && gui) {
-                // If on items page and GUI exists, show it
-                debugLog('Showing GUI on items page');
+            if ((isItemsPage && !useFactionDrugs) || (isFactionArmouryPage && useFactionDrugs)) {
+                // If on the correct page, show the GUI
+                debugLog('Showing GUI on appropriate page');
                 showNotification('Opening drug selection', 'info');
                 gui.style.display = 'block';
                 void gui.offsetWidth; // Force reflow
             } else {
-                // If not on items page, navigate to items page with drugs tab
-                debugLog('Navigating to drugs page');
+                // Navigate to the appropriate page
+                debugLog(`Navigating to ${useFactionDrugs ? 'faction armoury' : 'items'} page`);
                 sessionStorage.setItem('fromDrugAlert', 'true');
-                window.location.href = 'https://www.torn.com/item.php#drugs-items';
+                if (useFactionDrugs) {
+                    window.location.href = 'https://www.torn.com/factions.php?step=your&type=1#/tab=armoury&start=0&sub=drugs';
+                } else {
+                    window.location.href = 'https://www.torn.com/item.php#drugs-items';
+                }
             }
             
             return false;
@@ -382,7 +405,7 @@
     }
 
     function useDrug(id, name) {
-        debugLog(`Attempting to use drug: ${name} (ID: ${id})`);
+        debugLog(`Attempting to use drug: ${name} (ID: ${id}), Using faction drugs: ${useFactionDrugs}`);
         showNotification(`Using ${name}...`, 'info');
         
         // Add test mode to verify gui is properly closing
@@ -391,7 +414,148 @@
             gui.style.display = 'none';
         }
 
-        tryDirectUseMethod(id, name);
+        if (useFactionDrugs) {
+            tryFactionDrugUseMethod(id, name);
+        } else {
+            tryDirectUseMethod(id, name);
+        }
+    }
+
+    function tryFactionDrugUseMethod(id, name) {
+        debugLog(`Attempting faction armoury drug use for ${name} (ID: ${id})`);
+        
+        // Store drug use data for navigation tracking
+        sessionStorage.setItem('drugUseInProgress', JSON.stringify({
+            id: id,
+            name: name,
+            timestamp: Date.now(),
+            method: 'faction',
+            navigations: 0,
+            visitedFactionPage: false
+        }));
+        
+        // Check if we're on the faction armoury page
+        if (!window.location.href.includes('factions.php') || 
+            !window.location.href.includes('armoury') || 
+            !window.location.href.includes('sub=drugs')) {
+            debugLog('Not on faction armoury page, navigating there first');
+            window.location.href = 'https://www.torn.com/factions.php?step=your&type=1#/tab=armoury&start=0&sub=drugs';
+            return;
+        }
+        
+        // We're already on the faction armoury page, find and use the drug
+        findAndUseFactionDrug(id, name);
+    }
+
+    function findAndUseFactionDrug(id, name) {
+        debugLog(`Looking for faction drug: ${name} (ID: ${id})`);
+        
+        // Find all drug items in the faction armoury
+        const drugItems = document.querySelectorAll('#armoury-drugs ul.item-list li');
+        
+        if (!drugItems || drugItems.length === 0) {
+            debugLog('No drug items found in faction armoury');
+            showNotification('No drugs found in faction armoury', 'error');
+            return;
+        }
+        
+        let foundDrug = false;
+        
+        for (const item of drugItems) {
+            // Try to match by name since faction armoury items might not have data-item attributes
+            const nameElement = item.querySelector('.name, .title, .item-name');
+            if (!nameElement) continue;
+            
+            const itemName = nameElement.textContent.trim();
+            if (itemName.includes(name)) {
+                foundDrug = true;
+                debugLog(`Found faction drug item for ${name}`);
+                
+                // Find and click the "Use" button
+                const useButton = item.querySelector('div.item-action a');
+                if (useButton) {
+                    debugLog('Found Use button, clicking it');
+                    useButton.click();
+                    
+                    // Wait for confirmation dialog and click "Yes"
+                    setTimeout(() => {
+                        const confirmButton = document.querySelector('#armoury-drugs ul.item-list li.last.item-use-act div.use-cont.action-cont div.confirm-wrap.msg span.link-wrap a');
+                        if (confirmButton) {
+                            debugLog('Found confirmation button, clicking it');
+                            confirmButton.click();
+                            
+                            // Check for successful use
+                            setTimeout(() => {
+                                const hasCooldown = hasDrugCooldown();
+                                if (hasCooldown) {
+                                    debugLog('Drug cooldown detected, faction drug use was successful');
+                                    showNotification(`Used ${name} from faction armoury successfully!`, 'success');
+                                    sessionStorage.removeItem('drugUseInProgress');
+                                    
+                                    // Remove any existing alert since we now have a cooldown
+                                    if (alertElements) {
+                                        alertElements.alert.remove();
+                                        if (alertElements.gui) alertElements.gui.remove();
+                                        alertElements = null;
+                                    }
+                                } else {
+                                    debugLog('No cooldown detected, faction drug use may have failed');
+                                    showNotification(`Failed to use ${name} from faction armoury`, 'error');
+                                }
+                            }, 1500);
+                        } else {
+                            debugLog('Could not find confirmation button for faction drug');
+                            showNotification(`Failed to confirm ${name} use from faction armoury`, 'error');
+                        }
+                    }, 1000);
+                } else {
+                    debugLog('Could not find Use button for faction drug');
+                    showNotification(`Failed to use ${name} from faction armoury`, 'error');
+                }
+                
+                break;
+            }
+        }
+        
+        if (!foundDrug) {
+            debugLog(`Could not find ${name} in faction armoury`);
+            showNotification(`Could not find ${name} in faction armoury`, 'error');
+        }
+    }
+
+    function hasDrugCooldown() {
+        debugLog('Checking for drug cooldown...');
+        
+        // Look for the drug cooldown aria-label - main detection method
+        const drugCooldown = document.querySelector("[aria-label^='Drug Cooldown:']");
+        if (drugCooldown) {
+            debugLog('Found drug cooldown via aria-label');
+            return true;
+        }
+        
+        // Secondary checks for different UI variations
+        const statusIcons = document.querySelectorAll('.status-icons__wrap a, .status-icons li, .user-icons__wrap a');
+        for (const icon of statusIcons) {
+            // Check icon tooltip text
+            const ariaLabel = icon.getAttribute('aria-label') || '';
+            const title = icon.getAttribute('title') || '';
+            
+            if ((ariaLabel.includes('Drug') && ariaLabel.includes('Cooldown')) || 
+                (title.includes('Drug') && title.includes('Cooldown'))) {
+                debugLog('Found drug cooldown in status icons via tooltip text');
+                return true;
+            }
+            
+            // Check for drug icon class patterns
+            if (icon.className && /icon5[0-9]/.test(icon.className)) {
+                debugLog('Found drug cooldown icon via class name pattern');
+                return true;
+            }
+        }
+        
+        // If we haven't found any cooldown, it's not active
+        debugLog('No drug cooldown detected');
+        return false;
     }
 
     function tryDirectUseMethod(id, name) {
@@ -868,45 +1032,6 @@
         });
     }
 
-    function initializeWithPendingCheck() {
-        debugLog('Initializing Drug Alerts');
-        
-        removeExistingAlerts();
-        
-        // First, check for pending redirections if we're on the items page
-        if (window.location.href.includes('torn.com/item.php') && 
-            sessionStorage.getItem('fromDrugAlert') === 'true') {
-            debugLog('Detected we arrived from alert - will focus on showing GUI');
-        }
-        
-        // Fetch drugs for displaying in the GUI (when on items page) or for the alert
-        fetchDrugs().then(fetchedDrugs => {
-            debugLog(`Fetched ${fetchedDrugs.length} drugs`);
-            drugList = fetchedDrugs;
-            
-            // Add quick use buttons if on the items page
-            if (window.location.href.includes('torn.com/item.php')) {
-                debugLog('On items page, adding quick use buttons');
-                addQuickUseButtons();
-                
-                // Process fromDrugAlert flag if it exists
-                if (sessionStorage.getItem('fromDrugAlert')) {
-                    debugLog('Found fromDrugAlert flag on items page, will show GUI');
-                    removeExistingAlerts();
-                    alertElements = createAlert(drugList);
-                    
-                    if (alertElements && alertElements.gui) {
-                        alertElements.gui.style.display = 'block';
-                        sessionStorage.removeItem('fromDrugAlert');
-                    }
-                }
-            }
-            
-            // Start cooldown checks which will create the alert if needed
-            startCooldownChecks();
-        });
-    }
-
     function startCooldownChecks() {
         const checkCooldownWithRetry = (retryCount = 0) => {
             const maxRetries = 3;
@@ -1027,7 +1152,22 @@
             const pendingDrugUse = sessionStorage.getItem('drugUseInProgress');
             if (!pendingDrugUse) return;
             
-            // ...existing pendingDrugUse handling...
+            // Process pending drug use
+            const drugData = JSON.parse(pendingDrugUse);
+            if (Date.now() - drugData.timestamp > 300000) { // 5 minutes timeout
+                debugLog('Pending drug use is too old, clearing');
+                sessionStorage.removeItem('drugUseInProgress');
+                return;
+            }
+            
+            // Handle based on current page and method
+            if (drugData.method === 'direct' && window.location.href.includes('item.php')) {
+                debugLog('Continuing with direct use method on items page');
+                findAndClickDrug(drugData.id, drugData.name);
+            } else if (drugData.method === 'faction' && window.location.href.includes('factions.php')) {
+                debugLog('Continuing with faction use method on faction page');
+                findAndUseFactionDrug(drugData.id, drugData.name);
+            }
         } catch (e) {
             debugLog('Error in checkForPendingDrugUse:', e);
             sessionStorage.removeItem('drugUseInProgress');
@@ -1050,6 +1190,55 @@
         
         alertElements = null;
         debugLog('Removed all existing drug alerts and GUIs');
+    }
+
+    function initializeWithPendingCheck() {
+        debugLog('Initializing Drug Alerts');
+        
+        // Load user settings
+        useFactionDrugs = localStorage.getItem('useFactionDrugs') === 'true';
+        debugLog(`Initialized with faction drugs setting: ${useFactionDrugs}`);
+        
+        removeExistingAlerts();
+        
+        // First, check for pending redirections if we're on the items page or faction armoury
+        const isItemsPage = window.location.href.includes('torn.com/item.php');
+        const isFactionPage = window.location.href.includes('factions.php') && 
+                              window.location.href.includes('armoury') && 
+                              window.location.href.includes('sub=drugs');
+                              
+        if ((isItemsPage && !useFactionDrugs) || (isFactionPage && useFactionDrugs)) {
+            if (sessionStorage.getItem('fromDrugAlert') === 'true') {
+                debugLog('Detected we arrived from alert - will focus on showing GUI');
+            }
+        }
+        
+        // Fetch drugs for displaying in the GUI
+        fetchDrugs().then(fetchedDrugs => {
+            debugLog(`Fetched ${fetchedDrugs.length} drugs`);
+            drugList = fetchedDrugs;
+            
+            // Add quick use buttons if on the appropriate page
+            if (isItemsPage || (isFactionPage && useFactionDrugs)) {
+                debugLog('On appropriate page, adding quick use buttons');
+                addQuickUseButtons();
+                
+                // Process fromDrugAlert flag if it exists
+                if (sessionStorage.getItem('fromDrugAlert')) {
+                    debugLog('Found fromDrugAlert flag, will show GUI');
+                    removeExistingAlerts();
+                    alertElements = createAlert(drugList);
+                    
+                    if (alertElements && alertElements.gui) {
+                        alertElements.gui.style.display = 'block';
+                        sessionStorage.removeItem('fromDrugAlert');
+                    }
+                }
+            }
+            
+            // Start cooldown checks which will create the alert if needed
+            startCooldownChecks();
+        });
     }
 
     initializeWithPendingCheck();
