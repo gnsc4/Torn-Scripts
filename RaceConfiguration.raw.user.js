@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Manager
-// @version      3.7.10
+// @version      3.7.11
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -1116,8 +1116,9 @@
             display: flex;
             justify-content: space-between;
             gap: 10px;
-            margin-top: 0px;
-            margin-bottom: 10px;
+            margin-top: 15px;
+            margin-bottom: 15px;
+            width: 100%;
         }
 
         .join-official-race-button {
@@ -1127,12 +1128,13 @@
             color: #fff !important;
             border-radius: 4px !important;
             padding: 10px 15px !important;
-            font-size: 0.8em !important;
+            font-size: 14px !important;
             font-weight: bold !important;
             cursor: pointer !important;
             text-align: center !important;
             transition: all 0.2s ease !important;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+            width: 100%;
         }
 
         .join-official-race-button:hover {
@@ -1148,11 +1150,12 @@
             color: #fff !important;
             border-radius: 4px !important;
             padding: 10px 15px !important;
-            font-size: 0.8em !important;
+            font-size: 14px !important;
             cursor: pointer !important;
             text-align: center !important;
             transition: all 0.2s ease !important;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+            width: 100%;
         }
 
         .save-official-preset-button:hover {
@@ -1162,13 +1165,13 @@
         }
 
         .official-races-description {
-            padding: 10px;
+            padding: 10px 15px;
             background-color: #333;
             border-radius: 5px;
             margin-bottom: 15px;
             text-align: center;
             color: #ddd;
-            font-size: 0.8em;
+            font-size: 14px;
             border: 1px solid #444;
         }
     `;
@@ -1721,7 +1724,12 @@
 
         if (carDropdown && carIdInput) {
             carDropdown.addEventListener('change', () => {
-                carIdInput.value = carDropdown.value;
+                const value = carDropdown.value.trim();
+                if (value && carDropdown.querySelector(`option[value="${value}"]`)) {
+                    carDropdown.value = value;
+                } else {
+                    carDropdown.value = '';
+                }
             });
 
             carIdInput.addEventListener('input', () => {
