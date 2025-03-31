@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Drug Alert
-// @version      1.0.14
+// @version      1.0.15
 // @description  Alerts when no drug cooldown is active and allows taking drugs from any page
 // @author       GNSC4
 // @match        https://www.torn.com/*
@@ -442,7 +442,7 @@
     function useItemDirectly(id, name) {
         debugLog(`Using item directly: ${name} (ID: ${id})`);
         
-        // Use NST style token retrieval
+        
         const token = getNSTStyleToken();
         if (token) {
             debugLog(`Using NST-style token: ${token.substring(0, 4)}...${token.substring(token.length - 4)}`);
@@ -450,7 +450,7 @@
         } else {
             debugLog('No token found via NST method, trying backup methods');
             
-            // Try fallback to original methods if NST method fails
+            
             const pageToken = getPageCsrfToken();
             if (pageToken) {
                 debugLog(`Using page token: ${pageToken.substring(0, 4)}...${pageToken.substring(pageToken.length - 4)}`);
