@@ -1,0 +1,3 @@
+const scriptUrl = prompt("Script URL?");
+const encoded = encodeURIComponent(scriptUrl);
+console.log(`https://kwack.dev/script-install/?gmFix=true&scriptUrl=${encoded}`);
