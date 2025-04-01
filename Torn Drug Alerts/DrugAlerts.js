@@ -1,27 +1,27 @@
 // ==UserScript==
-// @name         Torn Drug Alert
-// @version      1.0.16
-// @description  Alerts when no drug cooldown is active and allows taking drugs from any page
-// @author       GNSC4 [268863]
-// @match        https://www.torn.com/*
-// @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Torn%20Drug%20Alerts/DrugAlerts.user.js
-// @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Torn%20Drug%20Alerts/DrugAlerts.user.js
-// @grant        GM_addStyle
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=torn.com
+// @name          Torn Drug Alert
+// @version       1.0.16
+// @description   Alerts when no drug cooldown is active and allows taking drugs from any page
+// @author        GNSC4 [268863]
+// @match         https://www.torn.com/*
+// @downloadURL   https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Torn%20Drug%20Alerts/DrugAlerts.user.js
+// @updateURL     https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Torn%20Drug%20Alerts/DrugAlerts.user.js
+// @grant         GM_addStyle
+// @icon          https://www.google.com/s2/favicons?sz=64&domain=torn.com
 // ==/UserScript==
 
 (function() {
     'use strict';
-    
+
     // Check if we're on an attack page and exit early if true
-    if (window.location.href.includes('sid=getInAttack') || 
-        window.location.href.includes('sid=attack') || 
+    if (window.location.href.includes('sid=getInAttack') ||
+        window.location.href.includes('sid=attack') ||
         window.location.href.includes('loader2.php') ||
         window.location.pathname.includes('loader2.php')) {
         console.log('Drug Alerts: Not initializing on attack page');
         return;
     }
-    
+
     // Add CSS
     GM_addStyle(`
         .drug-alert {
@@ -60,7 +60,7 @@
             border-bottom: 1px solid #444;
             padding-bottom: 10px;
         }
-        
+
         .drug-search {
             width: 100%;
             padding: 8px;
@@ -70,7 +70,7 @@
             color: white;
             border-radius: 3px;
         }
-        
+
         .drug-search::placeholder {
             color: #aaa;
         }
@@ -96,7 +96,7 @@
         .drug-item:hover {
             background-color: #444;
         }
-        
+
         .drug-notification {
             position: fixed;
             top: 50%;
@@ -153,7 +153,7 @@
             cursor: pointer;
         }
     `);
-    
+
     // Fallback drug list in case fetch fails - FIX INCORRECT IDS
     const fallbackDrugs = [
         { id: 196, name: "Cannabis" },
@@ -163,27 +163,27 @@
         { id: 200, name: "Opium" },
         { id: 201, name: "PCP" },
         { id: 203, name: "Shrooms" },
-        { id: 204, name: "Speed" }, 
+        { id: 204, name: "Speed" },
         { id: 205, name: "Vicodin" },
         { id: 206, name: "Xanax" }
     ];
-    
+
     let alertElements = null;
     let drugList = []; // Will hold our drugs
     let useFactionDrugs = false; // New setting for faction drugs
 
     // Add debug mode toggle and log function
     let DEBUG_MODE = true; // Set to true to see verbose logging in console
-    
+
     function debugLog(...args) {
         if (DEBUG_MODE) {
             console.log('[DrugAlerts Debug]', ...args);
         }
     }
-    
+
     function positionDrugAlert(alert, header) {
         header.appendChild(alert);
-        
+
         alert.style.cssText = `
             display: inline-flex !important;
             align-items: center !important;
@@ -192,17 +192,17 @@
             z-index: 99999 !important;
             pointer-events: auto !important;
         `;
-        
-        const isMobilePDA = navigator.userAgent.includes('PDA') || 
-                           window.innerWidth < 768 || 
-                           document.documentElement.classList.contains('tornPDA');
-                           
+
+        const isMobilePDA = navigator.userAgent.includes('PDA') ||
+                              window.innerWidth < 768 ||
+                              document.documentElement.classList.contains('tornPDA');
+
         if (isMobilePDA) {
             alert.style.fontSize = '10px';
             alert.style.padding = '3px 6px';
             alert.style.marginLeft = '5px';
         }
-        
+
         if (header.id === 'torn-drug-fixed-header') {
             alert.style.margin = '0';
             alert.style.marginLeft = '5px';
@@ -236,13 +236,13 @@
             document.querySelector('.mobile-title'),
             document.querySelector('.app-header')
         ];
-        
+
         return possibleHeaders.find(header => header !== null);
     }
 
     function createFixedHeader() {
         let fixedHeader = document.getElementById('torn-drug-fixed-header');
-        
+
         if (!fixedHeader) {
             fixedHeader = document.createElement('div');
             fixedHeader.id = 'torn-drug-fixed-header';
@@ -258,47 +258,52 @@
             fixedHeader.style.boxShadow = '0 2px 5px rgba(0,0,0,0.3)';
             document.body.appendChild(fixedHeader);
         }
-        
+
         return fixedHeader;
     }
 
     function createAlert(drugs) {
         let header = findHeader();
-        
+
         if (!header) {
             header = createFixedHeader();
         }
-        
+
         // Always remove existing alert and GUI
         const existingAlert = document.querySelector('.drug-alert');
         if (existingAlert) {
             existingAlert.remove();
         }
-        
+
         const existingGui = document.querySelector('.drug-gui');
         if (existingGui) {
             existingGui.remove();
         }
-        
+
         // Create simple alert that uses direct DOM manipulation
         const alert = document.createElement('div');
         alert.className = 'drug-alert';
         alert.textContent = 'No Drugs';
         alert.style.cursor = 'pointer';
         alert.style.backgroundColor = '#ff3333';
-        
+
         // Position the alert
         positionDrugAlert(alert, header);
-        
-        // Check if we're on the items page or faction armoury page
+
+        // Check if we're on the correct pages
         const isItemsPage = window.location.href.includes('torn.com/item.php');
-        const isFactionArmouryPage = window.location.href.includes('factions.php') && 
-                                     window.location.href.includes('armoury') && 
-                                     window.location.href.includes('sub=drugs');
-        
+        const isFactionArmouryDrugsPage = window.location.href.includes('factions.php') &&
+                                          window.location.href.includes('armoury') &&
+                                          window.location.href.includes('sub=drugs');
+        const isOtherFactionPage = window.location.href.includes('factions.php') &&
+                                   (!window.location.href.includes('armoury') ||
+                                    !window.location.href.includes('sub=drugs'));
+
+        debugLog(`Page check - Items: ${isItemsPage}, Faction Armoury Drugs: ${isFactionArmouryDrugsPage}, Other Faction: ${isOtherFactionPage}`);
+
         // Create GUI only if on the appropriate page
         let gui = null;
-        if (isItemsPage || (isFactionArmouryPage && useFactionDrugs)) {
+        if ((isItemsPage && !useFactionDrugs) || (isFactionArmouryDrugsPage && useFactionDrugs)) {
             // Create the drug GUI
             gui = document.createElement('div');
             gui.className = 'drug-gui';
@@ -313,7 +318,7 @@
                 </div>
                 <div class="drug-list" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;"></div>
             `;
-            
+
             // Apply direct styling to center the GUI in the middle of the screen
             gui.style.position = 'fixed';
             gui.style.top = '50%';
@@ -330,9 +335,9 @@
             gui.style.display = 'none';
             gui.style.boxShadow = '0 4px 15px rgba(0,0,0,0.7)';
             gui.style.border = '1px solid #444';
-            
+
             document.body.appendChild(gui);
-            
+
             // Add event listener for faction drugs checkbox
             const factionDrugsCheckbox = gui.querySelector('#useFactionDrugs');
             if (factionDrugsCheckbox) {
@@ -340,12 +345,19 @@
                     useFactionDrugs = this.checked;
                     localStorage.setItem('useFactionDrugs', useFactionDrugs);
                     debugLog(`Using faction drugs set to: ${useFactionDrugs}`);
-                    
+
                     // Update UI immediately if needed
                     showNotification(`${useFactionDrugs ? 'Using faction armoury drugs' : 'Using personal inventory drugs'}`, 'info');
+
+                    // Close GUI since the drug source changed
+                    gui.style.display = 'none';
+
+                    // Recreate alert with new settings
+                    removeExistingAlerts();
+                    alertElements = createAlert(drugList);
                 });
             }
-            
+
             // Populate drug list
             const drugListElement = gui.querySelector('.drug-list');
             drugs.forEach(drug => {
@@ -360,7 +372,7 @@
                 drugItem.style.fontSize = '14px';
                 drugItem.style.fontWeight = 'bold';
                 drugItem.textContent = drug.name;
-                
+
                 // Add hover effect
                 drugItem.onmouseover = () => {
                     drugItem.style.backgroundColor = '#444';
@@ -368,15 +380,15 @@
                 drugItem.onmouseout = () => {
                     drugItem.style.backgroundColor = '#333';
                 };
-                
+
                 drugItem.onclick = () => {
                     useDrug(drug.id, drug.name);
                     gui.style.display = 'none';
                 };
-                
+
                 drugListElement.appendChild(drugItem);
             });
-            
+
             // Add click outside to close
             document.addEventListener('click', function(e) {
                 if (gui.style.display === 'block' && !gui.contains(e.target) && !alert.contains(e.target)) {
@@ -384,41 +396,48 @@
                 }
             });
         }
-        
+
         // Add click handler based on page context
         alert.onclick = function(event) {
-            debugLog(`Alert clicked. On items page: ${isItemsPage}, On faction armoury: ${isFactionArmouryPage}, Using faction drugs: ${useFactionDrugs}`);
+            debugLog(`Alert clicked. Items page: ${isItemsPage}, Faction armoury drugs page: ${isFactionArmouryDrugsPage}, Other faction page: ${isOtherFactionPage}, Using faction drugs: ${useFactionDrugs}`);
             event.stopPropagation();
-            
-            if ((isItemsPage && !useFactionDrugs) || (isFactionArmouryPage && useFactionDrugs)) {
+
+            if ((isItemsPage && !useFactionDrugs) || (isFactionArmouryDrugsPage && useFactionDrugs)) {
                 // If on the correct page, show the GUI
                 debugLog('Showing GUI on appropriate page');
                 showNotification('Opening drug selection', 'info');
                 gui.style.display = 'block';
                 void gui.offsetWidth; // Force reflow
+            } else if (isOtherFactionPage && useFactionDrugs) {
+                // If on a faction page but not the armoury drugs page and using faction drugs
+                debugLog('Already on faction page but need to navigate to armoury drugs sub-page');
+                const targetUrl = 'https://www.torn.com/factions.php?step=your#/tab=armoury&start=0&sub=drugs';
+                sessionStorage.setItem('fromDrugAlert', 'true');
+                showNotification('Navigating to faction armoury drugs page...', 'info');
+                window.location.href = targetUrl;
             } else {
                 // If not on the correct page, navigate to the appropriate page
-                const targetUrl = useFactionDrugs 
+                const targetUrl = useFactionDrugs
                     ? 'https://www.torn.com/factions.php?step=your#/tab=armoury&start=0&sub=drugs'
                     : 'https://www.torn.com/item.php';
-                
+
                 debugLog(`Navigating to ${targetUrl}`);
                 // Store a flag so we know to open the GUI when we arrive at the page
                 sessionStorage.setItem('fromDrugAlert', 'true');
                 showNotification(`Navigating to ${useFactionDrugs ? 'faction armoury' : 'items'} page...`, 'info');
                 window.location.href = targetUrl;
             }
-            
+
             return false;
         };
-        
+
         return { alert, gui };
     }
 
     function useDrug(id, name) {
         debugLog(`Attempting to use drug: ${name} (ID: ${id}), Using faction drugs: ${useFactionDrugs}`);
         showNotification(`Using ${name}...`, 'info');
-        
+
         // Add test mode to verify gui is properly closing
         const gui = document.getElementById('drugGui');
         if (gui) {
@@ -434,7 +453,7 @@
 
     function tryDirectUseMethod(id, name) {
         debugLog('Attempting direct use method with XMLHttpRequest');
-        
+
         // Store drug use data for tracking
         sessionStorage.setItem('drugUseInProgress', JSON.stringify({
             id: id,
@@ -442,30 +461,30 @@
             timestamp: Date.now(),
             method: 'direct'
         }));
-        
+
         // Use the item directly via XHR
         useItemDirectly(id, name);
     }
 
     function useItemDirectly(id, name) {
         debugLog(`Using item directly: ${name} (ID: ${id})`);
-        
-        
+
+
         const token = getNSTStyleToken();
         if (token) {
             debugLog(`Using NST-style token: ${token.substring(0, 4)}...${token.substring(token.length - 4)}`);
             submitDrugUseRequest(id, name, token);
         } else {
             debugLog('No token found via NST method, trying backup methods');
-            
-            
+
+
             const pageToken = getPageCsrfToken();
             if (pageToken) {
                 debugLog(`Using page token: ${pageToken.substring(0, 4)}...${pageToken.substring(pageToken.length - 4)}`);
                 submitDrugUseRequest(id, name, pageToken);
                 return;
             }
-            
+
             debugLog('Failed to get token from any source');
             showNotification(`Unable to use ${name}: Could not get authorization token`, 'error');
             sessionStorage.removeItem('drugUseInProgress');
@@ -478,21 +497,21 @@
         params.append('confirm', 'yes');
         params.append('itemID', id);
         params.append('csrf', token);
-        
+
         const xhr = new XMLHttpRequest();
         xhr.open('POST', 'https://www.torn.com/item.php', true);
         xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-        
+
         xhr.onload = function() {
             if (this.status === 200) {
                 try {
                     const response = JSON.parse(this.responseText);
-                    
+
                     if (response && (response.success || response.message && response.message.includes('consumed'))) {
                         debugLog('Drug used successfully via XHR');
                         showNotification(`Used ${name} successfully!`, 'success');
-                        
+
                         setTimeout(() => {
                             if (hasDrugCooldown()) {
                                 debugLog('Drug cooldown confirmed after XHR');
@@ -503,25 +522,25 @@
                                 }
                             }
                         }, 500);
-                        
+
                         sessionStorage.removeItem('drugUseInProgress');
                         return;
                     }
-                    
+
                     if (response && (response.message || response.text)) {
-                        if ((response.message && response.message.includes('cooldown')) || 
+                        if ((response.message && response.message.includes('cooldown')) ||
                             (response.text && response.text.includes('cooldown')) ||
                             (response.text && response.text.includes('effect of a drug'))) {
                             debugLog('Drug is on cooldown');
-                            
+
                             let cooldownMessage = 'You are already on drug cooldown';
                             let seconds = 0;
-                            
+
                             const timeMatch = response.text ? response.text.match(/data-time=\"(\d+)\"/) : null;
                             const timeMatch2 = response.text ? response.text.match(/wait\s+(\d+)m\s+(\d+)s/) : null;
                             const timeMatch3 = response.text ? response.text.match(/wait\s+(\d+)\s+seconds/) : null;
                             const timeMatch4 = response.text ? response.text.match(/wait\s+(\d+)\s+minutes/) : null;
-                            
+
                             if (timeMatch && timeMatch[1]) {
                                 seconds = parseInt(timeMatch[1]);
                             } else if (timeMatch2 && timeMatch2[1] && timeMatch2[2]) {
@@ -531,7 +550,7 @@
                             } else if (timeMatch4 && timeMatch4[1]) {
                                 seconds = parseInt(timeMatch4[1]) * 60;
                             }
-                            
+
                             if (seconds > 0) {
                                 const minutes = Math.floor(seconds / 60);
                                 const remainingSeconds = seconds % 60;
@@ -546,20 +565,20 @@
                                     debugLog('Using raw message text:', cooldownMessage);
                                 }
                             }
-                            
+
                             showNotification(cooldownMessage, 'info');
                             sessionStorage.removeItem('drugUseInProgress');
                             return;
                         }
-                        
+
                         debugLog('XHR method returned error:', response.message || response.text);
                         showNotification(`Error: ${response.message || 'Unknown error'}`, 'error');
                         sessionStorage.removeItem('drugUseInProgress');
                         return;
                     }
-                    
+
                     debugLog('Unexpected XHR response:', this.responseText);
-                    
+
                     let errorMessage = `Unable to use ${name}: Unexpected response`;
                     try {
                         if (response.text) {
@@ -570,7 +589,7 @@
                     } catch (e) {
                         debugLog('Error parsing error message:', e);
                     }
-                    
+
                     showNotification(errorMessage, 'error');
                     sessionStorage.removeItem('drugUseInProgress');
                 } catch (e) {
@@ -584,35 +603,35 @@
                 sessionStorage.removeItem('drugUseInProgress');
             }
         };
-        
+
         xhr.onerror = function() {
             debugLog('XHR request failed with network error');
             showNotification(`Unable to use ${name}: Network error`, 'error');
             sessionStorage.removeItem('drugUseInProgress');
         };
-        
+
         xhr.send(params.toString());
     }
 
     function tryFactionDrugUseMethod(id, name) {
         debugLog(`Attempting faction armoury drug use for ${name} (ID: ${id})`);
-        
+
         sessionStorage.setItem('drugUseInProgress', JSON.stringify({
             id: id,
             name: name,
             timestamp: Date.now(),
             method: 'faction'
         }));
-        
-        if (!window.location.href.includes('factions.php') || 
-            !window.location.href.includes('armoury') || 
+
+        if (!window.location.href.includes('factions.php') ||
+            !window.location.href.includes('armoury') ||
             !window.location.href.includes('sub=drugs')) {
             debugLog('Not on faction armoury page, need to navigate manually');
             showNotification(`Please navigate to faction armoury first to use ${name}`, 'info');
             sessionStorage.removeItem('drugUseInProgress');
             return;
         }
-        
+
         const token = getNSTStyleToken();
         if (!token) {
             const pageToken = getPageCsrfToken();
@@ -622,14 +641,14 @@
                 sessionStorage.removeItem('drugUseInProgress');
                 return;
             }
-            
+
             debugLog(`Using page token for faction drug: ${pageToken.substring(0, 4)}...${pageToken.substring(pageToken.length - 4)}`);
-            
+
             // Try both methods with a small timeout between
             tryBothFactionDrugMethods(id, name, pageToken);
         } else {
             debugLog(`Using NST-style token for faction drug: ${token.substring(0, 4)}...${token.substring(token.length - 4)}`);
-            
+
             // Try both methods with a small timeout between
             tryBothFactionDrugMethods(id, name, token);
         }
@@ -639,7 +658,7 @@
         // First, try using the item directly with the simpler API
         debugLog('Trying direct faction drug use method first');
         useFactionDrugById(id, name, token);
-        
+
         // As a backup, also try the armoryItemID approach after a short delay
         setTimeout(() => {
             // Only proceed if we're still in a drug use attempt
@@ -652,7 +671,7 @@
 
     function useFactionDrugDirectly(id, name) {
         debugLog(`Using faction drug directly: ${name} (ID: ${id})`);
-        
+
         const token = getNSTStyleToken();
         if (!token) {
             const pageToken = getPageCsrfToken();
@@ -662,7 +681,7 @@
                 sessionStorage.removeItem('drugUseInProgress');
                 return;
             }
-            
+
             debugLog(`Using page token for faction drug: ${pageToken.substring(0, 4)}...${pageToken.substring(pageToken.length - 4)}`);
             useFactionDrugWithToken(id, name, pageToken);
         } else {
@@ -673,50 +692,50 @@
 
     function useFactionDrugWithToken(id, name, token) {
         let armouryItemID = null;
-        
+
         const drugItems = document.querySelectorAll('#armoury-drugs ul.item-list li, #faction-armoury .drugs-wrap .item, div[class*="armory"] div[class*="drugs"] div[class*="item"]');
         debugLog(`Faction armoury search found ${drugItems.length} potential items`);
-        
+
         for (const item of drugItems) {
             const nameElements = [
                 item.querySelector('.name, .title, .item-name, .name-wrap .t-overflow, [class*="name"], [class*="title"]'),
                 item.querySelector('div[class*="name"], div[class*="title"], span[class*="name"], span[class*="title"]'),
                 ...item.querySelectorAll('*')
             ];
-            
+
             for (const nameElement of nameElements) {
                 if (!nameElement) continue;
-                
+
                 const itemName = nameElement.textContent.trim();
                 if (itemName && (itemName.includes(name) || name.includes(itemName))) {
                     debugLog(`Found matching drug name: "${itemName}"`);
-                    
+
                     const actionLinks = [
                         item.querySelector('div.item-action a, .actions a, a[class*="action"], button[class*="action"]'),
                         item.querySelector('a[href*="armoryItemID="], a[href*="step=armoryItemAction"]'),
                         item.querySelector('a.t-blue, a.t-blue-cont'),
                         ...item.querySelectorAll('a[class*="use"], button[class*="use"], a.act-use, div.use, span.use')
                     ];
-                    
+
                     for (const actionLink of actionLinks) {
                         if (!actionLink) continue;
-                        
+
                         let match = null;
-                        
+
                         if (actionLink.href) {
                             debugLog(`Checking action link href: ${actionLink.href}`);
                             match = actionLink.href.match(/armoryItemID=(\d+)/);
-                            
+
                             if (!match) {
                                 match = actionLink.href.match(/itemID=(\d+)/);
                             }
-                            
+
                             if (!match && actionLink.getAttribute('onclick')) {
                                 const onclick = actionLink.getAttribute('onclick');
                                 match = onclick.match(/(\d+)/);
                             }
                         }
-                        
+
                         if (!match && actionLink.dataset) {
                             for (const key in actionLink.dataset) {
                                 if (key.includes('id') || key.includes('itemId') || key.includes('armory')) {
@@ -729,18 +748,18 @@
                                 }
                             }
                         }
-                        
+
                         if (!armouryItemID && actionLink.onclick) {
                             try {
                                 const onclickStr = actionLink.onclick.toString();
                                 debugLog('Examining onclick handler:', onclickStr);
-                                
+
                                 const patterns = [
                                     /(?:armoryItemID|item_id|id)['":\s=]+(\d+)/i,
                                     /use\w*\(['"]?(\d+)['"]?/i,
                                     /(\d+)['")\s]*\)/
                                 ];
-                                
+
                                 for (const pattern of patterns) {
                                     match = onclickStr.match(pattern);
                                     if (match && match[1]) {
@@ -753,39 +772,39 @@
                                 debugLog('Error parsing onclick handler:', e);
                             }
                         }
-                        
+
                         if (match && match[1]) {
                             armouryItemID = match[1];
                             debugLog(`Found armouryItemID: ${armouryItemID}`);
                             break;
                         }
                     }
-                    
+
                     if (armouryItemID) break;
                 }
             }
-            
+
             if (armouryItemID) break;
         }
-        
+
         if (!armouryItemID) {
             debugLog('Looking for confirmation dialog elements');
-            
+
             const confirmationElements = document.querySelectorAll('.confirmation-popup, .confirmation-dialog, .confirm-dialog, .popup, #confirmation');
             for (const confirmEl of confirmationElements) {
                 const text = confirmEl.textContent;
                 if (text && text.includes(name)) {
                     debugLog('Found drug name in confirmation dialog');
-                    
+
                     const confirmButtons = confirmEl.querySelectorAll('a, button, .yes, .confirm, .accept');
                     for (const button of confirmButtons) {
-                        if (button.textContent.trim().toLowerCase() === 'yes' || 
+                        if (button.textContent.trim().toLowerCase() === 'yes' ||
                             button.textContent.trim().toLowerCase() === 'confirm' ||
                             button.classList.contains('yes') ||
                             button.classList.contains('confirm')) {
-                            
+
                             debugLog('Found confirm button in dialog');
-                            
+
                             if (button.dataset && button.dataset.id) {
                                 armouryItemID = button.dataset.id;
                                 debugLog(`Found ID in confirm button data-id: ${armouryItemID}`);
@@ -804,46 +823,46 @@
                                     debugLog('Error parsing confirm button onclick:', e);
                                 }
                             }
-                            
+
                             if (armouryItemID) break;
                         }
                     }
-                    
-                    if (armouryItemID) break;
                 }
+
+                if (armouryItemID) break;
             }
         }
-        
+
         if (!armouryItemID) {
             debugLog('Attempting to extract item ID from API data');
-            
+
             const scripts = document.querySelectorAll('script:not([src])');
             for (const script of scripts) {
                 if (!script.textContent) continue;
-                
+
                 const dataPatterns = [
                     /armory(?:Data|Items|List)\s*=\s*({[\s\S]*?});/i,
                     /faction(?:Armory|Drugs)\s*=\s*({[\s\S]*?});/i,
                     /drugs\s*:\s*({[\s\S]*?})[,}]/i
                 ];
-                
+
                 for (const pattern of dataPatterns) {
                     const match = script.textContent.match(pattern);
                     if (match && match[1]) {
                         try {
                             let objText = match[1].replace(/'/g, '"').replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3');
-                            
-                            if (objText.length < 10000) {
+
+                            if (objText.length < 10000) { // Avoid parsing huge scripts
                                 let obj;
                                 try {
                                     obj = JSON.parse(objText);
                                 } catch (e) {
                                     debugLog('Initial JSON parse failed, using fallback method');
-                                    
+
                                     const keyValuePattern = /"?(\w+)"?\s*:\s*["']?([^"',}]*)["']?/g;
                                     let keyValueMatch;
                                     obj = {};
-                                    
+
                                     while ((keyValueMatch = keyValuePattern.exec(objText)) !== null) {
                                         const [_, key, value] = keyValueMatch;
                                         if (key && value) {
@@ -851,7 +870,7 @@
                                         }
                                     }
                                 }
-                                
+
                                 if (obj) {
                                     for (const key in obj) {
                                         const item = obj[key];
@@ -862,7 +881,7 @@
                                                 break;
                                             }
                                         } else if (typeof item === 'string' && item.includes(name)) {
-                                            if (/^\d+$/.test(key)) {
+                                             if (/^\d+$/.test(key)) {
                                                 armouryItemID = key;
                                                 debugLog(`Found potential item ID ${armouryItemID} from key-value pair`);
                                                 break;
@@ -875,21 +894,21 @@
                             debugLog('Error parsing potential JSON data:', e);
                         }
                     }
-                    
+
                     if (armouryItemID) break;
                 }
-                
+
                 if (armouryItemID) break;
             }
         }
-        
+
         if (!armouryItemID) {
             debugLog('Searching for drug ID in page source');
-            
+
             const allElements = document.querySelectorAll('*');
             for (const element of allElements) {
                 if (element.nodeName === 'SCRIPT' || element.classList.contains('drug-gui')) continue;
-                
+
                 const text = element.textContent || '';
                 if (text.includes(name)) {
                     for (const attr of element.attributes) {
@@ -899,67 +918,68 @@
                             break;
                         }
                     }
-                    
+
                     if (!armouryItemID && element.className) {
                         const classMatch = element.className.match(/\bid-(\d+)\b/);
-                        if (classMatch && classMatch[1]) {
+                         if (classMatch && classMatch[1]) {
                             armouryItemID = classMatch[1];
                             debugLog(`Found potential item ID ${armouryItemID} in class name`);
                         }
                     }
-                    
+
                     if (armouryItemID) break;
                 }
             }
         }
 
+        // Fallback specifically for Xanax if other methods fail
         if (!armouryItemID) {
-            if (name.toLowerCase().includes('xanax')) {
-                armouryItemID = id;
-                debugLog(`Using default item ID for Xanax: ${armouryItemID}`);
-            }
+             if (name.toLowerCase().includes('xanax')) {
+                 armouryItemID = id; // Use the ID passed into the function
+                 debugLog(`Using default item ID for Xanax: ${armouryItemID}`);
+             }
         }
-        
+
         if (!armouryItemID) {
             debugLog('Could not find armouryItemID, cannot proceed');
             showNotification(`Unable to find ${name} in faction armoury. Make sure the faction has it in stock.`, 'error');
             sessionStorage.removeItem('drugUseInProgress');
             return;
         }
-        
+
         debugLog(`Using faction drug with armouryItemID: ${armouryItemID}`);
-        
+
         const params = new URLSearchParams();
         params.append('step', 'armoryItemAction');
         params.append('confirm', 'yes');
         params.append('armoryItemID', armouryItemID);
         params.append('action', 'use');
         params.append('csrf', token);
-        
+
         const xhr = new XMLHttpRequest();
         xhr.open('POST', 'https://www.torn.com/factions.php', true);
         xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-        
+
         xhr.onload = function() {
             if (this.status === 200) {
                 try {
                     let response;
-                    
+
                     // Enhanced error handling - safely try to parse the response
                     try {
                         response = JSON.parse(this.responseText);
                     } catch (parseError) {
                         debugLog('Response is not valid JSON, handling as HTML/text:', this.responseText.substring(0, 100) + '...');
-                        
+
                         // If we can't parse as JSON, check if it's a success message in HTML form
                         const successPattern = /used|consumed|taken|success/i;
                         const cooldownPattern = /cooldown|wait|effect of a drug/i;
-                        
+
                         if (successPattern.test(this.responseText)) {
                             debugLog('Found success indicator in raw response');
                             showNotification(`Used ${name} from faction armoury successfully!`, 'success');
-                            
+
                             setTimeout(() => {
                                 if (hasDrugCooldown()) {
                                     debugLog('Drug cooldown confirmed after faction response');
@@ -970,14 +990,14 @@
                                     }
                                 }
                             }, 500);
-                            
+
                             sessionStorage.removeItem('drugUseInProgress');
                             return;
                         } else if (cooldownPattern.test(this.responseText)) {
                             debugLog('Found cooldown indicator in raw response');
                             const timeMatches = this.responseText.match(/(\d+)m\s+(\d+)s|(\d+)\s+seconds|(\d+)\s+minutes/);
                             let cooldownMessage = 'You are on drug cooldown';
-                            
+
                             if (timeMatches) {
                                 if (timeMatches[1] && timeMatches[2]) {
                                     cooldownMessage = `Drug Cooldown: ${timeMatches[1]}m ${timeMatches[2]}s remaining`;
@@ -987,36 +1007,36 @@
                                     cooldownMessage = `Drug Cooldown: ${timeMatches[4]}m 0s remaining`;
                                 }
                             }
-                            
+
                             showNotification(cooldownMessage, 'info');
                             sessionStorage.removeItem('drugUseInProgress');
                             return;
                         }
-                        
+
                         // For error messages we can try to extract them from HTML
                         const errorMatch = this.responseText.match(/<[^>]*class=['"]error['"][^>]*>(.*?)<\/|Validation failed|Error:|not authorized/i);
                         if (errorMatch) {
                             let errorMessage = errorMatch[1] || 'Validation failed - please try again';
-                            if (errorMatch[0].includes('not authorized')) {
-                                errorMessage = 'Not authorized to use faction drugs';
-                            }
+                             if (errorMatch[0].includes('not authorized')) {
+                                 errorMessage = 'Not authorized to use faction drugs';
+                             }
                             debugLog('Found error message in raw response:', errorMessage);
                             showNotification(`Error: ${errorMessage}`, 'error');
                             sessionStorage.removeItem('drugUseInProgress');
                             return;
                         }
-                        
+
                         // If we get here, we couldn't find a specific message
                         showNotification('Error using faction drug: Unexpected response format', 'error');
                         sessionStorage.removeItem('drugUseInProgress');
                         return;
                     }
-                    
+
                     // Continue with the JSON parsed response handling
                     if (response && (response.success || response.message && response.message.includes('used'))) {
                         debugLog('Faction drug used successfully via XHR');
                         showNotification(`Used ${name} from faction armoury successfully!`, 'success');
-                        
+
                         setTimeout(() => {
                             if (hasDrugCooldown()) {
                                 debugLog('Drug cooldown confirmed after faction XHR');
@@ -1027,23 +1047,23 @@
                                 }
                             }
                         }, 500);
-                        
+
                         sessionStorage.removeItem('drugUseInProgress');
                         return;
                     }
-                    
+
                     debugLog('Faction XHR method returned error:', response);
-                    
+
                     let errorMessage = `Error using faction drug: ${response.message || 'Unknown error'}`;
                     let seconds = 0;
-                    
+
                     if (response.text) {
                         if (response.text.includes('cooldown') || response.text.includes('effect of a drug')) {
                             const timeMatch = response.text.match(/data-time=\"(\d+)\"/);
                             const timeMatch2 = response.text.match(/wait\s+(\d+)m\s+(\d+)s/);
                             const timeMatch3 = response.text.match(/wait\s+(\d+)\s+seconds/);
                             const timeMatch4 = response.text.match(/wait\s+(\d+)\s+minutes/);
-                            
+
                             if (timeMatch && timeMatch[1]) {
                                 seconds = parseInt(timeMatch[1]);
                             } else if (timeMatch2 && timeMatch2[1] && timeMatch2[2]) {
@@ -1053,7 +1073,7 @@
                             } else if (timeMatch4 && timeMatch4[1]) {
                                 seconds = parseInt(timeMatch4[1]) * 60;
                             }
-                            
+
                             if (seconds > 0) {
                                 const minutes = Math.floor(seconds / 60);
                                 const remainingSeconds = seconds % 60;
@@ -1066,7 +1086,7 @@
                                 errorMessage = textContent.trim() || 'You are on drug cooldown';
                                 debugLog('Using raw faction message text:', errorMessage);
                             }
-                            
+
                             showNotification(errorMessage, 'info');
                         } else {
                             const tempDiv = document.createElement('div');
@@ -1075,9 +1095,9 @@
                             showNotification(errorMessage, 'error');
                         }
                     } else {
-                        showNotification(errorMessage, 'error');
+                         showNotification(errorMessage, 'error');
                     }
-                    
+
                     sessionStorage.removeItem('drugUseInProgress');
                 } catch (e) {
                     debugLog('Error parsing faction XHR response:', e);
@@ -1090,42 +1110,42 @@
                 sessionStorage.removeItem('drugUseInProgress');
             }
         };
-        
+
         xhr.onerror = function() {
             debugLog('Faction XHR request failed with network error');
             showNotification('Error using faction drug: Network error', 'error');
             sessionStorage.removeItem('drugUseInProgress');
         };
-        
+
         xhr.send(params.toString());
     }
 
     function useFactionDrugById(id, name, token) {
         debugLog(`Directly using faction drug with ID: ${id}`);
-        
+
         const params = new URLSearchParams();
         params.append('step', 'useItem');
         params.append('confirm', 'yes');
         params.append('itemID', id);
         params.append('fac', '1'); // Flag to indicate faction item
         params.append('csrf', token);
-        
+
         const xhr = new XMLHttpRequest();
         xhr.open('POST', 'https://www.torn.com/item.php', true);
         xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-        
+
         xhr.onload = function() {
             if (this.status === 200) {
                 try {
                     // First try parsing as JSON
                     try {
                         const response = JSON.parse(this.responseText);
-                        
+
                         if (response && (response.success || (response.message && response.message.includes('consumed')))) {
                             debugLog('Faction drug used successfully via direct method');
                             showNotification(`Used ${name} from faction armoury successfully!`, 'success');
-                            
+
                             setTimeout(() => {
                                 if (hasDrugCooldown()) {
                                     debugLog('Drug cooldown confirmed after direct method');
@@ -1136,11 +1156,11 @@
                                     }
                                 }
                             }, 500);
-                            
+
                             sessionStorage.removeItem('drugUseInProgress');
                             return;
                         }
-                        
+
                         // Handle error messages
                         if (response.error || response.message) {
                             const errorMessage = response.error || response.message;
@@ -1152,12 +1172,12 @@
                     } catch (parseError) {
                         // If not JSON, check text response
                         debugLog('Direct method response is not JSON, checking text');
-                        
+
                         const responseText = this.responseText || '';
                         if (responseText.includes('success') || responseText.includes('used') || responseText.includes('consumed')) {
                             debugLog('Found success in text response from direct method');
                             showNotification(`Used ${name} from faction armoury successfully!`, 'success');
-                            
+
                             setTimeout(() => {
                                 if (hasDrugCooldown()) {
                                     if (alertElements) {
@@ -1167,16 +1187,16 @@
                                     }
                                 }
                             }, 500);
-                            
+
                             sessionStorage.removeItem('drugUseInProgress');
                             return;
                         }
-                        
+
                         // Check for cooldown
                         if (responseText.includes('cooldown') || responseText.includes('wait') || responseText.includes('effect of a drug')) {
                             const timeMatches = responseText.match(/(\d+)m\s+(\d+)s|(\d+)\s+seconds|(\d+)\s+minutes/);
                             let cooldownMessage = 'You are on drug cooldown';
-                            
+
                             if (timeMatches) {
                                 if (timeMatches[1] && timeMatches[2]) {
                                     cooldownMessage = `Drug Cooldown: ${timeMatches[1]}m ${timeMatches[2]}s remaining`;
@@ -1186,18 +1206,18 @@
                                     cooldownMessage = `Drug Cooldown: ${timeMatches[4]}m 0s remaining`;
                                 }
                             }
-                            
+
                             showNotification(cooldownMessage, 'info');
                             sessionStorage.removeItem('drugUseInProgress');
                             return;
                         }
                     }
-                    
+
                     // If we got here, we couldn't determine the exact result
                     debugLog('Direct method gave unclear response:', this.responseText.substring(0, 100) + '...');
                     showNotification(`Tried to use ${name}, but outcome is unclear. Please check your status.`, 'info');
                     sessionStorage.removeItem('drugUseInProgress');
-                    
+
                 } catch (e) {
                     debugLog('Error processing direct method response:', e);
                     showNotification(`Error using ${name}: Request processing failed`, 'error');
@@ -1209,73 +1229,77 @@
                 sessionStorage.removeItem('drugUseInProgress');
             }
         };
-        
+
         xhr.onerror = function() {
             debugLog('Direct method request failed with network error');
             showNotification(`Unable to use ${name}: Network error`, 'error');
             sessionStorage.removeItem('drugUseInProgress');
         };
-        
+
         xhr.send(params.toString());
     }
 
     function showNotification(message, type = 'info') {
         const existingNotifications = document.querySelectorAll('.drug-notification');
         existingNotifications.forEach(note => note.remove());
-        
+
         const notification = document.createElement('div');
         notification.className = `drug-notification ${type}`;
-        
+
         let cleanMessage = message;
         if (message.includes('<') && message.includes('>')) {
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = message;
             cleanMessage = tempDiv.textContent || tempDiv.innerText || message;
         }
-        
+
         if (cleanMessage.includes('Cooldown:') || cleanMessage.includes('cooldown')) {
-            notification.innerHTML = `
-                <div style="font-weight: bold; margin-bottom: 5px; font-size: 16px;">Drug Cooldown Active</div>
-                <div>${cleanMessage}</div>
-            `;
-            
-            notification.style.minWidth = '280px';
-            notification.style.padding = '15px 25px';
+             notification.innerHTML = `
+                 <div style="font-weight: bold; margin-bottom: 5px; font-size: 16px;">Drug Cooldown Active</div>
+                 <div>${cleanMessage}</div>
+             `;
+
+             notification.style.minWidth = '280px';
+             notification.style.padding = '15px 25px';
         } else {
             notification.textContent = cleanMessage;
         }
-        
+
         document.body.appendChild(notification);
-        
+
+        // Animation
         notification.style.transform = 'translate(-50%, -50%) scale(0.9)';
         notification.style.opacity = '0';
-        
-        void notification.offsetWidth;
-        
+
+        void notification.offsetWidth; // Force reflow
+
         notification.style.transform = 'translate(-50%, -50%) scale(1)';
         notification.style.opacity = '1';
-        
+
+        // Auto-hide
         setTimeout(() => {
             notification.style.opacity = '0';
             notification.style.transform = 'translate(-50%, -50%) scale(0.9)';
-            setTimeout(() => notification.remove(), 500);
-        }, 7000);
-        
+            setTimeout(() => notification.remove(), 500); // Remove after fade out
+        }, 7000); // Notification duration
+
         debugLog(`Notification [${type}]: ${cleanMessage}`);
     }
 
     function getNSTStyleToken() {
         debugLog('Trying NST-style token retrieval with onlinestatus.php');
-        
+
         try {
+            // Check cache first
             const cachedToken = sessionStorage.getItem('drugAlertsOnlineStatusToken');
             const cachedTime = sessionStorage.getItem('drugAlertsOnlineStatusTokenTime');
-            
-            if (cachedToken && cachedTime && (Date.now() - parseInt(cachedTime)) < 300000) {
+
+            if (cachedToken && cachedTime && (Date.now() - parseInt(cachedTime)) < 300000) { // 5 min cache
                 debugLog('Using cached online status token');
                 return cachedToken;
             }
-            
+
+            // Try RFC cookie as a potential token (sometimes works)
             const rfcCookie = getRFC();
             if (rfcCookie) {
                 debugLog('Using RFC cookie as token');
@@ -1283,25 +1307,28 @@
                 sessionStorage.setItem('drugAlertsOnlineStatusTokenTime', Date.now().toString());
                 return rfcCookie;
             }
-            
+
+            // Make synchronous request (Not ideal, but sometimes necessary for immediate token needs)
             const xhr = new XMLHttpRequest();
-            xhr.open('GET', 'https://www.torn.com/onlinestatus.php?online', false);
+            xhr.open('GET', 'https://www.torn.com/onlinestatus.php?online', false); // SYNCHRONOUS!
             xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-            
+
             try {
                 xhr.send(null);
-                
+
                 if (xhr.status === 200) {
-                    const csrfHeader = xhr.getResponseHeader('X-CSRF-Token') || 
-                                      xhr.getResponseHeader('csrf-token');
-                    
+                    // Check headers first
+                    const csrfHeader = xhr.getResponseHeader('X-CSRF-Token') ||
+                                       xhr.getResponseHeader('csrf-token');
+
                     if (csrfHeader) {
                         debugLog('Found token in response headers');
                         sessionStorage.setItem('drugAlertsOnlineStatusToken', csrfHeader);
                         sessionStorage.setItem('drugAlertsOnlineStatusTokenTime', Date.now().toString());
                         return csrfHeader;
                     }
-                    
+
+                    // Try parsing JSON response
                     try {
                         const responseData = JSON.parse(xhr.responseText);
                         if (responseData && responseData.csrf) {
@@ -1312,7 +1339,7 @@
                         }
                     } catch (jsonError) {
                         debugLog('Response is not valid JSON, attempting regex extraction');
-                        
+                        // Try regex on response text
                         const tokenMatch = xhr.responseText.match(/csrf["']?\s*:\s*["']([a-f0-9]{16,})["']/i);
                         if (tokenMatch && tokenMatch[1]) {
                             debugLog('Extracted token with regex from response text');
@@ -1321,31 +1348,33 @@
                             return tokenMatch[1];
                         }
                     }
-                    
-                    const responseUrl = xhr.responseURL;
-                    if (responseUrl) {
-                        const urlMatch = responseUrl.match(/[?&]csrf=([a-f0-9]{16,})/i);
-                        if (urlMatch && urlMatch[1]) {
-                            debugLog('Found token in response URL');
-                            sessionStorage.setItem('drugAlertsOnlineStatusToken', urlMatch[1]);
-                            sessionStorage.setItem('drugAlertsOnlineStatusTokenTime', Date.now().toString());
-                            return urlMatch[1];
-                        }
-                    }
+
+                    // Check response URL (less common)
+                     const responseUrl = xhr.responseURL;
+                     if (responseUrl) {
+                         const urlMatch = responseUrl.match(/[?&]csrf=([a-f0-9]{16,})/i);
+                         if (urlMatch && urlMatch[1]) {
+                             debugLog('Found token in response URL');
+                             sessionStorage.setItem('drugAlertsOnlineStatusToken', urlMatch[1]);
+                             sessionStorage.setItem('drugAlertsOnlineStatusTokenTime', Date.now().toString());
+                             return urlMatch[1];
+                         }
+                     }
                 }
             } catch (xhrError) {
                 debugLog('XHR request failed:', xhrError);
             }
-            
+
+            // Try fetching sidebar as another fallback
             try {
                 const sidebarXhr = new XMLHttpRequest();
-                sidebarXhr.open('GET', 'https://www.torn.com/sidebar.php', false);
+                sidebarXhr.open('GET', 'https://www.torn.com/sidebar.php', false); // SYNCHRONOUS!
                 sidebarXhr.send(null);
-                
+
                 if (sidebarXhr.status === 200) {
                     const html = sidebarXhr.responseText;
                     const csrfMatch = html.match(/name=["']?csrf["']?\s+value=["']([a-f0-9]{16,})["']/i);
-                    
+
                     if (csrfMatch && csrfMatch[1]) {
                         debugLog('Found CSRF token in sidebar HTML');
                         sessionStorage.setItem('drugAlertsOnlineStatusToken', csrfMatch[1]);
@@ -1354,28 +1383,29 @@
                     }
                 }
             } catch (sidebarError) {
-                debugLog('Sidebar request failed:', sidebarError);
+                 debugLog('Sidebar request failed:', sidebarError);
             }
-            
+
+            // Final fallback: extract from current page
             return extractTokenFromPage();
         } catch (e) {
             debugLog('Error in getNSTStyleToken:', e);
-            return extractTokenFromPage();
+            return extractTokenFromPage(); // Fallback if anything goes wrong
         }
     }
 
     function extractTokenFromPage() {
-        try {
+         try {
             const scripts = document.querySelectorAll('script:not([src])');
             for (const script of scripts) {
                 if (!script.textContent) continue;
-                
+
                 const patterns = [
                     /var\s+csrf\s*=\s*["']([a-f0-9]{16,})["']/,
                     /csrf["']?\s*:\s*["']([a-f0-9]{16,})["']/,
-                    /\{[^}]*["']?csrf["']?\s*:\s*["']([a-f0-9]{16,})["'][^}]*\}/
+                     /\{[^}]*["']?csrf["']?\s*:\s*["']([a-f0-9]{16,})["'][^}]*\}/ // More robust JSON-like structure
                 ];
-                
+
                 for (const pattern of patterns) {
                     const match = script.textContent.match(pattern);
                     if (match && match[1]) {
@@ -1387,7 +1417,7 @@
         } catch (e) {
             debugLog('Error extracting token from scripts:', e);
         }
-        
+
         try {
             const csrfInputs = document.querySelectorAll('input[name="csrf"]');
             for (const input of csrfInputs) {
@@ -1397,14 +1427,15 @@
                 }
             }
         } catch (e) {
-            debugLog('Error extracting token from inputs:', e);
+             debugLog('Error extracting token from inputs:', e);
         }
-        
+
         if (typeof window.csrf !== 'undefined' && window.csrf) {
             debugLog('Found token in window.csrf');
             return window.csrf;
         }
-        
+
+        // Check jQuery cookie if jQuery exists
         if (typeof $ !== 'undefined' && typeof $.cookie === 'function') {
             const cookieToken = $.cookie('csrf');
             if (cookieToken) {
@@ -1412,12 +1443,13 @@
                 return cookieToken;
             }
         }
-        
+
         debugLog('No token found in page');
         return null;
     }
 
     function getRFC() {
+        // Try jQuery cookie first if available
         if (typeof $ !== 'undefined' && typeof $.cookie === 'function') {
             const rfcCookie = $.cookie('rfc_v');
             if (rfcCookie) {
@@ -1425,7 +1457,8 @@
                 return rfcCookie;
             }
         }
-        
+
+        // Fallback to manual cookie parsing
         try {
             const cookies = document.cookie.split('; ');
             for (const cookie of cookies) {
@@ -1436,14 +1469,15 @@
                 }
             }
         } catch (e) {
-            debugLog('Error parsing cookies for RFC:', e);
+             debugLog('Error parsing cookies for RFC:', e);
         }
-        
-        try {
+
+        // Fallback to searching script tags
+         try {
             const scripts = document.querySelectorAll('script:not([src])');
             for (const script of scripts) {
                 if (!script.textContent) continue;
-                
+
                 const match = script.textContent.match(/var\s+rfcv\s*=\s*["']([^"']+)["']/);
                 if (match && match[1]) {
                     debugLog('Found RFC in script tag:', match[1]);
@@ -1453,7 +1487,8 @@
         } catch (e) {
             debugLog('Error extracting RFC from scripts:', e);
         }
-        
+
+        // Fallback to URL parameters
         try {
             const urlParams = new URLSearchParams(window.location.search);
             const rfcParam = urlParams.get('rfcv');
@@ -1462,10 +1497,11 @@
                 return rfcParam;
             }
         } catch (e) {
-            debugLog('Error extracting RFC from URL:', e);
+             debugLog('Error extracting RFC from URL:', e);
         }
-        
-        try {
+
+         // Fallback to links
+         try {
             const links = document.querySelectorAll('a[href*="rfcv="]');
             for (const link of links) {
                 const href = link.getAttribute('href');
@@ -1478,19 +1514,23 @@
         } catch (e) {
             debugLog('Error extracting RFC from links:', e);
         }
-        
+
+
         debugLog('No RFC found');
         return null;
     }
 
+
     function getPageCsrfToken() {
         debugLog('Searching for token in page');
-        
+
+        // Check global variable first
         if (typeof window.csrf !== 'undefined' && window.csrf) {
             debugLog('Found token in window.csrf');
             return window.csrf;
         }
-        
+
+        // Check jQuery cookie if available
         if (typeof $ !== 'undefined' && typeof $.cookie === 'function') {
             const cookieToken = $.cookie('csrf');
             if (cookieToken) {
@@ -1498,7 +1538,8 @@
                 return cookieToken;
             }
         }
-        
+
+        // Check input fields
         const inputs = document.querySelectorAll('input[name="csrf"]');
         for (const input of inputs) {
             if (input.value) {
@@ -1506,37 +1547,41 @@
                 return input.value;
             }
         }
-        
+
+        // Check inline scripts
         const scriptPattern = /var\s+csrf\s*=\s*["']([a-f0-9]{16,})["']/;
         const scripts = document.querySelectorAll('script:not([src])');
         for (const script of scripts) {
-            if (!script.textContent) continue;
+             if (!script.textContent) continue;
             const match = script.textContent.match(scriptPattern);
             if (match && match[1]) {
                 debugLog('Found token in inline script');
                 return match[1];
             }
         }
-        
+
+        // If not found by common methods, return null
         return null;
     }
 
     function fetchCsrfToken() {
         debugLog('Fetching token via XHR');
         return new Promise(resolve => {
-            fetch('https://www.torn.com/index.php')
+            fetch('https://www.torn.com/index.php') // Fetch a page likely to contain the token
                 .then(response => response.text())
                 .then(html => {
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(html, 'text/html');
-                    
+
+                    // Try input field first
                     const csrfInput = doc.querySelector('input[name="csrf"]');
                     if (csrfInput && csrfInput.value) {
                         debugLog('Found token in fetched page inputs');
                         resolve(csrfInput.value);
                         return;
                     }
-                    
+
+                    // Try script tags
                     const scriptPattern = /var\s+csrf\s*=\s*["']([a-f0-9]{16,})["']/;
                     const scripts = doc.querySelectorAll('script:not([src])');
                     for (const script of scripts) {
@@ -1548,49 +1593,55 @@
                             return;
                         }
                     }
-                    
+
+                    // If not found
                     resolve(null);
                 })
                 .catch(error => {
                     debugLog('Error fetching token via XHR:', error);
-                    resolve(null);
+                    resolve(null); // Resolve with null on error
                 });
         });
     }
 
+
     function hasDrugCooldown() {
         debugLog('Checking for drug cooldown...');
-        
+
+        // Primary check: Specific aria-label
         const drugCooldown = document.querySelector("[aria-label^='Drug Cooldown:']");
         if (drugCooldown) {
             debugLog('Found drug cooldown via aria-label');
             return true;
         }
-        
+
+        // Secondary check: Status icons area (more robust selectors)
         const statusIcons = document.querySelectorAll('.status-icons__wrap a, .status-icons li, .user-icons__wrap a');
         for (const icon of statusIcons) {
             const ariaLabel = icon.getAttribute('aria-label') || '';
             const title = icon.getAttribute('title') || '';
-            
-            if ((ariaLabel.includes('Drug') && ariaLabel.includes('Cooldown')) || 
+
+            if ((ariaLabel.includes('Drug') && ariaLabel.includes('Cooldown')) ||
                 (title.includes('Drug') && title.includes('Cooldown'))) {
                 debugLog('Found drug cooldown in status icons via tooltip text');
                 return true;
             }
-            
-            if (icon.className && /icon5[0-9]/.test(icon.className)) {
-                debugLog('Found drug cooldown icon via class name pattern');
-                return true;
-            }
+            // Check for specific class patterns often used for cooldown icons
+             if (icon.className && /icon5[0-9]/.test(icon.className)) { // Example pattern, adjust if needed
+                 debugLog('Found drug cooldown icon via class name pattern');
+                 return true;
+             }
         }
-        
+
+
         debugLog('No drug cooldown detected');
         return false;
     }
 
     function addQuickUseButtons() {
+        // Only add buttons on the item page for now
         if (!window.location.href.includes('torn.com/item.php')) {
-            debugLog('Not on items page, skipping quick use buttons');
+             debugLog('Not on items page, skipping quick use buttons');
             return;
         }
 
@@ -1598,24 +1649,26 @@
         quickUseContainer.className = 'quick-use-container';
         quickUseContainer.style.cssText = `
             position: fixed;
-            top: 100px;
+            top: 100px; /* Adjust as needed */
             right: 20px;
             background-color: rgba(34, 34, 34, 0.8);
             padding: 10px;
             border-radius: 5px;
-            z-index: 9998;
+            z-index: 9998; /* Below main GUI */
             display: flex;
             flex-direction: column;
             gap: 5px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.3);
         `;
-        
+
+        // Define drugs for quick use buttons
         const quickUseDrugs = [
-            { id: 206, name: "Xanax", color: "#4CAF50" },
-            { id: 197, name: "Ecstasy", color: "#2196F3" },
-            { id: 196, name: "Cannabis", color: "#8BC34A" } 
+            { id: 206, name: "Xanax", color: "#4CAF50" }, // Green
+            { id: 197, name: "Ecstasy", color: "#2196F3" }, // Blue
+            { id: 196, name: "Cannabis", color: "#8BC34A" } // Light Green
+            // Add more drugs here if desired
         ];
-        
+
         const drugButtons = [];
         quickUseDrugs.forEach(drug => {
             const button = document.createElement('button');
@@ -1629,21 +1682,22 @@
                 border-radius: 3px;
                 cursor: pointer;
                 font-weight: bold;
-                margin-bottom: 5px;
+                margin-bottom: 5px; /* Spacing */
                 text-align: center;
             `;
             button.addEventListener('click', () => useDrug(drug.id, drug.name));
-            drugButtons.push(button);
+            drugButtons.push(button); // Store button reference
             quickUseContainer.appendChild(button);
         });
-        
+
+        // Add minimize/maximize toggle
         const toggleButton = document.createElement('button');
-        toggleButton.textContent = 'X';
+        toggleButton.textContent = 'X'; // Initial state: expanded
         toggleButton.style.cssText = `
             position: absolute;
             top: -8px;
             right: -8px;
-            background-color: #f44336;
+            background-color: #f44336; /* Red */
             color: white;
             border: none;
             width: 20px;
@@ -1656,92 +1710,99 @@
             font-size: 10px;
             font-weight: bold;
         `;
-        
+
         let isMinimized = localStorage.getItem('drugAlertMinimized') === 'true';
-        
+
         function applyMinimizedState() {
             drugButtons.forEach(btn => {
                 btn.style.display = isMinimized ? 'none' : 'block';
             });
-            
+            // Adjust container padding when minimized
             quickUseContainer.style.padding = isMinimized ? '2px' : '10px';
             toggleButton.textContent = isMinimized ? '+' : 'X';
         }
-        
-        applyMinimizedState();
-        
+
+        applyMinimizedState(); // Set initial state
+
         toggleButton.addEventListener('click', () => {
             isMinimized = !isMinimized;
             applyMinimizedState();
-            localStorage.setItem('drugAlertMinimized', isMinimized);
+            localStorage.setItem('drugAlertMinimized', isMinimized); // Save state
         });
-        
+
         quickUseContainer.appendChild(toggleButton);
         document.body.appendChild(quickUseContainer);
     }
 
+
     function fetchDrugs() {
         debugLog('Fetching drugs list');
         return new Promise((resolve, reject) => {
-            fetch('https://www.torn.com/item.php')
+            fetch('https://www.torn.com/item.php') // Fetch the items page
                 .then(response => response.text())
                 .then(html => {
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(html, 'text/html');
-                    
+
                     const drugItems = [];
-                    
+
+                    // Try multiple selectors to find drug items
                     const possibleItemSelectors = [
-                        '.drugs-items .item-cont',
-                        '#drugs-items .item',
-                        '.item-info-wrap[data-category="Drugs"]',
-                        '.items-wrap[data-items-type="Drugs"] .item',
-                        '.item-cont[data-item]',
-                        '.item[data-item]'
+                        '.drugs-items .item-cont', // Common structure
+                        '#drugs-items .item',      // Another possible ID
+                        '.item-info-wrap[data-category="Drugs"]', // Data attribute based
+                        '.items-wrap[data-items-type="Drugs"] .item', // Another data attribute
+                        '.item-cont[data-item]', // Items with data-item attribute
+                        '.item[data-item]'       // Simpler item structure
                     ];
-                    
+
                     for (const selector of possibleItemSelectors) {
                         const items = doc.querySelectorAll(selector);
                         if (items.length > 0) {
                             items.forEach(item => {
                                 let name = '';
                                 let id = null;
-                                
+
+                                // Find name (try common class names)
                                 const nameElem = item.querySelector('.name, .title, .item-name, .torn-item-name, [class*="itemName"]');
                                 if (nameElem) {
                                     name = nameElem.textContent.trim();
                                 }
-                                
+
+                                // Find ID (check data attributes first)
                                 if (item.dataset.item) {
                                     id = parseInt(item.dataset.item);
                                 } else if (item.dataset.itemid) {
-                                    id = parseInt(item.dataset.itemid);
+                                     id = parseInt(item.dataset.itemid);
                                 } else {
-                                    const clickableElem = item.querySelector('[onclick*="item_"]') || item;
+                                    // Fallback: check onclick attributes if present
+                                    const clickableElem = item.querySelector('[onclick*="item_"]') || item; // Check specific element or item itself
                                     const onclick = clickableElem.getAttribute('onclick');
                                     if (onclick) {
-                                        const match = onclick.match(/item_\((\d+),/);
+                                        const match = onclick.match(/item_\((\d+),/); // Extract ID from item_(ID, ...) pattern
                                         if (match && match[1]) {
                                             id = parseInt(match[1]);
                                         }
                                     }
                                 }
-                                
+
+                                // Basic check if it's likely a drug based on name or context
                                 const isDrug = name && (
-                                    name.includes('Xanax') || 
-                                    name.includes('Cannabis') || 
-                                    name.includes('Ecstasy') || 
-                                    name.includes('Ketamine') || 
-                                    name.includes('LSD') || 
-                                    name.includes('Opium') || 
-                                    name.includes('PCP') || 
-                                    name.includes('Shrooms') || 
-                                    name.includes('Speed') || 
+                                    name.includes('Xanax') ||
+                                    name.includes('Cannabis') ||
+                                    name.includes('Ecstasy') ||
+                                    name.includes('Ketamine') ||
+                                    name.includes('LSD') ||
+                                    name.includes('Opium') ||
+                                    name.includes('PCP') ||
+                                    name.includes('Shrooms') ||
+                                    name.includes('Speed') ||
                                     name.includes('Vicodin') ||
-                                    item.classList.contains('drug') ||
-                                    item.closest('[data-category="Drugs"]') !== null
+                                    item.classList.contains('drug') || // Check for specific class
+                                    item.closest('[data-category="Drugs"]') !== null // Check parent category
                                 );
-                                
+
+
                                 if (name && id && isDrug) {
                                     drugItems.push({
                                         id: id,
@@ -1749,215 +1810,284 @@
                                     });
                                 }
                             });
-                            
+
+                            // If we found items with this selector, stop searching
                             if (drugItems.length > 0) {
                                 break;
                             }
                         }
                     }
-                    
+
+                    // Remove duplicates based on ID
                     const uniqueDrugs = Array.from(
                         new Map(drugItems.map(item => [item.id, item])).values()
                     );
-                    
+
                     if (uniqueDrugs.length > 0) {
                         debugLog(`Found ${uniqueDrugs.length} drugs in Torn's item page`);
                         resolve(uniqueDrugs);
                     } else {
                         debugLog('No drugs found in page, using fallback drug list');
-                        resolve(fallbackDrugs);
+                        resolve(fallbackDrugs); // Use fallback if fetch/parse fails
                     }
                 })
                 .catch(error => {
                     debugLog('Error fetching drugs:', error);
-                    resolve(fallbackDrugs);
+                    resolve(fallbackDrugs); // Use fallback on fetch error
                 });
         });
     }
 
     function startCooldownChecks() {
         const checkCooldownWithRetry = (retryCount = 0) => {
-            const maxRetries = 3;
+            const maxRetries = 3; // Retry a few times if cooldown status isn't immediately clear
             const hasCooldown = hasDrugCooldown();
-            
+
             debugLog(`Cooldown check (attempt ${retryCount + 1}): ${hasCooldown ? 'ON COOLDOWN' : 'NO COOLDOWN'}`);
-            
+
             if (!hasCooldown) {
-                if (!alertElements) {
+                if (!alertElements) { // Only create if it doesn't exist
                     alertElements = createAlert(drugList);
                     debugLog('Created "No Drugs" alert');
-                    
-                    if (window.location.href.includes('torn.com/item.php') && 
-                        alertElements.gui && 
+
+                    // Check if we should auto-show the GUI (e.g., after navigation)
+                    if (window.location.href.includes('torn.com/item.php') &&
+                        alertElements.gui &&
                         sessionStorage.getItem('fromDrugAlert')) {
-                        debugLog('Auto-showing GUI after cooldown check');
+                         debugLog('Auto-showing GUI after cooldown check');
                         alertElements.gui.style.display = 'block';
-                        sessionStorage.removeItem('fromDrugAlert');
+                        sessionStorage.removeItem('fromDrugAlert'); // Clear the flag
                     }
                 }
-            } else if (alertElements) {
+            } else if (alertElements) { // If cooldown IS active and alert exists, remove it
                 alertElements.alert.remove();
-                alertElements.gui?.remove();
+                alertElements.gui?.remove(); // Safely remove GUI if it exists
                 alertElements = null;
                 debugLog('Removed "No Drugs" alert due to cooldown');
+            // Retry logic if cooldown isn't detected initially but alert isn't created yet (DOM might still be loading)
             } else if (retryCount < maxRetries && !hasCooldown && !alertElements) {
-                setTimeout(() => checkCooldownWithRetry(retryCount + 1), 1000);
-                return;
+                 setTimeout(() => checkCooldownWithRetry(retryCount + 1), 1000); // Wait 1s and retry
+                 return; // Don't proceed to interval setup yet
             }
         };
-        
-        const isItemsPageWithDrugsHash = window.location.href.includes('torn.com/item.php') && 
-                                         window.location.hash.includes('drugs');
-        
-        const initialDelay = isItemsPageWithDrugsHash ? 500 : 2000;
-        
+
+        // Initial check with a delay to allow page elements (like status icons) to load
+        const isItemsPageWithDrugsHash = window.location.href.includes('torn.com/item.php') &&
+                                          window.location.hash.includes('drugs'); // Check for specific hash
+        const initialDelay = isItemsPageWithDrugsHash ? 500 : 2000; // Shorter delay if directly on #drugs
+
         setTimeout(() => checkCooldownWithRetry(), initialDelay);
-        
+
+        // Use MutationObserver for faster updates when status icons change
         const observer = new MutationObserver((mutations) => {
-            const shouldCheck = mutations.some(mutation => {
-                if (mutation.target && mutation.target.className && 
-                    typeof mutation.target.className === 'string' && 
-                    mutation.target.className.includes('status-icons')) {
-                    return true;
-                }
-                return Array.from(mutation.addedNodes).some(node => 
-                    node.nodeType === 1 && node.className && (
-                        (typeof node.className === 'string' && (
-                            node.className.includes('icon') || 
+             // Check if relevant parts of the DOM changed (e.g., status icons area)
+             const shouldCheck = mutations.some(mutation => {
+                 // Check if the target itself is the status icons container
+                 if (mutation.target && mutation.target.className &&
+                     typeof mutation.target.className === 'string' && // Ensure className is string
+                     mutation.target.className.includes('status-icons')) {
+                     return true;
+                 }
+                 // Check if added nodes are relevant (icons, status elements)
+                 return Array.from(mutation.addedNodes).some(node =>
+                     node.nodeType === 1 && node.className && ( // Check if it's an element with a class
+                        (typeof node.className === 'string' && ( // Ensure className is string
+                            node.className.includes('icon') ||
                             node.className.includes('status')
                         ))
-                    )
-                );
-            });
-            
-            if (shouldCheck) {
-                checkCooldownWithRetry();
-            }
+                     )
+                 );
+             });
+
+             if (shouldCheck) {
+                 checkCooldownWithRetry(); // Re-check immediately on relevant changes
+             }
         });
-        
-        observer.observe(document.body, { 
-            childList: true, 
-            subtree: true,
-            attributes: true,
-            attributeFilter: ['class', 'aria-label', 'title'] 
+
+        observer.observe(document.body, {
+            childList: true, // Watch for added/removed nodes
+            subtree: true,   // Watch descendants
+            attributes: true, // Watch attribute changes (like aria-label on icons)
+            attributeFilter: ['class', 'aria-label', 'title'] // Only observe relevant attributes
         });
-        
-        setInterval(checkCooldownWithRetry, 30000);
-        
+
+        // Periodic check as a fallback
+        setInterval(checkCooldownWithRetry, 30000); // Check every 30 seconds
+
         console.log('%c Drug Alerts Initialized ', 'background: #4CAF50; color: white; padding: 2px 5px; border-radius: 3px;');
     }
 
     function checkForPendingDrugUse() {
         try {
             const fromAlert = sessionStorage.getItem('fromDrugAlert');
-            
+
             if (fromAlert) {
                 debugLog('Detected navigation from drug alert');
-                sessionStorage.removeItem('fromDrugAlert');
-                
+                sessionStorage.removeItem('fromDrugAlert'); // Clear the flag immediately
+
                 const isItemsPage = window.location.href.includes('torn.com/item.php');
-                const isFactionPage = window.location.href.includes('factions.php') && 
-                                      window.location.href.includes('armoury') && 
-                                      window.location.href.includes('sub=drugs');
-                                  
-                if ((isItemsPage && !useFactionDrugs) || (isFactionPage && useFactionDrugs)) {
+                const isFactionArmouryDrugsPage = window.location.href.includes('factions.php') &&
+                                                  window.location.href.includes('armoury') &&
+                                                  window.location.href.includes('sub=drugs');
+
+                // Check if we are now on the correct page based on the setting
+                if ((isItemsPage && !useFactionDrugs) || (isFactionArmouryDrugsPage && useFactionDrugs)) {
                     debugLog('On appropriate page after navigation from alert');
-                    
+
+                    // Wait a bit for the page to potentially finish loading/rendering
                     setTimeout(() => {
                         if (drugList && drugList.length > 0) {
+                            // Recreate alert/GUI if needed and show GUI
                             removeExistingAlerts();
                             alertElements = createAlert(drugList);
-                            
                             if (alertElements && alertElements.gui) {
                                 debugLog('Showing drug GUI after navigation');
                                 alertElements.gui.style.display = 'block';
                             }
                         } else {
-                            debugLog('No drug list available yet, will fetch drugs');
-                            fetchDrugs().then(drugs => {
-                                drugList = drugs;
-                                removeExistingAlerts();
-                                alertElements = createAlert(drugs);
-                                
-                                if (alertElements && alertElements.gui) {
-                                    alertElements.gui.style.display = 'block';
-                                }
-                            });
+                             // If drug list isn't ready, fetch it then show GUI
+                             debugLog('No drug list available yet, will fetch drugs');
+                             fetchDrugs().then(drugs => {
+                                 drugList = drugs;
+                                 removeExistingAlerts();
+                                 alertElements = createAlert(drugs);
+                                 if (alertElements && alertElements.gui) {
+                                     alertElements.gui.style.display = 'block';
+                                 }
+                             });
                         }
-                    }, 1000);
+                    }, 1000); // Delay opening GUI slightly
                 } else {
-                    debugLog('Not on appropriate page after navigation, canceling GUI display');
+                     debugLog('Not on appropriate page after navigation, canceling GUI display');
                 }
             }
-            
-            sessionStorage.removeItem('drugUseInProgress');
-            
+
+            // Clear any potentially stale drug use progress flag
+             sessionStorage.removeItem('drugUseInProgress');
+
         } catch (e) {
             debugLog('Error in checkForPendingDrugUse:', e);
-            sessionStorage.removeItem('drugUseInProgress');
+            sessionStorage.removeItem('drugUseInProgress'); // Ensure cleanup on error
         }
     }
 
     function removeExistingAlerts() {
         const existingAlerts = document.querySelectorAll('.drug-alert');
         const existingGuis = document.querySelectorAll('.drug-gui');
-        
+
         existingAlerts.forEach(alert => {
-            debugLog('Removing existing alert:', alert.id || 'unnamed');
+             debugLog('Removing existing alert:', alert.id || 'unnamed');
             alert.remove();
         });
-        
         existingGuis.forEach(gui => {
             debugLog('Removing existing GUI:', gui.id || 'unnamed');
             gui.remove();
         });
-        
-        alertElements = null;
-        debugLog('Removed all existing drug alerts and GUIs');
+
+        alertElements = null; // Reset the reference
+         debugLog('Removed all existing drug alerts and GUIs');
     }
 
+    // --- Initialization ---
     function initializeWithPendingCheck() {
         debugLog('Initializing Drug Alerts');
-        
+
+        // Load settings
         useFactionDrugs = localStorage.getItem('useFactionDrugs') === 'true';
         debugLog(`Initialized with faction drugs setting: ${useFactionDrugs}`);
-        
+
+        // Clean up any old elements first
         removeExistingAlerts();
-        
+
+        // Check if we need to process a pending faction drug use (e.g., after navigation)
+        checkPendingFactionDrugUse();
+
+        // Check if we navigated from an alert click
+        checkForPendingDrugUse(); // This handles showing the GUI if needed after navigation
+
+        // Determine current page context
         const isItemsPage = window.location.href.includes('torn.com/item.php');
-        const isFactionPage = window.location.href.includes('factions.php') && 
-                              window.location.href.includes('armoury') && 
-                              window.location.href.includes('sub=drugs');
-                              
-        if ((isItemsPage && !useFactionDrugs) || (isFactionPage && useFactionDrugs)) {
-            if (sessionStorage.getItem('fromDrugAlert') === 'true') {
-                debugLog('Detected we arrived from alert - will focus on showing GUI');
-            }
+        const isFactionArmouryDrugsPage = window.location.href.includes('factions.php') &&
+                                          window.location.href.includes('armoury') &&
+                                          window.location.href.includes('sub=drugs');
+
+        debugLog(`Page check during init - Items: ${isItemsPage}, Faction Armoury Drugs: ${isFactionArmouryDrugsPage}, Using faction drugs: ${useFactionDrugs}`);
+
+        // Check if we're on the correct page for the chosen drug source
+        const onCorrectPage = (isItemsPage && !useFactionDrugs) || (isFactionArmouryDrugsPage && useFactionDrugs);
+
+        if (onCorrectPage) {
+             if (sessionStorage.getItem('fromDrugAlert') === 'true') {
+                 // This case is handled by checkForPendingDrugUse, but log it here too
+                 debugLog('Detected we arrived from alert - will focus on showing GUI');
+             }
         }
-        
+
+        // Fetch the drug list needed for the GUI
         fetchDrugs().then(fetchedDrugs => {
             debugLog(`Fetched ${fetchedDrugs.length} drugs`);
-            drugList = fetchedDrugs;
-            
-            if (isItemsPage || (isFactionPage && useFactionDrugs)) {
-                debugLog('On appropriate page, adding quick use buttons');
+            drugList = fetchedDrugs; // Store globally
+
+            // Add quick use buttons only if on item or faction armoury page
+            if (isItemsPage || isFactionArmouryDrugsPage) {
+                 debugLog('On appropriate page, adding quick use buttons');
                 addQuickUseButtons();
-                
-                if (sessionStorage.getItem('fromDrugAlert')) {
-                    debugLog('Found fromDrugAlert flag, will show GUI');
-                    removeExistingAlerts();
-                    alertElements = createAlert(drugList);
-                    
-                    if (alertElements && alertElements.gui) {
-                        alertElements.gui.style.display = 'block';
-                        sessionStorage.removeItem('fromDrugAlert');
-                    }
-                }
+
+                // If we navigated here from an alert click AND we are on the correct page
+                 if (sessionStorage.getItem('fromDrugAlert') && onCorrectPage) {
+                     debugLog('Found fromDrugAlert flag and on correct page, will show GUI');
+                     removeExistingAlerts(); // Ensure clean state
+                     alertElements = createAlert(drugList); // Create alert & GUI
+                     if (alertElements && alertElements.gui) {
+                         alertElements.gui.style.display = 'block'; // Show the GUI
+                         sessionStorage.removeItem('fromDrugAlert'); // Clear the flag
+                     }
+                 }
             }
-            
+
+            // Start the main cooldown checking loop regardless of the current page
             startCooldownChecks();
         });
     }
 
+    function checkPendingFactionDrugUse() {
+        const pendingUseData = sessionStorage.getItem('pendingFactionDrugUse');
+
+        if (pendingUseData) {
+            try {
+                const pendingUse = JSON.parse(pendingUseData);
+                const isFactionArmouryDrugsPage = window.location.href.includes('factions.php') &&
+                                                  window.location.href.includes('armoury') &&
+                                                  window.location.href.includes('sub=drugs');
+
+                // Only proceed if we're now on the faction armoury drugs page
+                if (isFactionArmouryDrugsPage && pendingUse.id && pendingUse.name) {
+                    debugLog(`Processing pending faction drug use: ${pendingUse.name} (ID: ${pendingUse.id})`);
+
+                    // Clear the pending use data first to prevent loops
+                    sessionStorage.removeItem('pendingFactionDrugUse');
+
+                    // Small delay to ensure page is fully loaded
+                    setTimeout(() => {
+                        useDrug(pendingUse.id, pendingUse.name);
+                    }, 1000);
+                } else if (!isFactionArmouryDrugsPage) {
+                     debugLog('Still not on faction armoury drugs page, keeping pending use data');
+                     // Don't remove the item yet, maybe the page hasn't loaded fully
+                } else {
+                    // If we are on the page but data is invalid, clear it
+                    debugLog('Clearing invalid pending faction drug use data');
+                    sessionStorage.removeItem('pendingFactionDrugUse');
+                }
+            } catch (e) {
+                debugLog('Error processing pending faction drug use:', e);
+                sessionStorage.removeItem('pendingFactionDrugUse'); // Clear on error
+            }
+        }
+    }
+
+
+    // Start the script execution
     initializeWithPendingCheck();
+
 })();
