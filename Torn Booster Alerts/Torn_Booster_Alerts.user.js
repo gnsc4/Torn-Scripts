@@ -1,13 +1,13 @@
 // ==UserScript==
-// @name          Torn Booster Alert
-// @version       1.0.25
-// @description   Alerts when no booster cooldown is active and allows taking boosters from any page
-// @author        GNSC4 [268863]
-// @match         https://www.torn.com/*
-// @grant         GM_addStyle
-// @icon          https://www.google.com/s2/favicons?sz=64&domain=torn.com
-// @updateURL     https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Torn%20Booster%20Alerts/Torn_Booster_Alerts.user.js
-// @downloadURL   https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Torn%20Booster%20Alerts/Torn_Booster_Alerts.user.js
+// @name         Torn Booster Alert
+// @version      1.0.26
+// @description  Alerts when no booster cooldown is active and allows taking boosters from any page (Responsive UI)
+// @author       GNSC4 [268863]
+// @match        https://www.torn.com/*
+// @grant        GM_addStyle
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=torn.com
+// @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Torn%20Booster%20Alerts/Torn_Booster_Alerts.user.js
+// @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Torn%20Booster%20Alerts/Torn_Booster_Alerts.user.js
 // ==/UserScript==
 
 (function() {
@@ -68,12 +68,15 @@
             padding: 20px;
             border-radius: 8px;
             z-index: 99999999;
-            width: 500px;
-            max-height: 600px;
-            overflow-y: auto;
+            /* Use max-width and viewport units for responsiveness */
+            width: 90vw; /* Take up 90% of viewport width */
+            max-width: 500px; /* But no more than 500px */
+            max-height: 80vh; /* Limit height to 80% of viewport height */
+            overflow-y: auto; /* Allow scrolling if content exceeds max-height */
             display: none;
             box-shadow: 0 4px 15px rgba(0,0,0,0.7);
             border: 1px solid #444;
+            box-sizing: border-box; /* Include padding and border in width/height */
         }
 
         .booster-gui h3 {
@@ -83,13 +86,14 @@
         }
 
         .booster-search {
-            width: 100%;
+            width: 100%; /* Make search input take full width of the container */
             padding: 8px;
             margin: 10px 0;
             border: 1px solid #444;
             background-color: #333;
             color: white;
             border-radius: 3px;
+            box-sizing: border-box; /* Include padding/border in width */
         }
 
         .booster-search::placeholder {
@@ -126,7 +130,8 @@
 
         .booster-list {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            /* Adjust grid columns for smaller screens if needed */
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); /* Responsive grid */
             gap: 10px;
             margin-top: 5px;
         }
@@ -140,6 +145,7 @@
             transition: background-color 0.2s;
             font-size: 13px;
             font-weight: bold;
+            word-wrap: break-word; /* Prevent long names from overflowing */
         }
 
         .energy-item {
@@ -152,16 +158,14 @@
 
         .happy-item {
             border-left: 3px solid #FFEB3B;
-            color: white;
+            color: white; /* Ensure text is visible on yellow border */
         }
 
-        .stat-item {
-            border-left: 3px solid #2196F3;
+        .stat-item { /* Original stat-item had duplicate definition, keeping one */
+            border-left: 3px solid #2196F3; /* Blue for stats */
         }
 
-        .stat-item {
-            border-left: 3px solid #9C27B0;
-        }
+        /* Removed duplicate .stat-item definition */
 
         .booster-item:hover {
             background-color: #444;
@@ -178,7 +182,7 @@
             z-index: 999999;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
             opacity: 1;
-            transition: opacity 0.5s;
+            transition: opacity 0.5s, transform 0.3s ease-out; /* Added transform transition */
             text-align: center;
             min-width: 250px;
             max-width: 80%;
@@ -265,8 +269,8 @@
     const allBoosters = [...BOOSTERS.energy, ...BOOSTERS.nerve, ...BOOSTERS.happy, ...BOOSTERS.statEnhancers];
 
     let alertElements = null;
-    let DEBUG_MODE = true;
-    let useFactionBoosters = false; // Setting for faction boosters vs personal inventory
+    let DEBUG_MODE = true; // Keep debug logging enabled
+    let useFactionBoosters = localStorage.getItem('useFactionBoosters') === 'true'; // Load setting on init
 
     function debugLog(...args) {
         if (DEBUG_MODE) {
@@ -450,15 +454,7 @@
         }
 
         // Always remove existing alert and GUI
-        const existingAlert = document.querySelector('.booster-alert');
-        if (existingAlert) {
-            existingAlert.remove();
-        }
-
-        const existingGui = document.querySelector('.booster-gui');
-        if (existingGui) {
-            existingGui.remove();
-        }
+        removeExistingAlerts(); // Use the dedicated function
 
         // Create alert button
         const alert = document.createElement('div');
@@ -473,9 +469,9 @@
         // Check if we're on the correct pages
         const isItemsPage = window.location.href.includes('torn.com/item.php');
         const isFactionArmouryBoostersPage = window.location.href.includes('factions.php') &&
-                                            window.location.href.includes('armoury') &&
-                                           (window.location.href.includes('sub=boosters') ||
-                                            window.location.href.includes('tab=armoury'));
+                                             window.location.href.includes('armoury') &&
+                                            (window.location.href.includes('sub=boosters') ||
+                                             window.location.href.includes('tab=armoury'));
         const isOtherFactionPage = window.location.href.includes('factions.php') &&
                                    (!window.location.href.includes('armoury') ||
                                     (!window.location.href.includes('sub=boosters') &&
@@ -485,156 +481,165 @@
 
         // Create GUI only if on the appropriate page
         let gui = null;
-        if ((isItemsPage && !useFactionBoosters) || (isFactionArmouryBoostersPage && useFactionBoosters)) {
-            // Create the booster GUI
-            gui = document.createElement('div');
-            gui.className = 'booster-gui';
-            gui.id = 'boosterGui';
-            gui.innerHTML = `
-                <h3>Take Boosters</h3>
-                <div class="settings-section">
-                    <div class="settings-toggle">
-                        <input type="checkbox" id="useFactionBoosters" ${useFactionBoosters ? 'checked' : ''}>
-                        <label for="useFactionBoosters">Use Faction Armoury Boosters</label>
-                    </div>
+        // Create GUI regardless of page, but only show it when needed
+        gui = document.createElement('div');
+        gui.className = 'booster-gui';
+        gui.id = 'boosterGui';
+        gui.innerHTML = `
+            <h3>Take Boosters</h3>
+            <div class="settings-section">
+                <div class="settings-toggle">
+                    <input type="checkbox" id="useFactionBoosters" ${useFactionBoosters ? 'checked' : ''}>
+                    <label for="useFactionBoosters">Use Faction Armoury Boosters</label>
                 </div>
-                <input type="text" class="booster-search" placeholder="Search boosters...">
+            </div>
+            <input type="text" class="booster-search" placeholder="Search boosters...">
 
-                <div class="category-header energy-header" data-category="energy">
-                    <span>Energy Boosters</span>
-                    <button class="toggle-category">-</button>
-                </div>
-                <div class="booster-list energy-list"></div>
+            <div class="category-header energy-header" data-category="energy">
+                <span>Energy Boosters</span>
+                <button class="toggle-category">-</button>
+            </div>
+            <div class="booster-list energy-list"></div>
 
-                <div class="category-header nerve-header" data-category="nerve">
-                    <span>Nerve Boosters</span>
-                    <button class="toggle-category">-</button>
-                </div>
-                <div class="booster-list nerve-list"></div>
+            <div class="category-header nerve-header" data-category="nerve">
+                <span>Nerve Boosters</span>
+                <button class="toggle-category">-</button>
+            </div>
+            <div class="booster-list nerve-list"></div>
 
-                <div class="category-header happy-header" data-category="happy">
-                    <span>Happy Boosters</span>
-                    <button class="toggle-category">-</button>
-                </div>
-                <div class="booster-list happy-list"></div>
+            <div class="category-header happy-header" data-category="happy">
+                <span>Happy Boosters</span>
+                <button class="toggle-category">-</button>
+            </div>
+            <div class="booster-list happy-list"></div>
 
-                <div class="category-header statEnhancers-header" data-category="statEnhancers">
-                    <span>Stat Enhancers</span>
-                    <button class="toggle-category">-</button>
-                </div>
-                <div class="booster-list statEnhancers-list"></div>
-            `;
+            <div class="category-header statEnhancers-header" data-category="statEnhancers">
+                <span>Stat Enhancers</span>
+                <button class="toggle-category">-</button>
+            </div>
+            <div class="booster-list statEnhancers-list"></div>
+        `;
 
-            document.body.appendChild(gui);
+        document.body.appendChild(gui);
 
-            // Add event listener for faction boosters checkbox
-            const factionBoostersCheckbox = gui.querySelector('#useFactionBoosters');
-            if (factionBoostersCheckbox) {
-                factionBoostersCheckbox.addEventListener('change', function() {
-                    useFactionBoosters = this.checked;
-                    localStorage.setItem('useFactionBoosters', useFactionBoosters);
-                    debugLog(`Using faction boosters set to: ${useFactionBoosters}`);
+        // Add event listener for faction boosters checkbox
+        const factionBoostersCheckbox = gui.querySelector('#useFactionBoosters');
+        if (factionBoostersCheckbox) {
+            factionBoostersCheckbox.addEventListener('change', function() {
+                useFactionBoosters = this.checked;
+                localStorage.setItem('useFactionBoosters', useFactionBoosters);
+                debugLog(`Using faction boosters set to: ${useFactionBoosters}`);
 
-                    // Update UI immediately if needed
-                    showNotification(`${useFactionBoosters ? 'Using faction armoury boosters' : 'Using personal inventory boosters'}`, 'info');
+                // Update UI immediately if needed
+                showNotification(`${useFactionBoosters ? 'Using faction armoury boosters' : 'Using personal inventory boosters'}`, 'info');
 
-                    // Close GUI since the booster source changed
-                    gui.style.display = 'none';
+                // Close GUI since the booster source changed
+                gui.style.display = 'none';
 
-                    // Recreate alert with new settings
-                    removeExistingAlerts();
-                    alertElements = createAlert();
-                });
-            }
-
-            // Add search functionality
-            const searchInput = gui.querySelector('.booster-search');
-            searchInput.addEventListener('input', function() {
-                const searchTerm = this.value.toLowerCase();
-                const allBoosterItems = gui.querySelectorAll('.booster-item');
-
-                allBoosterItems.forEach(item => {
-                    const boosterName = item.getAttribute('data-name').toLowerCase();
-                    if (searchTerm === '' || boosterName.includes(searchTerm)) {
-                        item.style.display = 'block';
-                    } else {
-                        item.style.display = 'none';
-                    }
-                });
-
-                // Show/hide category headers based on visible items
-                const categories = ['energy', 'nerve', 'happy', 'statEnhancers'];
-                categories.forEach(category => {
-                    const categoryHeader = gui.querySelector(`.${category}-header`);
-                    const categoryItems = gui.querySelectorAll(`.${category}-list .booster-item`);
-                    const visibleItems = Array.from(categoryItems).filter(item => item.style.display !== 'none');
-
-                    if (visibleItems.length === 0) {
-                        categoryHeader.style.display = 'none';
-                    } else {
-                        categoryHeader.style.display = 'flex'; // Changed to flex for the new layout
-                    }
-                });
-            });
-
-            // Add category toggle functionality
-            function setupCategoryToggles() {
-                const categories = ['energy', 'nerve', 'happy', 'statEnhancers'];
-
-                categories.forEach(category => {
-                    const header = gui.querySelector(`.${category}-header`);
-                    const list = gui.querySelector(`.${category}-list`);
-                    const toggleBtn = header.querySelector('.toggle-category');
-
-                    // Load saved state
-                    const isMinimized = localStorage.getItem(`boosterCategory_${category}`) === 'minimized';
-                    if (isMinimized) {
-                        list.style.display = 'none';
-                        toggleBtn.textContent = '+';
-                    }
-
-                    // Toggle on header click
-                    header.addEventListener('click', function(e) {
-                        // Only toggle if clicking the header itself or the toggle button
-                        if (e.target === header || e.target === toggleBtn || e.target === header.querySelector('span')) {
-                            toggleCategory(category, list, toggleBtn);
-                        }
-                    });
-                });
-            }
-
-            function toggleCategory(category, listElement, toggleBtn) {
-                const isCurrentlyVisible = listElement.style.display !== 'none';
-
-                if (isCurrentlyVisible) {
-                    // Minimize
-                    listElement.style.display = 'none';
-                    toggleBtn.textContent = '+';
-                    localStorage.setItem(`boosterCategory_${category}`, 'minimized');
-                } else {
-                    // Expand
-                    listElement.style.display = 'grid';
-                    toggleBtn.textContent = '-';
-                    localStorage.setItem(`boosterCategory_${category}`, 'expanded');
-                }
-            }
-
-            // Setup toggles after populating lists
-            setTimeout(setupCategoryToggles, 100);
-
-            // Populate booster lists by category
-            populateBoosterList(gui.querySelector('.energy-list'), BOOSTERS.energy, 'energy-item');
-            populateBoosterList(gui.querySelector('.nerve-list'), BOOSTERS.nerve, 'nerve-item');
-            populateBoosterList(gui.querySelector('.happy-list'), BOOSTERS.happy, 'happy-item');
-            populateBoosterList(gui.querySelector('.statEnhancers-list'), BOOSTERS.statEnhancers, 'stat-item');
-
-            // Add click outside to close
-            document.addEventListener('click', function(e) {
-                if (gui.style.display === 'block' && !gui.contains(e.target) && !alert.contains(e.target)) {
-                    gui.style.display = 'none';
-                }
+                // Recreate alert with new settings (optional, could just update state)
+                // removeExistingAlerts();
+                // alertElements = createAlert(); // This might cause flicker, consider just updating state
             });
         }
+
+        // Add search functionality
+        const searchInput = gui.querySelector('.booster-search');
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const allBoosterItems = gui.querySelectorAll('.booster-item');
+
+            allBoosterItems.forEach(item => {
+                const boosterName = item.getAttribute('data-name').toLowerCase();
+                if (searchTerm === '' || boosterName.includes(searchTerm)) {
+                    item.style.display = 'block'; // Use block or grid depending on list style
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+
+            // Show/hide category headers based on visible items
+            const categories = ['energy', 'nerve', 'happy', 'statEnhancers'];
+            categories.forEach(category => {
+                const categoryHeader = gui.querySelector(`.${category}-header`);
+                const categoryList = gui.querySelector(`.${category}-list`); // Get the list container
+                const categoryItems = categoryList.querySelectorAll('.booster-item');
+                const visibleItems = Array.from(categoryItems).filter(item => item.style.display !== 'none');
+
+                if (visibleItems.length === 0) {
+                    categoryHeader.style.display = 'none';
+                    categoryList.style.display = 'none'; // Hide the list too if empty
+                } else {
+                    categoryHeader.style.display = 'flex'; // Changed to flex for the new layout
+                    // Only show the list if it's not manually collapsed
+                    const isMinimized = localStorage.getItem(`boosterCategory_${category}`) === 'minimized';
+                    if (!isMinimized) {
+                         categoryList.style.display = 'grid'; // Show the list (assuming grid layout)
+                    }
+                }
+            });
+        });
+
+        // Add category toggle functionality
+        function setupCategoryToggles() {
+            const categories = ['energy', 'nerve', 'happy', 'statEnhancers'];
+
+            categories.forEach(category => {
+                const header = gui.querySelector(`.${category}-header`);
+                const list = gui.querySelector(`.${category}-list`);
+                const toggleBtn = header.querySelector('.toggle-category');
+
+                // Load saved state
+                const isMinimized = localStorage.getItem(`boosterCategory_${category}`) === 'minimized';
+                if (isMinimized) {
+                    list.style.display = 'none';
+                    toggleBtn.textContent = '+';
+                } else {
+                    list.style.display = 'grid'; // Ensure expanded by default if not minimized
+                    toggleBtn.textContent = '-';
+                }
+
+                // Toggle on header click
+                header.addEventListener('click', function(e) {
+                    // Only toggle if clicking the header itself or the toggle button
+                    if (e.target === header || e.target === toggleBtn || e.target === header.querySelector('span')) {
+                        toggleCategory(category, list, toggleBtn);
+                    }
+                });
+            });
+        }
+
+        function toggleCategory(category, listElement, toggleBtn) {
+            const isCurrentlyVisible = listElement.style.display !== 'none';
+
+            if (isCurrentlyVisible) {
+                // Minimize
+                listElement.style.display = 'none';
+                toggleBtn.textContent = '+';
+                localStorage.setItem(`boosterCategory_${category}`, 'minimized');
+            } else {
+                // Expand
+                listElement.style.display = 'grid'; // Use grid display when expanding
+                toggleBtn.textContent = '-';
+                localStorage.setItem(`boosterCategory_${category}`, 'expanded');
+            }
+        }
+
+        // Populate booster lists by category
+        populateBoosterList(gui.querySelector('.energy-list'), BOOSTERS.energy, 'energy-item');
+        populateBoosterList(gui.querySelector('.nerve-list'), BOOSTERS.nerve, 'nerve-item');
+        populateBoosterList(gui.querySelector('.happy-list'), BOOSTERS.happy, 'happy-item');
+        populateBoosterList(gui.querySelector('.statEnhancers-list'), BOOSTERS.statEnhancers, 'stat-item');
+
+        // Setup toggles after populating lists
+        setupCategoryToggles(); // Call it directly now
+
+        // Add click outside to close
+        document.addEventListener('click', function(e) {
+            if (gui.style.display === 'block' && !gui.contains(e.target) && !alert.contains(e.target)) {
+                gui.style.display = 'none';
+            }
+        });
+
 
         // Add click handler based on page context
         alert.onclick = function(event) {
@@ -644,8 +649,8 @@
             if ((isItemsPage && !useFactionBoosters) || (isFactionArmouryBoostersPage && useFactionBoosters)) {
                 // If on the correct page, show the GUI
                 debugLog('Showing GUI on appropriate page');
-                showNotification('Opening booster selection', 'info');
-                gui.style.display = 'block';
+                // showNotification('Opening booster selection', 'info'); // Optional notification
+                gui.style.display = gui.style.display === 'block' ? 'none' : 'block'; // Toggle display
                 void gui.offsetWidth; // Force reflow
             } else if (isOtherFactionPage && useFactionBoosters) {
                 // If on a faction page but not the armoury boosters page and using faction boosters
@@ -674,6 +679,7 @@
     }
 
     function populateBoosterList(container, boosters, className) {
+        container.innerHTML = ''; // Clear previous items
         boosters.forEach(booster => {
             const boosterItem = document.createElement('div');
             boosterItem.className = `booster-item ${className}`;
@@ -811,7 +817,7 @@
             // Only proceed if we're still in a booster use attempt
             if (sessionStorage.getItem('boosterUseInProgress')) {
                 debugLog('Direct method may not have succeeded, trying traditional method');
-                useFactionBoosterDirectly(id, name);
+                useFactionBoosterDirectly(id, name); // Note: This will fetch token again, might be redundant but safer
             }
         }, 2000);
     }
@@ -832,6 +838,7 @@
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
 
         xhr.onload = function() {
+            let boosterUsedSuccessfully = false;
             if (this.status === 200) {
                 try {
                     // First try parsing as JSON
@@ -839,197 +846,162 @@
                         const response = JSON.parse(this.responseText);
 
                         if (response && (response.success || (response.message && response.message.includes('consumed')))) {
-                            debugLog('Faction booster used successfully via direct method');
-                            showNotification(`Used ${name} from faction armoury successfully!`, 'success');
-
-                            setTimeout(() => {
-                                if (hasBoosterCooldown()) {
-                                    debugLog('Booster cooldown confirmed after direct method');
-                                    if (alertElements) {
-                                        alertElements.alert.remove();
-                                        if (alertElements.gui) alertElements.gui.remove();
-                                        alertElements = null;
-                                    }
-                                }
-                            }, 500);
-
-                            sessionStorage.removeItem('boosterUseInProgress');
-                            return;
-                        }
-
-                        // Handle error messages
-                        if (response.error || response.message) {
+                            debugLog('Faction booster used successfully via direct method (JSON)');
+                            boosterUsedSuccessfully = true;
+                        } else if (response.error || response.message) {
                             const errorMessage = response.error || response.message;
-                            debugLog('Direct method returned error:', errorMessage);
+                            debugLog('Direct method returned error (JSON):', errorMessage);
                             showNotification(`Error: ${errorMessage}`, 'error');
-                            sessionStorage.removeItem('boosterUseInProgress');
-                            return;
+                            sessionStorage.removeItem('boosterUseInProgress'); // Clear progress on error
+                            return; // Stop processing
                         }
                     } catch (parseError) {
                         // If not JSON, check text response
                         debugLog('Direct method response is not JSON, checking text');
-
                         const responseText = this.responseText || '';
                         if (responseText.includes('success') || responseText.includes('used') || responseText.includes('consumed')) {
                             debugLog('Found success in text response from direct method');
-                            showNotification(`Used ${name} from faction armoury successfully!`, 'success');
-
-                            setTimeout(() => {
-                                if (hasBoosterCooldown()) {
-                                    if (alertElements) {
-                                        alertElements.alert.remove();
-                                        if (alertElements.gui) alertElements.gui.remove();
-                                        alertElements = null;
-                                    }
-                                }
-                            }, 500);
-
-                            sessionStorage.removeItem('boosterUseInProgress');
-                            return;
-                        }
-
-                        // Check for cooldown
-                        if (responseText.includes('cooldown') || responseText.includes('wait') || responseText.includes('effect of a booster')) {
+                            boosterUsedSuccessfully = true;
+                        } else if (responseText.includes('cooldown') || responseText.includes('wait') || responseText.includes('effect of a booster')) {
                             const timeMatches = responseText.match(/(\d+)m\s+(\d+)s|(\d+)\s+seconds|(\d+)\s+minutes/);
                             let cooldownMessage = 'You are on booster cooldown';
-
                             if (timeMatches) {
-                                if (timeMatches[1] && timeMatches[2]) {
-                                    cooldownMessage = `Booster Cooldown: ${timeMatches[1]}m ${timeMatches[2]}s remaining`;
-                                } else if (timeMatches[3]) {
-                                    cooldownMessage = `Booster Cooldown: 0m ${timeMatches[3]}s remaining`;
-                                } else if (timeMatches[4]) {
-                                    cooldownMessage = `Booster Cooldown: ${timeMatches[4]}m 0s remaining`;
-                                }
+                                // ... [cooldown message formatting logic] ...
+                                if (timeMatches[1] && timeMatches[2]) cooldownMessage = `Booster Cooldown: ${timeMatches[1]}m ${timeMatches[2]}s remaining`;
+                                else if (timeMatches[3]) cooldownMessage = `Booster Cooldown: 0m ${timeMatches[3]}s remaining`;
+                                else if (timeMatches[4]) cooldownMessage = `Booster Cooldown: ${timeMatches[4]}m 0s remaining`;
                             }
-
                             showNotification(cooldownMessage, 'info');
-                            sessionStorage.removeItem('boosterUseInProgress');
-                            return;
+                            sessionStorage.removeItem('boosterUseInProgress'); // Clear progress on cooldown
+                            return; // Stop processing
+                        } else {
+                            debugLog('Direct method gave unclear text response:', responseText.substring(0, 100) + '...');
+                            // Don't clear progress yet, let the other method try
                         }
                     }
-
-                    // If we got here, we couldn't determine the exact result
-                    debugLog('Direct method gave unclear response:', this.responseText.substring(0, 100) + '...');
-                    // Don't remove boosterUseInProgress yet, let the traditional method try
-
                 } catch (e) {
                     debugLog('Error processing direct method response:', e);
-                    // Don't remove boosterUseInProgress yet, let the traditional method try
+                    // Don't clear progress yet, let the other method try
                 }
             } else {
                 debugLog('Direct method request failed with status:', this.status);
-                // Don't remove boosterUseInProgress yet, let the traditional method try
+                // Don't clear progress yet, let the other method try
+            }
+
+            if (boosterUsedSuccessfully) {
+                showNotification(`Used ${name} from faction armoury successfully!`, 'success');
+                sessionStorage.removeItem('boosterUseInProgress'); // Clear progress on success
+                // Optionally trigger cooldown check immediately
+                setTimeout(startCooldownChecks, 500);
             }
         };
 
         xhr.onerror = function() {
             debugLog('Direct method request failed with network error');
-            // Don't remove boosterUseInProgress yet, let the traditional method try
+            // Don't clear progress yet, let the other method try
         };
 
         xhr.send(params.toString());
     }
 
     function useFactionBoosterDirectly(id, name) {
-        debugLog(`Using faction booster via armoury: ${name} (ID: ${id})`);
+        debugLog(`Using faction booster via armoury (traditional): ${name} (ID: ${id})`);
 
-        const token = getNSTStyleToken();
+        const token = getNSTStyleToken() || getPageCsrfToken(); // Get token again just in case
         if (!token) {
-            const pageToken = getPageCsrfToken();
-            if (!pageToken) {
-                debugLog('No CSRF token found for faction booster via any method');
-                showNotification('Unable to use faction booster: Authorization token not found', 'error');
-                sessionStorage.removeItem('boosterUseInProgress');
-                return;
-            }
-
-            debugLog(`Using page token for faction booster: ${pageToken.substring(0, 4)}...${pageToken.substring(pageToken.length - 4)}`);
-            useFactionBoosterWithToken(id, name, pageToken);
-        } else {
-            debugLog(`Using NST-style token for faction booster: ${token.substring(0, 4)}...${token.substring(token.length - 4)}`);
-            useFactionBoosterWithToken(id, name, token);
+            debugLog('No CSRF token found for traditional faction booster method');
+            showNotification('Unable to use faction booster: Authorization token not found', 'error');
+            sessionStorage.removeItem('boosterUseInProgress');
+            return;
         }
+        debugLog(`Using token for traditional method: ${token.substring(0, 4)}...`);
+        useFactionBoosterWithToken(id, name, token);
     }
+
 
     function useFactionBoosterWithToken(id, name, token) {
         let armouryItemID = null;
 
         // Try to find the armouryItemID in the page
         const boosterItems = document.querySelectorAll('#armoury-boosters ul.item-list li, #faction-armoury .boosters-wrap .item, div[class*="armory"] div[class*="boosters"] div[class*="item"]');
-        debugLog(`Faction armoury search found ${boosterItems.length} potential items`);
+        debugLog(`Traditional faction armoury search found ${boosterItems.length} potential items`);
 
+        // --- Logic to find armouryItemID based on name and action links ---
+        // (This complex DOM searching logic remains the same)
         for (const item of boosterItems) {
             const nameElements = [
                 item.querySelector('.name, .title, .item-name, .name-wrap .t-overflow, [class*="name"], [class*="title"]'),
                 item.querySelector('div[class*="name"], div[class*="title"], span[class*="name"], span[class*="title"]'),
-                ...item.querySelectorAll('*')
+                ...item.querySelectorAll('*') // Wider search within the item
             ];
 
             for (const nameElement of nameElements) {
-                if (!nameElement) continue;
+                if (!nameElement || !nameElement.textContent) continue;
 
                 const itemName = nameElement.textContent.trim();
-                if (itemName && (itemName.includes(name) || name.includes(itemName))) {
+                // Use includes for more flexible matching
+                if (itemName && (itemName.toLowerCase().includes(name.toLowerCase()) || name.toLowerCase().includes(itemName.toLowerCase()))) {
                     debugLog(`Found matching booster name: "${itemName}"`);
 
                     const actionLinks = [
                         item.querySelector('div.item-action a, .actions a, a[class*="action"], button[class*="action"]'),
                         item.querySelector('a[href*="armoryItemID="], a[href*="step=armoryItemAction"]'),
                         item.querySelector('a.t-blue, a.t-blue-cont'),
-                        ...item.querySelectorAll('a[class*="use"], button[class*="use"], a.act-use, div.use, span.use')
+                        ...item.querySelectorAll('a[class*="use"], button[class*="use"], a.act-use, div.use, span.use, [data-action="use"]') // Added data-action
                     ];
 
                     for (const actionLink of actionLinks) {
-                        if (!actionLink) continue;
+                         if (!actionLink) continue;
 
                         let match = null;
+                        let potentialId = null;
 
+                        // Check href
                         if (actionLink.href) {
                             debugLog(`Checking action link href: ${actionLink.href}`);
-                            match = actionLink.href.match(/armoryItemID=(\d+)/);
-
-                            if (!match) {
-                                match = actionLink.href.match(/itemID=(\d+)/);
-                            }
-
-                            if (!match && actionLink.getAttribute('onclick')) {
-                                const onclick = actionLink.getAttribute('onclick');
-                                match = onclick.match(/(\d+)/);
-                            }
+                            match = actionLink.href.match(/armoryItemID=(\d+)/) || actionLink.href.match(/itemID=(\d+)/);
+                            if (match) potentialId = match[1];
                         }
 
-                        if (!match && actionLink.dataset) {
+                        // Check onclick
+                        if (!potentialId && actionLink.getAttribute('onclick')) {
+                            const onclick = actionLink.getAttribute('onclick');
+                            match = onclick.match(/armoryItemAction\((\d+)/) || onclick.match(/useItem\((\d+)/) || onclick.match(/(\d+)/); // Look for function calls or just numbers
+                             if (match) potentialId = match[1];
+                        }
+
+                        // Check data attributes
+                        if (!potentialId && actionLink.dataset) {
                             for (const key in actionLink.dataset) {
-                                if (key.includes('id') || key.includes('itemId') || key.includes('armory')) {
+                                if (key.toLowerCase().includes('id') || key.toLowerCase().includes('itemid') || key.toLowerCase().includes('armory')) {
                                     debugLog(`Found potential ID in data attribute ${key}: ${actionLink.dataset[key]}`);
                                     const value = actionLink.dataset[key];
                                     if (/^\d+$/.test(value)) {
-                                        armouryItemID = value;
+                                        potentialId = value;
                                         break;
                                     }
                                 }
                             }
                         }
 
-                        if (match && match[1]) {
-                            armouryItemID = match[1];
+                        if (potentialId) {
+                            armouryItemID = potentialId;
                             debugLog(`Found armouryItemID: ${armouryItemID}`);
-                            break;
+                            break; // Found ID for this item name
                         }
                     }
-
-                    if (armouryItemID) break;
+                    if (armouryItemID) break; // Found ID for this item name
                 }
             }
-
-            if (armouryItemID) break;
+            if (armouryItemID) break; // Found ID, exit outer loop
         }
+        // --- End of armouryItemID finding logic ---
+
 
         // If we couldn't find a matching item ID, use the provided ID as fallback
         if (!armouryItemID) {
             armouryItemID = id;
-            debugLog(`Using provided ID as fallback: ${armouryItemID}`);
+            debugLog(`Using provided ID as fallback for traditional method: ${armouryItemID}`);
         }
 
         const params = new URLSearchParams();
@@ -1045,163 +1017,116 @@
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
 
         xhr.onload = function() {
+            let boosterUsedSuccessfully = false;
             if (this.status === 200) {
                 try {
                     let response;
-
-                    // Enhanced error handling - safely try to parse the response
                     try {
                         response = JSON.parse(this.responseText);
-                    } catch (parseError) {
-                        debugLog('Response is not valid JSON, handling as HTML/text:', this.responseText.substring(0, 100) + '...');
+                        if (response && (response.success || (response.message && response.message.includes('used')))) {
+                            debugLog('Faction booster used successfully via traditional XHR (JSON)');
+                            boosterUsedSuccessfully = true;
+                        } else if (response && (response.text || response.message)) {
+                             const messageText = response.text || response.message || '';
+                             if (messageText.includes('cooldown') || messageText.includes('effect of a booster') || messageText.includes('wait')) {
+                                // ... [cooldown message formatting logic] ...
+                                const timeMatch = messageText.match(/data-time=\"(\d+)\"/) || messageText.match(/wait\s+(\d+)m\s+(\d+)s/) || messageText.match(/wait\s+(\d+)\s+seconds/) || messageText.match(/wait\s+(\d+)\s+minutes/);
+                                let cooldownMessage = 'You are on booster cooldown';
+                                let seconds = 0;
+                                if (timeMatch) {
+                                    if (timeMatch.length === 2 && /^\d+$/.test(timeMatch[1])) seconds = parseInt(timeMatch[1]); // data-time or seconds/minutes match
+                                    else if (timeMatch.length === 3) seconds = parseInt(timeMatch[1]) * 60 + parseInt(timeMatch[2]); // m s match
+                                }
+                                if (seconds > 0) {
+                                    const minutes = Math.floor(seconds / 60);
+                                    const remainingSeconds = seconds % 60;
+                                    cooldownMessage = `Booster Cooldown: ${minutes}m ${remainingSeconds}s remaining`;
+                                } else {
+                                    const tempDiv = document.createElement('div'); tempDiv.innerHTML = messageText;
+                                    cooldownMessage = (tempDiv.textContent || tempDiv.innerText || '').trim() || 'You are on booster cooldown';
+                                }
+                                showNotification(cooldownMessage, 'info');
+                                sessionStorage.removeItem('boosterUseInProgress'); // Clear on cooldown
+                                return;
+                             } else {
+                                 const tempDiv = document.createElement('div'); tempDiv.innerHTML = messageText;
+                                 const errorMessage = (tempDiv.textContent || tempDiv.innerText || '').trim() || 'Unknown error';
+                                 debugLog('Traditional XHR method returned error (JSON text):', errorMessage);
+                                 showNotification(`Error: ${errorMessage}`, 'error');
+                                 sessionStorage.removeItem('boosterUseInProgress'); // Clear on error
+                                 return;
+                             }
+                        } else {
+                             debugLog('Traditional XHR method returned unclear JSON:', response);
+                             showNotification('Error using faction booster: Unexpected JSON response', 'error');
+                             sessionStorage.removeItem('boosterUseInProgress'); // Clear on unclear error
+                             return;
+                        }
 
-                        // If we can't parse as JSON, check if it's a success message in HTML form
+                    } catch (parseError) {
+                        debugLog('Traditional response is not valid JSON, handling as HTML/text:', this.responseText.substring(0, 100) + '...');
                         const successPattern = /used|consumed|taken|success/i;
                         const cooldownPattern = /cooldown|wait|effect of a booster/i;
 
                         if (successPattern.test(this.responseText)) {
-                            debugLog('Found success indicator in raw response');
-                            showNotification(`Used ${name} from faction armoury successfully!`, 'success');
-
-                            setTimeout(() => {
-                                if (hasBoosterCooldown()) {
-                                    debugLog('Booster cooldown confirmed after faction response');
-                                    if (alertElements) {
-                                        alertElements.alert.remove();
-                                        if (alertElements.gui) alertElements.gui.remove();
-                                        alertElements = null;
-                                    }
-                                }
-                            }, 500);
-
-                            sessionStorage.removeItem('boosterUseInProgress');
-                            return;
+                            debugLog('Found success indicator in raw traditional response');
+                            boosterUsedSuccessfully = true;
                         } else if (cooldownPattern.test(this.responseText)) {
-                            debugLog('Found cooldown indicator in raw response');
+                            // ... [cooldown message formatting logic for raw text] ...
                             const timeMatches = this.responseText.match(/(\d+)m\s+(\d+)s|(\d+)\s+seconds|(\d+)\s+minutes/);
                             let cooldownMessage = 'You are on booster cooldown';
-
                             if (timeMatches) {
-                                if (timeMatches[1] && timeMatches[2]) {
-                                    cooldownMessage = `Booster Cooldown: ${timeMatches[1]}m ${timeMatches[2]}s remaining`;
-                                } else if (timeMatches[3]) {
-                                    cooldownMessage = `Booster Cooldown: 0m ${timeMatches[3]}s remaining`;
-                                } else if (timeMatches[4]) {
-                                    cooldownMessage = `Booster Cooldown: ${timeMatches[4]}m 0s remaining`;
-                                }
+                                if (timeMatches[1] && timeMatches[2]) cooldownMessage = `Booster Cooldown: ${timeMatches[1]}m ${timeMatches[2]}s remaining`;
+                                else if (timeMatches[3]) cooldownMessage = `Booster Cooldown: 0m ${timeMatches[3]}s remaining`;
+                                else if (timeMatches[4]) cooldownMessage = `Booster Cooldown: ${timeMatches[4]}m 0s remaining`;
                             }
-
                             showNotification(cooldownMessage, 'info');
-                            sessionStorage.removeItem('boosterUseInProgress');
+                            sessionStorage.removeItem('boosterUseInProgress'); // Clear on cooldown
                             return;
-                        }
-
-                        // For error messages we can try to extract them from HTML
-                        const errorMatch = this.responseText.match(/<[^>]*class=['"]error['"][^>]*>(.*?)<\/|Validation failed|Error:|not authorized/i);
-                        if (errorMatch) {
-                            let errorMessage = errorMatch[1] || 'Validation failed - please try again';
-                            if (errorMatch[0].includes('not authorized')) {
-                                errorMessage = 'Not authorized to use faction boosters';
-                            }
-                            debugLog('Found error message in raw response:', errorMessage);
-                            showNotification(`Error: ${errorMessage}`, 'error');
-                            sessionStorage.removeItem('boosterUseInProgress');
-                            return;
-                        }
-
-                        // If we get here, we couldn't find a specific message
-                        showNotification('Error using faction booster: Unexpected response format', 'error');
-                        sessionStorage.removeItem('boosterUseInProgress');
-                        return;
-                    }
-
-                    // Continue with the JSON parsed response handling
-                    if (response && (response.success || response.message && response.message.includes('used'))) {
-                        debugLog('Faction booster used successfully via XHR');
-                        showNotification(`Used ${name} from faction armoury successfully!`, 'success');
-
-                        setTimeout(() => {
-                            if (hasBoosterCooldown()) {
-                                debugLog('Booster cooldown confirmed after faction XHR');
-                                if (alertElements) {
-                                    alertElements.alert.remove();
-                                    if (alertElements.gui) alertElements.gui.remove();
-                                    alertElements = null;
-                                }
-                            }
-                        }, 500);
-
-                        sessionStorage.removeItem('boosterUseInProgress');
-                        return;
-                    }
-
-                    debugLog('Faction XHR method returned error:', response);
-
-                    let errorMessage = `Error using faction booster: ${response.message || 'Unknown error'}`;
-                    let seconds = 0;
-
-                    if (response.text) {
-                        if (response.text.includes('cooldown') || response.text.includes('effect of a booster')) {
-                            const timeMatch = response.text.match(/data-time=\"(\d+)\"/);
-                            const timeMatch2 = response.text.match(/wait\s+(\d+)m\s+(\d+)s/);
-                            const timeMatch3 = response.text.match(/wait\s+(\d+)\s+seconds/);
-                            const timeMatch4 = response.text.match(/wait\s+(\d+)\s+minutes/);
-
-                            if (timeMatch && timeMatch[1]) {
-                                seconds = parseInt(timeMatch[1]);
-                            } else if (timeMatch2 && timeMatch2[1] && timeMatch2[2]) {
-                                seconds = parseInt(timeMatch2[1]) * 60 + parseInt(timeMatch2[2]);
-                            } else if (timeMatch3 && timeMatch3[1]) {
-                                seconds = parseInt(timeMatch3[1]);
-                            } else if (timeMatch4 && timeMatch4[1]) {
-                                seconds = parseInt(timeMatch4[1]) * 60;
-                            }
-
-                            if (seconds > 0) {
-                                const minutes = Math.floor(seconds / 60);
-                                const remainingSeconds = seconds % 60;
-                                errorMessage = `Booster Cooldown: ${minutes}m ${remainingSeconds}s remaining`;
-                                debugLog(`Extracted faction cooldown time: ${minutes}m ${remainingSeconds}s`);
-                            } else {
-                                const tempDiv = document.createElement('div');
-                                tempDiv.innerHTML = response.text;
-                                const textContent = tempDiv.textContent || tempDiv.innerText || '';
-                                errorMessage = textContent.trim() || 'You are on booster cooldown';
-                                debugLog('Using raw faction message text:', errorMessage);
-                            }
-
-                            showNotification(errorMessage, 'info');
                         } else {
-                            const tempDiv = document.createElement('div');
-                            tempDiv.innerHTML = response.text;
-                            errorMessage = `Error: ${tempDiv.textContent || tempDiv.innerText || 'Unknown error'}`;
-                            showNotification(errorMessage, 'error');
+                            const errorMatch = this.responseText.match(/<[^>]*class=['"]error['"][^>]*>(.*?)<\/|Validation failed|Error:|not authorized/i);
+                            let errorMessage = 'Unexpected response format';
+                            if (errorMatch) {
+                                errorMessage = errorMatch[1] || 'Validation failed - please try again';
+                                if (errorMatch[0].includes('not authorized')) errorMessage = 'Not authorized to use faction boosters';
+                            }
+                            debugLog('Found error message in raw traditional response:', errorMessage);
+                            showNotification(`Error: ${errorMessage}`, 'error');
+                            sessionStorage.removeItem('boosterUseInProgress'); // Clear on error
+                            return;
                         }
-                    } else {
-                        showNotification(errorMessage, 'error');
                     }
-
-                    sessionStorage.removeItem('boosterUseInProgress');
                 } catch (e) {
-                    debugLog('Error parsing faction XHR response:', e);
+                    debugLog('Error parsing traditional XHR response:', e);
                     showNotification('Error using faction booster: Response parsing error', 'error');
-                    sessionStorage.removeItem('boosterUseInProgress');
+                    sessionStorage.removeItem('boosterUseInProgress'); // Clear on parsing error
+                    return;
                 }
             } else {
-                debugLog('Faction XHR request failed with status:', this.status);
+                debugLog('Traditional XHR request failed with status:', this.status);
                 showNotification(`Error using faction booster: Request failed (${this.status})`, 'error');
-                sessionStorage.removeItem('boosterUseInProgress');
+                sessionStorage.removeItem('boosterUseInProgress'); // Clear on request failure
+                return;
+            }
+
+            // Handle success if flag is set
+            if (boosterUsedSuccessfully) {
+                showNotification(`Used ${name} from faction armoury successfully!`, 'success');
+                sessionStorage.removeItem('boosterUseInProgress'); // Clear progress on success
+                // Optionally trigger cooldown check immediately
+                setTimeout(startCooldownChecks, 500);
             }
         };
 
         xhr.onerror = function() {
-            debugLog('Faction XHR request failed with network error');
+            debugLog('Traditional XHR request failed with network error');
             showNotification('Error using faction booster: Network error', 'error');
-            sessionStorage.removeItem('boosterUseInProgress');
+            sessionStorage.removeItem('boosterUseInProgress'); // Clear on network error
         };
 
         xhr.send(params.toString());
     }
+
 
     function submitBoosterUseRequest(id, name, token) {
         const params = new URLSearchParams();
@@ -1216,115 +1141,122 @@
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
 
         xhr.onload = function() {
+            let boosterUsedSuccessfully = false;
             if (this.status === 200) {
                 try {
                     const response = JSON.parse(this.responseText);
 
-                    if (response && (response.success || response.message && response.message.includes('consumed'))) {
-                        debugLog('Booster used successfully via XHR');
-                        showNotification(`Used ${name} successfully!`, 'success');
-
-                        setTimeout(() => {
-                            if (hasBoosterCooldown()) {
-                                debugLog('Booster cooldown confirmed after XHR');
-                                if (alertElements) {
-                                    alertElements.alert.remove();
-                                    if (alertElements.gui) alertElements.gui.remove();
-                                    alertElements = null;
-                                }
-                            }
-                        }, 500);
-                        return;
-                    }
-
-                    if (response && (response.message || response.text)) {
-                        if ((response.message && response.message.includes('cooldown')) ||
-                            (response.text && response.text.includes('cooldown')) ||
-                            (response.text && response.text.includes('effect of a booster'))) {
-                            debugLog('Booster is on cooldown');
-
+                    if (response && (response.success || (response.message && response.message.includes('consumed')))) {
+                        debugLog('Personal booster used successfully via XHR');
+                        boosterUsedSuccessfully = true;
+                    } else if (response && (response.message || response.text)) {
+                        const messageText = response.message || response.text || '';
+                        if (messageText.includes('cooldown') || messageText.includes('effect of a booster') || messageText.includes('wait')) {
+                            debugLog('Personal booster is on cooldown');
+                            // ... [cooldown message formatting logic] ...
                             let cooldownMessage = 'You are already on booster cooldown';
                             let seconds = 0;
-
-                            const timeMatch = response.text ? response.text.match(/data-time=\"(\d+)\"/) : null;
-                            const timeMatch2 = response.text ? response.text.match(/wait\s+(\d+)m\s+(\d+)s/) : null;
-                            const timeMatch3 = response.text ? response.text.match(/wait\s+(\d+)\s+seconds/) : null;
-                            const timeMatch4 = response.text ? response.text.match(/wait\s+(\d+)\s+minutes/) : null;
-
-                            if (timeMatch && timeMatch[1]) {
-                                seconds = parseInt(timeMatch[1]);
-                            } else if (timeMatch2 && timeMatch2[1] && timeMatch2[2]) {
-                                seconds = parseInt(timeMatch2[1]) * 60 + parseInt(timeMatch2[2]);
-                            } else if (timeMatch3 && timeMatch3[1]) {
-                                seconds = parseInt(timeMatch3[1]);
-                            } else if (timeMatch4 && timeMatch4[1]) {
-                                seconds = parseInt(timeMatch4[1]) * 60;
+                            const timeMatch = messageText.match(/data-time=\"(\d+)\"/) || messageText.match(/wait\s+(\d+)m\s+(\d+)s/) || messageText.match(/wait\s+(\d+)\s+seconds/) || messageText.match(/wait\s+(\d+)\s+minutes/);
+                            if (timeMatch) {
+                                if (timeMatch.length === 2 && /^\d+$/.test(timeMatch[1])) seconds = parseInt(timeMatch[1]);
+                                else if (timeMatch.length === 3) seconds = parseInt(timeMatch[1]) * 60 + parseInt(timeMatch[2]);
                             }
-
                             if (seconds > 0) {
                                 const minutes = Math.floor(seconds / 60);
                                 const remainingSeconds = seconds % 60;
                                 cooldownMessage = `Booster Cooldown: ${minutes}m ${remainingSeconds}s remaining`;
-                                debugLog(`Extracted cooldown time: ${minutes}m ${remainingSeconds}s`);
                             } else {
-                                if (response.text) {
-                                    const tempDiv = document.createElement('div');
-                                    tempDiv.innerHTML = response.text;
-                                    const textContent = tempDiv.textContent || tempDiv.innerText || '';
-                                    cooldownMessage = textContent.trim() || 'You are on booster cooldown';
-                                    debugLog('Using raw message text:', cooldownMessage);
-                                }
+                                const tempDiv = document.createElement('div'); tempDiv.innerHTML = messageText;
+                                cooldownMessage = (tempDiv.textContent || tempDiv.innerText || '').trim() || 'You are on booster cooldown';
                             }
-
                             showNotification(cooldownMessage, 'info');
+                            sessionStorage.removeItem('boosterUseInProgress'); // Clear on cooldown
+                            return;
+                        } else {
+                            debugLog('Personal XHR method returned error:', messageText);
+                            showNotification(`Error: ${messageText || 'Unknown error'}`, 'error');
+                            sessionStorage.removeItem('boosterUseInProgress'); // Clear on error
                             return;
                         }
-
-                        debugLog('XHR method returned error:', response.message || response.text);
-                        showNotification(`Error: ${response.message || 'Unknown error'}`, 'error');
+                    } else {
+                         debugLog('Unexpected personal XHR response (JSON):', response);
+                         showNotification(`Unable to use ${name}: Unexpected response`, 'error');
+                         sessionStorage.removeItem('boosterUseInProgress'); // Clear on unexpected response
+                         return;
+                    }
+                } catch (e) {
+                    // Check raw text if JSON parsing fails
+                    const responseText = this.responseText || '';
+                     if (responseText.includes('success') || responseText.includes('used') || responseText.includes('consumed')) {
+                            debugLog('Found success in raw personal response text');
+                            boosterUsedSuccessfully = true;
+                    } else if (responseText.includes('cooldown') || responseText.includes('wait') || responseText.includes('effect of a booster')) {
+                            // ... [cooldown message formatting logic for raw text] ...
+                            const timeMatches = responseText.match(/(\d+)m\s+(\d+)s|(\d+)\s+seconds|(\d+)\s+minutes/);
+                            let cooldownMessage = 'You are on booster cooldown';
+                            if (timeMatches) {
+                                if (timeMatches[1] && timeMatches[2]) cooldownMessage = `Booster Cooldown: ${timeMatches[1]}m ${timeMatches[2]}s remaining`;
+                                else if (timeMatches[3]) cooldownMessage = `Booster Cooldown: 0m ${timeMatches[3]}s remaining`;
+                                else if (timeMatches[4]) cooldownMessage = `Booster Cooldown: ${timeMatches[4]}m 0s remaining`;
+                            }
+                            showNotification(cooldownMessage, 'info');
+                            sessionStorage.removeItem('boosterUseInProgress'); // Clear on cooldown
+                            return;
+                    } else {
+                        debugLog('Error parsing personal XHR response and raw text unclear:', e, responseText.substring(0,100));
+                        showNotification(`Unable to use ${name}: Response parsing error`, 'error');
+                        sessionStorage.removeItem('boosterUseInProgress'); // Clear on parsing error
                         return;
                     }
-
-                    debugLog('Unexpected XHR response:', this.responseText);
-                    showNotification(`Unable to use ${name}: Unexpected response`, 'error');
-                } catch (e) {
-                    debugLog('Error parsing XHR response:', e);
-                    showNotification(`Unable to use ${name}: Response parsing error`, 'error');
                 }
             } else {
-                debugLog('XHR request failed with status:', this.status);
+                debugLog('Personal XHR request failed with status:', this.status);
                 showNotification(`Unable to use ${name}: Request failed (${this.status})`, 'error');
+                sessionStorage.removeItem('boosterUseInProgress'); // Clear on request failure
+                return;
+            }
+
+            // Handle success if flag is set
+            if (boosterUsedSuccessfully) {
+                showNotification(`Used ${name} successfully!`, 'success');
+                sessionStorage.removeItem('boosterUseInProgress'); // Clear progress on success
+                // Optionally trigger cooldown check immediately
+                setTimeout(startCooldownChecks, 500);
             }
         };
 
         xhr.onerror = function() {
-            debugLog('XHR request failed with network error');
+            debugLog('Personal XHR request failed with network error');
             showNotification(`Unable to use ${name}: Network error`, 'error');
+            sessionStorage.removeItem('boosterUseInProgress'); // Clear on network error
         };
 
         xhr.send(params.toString());
     }
 
+
     function showNotification(message, type = 'info') {
+        // Remove existing notifications first
         const existingNotifications = document.querySelectorAll('.booster-notification');
         existingNotifications.forEach(note => note.remove());
 
         const notification = document.createElement('div');
         notification.className = `booster-notification ${type}`;
 
+        // Sanitize message (basic HTML removal)
         let cleanMessage = message;
-        if (message.includes('<') && message.includes('>')) {
+        if (typeof message === 'string' && message.includes('<') && message.includes('>')) {
             const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = message;
-            cleanMessage = tempDiv.textContent || tempDiv.innerText || message;
+            tempDiv.innerHTML = message; // Let browser parse HTML
+            cleanMessage = tempDiv.textContent || tempDiv.innerText || message; // Extract text content
         }
 
-        if (cleanMessage.includes('Cooldown:') || cleanMessage.includes('cooldown')) {
+        // Add specific styling for cooldown messages
+        if (cleanMessage.toLowerCase().includes('cooldown')) {
             notification.innerHTML = `
                 <div style="font-weight: bold; margin-bottom: 5px; font-size: 16px;">Booster Cooldown Active</div>
                 <div>${cleanMessage}</div>
             `;
-
             notification.style.minWidth = '280px';
             notification.style.padding = '15px 25px';
         } else {
@@ -1336,17 +1268,21 @@
         // Animation
         notification.style.transform = 'translate(-50%, -50%) scale(0.9)';
         notification.style.opacity = '0';
-
         void notification.offsetWidth; // Force reflow
 
-        notification.style.transform = 'translate(-50%, -50%) scale(1)';
-        notification.style.opacity = '1';
+        requestAnimationFrame(() => { // Use requestAnimationFrame for smoother animation start
+            notification.style.transform = 'translate(-50%, -50%) scale(1)';
+            notification.style.opacity = '1';
+        });
+
 
         // Auto-hide
         setTimeout(() => {
-            notification.style.opacity = '0';
-            notification.style.transform = 'translate(-50%, -50%) scale(0.9)';
-            setTimeout(() => notification.remove(), 500); // Remove after fade out
+             requestAnimationFrame(() => { // Use requestAnimationFrame for smoother fade out
+                notification.style.opacity = '0';
+                notification.style.transform = 'translate(-50%, -50%) scale(0.9)';
+            });
+            setTimeout(() => notification.remove(), 500); // Remove after fade out animation (500ms matches transition duration)
         }, 5000); // Notification duration
 
         debugLog(`Notification [${type}]: ${cleanMessage}`);
@@ -1374,7 +1310,8 @@
                 return rfcCookie;
             }
 
-            // Make synchronous request
+            // Make synchronous request (Use with caution - can block UI)
+            // Consider making this async if possible in the future
             const xhr = new XMLHttpRequest();
             xhr.open('GET', 'https://www.torn.com/onlinestatus.php?online', false); // SYNCHRONOUS!
             xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
@@ -1385,7 +1322,7 @@
                 if (xhr.status === 200) {
                     // Check headers first
                     const csrfHeader = xhr.getResponseHeader('X-CSRF-Token') ||
-                                      xhr.getResponseHeader('csrf-token');
+                                       xhr.getResponseHeader('csrf-token');
 
                     if (csrfHeader) {
                         debugLog('Found token in response headers');
@@ -1429,14 +1366,17 @@
 
     function extractTokenFromPage() {
         try {
+            // Look for specific script content patterns
             const scripts = document.querySelectorAll('script:not([src])');
             for (const script of scripts) {
                 if (!script.textContent) continue;
 
                 const patterns = [
-                    /var\s+csrf\s*=\s*["']([a-f0-9]{16,})["']/,
-                    /csrf["']?\s*:\s*["']([a-f0-9]{16,})["']/,
-                    /\{[^}]*["']?csrf["']?\s*:\s*["']([a-f0-9]{16,})["'][^}]*\}/
+                    /var\s+csrf\s*=\s*["']([a-f0-9]{16,})["']/, // var csrf = '...'
+                    /csrf["']?\s*:\s*["']([a-f0-9]{16,})["']/, // { csrf: '...' }
+                    /window\.csrf\s*=\s*["']([a-f0-9]{16,})["']/, // window.csrf = '...'
+                    /csrf_token\s*=\s*["']([a-f0-9]{16,})["']/, // csrf_token = '...'
+                     /name="csrf"\s+value="([a-f0-9]{16,})"/ // Input field in script
                 ];
 
                 for (const pattern of patterns) {
@@ -1452,9 +1392,10 @@
         }
 
         try {
-            const csrfInputs = document.querySelectorAll('input[name="csrf"]');
+            // Look for input fields
+            const csrfInputs = document.querySelectorAll('input[name="csrf"], input[name="csrf_token"], input[id="csrf"]');
             for (const input of csrfInputs) {
-                if (input.value) {
+                if (input.value && /^[a-f0-9]{16,}$/i.test(input.value)) { // Check format
                     debugLog('Found token in page input field');
                     return input.value;
                 }
@@ -1463,10 +1404,29 @@
             debugLog('Error extracting token from inputs:', e);
         }
 
-        if (typeof window.csrf !== 'undefined' && window.csrf) {
+        // Check global window variables
+        if (typeof window.csrf !== 'undefined' && window.csrf && /^[a-f0-9]{16,}$/i.test(window.csrf)) {
             debugLog('Found token in window.csrf');
             return window.csrf;
         }
+         if (typeof window.csrf_token !== 'undefined' && window.csrf_token && /^[a-f0-9]{16,}$/i.test(window.csrf_token)) {
+            debugLog('Found token in window.csrf_token');
+            return window.csrf_token;
+        }
+
+        // Check meta tags
+         try {
+            const metaTags = document.querySelectorAll('meta[name="csrf-token"]');
+            for (const meta of metaTags) {
+                if (meta.content && /^[a-f0-9]{16,}$/i.test(meta.content)) {
+                     debugLog('Found token in meta tag');
+                    return meta.content;
+                }
+            }
+        } catch(e) {
+             debugLog('Error extracting token from meta tags:', e);
+        }
+
 
         debugLog('No token found in page');
         return null;
@@ -1496,7 +1456,7 @@
             debugLog('Error parsing cookies for RFC:', e);
         }
 
-        // Fallback to searching script tags
+        // Fallback to searching script tags (less reliable)
         try {
             const scripts = document.querySelectorAll('script:not([src])');
             for (const script of scripts) {
@@ -1517,46 +1477,9 @@
     }
 
     function getPageCsrfToken() {
-        debugLog('Searching for token in page');
-
-        // Check global variable first
-        if (typeof window.csrf !== 'undefined' && window.csrf) {
-            debugLog('Found token in window.csrf');
-            return window.csrf;
-        }
-
-        // Check jQuery cookie if available
-        if (typeof $ !== 'undefined' && typeof $.cookie === 'function') {
-            const cookieToken = $.cookie('csrf');
-            if (cookieToken) {
-                debugLog('Found token in $.cookie("csrf")');
-                return cookieToken;
-            }
-        }
-
-        // Check input fields
-        const inputs = document.querySelectorAll('input[name="csrf"]');
-        for (const input of inputs) {
-            if (input.value) {
-                debugLog('Found token in input field');
-                return input.value;
-            }
-        }
-
-        // Check inline scripts
-        const scriptPattern = /var\s+csrf\s*=\s*["']([a-f0-9]{16,})["']/;
-        const scripts = document.querySelectorAll('script:not([src])');
-        for (const script of scripts) {
-            if (!script.textContent) continue;
-            const match = script.textContent.match(scriptPattern);
-            if (match && match[1]) {
-                debugLog('Found token in inline script');
-                return match[1];
-            }
-        }
-
-        // If not found by common methods, return null
-        return null;
+        debugLog('Searching for token in page (getPageCsrfToken)');
+        // Use the more robust extraction method
+        return extractTokenFromPage();
     }
 
     function hasBoosterCooldown() {
@@ -1565,17 +1488,27 @@
         // Primary check: Look for elements with the specific aria-label for booster cooldown
         const boosterCooldownElements = document.querySelectorAll('a[aria-label="Booster Cooldown"], [aria-label^="Booster Cooldown"]');
         if (boosterCooldownElements.length > 0) {
-            debugLog('Found booster cooldown via aria-label');
-            return true;
+            for(const el of boosterCooldownElements) {
+                // Check if the element is actually visible
+                if (el.offsetParent !== null) {
+                     debugLog('Found VISIBLE booster cooldown via aria-label');
+                     return true;
+                }
+            }
+             debugLog('Found booster cooldown via aria-label, but element might be hidden');
+             // Don't return true yet if element is hidden, let other checks run
         }
 
         // Secondary check: Status icons area with cooldown text (fallback)
-        const statusIcons = document.querySelectorAll('.status-icons__wrap a, .status-icons li, .user-icons__wrap a');
+        const statusIcons = document.querySelectorAll('.status-icons__wrap a, .status-icons li, .user-icons__wrap a, [class*="status-icon"], [class*="user-icon"]');
         for (const icon of statusIcons) {
+            // Check visibility first
+             if (icon.offsetParent === null) continue;
+
             const ariaLabel = icon.getAttribute('aria-label') || '';
             const title = icon.getAttribute('title') || '';
             const iconText = icon.textContent || '';
-            const dataContent = icon.getAttribute('data-content') || '';
+            const dataContent = icon.getAttribute('data-content') || ''; // For tooltips
 
             if ((ariaLabel.includes('Booster') && ariaLabel.includes('Cooldown')) ||
                 (title.includes('Booster') && title.includes('Cooldown')) ||
@@ -1585,20 +1518,26 @@
                 return true;
             }
 
-            // Also check for the data-i attribute that might indicate a booster cooldown
-            const iData = icon.getAttribute('i-data');
-            if (iData && iData.includes('i_64_')) {
-                debugLog('Found potential booster cooldown via i-data attribute');
-                return true;
+            // Check for specific image sources or classes if text fails
+            const img = icon.querySelector('img');
+            if (img && img.src && (img.src.includes('booster') || img.src.includes('cooldown'))) {
+                 debugLog('Found booster cooldown via image source');
+                 return true;
+            }
+            if (icon.className && typeof icon.className === 'string' && icon.className.includes('booster-cooldown')) { // Example class
+                 debugLog('Found booster cooldown via specific class name');
+                 return true;
             }
         }
 
-        // Tertiary check: Look for specific icon ids as an absolute fallback
-        const boosterIcons = document.querySelectorAll('#icon39, #icon40, #icon41, #icon42, #icon43');
-        if (boosterIcons.length > 0) {
-            debugLog('Found booster cooldown via icon IDs (fallback method)');
-            return true;
-        }
+        // Tertiary check: Look for specific icon ids (less reliable, last resort)
+        const boosterIcons = document.querySelectorAll('#icon39, #icon40, #icon41, #icon42, #icon43'); // Torn's specific cooldown icon IDs
+         for(const icon of boosterIcons) {
+             if (icon.offsetParent !== null) { // Check visibility
+                 debugLog('Found booster cooldown via icon IDs (fallback method)');
+                 return true;
+             }
+         }
 
         debugLog('No booster cooldown detected');
         return false;
@@ -1614,39 +1553,61 @@
 
                 const isItemsPage = window.location.href.includes('torn.com/item.php');
                 const isFactionArmouryBoostersPage = window.location.href.includes('factions.php') &&
-                                                    window.location.href.includes('armoury') &&
-                                                   (window.location.href.includes('sub=boosters') ||
-                                                    window.location.href.includes('tab=armoury'));
+                                                     window.location.href.includes('armoury') &&
+                                                    (window.location.href.includes('sub=boosters') ||
+                                                     window.location.href.includes('tab=armoury'));
 
                 // Check if we are now on the correct page based on the setting
                 if ((isItemsPage && !useFactionBoosters) || (isFactionArmouryBoostersPage && useFactionBoosters)) {
                     debugLog('On appropriate page after navigation from alert');
 
-                    // Wait a bit for the page to finish loading
+                    // Wait a bit for the page and script elements to finish loading/initializing
                     setTimeout(() => {
-                        // Recreate alert/GUI and show GUI
-                        removeExistingAlerts();
-                        alertElements = createAlert();
+                        // Ensure alertElements are properly initialized before trying to show GUI
+                        if (!alertElements) {
+                            removeExistingAlerts(); // Clean up just in case
+                            alertElements = createAlert(); // Recreate if missing
+                        }
+
                         if (alertElements && alertElements.gui) {
                             debugLog('Showing booster GUI after navigation');
                             alertElements.gui.style.display = 'block';
+                        } else {
+                            debugLog('Could not find GUI element to show after navigation');
                         }
-                    }, 1000); // Delay opening GUI slightly
+                    }, 1500); // Increased delay slightly for potentially slower page loads
+                } else {
+                     debugLog('Not on the expected page after navigation, GUI not shown.');
                 }
             }
 
-            // Clear any potentially stale booster use progress flag
-            sessionStorage.removeItem('boosterUseInProgress');
+            // Clear any potentially stale booster use progress flag on page load
+             const boosterProgress = sessionStorage.getItem('boosterUseInProgress');
+             if (boosterProgress) {
+                 try {
+                    const progressData = JSON.parse(boosterProgress);
+                    // Clear if older than 1 minute to prevent stale flags
+                    if (Date.now() - progressData.timestamp > 60000) {
+                         debugLog('Clearing stale booster use progress flag.');
+                         sessionStorage.removeItem('boosterUseInProgress');
+                    }
+                 } catch(e) {
+                     debugLog('Error parsing booster progress, clearing flag.');
+                     sessionStorage.removeItem('boosterUseInProgress');
+                 }
+             }
 
         } catch (e) {
             debugLog('Error in checkForPendingAlert:', e);
             sessionStorage.removeItem('boosterUseInProgress'); // Ensure cleanup on error
+            sessionStorage.removeItem('fromBoosterAlert'); // Ensure cleanup on error
         }
     }
 
     function removeExistingAlerts() {
         const existingAlerts = document.querySelectorAll('.booster-alert');
         const existingGuis = document.querySelectorAll('.booster-gui');
+        const existingNotifications = document.querySelectorAll('.booster-notification'); // Also remove notifications
 
         existingAlerts.forEach(alert => {
             debugLog('Removing existing alert:', alert.id || 'unnamed');
@@ -1656,85 +1617,86 @@
             debugLog('Removing existing GUI:', gui.id || 'unnamed');
             gui.remove();
         });
+         existingNotifications.forEach(note => {
+            debugLog('Removing existing notification');
+            note.remove();
+        });
+
 
         alertElements = null; // Reset the reference
-        debugLog('Removed all existing booster alerts and GUIs');
+        debugLog('Removed all existing booster alerts, GUIs, and notifications');
     }
 
-    function startCooldownChecks() {
-        const checkCooldownWithRetry = (retryCount = 0) => {
-            const maxRetries = 3; // Retry a few times if cooldown status isn't immediately clear
-            const hasCooldown = hasBoosterCooldown();
+    let cooldownCheckInterval = null; // Store interval ID
+    let cooldownObserver = null; // Store observer instance
 
-            debugLog(`Cooldown check (attempt ${retryCount + 1}): ${hasCooldown ? 'ON COOLDOWN' : 'NO COOLDOWN'}`);
+    function startCooldownChecks() {
+         // Clear previous checks if any
+        if (cooldownCheckInterval) clearInterval(cooldownCheckInterval);
+        if (cooldownObserver) cooldownObserver.disconnect();
+
+        const checkCooldownLogic = () => {
+            const hasCooldown = hasBoosterCooldown();
+            debugLog(`Cooldown check: ${hasCooldown ? 'ON COOLDOWN' : 'NO COOLDOWN'}`);
 
             if (!hasCooldown) {
-                if (!alertElements) { // Only create if it doesn't exist
+                if (!alertElements || !document.body.contains(alertElements.alert)) { // Only create if it doesn't exist or was removed
+                    removeExistingAlerts(); // Clean up potential remnants
                     alertElements = createAlert();
                     debugLog('Created "No Boosters" alert');
-
-                    // Check if we should auto-show the GUI (e.g., after navigation)
-                    if (window.location.href.includes('torn.com/item.php') &&
-                        alertElements.gui &&
-                        sessionStorage.getItem('fromBoosterAlert')) {
-                        debugLog('Auto-showing GUI after cooldown check');
-                        alertElements.gui.style.display = 'block';
-                        sessionStorage.removeItem('fromBoosterAlert'); // Clear the flag
-                    }
+                    // Check for pending alert display right after creation
+                    checkForPendingAlert();
                 }
-            } else if (alertElements) { // If cooldown IS active and alert exists, remove it
+            } else if (alertElements && document.body.contains(alertElements.alert)) { // If cooldown IS active and alert exists, remove it
                 alertElements.alert.remove();
-                alertElements.gui?.remove(); // Safely remove GUI if it exists
+                if (alertElements.gui) alertElements.gui.remove();
                 alertElements = null;
                 debugLog('Removed "No Boosters" alert due to cooldown');
-            // Retry logic if cooldown isn't detected initially but alert isn't created yet
-            } else if (retryCount < maxRetries && !hasCooldown && !alertElements) {
-                setTimeout(() => checkCooldownWithRetry(retryCount + 1), 1000); // Wait 1s and retry
-                return; // Don't proceed to interval setup yet
             }
         };
 
-        // Initial check with a delay to allow page elements to load
-        setTimeout(() => checkCooldownWithRetry(), 2000);
+        // Initial check with a delay
+        setTimeout(checkCooldownLogic, 1500); // Slightly increased delay
 
-        // Use MutationObserver for faster updates when status icons change
-        const observer = new MutationObserver((mutations) => {
-            // Check if relevant parts of the DOM changed (e.g., status icons area)
-            const shouldCheck = mutations.some(mutation => {
-                // Check if the target itself is the status icons container
-                if (mutation.target && mutation.target.className &&
-                    typeof mutation.target.className === 'string' && // Ensure className is string
-                    mutation.target.className.includes('status-icons')) {
-                    return true;
-                }
-                // Check if added nodes are relevant (icons, status elements)
-                return Array.from(mutation.addedNodes).some(node =>
-                    node.nodeType === 1 && node.className && ( // Check if it's an element with a class
-                        (typeof node.className === 'string' && ( // Ensure className is string
-                            node.className.includes('icon') ||
-                            node.className.includes('status')
-                        ))
-                    )
-                );
-            });
+        // Use MutationObserver for faster updates
+        cooldownObserver = new MutationObserver((mutations) => {
+            // More targeted check: only run if status icons area or specific attributes changed
+             const relevantMutation = mutations.some(mutation => {
+                 // Check target or added/removed nodes related to status/icons
+                 const targetNode = mutation.target;
+                 const addedNodes = Array.from(mutation.addedNodes);
+                 const removedNodes = Array.from(mutation.removedNodes);
 
-            if (shouldCheck) {
-                checkCooldownWithRetry(); // Re-check immediately on relevant changes
+                 const checkNode = (node) => node.nodeType === 1 && (
+                     (node.className && typeof node.className === 'string' && node.className.includes('status-icon')) || // Class check
+                     (node.id && node.id.startsWith('icon')) || // ID check
+                     node.querySelector('[aria-label*="Cooldown"]') // Content check
+                 );
+
+                 return checkNode(targetNode) || addedNodes.some(checkNode) || removedNodes.some(checkNode);
+             });
+
+            if (relevantMutation) {
+                debugLog('Relevant DOM mutation detected, re-checking cooldown.');
+                checkCooldownLogic(); // Re-check immediately
             }
         });
 
-        observer.observe(document.body, {
-            childList: true, // Watch for added/removed nodes
-            subtree: true,   // Watch descendants
-            attributes: true, // Watch attribute changes (like aria-label on icons)
-            attributeFilter: ['class', 'aria-label', 'title'] // Only observe relevant attributes
+        // Observe a more specific area if possible, fallback to body
+        const observeTarget = document.querySelector('.status-icons__wrap') || document.querySelector('.user-icons__wrap') || document.body;
+        cooldownObserver.observe(observeTarget, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['class', 'aria-label', 'title', 'style'] // Added style for visibility changes
         });
 
-        // Periodic check as a fallback
-        setInterval(checkCooldownWithRetry, 30000); // Check every 30 seconds
+        // Periodic check as a fallback (less frequent)
+        cooldownCheckInterval = setInterval(checkCooldownLogic, 60000); // Check every 60 seconds
 
-        console.log('%c Booster Alerts Initialized ', 'background: #2196F3; color: white; padding: 2px 5px; border-radius: 3px;');
+        console.log('%c Booster Alerts Cooldown Checks Started ', 'background: #4CAF50; color: white; padding: 2px 5px; border-radius: 3px;');
     }
+
 
     // --- Initialization ---
     function initialize() {
@@ -1748,10 +1710,10 @@
         removeExistingAlerts();
 
         // Check if we need to process a pending faction booster use (e.g., after navigation)
-        checkPendingFactionBoosterUse();
+        checkPendingFactionBoosterUse(); // Should run before first cooldown check
 
-        // Check if we navigated from an alert click
-        checkForPendingAlert();
+        // Check if we navigated from an alert click (will be handled by startCooldownChecks now)
+        // checkForPendingAlert(); // Moved logic into startCooldownChecks
 
         // Start the main cooldown checking loop
         startCooldownChecks();
@@ -1772,39 +1734,26 @@
         const forumContainer = document.getElementById('mainContainer') || document.body;
 
         const observer = new MutationObserver((mutations) => {
-            // Check if we might need to reposition or recreate the alert
-            const shouldCheck = mutations.some(mutation => {
-                // Check if forum header might have changed
-                if (mutation.target.classList &&
-                    (mutation.target.classList.contains('content-title') ||
-                     mutation.target.id === 'skip-to-content')) {
-                    return true;
-                }
+            // Check if the main content title area was potentially replaced
+            const titleChanged = mutations.some(mutation =>
+                Array.from(mutation.addedNodes).some(node => node.nodeType === 1 && node.classList && node.classList.contains('content-title')) ||
+                Array.from(mutation.removedNodes).some(node => node.nodeType === 1 && node.classList && node.classList.contains('content-title'))
+            );
 
-                // Check added nodes for forum header elements
-                return Array.from(mutation.addedNodes).some(node => {
-                    if (node.nodeType !== 1) return false; // Not an element
 
-                    return node.classList &&
-                          (node.classList.contains('content-title') ||
-                           node.querySelector('.content-title') ||
-                           node.querySelector('#skip-to-content'));
-                });
-            });
-
-            if (shouldCheck) {
-                debugLog('Forum content changed, recreating alert if needed');
-                // Wait a moment for DOM to settle
+            if (titleChanged) {
+                debugLog('Forum content title changed, re-evaluating alert placement');
+                // Wait a moment for DOM to settle after potential AJAX load
                 setTimeout(() => {
-                    removeExistingAlerts();
-                    alertElements = createAlert();
-                }, 500);
+                    // Re-run the check/creation logic which includes finding the header
+                    startCooldownChecks();
+                }, 750); // Slightly longer delay for forum AJAX
             }
         });
 
         observer.observe(forumContainer, {
             childList: true,
-            subtree: true,
+            subtree: true, // Need subtree to detect changes within the container
             attributes: false
         });
 
@@ -1818,9 +1767,9 @@
             try {
                 const pendingUse = JSON.parse(pendingUseData);
                 const isFactionArmouryBoostersPage = window.location.href.includes('factions.php') &&
-                                                   window.location.href.includes('armoury') &&
-                                                  (window.location.href.includes('sub=boosters') ||
-                                                   window.location.href.includes('tab=armoury'));
+                                                     window.location.href.includes('armoury') &&
+                                                    (window.location.href.includes('sub=boosters') ||
+                                                     window.location.href.includes('tab=armoury'));
 
                 // Only proceed if we're now on the faction armoury boosters page
                 if (isFactionArmouryBoostersPage && pendingUse.id && pendingUse.name) {
@@ -1829,13 +1778,13 @@
                     // Clear the pending use data first to prevent loops
                     sessionStorage.removeItem('pendingFactionBoosterUse');
 
-                    // Small delay to ensure page is fully loaded
+                    // Small delay to ensure page is fully loaded and script initialized
                     setTimeout(() => {
                         useBooster(pendingUse.id, pendingUse.name);
-                    }, 1000);
+                    }, 1500); // Increased delay
                 } else if (!isFactionArmouryBoostersPage) {
                     debugLog('Still not on faction armoury boosters page, keeping pending use data');
-                    // Don't remove the item yet, maybe the page hasn't loaded fully
+                    // Don't remove the item yet, maybe the page hasn't loaded fully or user navigated away
                 } else {
                     // If we are on the page but data is invalid, clear it
                     debugLog('Clearing invalid pending faction booster use data');
@@ -1848,6 +1797,12 @@
         }
     }
 
-    // Start the script execution
-    initialize();
+    // --- Start the script execution ---
+    // Use window.onload or DOMContentLoaded to ensure the initial DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initialize);
+    } else {
+        initialize(); // DOM is already ready
+    }
+
 })();
