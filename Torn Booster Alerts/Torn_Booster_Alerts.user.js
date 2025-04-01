@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name          Torn Booster Alert
-// @version       1.0.16
+// @version       1.0.23
 // @description   Alerts when no booster cooldown is active and allows taking boosters from any page
-// @author        YourUsername [YourID]
+// @author        GNSC4 [268863]
 // @match         https://www.torn.com/*
 // @grant         GM_addStyle
 // @icon          https://www.google.com/s2/favicons?sz=64&domain=torn.com
@@ -157,7 +157,7 @@
             border-left: 3px solid #2196F3;
         }
 
-        .other-item {
+        .stat-item {
             border-left: 3px solid #9C27B0;
         }
 
@@ -210,7 +210,8 @@
             { id: 554, name: "Can of Rockstar Rudolph" },
             { id: 553, name: "Can of Santa Shooters" },
             { id: 533, name: "Can of Taurine Elite" },
-            { id: 555, name: "Can of X-MASS" }
+            { id: 555, name: "Can of X-MASS" },
+            { id: 367, name: "Feathery Hotel Coupon" }
         ],
         nerve: [
             { id: 180, name: "Bottle of Beer" },
@@ -250,8 +251,7 @@
             { id: 151, name: "Pixie Sticks" },
             { id: 366, name: "Erotic DVD" }
         ],
-        other: [
-            { id: 367, name: "Feathery Hotel Coupon", effect: "Energy" },
+        statEnhancers: [
             { id: 329, name: "Skateboard", effect: "Speed" },
             { id: 331, name: "Dumbbells", effect: "Strength" },
             { id: 106, name: "Parachute", effect: "Dexterity" },
@@ -260,7 +260,7 @@
     };
 
     // Include all booster categories in a flat array for easier lookup
-    const allBoosters = [...BOOSTERS.energy, ...BOOSTERS.nerve, ...BOOSTERS.happy, ...BOOSTERS.other];
+    const allBoosters = [...BOOSTERS.energy, ...BOOSTERS.nerve, ...BOOSTERS.happy, ...BOOSTERS.statEnhancers];
 
     let alertElements = null;
     let DEBUG_MODE = true;
@@ -429,11 +429,11 @@
                 </div>
                 <div class="booster-list happy-list"></div>
                 
-                <div class="category-header other-header" data-category="other">
-                    <span>Other Boosters</span>
+                <div class="category-header statEnhancers-header" data-category="statEnhancers">
+                    <span>Stat Enhancers</span>
                     <button class="toggle-category">-</button>
                 </div>
-                <div class="booster-list other-list"></div>
+                <div class="booster-list statEnhancers-list"></div>
             `;
 
             document.body.appendChild(gui);
@@ -474,7 +474,7 @@
                 });
                 
                 // Show/hide category headers based on visible items
-                const categories = ['energy', 'nerve', 'happy', 'other'];
+                const categories = ['energy', 'nerve', 'happy', 'statEnhancers'];
                 categories.forEach(category => {
                     const categoryHeader = gui.querySelector(`.${category}-header`);
                     const categoryItems = gui.querySelectorAll(`.${category}-list .booster-item`);
@@ -490,7 +490,7 @@
             
             // Add category toggle functionality
             function setupCategoryToggles() {
-                const categories = ['energy', 'nerve', 'happy', 'other'];
+                const categories = ['energy', 'nerve', 'happy', 'statEnhancers'];
                 
                 categories.forEach(category => {
                     const header = gui.querySelector(`.${category}-header`);
@@ -537,7 +537,7 @@
             populateBoosterList(gui.querySelector('.energy-list'), BOOSTERS.energy, 'energy-item');
             populateBoosterList(gui.querySelector('.nerve-list'), BOOSTERS.nerve, 'nerve-item');
             populateBoosterList(gui.querySelector('.happy-list'), BOOSTERS.happy, 'happy-item');
-            populateBoosterList(gui.querySelector('.other-list'), BOOSTERS.other, 'stat-item');
+            populateBoosterList(gui.querySelector('.statEnhancers-list'), BOOSTERS.statEnhancers, 'stat-item');
 
             // Add click outside to close
             document.addEventListener('click', function(e) {
