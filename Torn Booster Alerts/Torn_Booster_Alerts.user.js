@@ -1,11 +1,13 @@
 // ==UserScript==
 // @name          Torn Booster Alert
-// @version       1.0.23
+// @version       1.0.24
 // @description   Alerts when no booster cooldown is active and allows taking boosters from any page
 // @author        GNSC4 [268863]
 // @match         https://www.torn.com/*
 // @grant         GM_addStyle
 // @icon          https://www.google.com/s2/favicons?sz=64&domain=torn.com
+// @updateURL     https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Torn%20Booster%20Alerts/Torn_Booster_Alerts.user.js
+// @downloadURL   https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Torn%20Booster%20Alerts/Torn_Booster_Alerts.user.js
 // ==/UserScript==
 
 (function() {
