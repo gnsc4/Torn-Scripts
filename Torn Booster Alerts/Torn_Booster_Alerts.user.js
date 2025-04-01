@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name          Torn Booster Alert
-// @version       1.0.24
+// @version       1.0.25
 // @description   Alerts when no booster cooldown is active and allows taking boosters from any page
 // @author        GNSC4 [268863]
 // @match         https://www.torn.com/*
@@ -36,7 +36,7 @@
             align-items: center;
             font-size: 12px;
         }
-        
+
         .settings-section {
             margin-top: 15px;
             margin-bottom: 15px;
@@ -108,7 +108,7 @@
             align-items: center;
             cursor: pointer;
         }
-        
+
         .toggle-category {
             background-color: #333;
             color: white;
@@ -275,6 +275,72 @@
     }
 
     function positionBoosterAlert(alert, header) {
+        // Special case for forum pages
+        if (window.location.href.includes('torn.com/forums.php')) {
+            debugLog('Positioning for forum page');
+
+            // If we have a header with links-top-wrap, use special positioning
+            const linksTopWrap = header.querySelector('.links-top-wrap');
+
+            if (linksTopWrap) {
+                debugLog('Using forum links-top-wrap positioning');
+
+                // Insert before the links-top-wrap to avoid conflicts
+                header.insertBefore(alert, linksTopWrap);
+
+                alert.style.cssText = `
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    margin-left: 15px !important;
+                    float: right !important;
+                    position: relative !important;
+                    z-index: 99999 !important;
+                    margin-top: 5px !important;
+                `;
+
+                return;
+            } else {
+                debugLog('Using general forum positioning');
+
+                // If there's an h4 header, insert after it
+                const h4Header = header.querySelector('h4');
+                if (h4Header) {
+                    debugLog('Inserting after h4 header');
+                    if (h4Header.nextSibling) {
+                        header.insertBefore(alert, h4Header.nextSibling);
+                    } else {
+                        header.appendChild(alert);
+                    }
+
+                    alert.style.cssText = `
+                        display: inline-flex !important;
+                        align-items: center !important;
+                        margin-left: 15px !important;
+                        position: relative !important;
+                        z-index: 99999 !important;
+                        float: right !important;
+                    `;
+
+                    return;
+                }
+
+                // Fallback - just append to header
+                header.appendChild(alert);
+
+                alert.style.cssText = `
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    margin-left: 15px !important;
+                    float: right !important;
+                    position: relative !important;
+                    z-index: 99999 !important;
+                `;
+
+                return;
+            }
+        }
+
+        // Default positioning for non-forum pages
         header.appendChild(alert);
 
         alert.style.cssText = `
@@ -303,6 +369,27 @@
     }
 
     function findHeader() {
+        // Special case for forum pages
+        if (window.location.href.includes('torn.com/forums.php')) {
+            // Try to find the forum header specifically - this should work on all forum pages
+            const forumHeader = document.querySelector('div.content-title.m-bottom10');
+            if (forumHeader) {
+                debugLog('Found forum-specific header');
+                return forumHeader;
+            }
+
+            // Secondary attempt for forum pages - look for skip-to-content
+            const skipToContent = document.getElementById('skip-to-content');
+            if (skipToContent) {
+                const parentHeader = skipToContent.closest('.content-title, .page-head');
+                if (parentHeader) {
+                    debugLog('Found forum header via skip-to-content');
+                    return parentHeader;
+                }
+            }
+        }
+
+        // Standard header detection for non-forum pages
         const possibleHeaders = [
             document.querySelector('.appHeader___gUnYC'),
             document.querySelector('.content-title'),
@@ -387,11 +474,11 @@
         const isItemsPage = window.location.href.includes('torn.com/item.php');
         const isFactionArmouryBoostersPage = window.location.href.includes('factions.php') &&
                                             window.location.href.includes('armoury') &&
-                                           (window.location.href.includes('sub=boosters') || 
+                                           (window.location.href.includes('sub=boosters') ||
                                             window.location.href.includes('tab=armoury'));
         const isOtherFactionPage = window.location.href.includes('factions.php') &&
                                    (!window.location.href.includes('armoury') ||
-                                    (!window.location.href.includes('sub=boosters') && 
+                                    (!window.location.href.includes('sub=boosters') &&
                                      !window.location.href.includes('tab=armoury')));
 
         debugLog(`Page check - Items: ${isItemsPage}, Faction Armoury Boosters: ${isFactionArmouryBoostersPage}, Other Faction: ${isOtherFactionPage}`);
@@ -412,25 +499,25 @@
                     </div>
                 </div>
                 <input type="text" class="booster-search" placeholder="Search boosters...">
-                
+
                 <div class="category-header energy-header" data-category="energy">
                     <span>Energy Boosters</span>
                     <button class="toggle-category">-</button>
                 </div>
                 <div class="booster-list energy-list"></div>
-                
+
                 <div class="category-header nerve-header" data-category="nerve">
                     <span>Nerve Boosters</span>
                     <button class="toggle-category">-</button>
                 </div>
                 <div class="booster-list nerve-list"></div>
-                
+
                 <div class="category-header happy-header" data-category="happy">
                     <span>Happy Boosters</span>
                     <button class="toggle-category">-</button>
                 </div>
                 <div class="booster-list happy-list"></div>
-                
+
                 <div class="category-header statEnhancers-header" data-category="statEnhancers">
                     <span>Stat Enhancers</span>
                     <button class="toggle-category">-</button>
@@ -459,13 +546,13 @@
                     alertElements = createAlert();
                 });
             }
-            
+
             // Add search functionality
             const searchInput = gui.querySelector('.booster-search');
             searchInput.addEventListener('input', function() {
                 const searchTerm = this.value.toLowerCase();
                 const allBoosterItems = gui.querySelectorAll('.booster-item');
-                
+
                 allBoosterItems.forEach(item => {
                     const boosterName = item.getAttribute('data-name').toLowerCase();
                     if (searchTerm === '' || boosterName.includes(searchTerm)) {
@@ -474,14 +561,14 @@
                         item.style.display = 'none';
                     }
                 });
-                
+
                 // Show/hide category headers based on visible items
                 const categories = ['energy', 'nerve', 'happy', 'statEnhancers'];
                 categories.forEach(category => {
                     const categoryHeader = gui.querySelector(`.${category}-header`);
                     const categoryItems = gui.querySelectorAll(`.${category}-list .booster-item`);
                     const visibleItems = Array.from(categoryItems).filter(item => item.style.display !== 'none');
-                    
+
                     if (visibleItems.length === 0) {
                         categoryHeader.style.display = 'none';
                     } else {
@@ -489,23 +576,23 @@
                     }
                 });
             });
-            
+
             // Add category toggle functionality
             function setupCategoryToggles() {
                 const categories = ['energy', 'nerve', 'happy', 'statEnhancers'];
-                
+
                 categories.forEach(category => {
                     const header = gui.querySelector(`.${category}-header`);
                     const list = gui.querySelector(`.${category}-list`);
                     const toggleBtn = header.querySelector('.toggle-category');
-                    
+
                     // Load saved state
                     const isMinimized = localStorage.getItem(`boosterCategory_${category}`) === 'minimized';
                     if (isMinimized) {
                         list.style.display = 'none';
                         toggleBtn.textContent = '+';
                     }
-                    
+
                     // Toggle on header click
                     header.addEventListener('click', function(e) {
                         // Only toggle if clicking the header itself or the toggle button
@@ -515,10 +602,10 @@
                     });
                 });
             }
-            
+
             function toggleCategory(category, listElement, toggleBtn) {
                 const isCurrentlyVisible = listElement.style.display !== 'none';
-                
+
                 if (isCurrentlyVisible) {
                     // Minimize
                     listElement.style.display = 'none';
@@ -531,7 +618,7 @@
                     localStorage.setItem(`boosterCategory_${category}`, 'expanded');
                 }
             }
-            
+
             // Setup toggles after populating lists
             setTimeout(setupCategoryToggles, 100);
 
@@ -592,7 +679,7 @@
             boosterItem.className = `booster-item ${className}`;
             boosterItem.setAttribute('data-name', booster.name);
             boosterItem.setAttribute('data-id', booster.id);
-            
+
             // Add effect info for other boosters
             if (booster.effect) {
                 boosterItem.textContent = `${booster.name} (${booster.effect})`;
@@ -626,7 +713,7 @@
             tryDirectUseMethod(id, name);
         }
     }
-    
+
     function tryDirectUseMethod(id, name) {
         debugLog('Attempting direct use method with XMLHttpRequest');
 
@@ -680,13 +767,13 @@
             (!window.location.href.includes('sub=boosters') && !window.location.href.includes('tab=armoury'))) {
             debugLog('Not on faction armoury page, need to navigate manually');
             showNotification(`Please navigate to faction armoury first to use ${name}`, 'info');
-            
+
             // Store pending use data for after navigation
             sessionStorage.setItem('pendingFactionBoosterUse', JSON.stringify({
                 id: id,
                 name: name
             }));
-            
+
             // Navigate to faction armoury boosters page
             window.location.href = 'https://www.torn.com/factions.php?step=your#/tab=armoury&start=0&sub=boosters';
             return;
@@ -825,7 +912,7 @@
                     // If we got here, we couldn't determine the exact result
                     debugLog('Direct method gave unclear response:', this.responseText.substring(0, 100) + '...');
                     // Don't remove boosterUseInProgress yet, let the traditional method try
-                    
+
                 } catch (e) {
                     debugLog('Error processing direct method response:', e);
                     // Don't remove boosterUseInProgress yet, let the traditional method try
@@ -1497,7 +1584,7 @@
                 debugLog('Found booster cooldown in status icons via text attributes');
                 return true;
             }
-            
+
             // Also check for the data-i attribute that might indicate a booster cooldown
             const iData = icon.getAttribute('i-data');
             if (iData && iData.includes('i_64_')) {
@@ -1528,7 +1615,7 @@
                 const isItemsPage = window.location.href.includes('torn.com/item.php');
                 const isFactionArmouryBoostersPage = window.location.href.includes('factions.php') &&
                                                     window.location.href.includes('armoury') &&
-                                                   (window.location.href.includes('sub=boosters') || 
+                                                   (window.location.href.includes('sub=boosters') ||
                                                     window.location.href.includes('tab=armoury'));
 
                 // Check if we are now on the correct page based on the setting
@@ -1547,10 +1634,10 @@
                     }, 1000); // Delay opening GUI slightly
                 }
             }
-            
+
             // Clear any potentially stale booster use progress flag
             sessionStorage.removeItem('boosterUseInProgress');
-            
+
         } catch (e) {
             debugLog('Error in checkForPendingAlert:', e);
             sessionStorage.removeItem('boosterUseInProgress'); // Ensure cleanup on error
@@ -1668,8 +1755,62 @@
 
         // Start the main cooldown checking loop
         startCooldownChecks();
+
+        // Add mutation observer for forum pages to handle AJAX navigation
+        setupForumMutationObserver();
     }
-    
+
+    function setupForumMutationObserver() {
+        // Only set this up on forum pages
+        if (!window.location.href.includes('torn.com/forums.php')) {
+            return;
+        }
+
+        debugLog('Setting up forum mutation observer');
+
+        // Target the main container that holds forum content
+        const forumContainer = document.getElementById('mainContainer') || document.body;
+
+        const observer = new MutationObserver((mutations) => {
+            // Check if we might need to reposition or recreate the alert
+            const shouldCheck = mutations.some(mutation => {
+                // Check if forum header might have changed
+                if (mutation.target.classList &&
+                    (mutation.target.classList.contains('content-title') ||
+                     mutation.target.id === 'skip-to-content')) {
+                    return true;
+                }
+
+                // Check added nodes for forum header elements
+                return Array.from(mutation.addedNodes).some(node => {
+                    if (node.nodeType !== 1) return false; // Not an element
+
+                    return node.classList &&
+                          (node.classList.contains('content-title') ||
+                           node.querySelector('.content-title') ||
+                           node.querySelector('#skip-to-content'));
+                });
+            });
+
+            if (shouldCheck) {
+                debugLog('Forum content changed, recreating alert if needed');
+                // Wait a moment for DOM to settle
+                setTimeout(() => {
+                    removeExistingAlerts();
+                    alertElements = createAlert();
+                }, 500);
+            }
+        });
+
+        observer.observe(forumContainer, {
+            childList: true,
+            subtree: true,
+            attributes: false
+        });
+
+        debugLog('Forum mutation observer started');
+    }
+
     function checkPendingFactionBoosterUse() {
         const pendingUseData = sessionStorage.getItem('pendingFactionBoosterUse');
 
@@ -1678,7 +1819,7 @@
                 const pendingUse = JSON.parse(pendingUseData);
                 const isFactionArmouryBoostersPage = window.location.href.includes('factions.php') &&
                                                    window.location.href.includes('armoury') &&
-                                                  (window.location.href.includes('sub=boosters') || 
+                                                  (window.location.href.includes('sub=boosters') ||
                                                    window.location.href.includes('tab=armoury'));
 
                 // Only proceed if we're now on the faction armoury boosters page
