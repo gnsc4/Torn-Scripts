@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name          Torn Drug Alert
-// @version       1.0.16
+// @version       1.0.17
 // @description   Alerts when no drug cooldown is active and allows taking drugs from any page
 // @author        GNSC4 [268863]
 // @match         https://www.torn.com/*
