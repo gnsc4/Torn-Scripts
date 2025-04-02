@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Torn Booster Alert
-// @version      1.0.26
-// @description  Alerts when no booster cooldown is active and allows taking boosters from any page (Responsive UI)
-// @author       GNSC4 [268863]
+// @version      1.2.0
+// @description  Alerts when no booster cooldown is active, adds Quick Use panel (Cooperative Positioning, Auto Text Contrast). Release Version.
+// @author       GNSC4 [268863] (Release Version Prep)
 // @match        https://www.torn.com/*
 // @grant        GM_addStyle
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=torn.com
@@ -18,1787 +18,469 @@
         window.location.href.includes('sid=attack') ||
         window.location.href.includes('loader2.php') ||
         window.location.pathname.includes('loader2.php')) {
-        console.log('Booster Alerts: Not initializing on attack page');
+        // console.log('Booster Alerts: Not initializing on attack page');
         return;
     }
 
-    // Add CSS
-    GM_addStyle(`
-        .booster-alert {
-            background-color: #2196F3;
-            color: white;
-            padding: 5px 10px;
-            border-radius: 3px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-left: 15px;
-            display: inline-flex;
-            align-items: center;
-            font-size: 12px;
-        }
+    // --- Configuration ---
+    let DEBUG_MODE = false; // Set to true to enable console logs for debugging
+    // --- End Configuration ---
 
-        .settings-section {
-            margin-top: 15px;
-            margin-bottom: 15px;
-            padding: 10px;
-            background-color: #333;
-            border-radius: 5px;
-            border: 1px solid #444;
-        }
-
-        .settings-toggle {
-            display: flex;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-
-        .settings-toggle label {
-            margin-left: 8px;
-            cursor: pointer;
-            color: white;
-        }
-
-        .booster-gui {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: #222;
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
-            z-index: 99999999;
-            /* Use max-width and viewport units for responsiveness */
-            width: 90vw; /* Take up 90% of viewport width */
-            max-width: 500px; /* But no more than 500px */
-            max-height: 80vh; /* Limit height to 80% of viewport height */
-            overflow-y: auto; /* Allow scrolling if content exceeds max-height */
-            display: none;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.7);
-            border: 1px solid #444;
-            box-sizing: border-box; /* Include padding and border in width/height */
-        }
-
-        .booster-gui h3 {
-            margin-top: 0;
-            border-bottom: 1px solid #444;
-            padding-bottom: 10px;
-        }
-
-        .booster-search {
-            width: 100%; /* Make search input take full width of the container */
-            padding: 8px;
-            margin: 10px 0;
-            border: 1px solid #444;
-            background-color: #333;
-            color: white;
-            border-radius: 3px;
-            box-sizing: border-box; /* Include padding/border in width */
-        }
-
-        .booster-search::placeholder {
-            color: #aaa;
-        }
-
-        .category-header {
-            margin-top: 15px;
-            margin-bottom: 10px;
-            padding-bottom: 5px;
-            border-bottom: 1px solid #333;
-            font-weight: bold;
-            color: #4CAF50;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-        }
-
-        .toggle-category {
-            background-color: #333;
-            color: white;
-            border: 1px solid #444;
-            border-radius: 3px;
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 14px;
-        }
-
-        .booster-list {
-            display: grid;
-            /* Adjust grid columns for smaller screens if needed */
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); /* Responsive grid */
-            gap: 10px;
-            margin-top: 5px;
-        }
-
-        .booster-item {
-            background-color: #333;
-            padding: 12px;
-            border-radius: 5px;
-            text-align: center;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            font-size: 13px;
-            font-weight: bold;
-            word-wrap: break-word; /* Prevent long names from overflowing */
-        }
-
-        .energy-item {
-            border-left: 3px solid #4CAF50;
-        }
-
-        .nerve-item {
-            border-left: 3px solid #F44336;
-        }
-
-        .happy-item {
-            border-left: 3px solid #FFEB3B;
-            color: white; /* Ensure text is visible on yellow border */
-        }
-
-        .stat-item { /* Original stat-item had duplicate definition, keeping one */
-            border-left: 3px solid #2196F3; /* Blue for stats */
-        }
-
-        /* Removed duplicate .stat-item definition */
-
-        .booster-item:hover {
-            background-color: #444;
-        }
-
-        .booster-notification {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            padding: 15px 20px;
-            border-radius: 5px;
-            color: white;
-            z-index: 999999;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
-            opacity: 1;
-            transition: opacity 0.5s, transform 0.3s ease-out; /* Added transform transition */
-            text-align: center;
-            min-width: 250px;
-            max-width: 80%;
-            pointer-events: none;
-        }
-
-        .booster-notification.success {
-            background-color: rgba(76, 175, 80, 0.9);
-            border: 1px solid #4CAF50;
-        }
-
-        .booster-notification.error {
-            background-color: rgba(244, 67, 54, 0.9);
-            border: 1px solid #f44336;
-        }
-
-        .booster-notification.info {
-            background-color: rgba(33, 150, 243, 0.9);
-            border: 1px solid #2196F3;
-        }
-    `);
-
-    // Define booster categories
-    const BOOSTERS = {
-        energy: [
-            { id: 987, name: "Can of Crocozade" },
-            { id: 986, name: "Can of Damp Valley" },
-            { id: 985, name: "Can of Goose Juice" },
-            { id: 530, name: "Can of Munster" },
-            { id: 532, name: "Can of Red Cow" },
-            { id: 554, name: "Can of Rockstar Rudolph" },
-            { id: 553, name: "Can of Santa Shooters" },
-            { id: 533, name: "Can of Taurine Elite" },
-            { id: 555, name: "Can of X-MASS" },
-            { id: 367, name: "Feathery Hotel Coupon" }
-        ],
-        nerve: [
-            { id: 180, name: "Bottle of Beer" },
-            { id: 181, name: "Bottle of Champagne" },
-            { id: 638, name: "Bottle of Christmas Cocktail" },
-            { id: 924, name: "Bottle of Christmas Spirit" },
-            { id: 873, name: "Bottle of Green Stout" },
-            { id: 550, name: "Bottle of Kandy Kane" },
-            { id: 551, name: "Bottle of Minty Mayhem" },
-            { id: 552, name: "Bottle of Mistletoe Madness" },
-            { id: 984, name: "Bottle of Moonshine" },
-            { id: 531, name: "Bottle of Pumpkin Brew" },
-            { id: 294, name: "Bottle Of Sake Brew" },
-            { id: 541, name: "Bottle of Stinky Swamp Punch" },
-            { id: 426, name: "Bottle of Tequila" },
-            { id: 542, name: "Bottle of Wicked Witch" }
-        ],
-        happy: [
-            { id: 634, name: "Bag of Blood Eyeballs" },
-            { id: 37, name: "Bag of Bon Bons" },
-            { id: 527, name: "Bag of Candy Kisses" },
-            { id: 210, name: "Bag of Chocolate Kisses" },
-            { id: 529, name: "Bag of Chocolate Truffles" },
-            { id: 1039, name: "Bag of Humbugs" },
-            { id: 556, name: "Bag of Raindeer Droppings" },
-            { id: 587, name: "Bag of Sherbet" },
-            { id: 528, name: "Bag of Tootsie Rolls" },
-            { id: 36, name: "Big Box of Chocolate Bars" },
-            { id: 1028, name: "Birthday Cupcake" },
-            { id: 38, name: "Box of Bon Bons" },
-            { id: 35, name: "Box of Chocolate Bars" },
-            { id: 39, name: "Box of Extra Strong Mints" },
-            { id: 209, name: "Box of Sweet Hearts" },
-            { id: 1312, name: "Chocolate Egg" },
-            { id: 586, name: "Jawbreaker" },
-            { id: 310, name: "Lollipop" },
-            { id: 151, name: "Pixie Sticks" },
-            { id: 366, name: "Erotic DVD" }
-        ],
-        statEnhancers: [
-            { id: 329, name: "Skateboard", effect: "Speed" },
-            { id: 331, name: "Dumbbells", effect: "Strength" },
-            { id: 106, name: "Parachute", effect: "Dexterity" },
-            { id: 330, name: "Boxing Gloves", effect: "Defense" }
-        ]
+    // --- Default Booster Colors (Based on Category) ---
+    const defaultBoosterColors = {
+        energy: '#4CAF50', nerve: '#F44336', happy: '#FFEB3B', statEnhancers: '#2196F3', default: '#9E9E9E'
     };
+    // --- End Booster Colors ---
 
-    // Include all booster categories in a flat array for easier lookup
-    const allBoosters = [...BOOSTERS.energy, ...BOOSTERS.nerve, ...BOOSTERS.happy, ...BOOSTERS.statEnhancers];
+    // --- Booster Data ---
+    const BOOSTERS = {
+        energy: [ { id: 987, name: "Can of Crocozade" }, { id: 986, name: "Can of Damp Valley" }, { id: 985, name: "Can of Goose Juice" }, { id: 530, name: "Can of Munster" }, { id: 532, name: "Can of Red Cow" }, { id: 554, name: "Can of Rockstar Rudolph" }, { id: 553, name: "Can of Santa Shooters" }, { id: 533, name: "Can of Taurine Elite" }, { id: 555, name: "Can of X-MASS" }, { id: 367, name: "Feathery Hotel Coupon" } ],
+        nerve: [ { id: 180, name: "Bottle of Beer" }, { id: 181, name: "Bottle of Champagne" }, { id: 638, name: "Bottle of Christmas Cocktail" }, { id: 924, name: "Bottle of Christmas Spirit" }, { id: 873, name: "Bottle of Green Stout" }, { id: 550, name: "Bottle of Kandy Kane" }, { id: 551, name: "Bottle of Minty Mayhem" }, { id: 552, name: "Bottle of Mistletoe Madness" }, { id: 984, name: "Bottle of Moonshine" }, { id: 531, name: "Bottle of Pumpkin Brew" }, { id: 294, name: "Bottle Of Sake Brew" }, { id: 541, name: "Bottle of Stinky Swamp Punch" }, { id: 426, name: "Bottle of Tequila" }, { id: 542, name: "Bottle of Wicked Witch" } ],
+        happy: [ { id: 634, name: "Bag of Blood Eyeballs" }, { id: 37, name: "Bag of Bon Bons" }, { id: 527, name: "Bag of Candy Kisses" }, { id: 210, name: "Bag of Chocolate Kisses" }, { id: 529, name: "Bag of Chocolate Truffles" }, { id: 1039, name: "Bag of Humbugs" }, { id: 556, name: "Bag of Raindeer Droppings" }, { id: 587, name: "Bag of Sherbet" }, { id: 528, name: "Bag of Tootsie Rolls" }, { id: 36, name: "Big Box of Chocolate Bars" }, { id: 1028, name: "Birthday Cupcake" }, { id: 38, name: "Box of Bon Bons" }, { id: 35, name: "Box of Chocolate Bars" }, { id: 39, name: "Box of Extra Strong Mints" }, { id: 209, name: "Box of Sweet Hearts" }, { id: 1312, name: "Chocolate Egg" }, { id: 586, name: "Jawbreaker" }, { id: 310, name: "Lollipop" }, { id: 151, name: "Pixie Sticks" }, { id: 366, name: "Erotic DVD" } ],
+        statEnhancers: [ { id: 329, name: "Skateboard", effect: "Speed" }, { id: 331, name: "Dumbbells", effect: "Strength" }, { id: 106, name: "Parachute", effect: "Dexterity" }, { id: 330, name: "Boxing Gloves", effect: "Defense" } ]
+    };
+    // Flatten booster list for easier searching in customization UI
+    const allBoostersFlat = Object.values(BOOSTERS).flat();
+    // --- End Booster Data ---
 
-    let alertElements = null;
-    let DEBUG_MODE = true; // Keep debug logging enabled
+    // --- Global State Variables ---
+    let alertElements = null; // Holds references to the main alert button and GUI
     let useFactionBoosters = localStorage.getItem('useFactionBoosters') === 'true'; // Load setting on init
+    let coopObserver = null; // Observer for cooperative positioning
+    let coopAdjustInterval = null; // Interval timer for fallback adjustment
+    let cooldownCheckInterval = null; // Interval for periodic cooldown checks
+    let cooldownObserver = null; // Observer for status icon changes
+    // --- End Global State ---
 
-    function debugLog(...args) {
-        if (DEBUG_MODE) {
-            console.log('[BoosterAlerts Debug]', ...args);
-        }
-    }
+    // --- Helper Functions ---
+    function debugLog(...args) { if (DEBUG_MODE) { console.log('[BoosterAlerts Debug]', ...args); } }
 
-    function positionBoosterAlert(alert, header) {
-        // Special case for forum pages
-        if (window.location.href.includes('torn.com/forums.php')) {
-            debugLog('Positioning for forum page');
+    function getBoosterCategory(id) {
+        if (typeof BOOSTERS === 'undefined') return 'default';
+        for (const category in BOOSTERS) { if (BOOSTERS[category].some(b => b.id === id)) { return category; } }
+        return 'default';
+     }
 
-            // If we have a header with links-top-wrap, use special positioning
-            const linksTopWrap = header.querySelector('.links-top-wrap');
+    function getDefaultBoosterColor(id) {
+        const cat = getBoosterCategory(id); return defaultBoosterColors[cat] || defaultBoosterColors.default;
+     }
 
-            if (linksTopWrap) {
-                debugLog('Using forum links-top-wrap positioning');
+    // Calculates contrast color (black/white) for a given background hex color
+    function getTextColorForBackground(hexColor) {
+        try {
+            hexColor = hexColor.replace(/^#/, '');
+            if (hexColor.length === 3) { hexColor = hexColor[0] + hexColor[0] + hexColor[1] + hexColor[1] + hexColor[2] + hexColor[2]; }
+            if (hexColor.length !== 6) { return '#FFFFFF'; }
+            const r = parseInt(hexColor.substring(0, 2), 16); const g = parseInt(hexColor.substring(2, 4), 16); const b = parseInt(hexColor.substring(4, 6), 16);
+            const rNorm = r / 255.0; const gNorm = g / 255.0; const bNorm = b / 255.0;
+            const rFinal = rNorm <= 0.03928 ? rNorm / 12.92 : Math.pow((rNorm + 0.055) / 1.055, 2.4);
+            const gFinal = gNorm <= 0.03928 ? gNorm / 12.92 : Math.pow((gNorm + 0.055) / 1.055, 2.4);
+            const bFinal = bNorm <= 0.03928 ? bNorm / 12.92 : Math.pow((bNorm + 0.055) / 1.055, 2.4);
+            const luminance = 0.2126 * rFinal + 0.7152 * gFinal + 0.0722 * bFinal;
+            return luminance > 0.5 ? '#000000' : '#FFFFFF';
+        } catch (e) { console.error("Error calculating text color:", hexColor, e); return '#FFFFFF'; }
+     }
 
-                // Insert before the links-top-wrap to avoid conflicts
-                header.insertBefore(alert, linksTopWrap);
-
-                alert.style.cssText = `
-                    display: inline-flex !important;
-                    align-items: center !important;
-                    margin-left: 15px !important;
-                    float: right !important;
-                    position: relative !important;
-                    z-index: 99999 !important;
-                    margin-top: 5px !important;
-                `;
-
-                return;
-            } else {
-                debugLog('Using general forum positioning');
-
-                // If there's an h4 header, insert after it
-                const h4Header = header.querySelector('h4');
-                if (h4Header) {
-                    debugLog('Inserting after h4 header');
-                    if (h4Header.nextSibling) {
-                        header.insertBefore(alert, h4Header.nextSibling);
-                    } else {
-                        header.appendChild(alert);
-                    }
-
-                    alert.style.cssText = `
-                        display: inline-flex !important;
-                        align-items: center !important;
-                        margin-left: 15px !important;
-                        position: relative !important;
-                        z-index: 99999 !important;
-                        float: right !important;
-                    `;
-
-                    return;
-                }
-
-                // Fallback - just append to header
-                header.appendChild(alert);
-
-                alert.style.cssText = `
-                    display: inline-flex !important;
-                    align-items: center !important;
-                    margin-left: 15px !important;
-                    float: right !important;
-                    position: relative !important;
-                    z-index: 99999 !important;
-                `;
-
-                return;
-            }
-        }
-
-        // Default positioning for non-forum pages
-        header.appendChild(alert);
-
-        alert.style.cssText = `
-            display: inline-flex !important;
-            align-items: center !important;
-            margin-left: 10px !important;
-            order: 2 !important;
-            z-index: 99999 !important;
-            pointer-events: auto !important;
-        `;
-
-        const isMobilePDA = navigator.userAgent.includes('PDA') ||
-                              window.innerWidth < 768 ||
-                              document.documentElement.classList.contains('tornPDA');
-
-        if (isMobilePDA) {
-            alert.style.fontSize = '10px';
-            alert.style.padding = '3px 6px';
-            alert.style.marginLeft = '5px';
-        }
-
-        if (header.id === 'torn-booster-fixed-header') {
-            alert.style.margin = '0';
-            alert.style.marginLeft = '5px';
-        }
-    }
-
+    // Finds the appropriate header element to attach the alert button to
     function findHeader() {
-        // Special case for forum pages
         if (window.location.href.includes('torn.com/forums.php')) {
-            // Try to find the forum header specifically - this should work on all forum pages
-            const forumHeader = document.querySelector('div.content-title.m-bottom10');
-            if (forumHeader) {
-                debugLog('Found forum-specific header');
-                return forumHeader;
-            }
-
-            // Secondary attempt for forum pages - look for skip-to-content
-            const skipToContent = document.getElementById('skip-to-content');
-            if (skipToContent) {
-                const parentHeader = skipToContent.closest('.content-title, .page-head');
-                if (parentHeader) {
-                    debugLog('Found forum header via skip-to-content');
-                    return parentHeader;
-                }
-            }
+            const forumHeader = document.querySelector('div.content-title.m-bottom10'); if (forumHeader) return forumHeader;
+            const skipToContent = document.getElementById('skip-to-content'); if (skipToContent) { const p = skipToContent.closest('.content-title, .page-head'); if(p) return p; }
         }
-
-        // Standard header detection for non-forum pages
-        const possibleHeaders = [
-            document.querySelector('.appHeader___gUnYC'),
-            document.querySelector('.content-title'),
-            document.querySelector('.tutorial-cont'),
-            document.querySelector('.cont-gray'),
-            document.querySelector('.content-wrapper .header'),
-            document.querySelector('.content-wrapper .title-black'),
-            document.querySelector('.captionWithActionContainment___nVTbE'),
-            document.querySelector('.pageTitle___CaFrO'),
-            document.querySelector('.sortable-list .title'),
-            document.querySelector('.topSection___CfKvI'),
-            document.querySelector('.mainStatsContainer___TXO7F'),
-            document.querySelector('div[role="heading"]'),
-            document.querySelector('#mainContainer > div.content-wrapper.winter > div.content-title.m-bottom10 h4'),
-            document.querySelector('.titleContainer___QrlWP .title___rhtB4'),
-            document.querySelector('div.content-title h4'),
-            document.querySelector('.title-black'),
-            document.querySelector('.clearfix .t-black'),
-            document.querySelector('.page-head > h4'),
-            document.querySelector('#react-root > div > div.appHeader___gUnYC.crimes-app-header > h4'),
-            document.querySelector('div.appHeader___gUnYC h4'),
-            document.querySelector('#skip-to-content'),
-            document.querySelector('.header-title'),
-            document.querySelector('.mobile-title'),
-            document.querySelector('.app-header')
-        ];
-
-        return possibleHeaders.find(header => header !== null);
+        const selectors = ['.appHeader___gUnYC', '.content-title', '.tutorial-cont', '.cont-gray', '.content-wrapper .header', '.content-wrapper .title-black', '.captionWithActionContainment___nVTbE', '.pageTitle___CaFrO', '.sortable-list .title', '.topSection___CfKvI', '.mainStatsContainer___TXO7F', 'div[role="heading"]', '#mainContainer > div.content-wrapper.winter > div.content-title.m-bottom10 h4', '.titleContainer___QrlWP .title___rhtB4', 'div.content-title h4', '.title-black', '.clearfix .t-black', '.page-head > h4', '#react-root > div > div.appHeader___gUnYC.crimes-app-header > h4', 'div.appHeader___gUnYC h4', '#skip-to-content', '.header-title', '.mobile-title', '.app-header'];
+        return selectors.map(s => document.querySelector(s)).find(h => h !== null) || createFixedHeader();
     }
 
+    // Creates a fallback fixed header if no suitable header is found
     function createFixedHeader() {
-        let fixedHeader = document.getElementById('torn-booster-fixed-header');
-
-        if (!fixedHeader) {
-            fixedHeader = document.createElement('div');
-            fixedHeader.id = 'torn-booster-fixed-header';
-            fixedHeader.style.position = 'fixed';
-            fixedHeader.style.top = '50px';
-            fixedHeader.style.right = '20px';
-            fixedHeader.style.zIndex = '9999';
-            fixedHeader.style.backgroundColor = 'rgba(34, 34, 34, 0.8)';
-            fixedHeader.style.padding = '5px 10px';
-            fixedHeader.style.borderRadius = '5px';
-            fixedHeader.style.display = 'flex';
-            fixedHeader.style.alignItems = 'center';
-            fixedHeader.style.boxShadow = '0 2px 5px rgba(0,0,0,0.3)';
-            document.body.appendChild(fixedHeader);
+        let fh = document.getElementById('torn-booster-fixed-header');
+        if (!fh) {
+            fh = document.createElement('div'); fh.id = 'torn-booster-fixed-header';
+            Object.assign(fh.style, { position: 'fixed', top: '50px', right: '20px', zIndex: '9999', backgroundColor: 'rgba(34, 34, 34, 0.8)', padding: '5px 10px', borderRadius: '5px', display: 'flex', alignItems: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.3)' });
+            document.body.appendChild(fh);
         }
-
-        return fixedHeader;
+        return fh;
     }
 
+    // Positions the main alert button correctly based on page context
+    function positionBoosterAlert(alert, header) {
+        if (window.location.href.includes('torn.com/forums.php')) {
+            // debugLog('Positioning alert for forum page');
+            const l = header.querySelector('.links-top-wrap');
+            if (l) { header.insertBefore(alert, l); }
+            else { const h4 = header.querySelector('h4'); if (h4) { if (h4.nextSibling) header.insertBefore(alert, h4.nextSibling); else header.appendChild(alert); } else { header.appendChild(alert); } }
+            alert.style.cssText = `display: inline-flex !important; align-items: center !important; margin-left: 15px !important; float: right !important; position: relative !important; z-index: 99999 !important; margin-top: 5px !important;`;
+        } else {
+            header.appendChild(alert);
+            alert.style.cssText = `display: inline-flex !important; align-items: center !important; margin-left: 10px !important; order: 2 !important; z-index: 99999 !important; pointer-events: auto !important;`;
+            const mob = navigator.userAgent.includes('PDA') || window.innerWidth < 768 || document.documentElement.classList.contains('tornPDA');
+            if (mob) { alert.style.fontSize = '10px'; alert.style.padding = '3px 6px'; alert.style.marginLeft = '5px'; }
+            if (header.id === 'torn-booster-fixed-header') { alert.style.margin = '0'; alert.style.marginLeft = '5px'; }
+        }
+    }
+
+    // Removes UI elements managed by this script, EXCEPT the quick use panel
+    function removeExistingAlertsAndGui() {
+        const alertBtn = document.querySelector('.booster-alert'); if (alertBtn) alertBtn.remove();
+        const mainGui = document.getElementById('boosterGui'); if (mainGui) mainGui.remove();
+        const custUi = document.getElementById('booster-customization-ui'); if (custUi) custUi.remove();
+        const addUi = document.getElementById('add-boosters-ui'); if (addUi) addUi.remove();
+        const notifications = document.querySelectorAll('.booster-notification'); notifications.forEach(n => n.remove());
+        if (alertElements) alertElements = null; // Reset reference if it pointed to the removed elements
+        // debugLog('Removed main booster alert/GUI and customization popups');
+    }
+    // --- End Helper Functions ---
+
+    // --- Styles ---
+    GM_addStyle(`
+        /* --- Base Styles --- */
+        .booster-alert { background-color: #2196F3; color: white; padding: 5px 10px; border-radius: 3px; font-weight: bold; cursor: pointer; margin-left: 15px; display: inline-flex; align-items: center; font-size: 12px; }
+        .settings-section { margin-top: 15px; margin-bottom: 15px; padding: 10px; background-color: #333; border-radius: 5px; border: 1px solid #444; }
+        .settings-toggle { display: flex; align-items: center; margin-bottom: 8px; }
+        .settings-toggle label { margin-left: 8px; cursor: pointer; color: white; }
+        .booster-gui { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #222; color: white; padding: 20px; border-radius: 8px; z-index: 99999999; width: 90vw; max-width: 500px; max-height: 80vh; overflow-y: auto; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.7); border: 1px solid #444; box-sizing: border-box; }
+        .booster-gui h3 { margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 10px; }
+        .booster-search { width: 100%; padding: 8px; margin: 10px 0; border: 1px solid #444; background-color: #333; color: white; border-radius: 3px; box-sizing: border-box; }
+        .booster-search::placeholder { color: #aaa; }
+        .category-header { margin-top: 15px; margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px solid #333; font-weight: bold; color: #4CAF50; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .toggle-category { background-color: #333; color: white; border: 1px solid #444; border-radius: 3px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; font-size: 14px; }
+        .booster-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-top: 5px; }
+        .booster-item { background-color: #333; padding: 12px; border-radius: 5px; text-align: center; cursor: pointer; transition: background-color 0.2s; font-size: 13px; font-weight: bold; word-wrap: break-word; }
+        .energy-item { border-left: 3px solid #4CAF50; }
+        .nerve-item { border-left: 3px solid #F44336; }
+        .happy-item { border-left: 3px solid #FFEB3B; color: #333; }
+        .stat-item { border-left: 3px solid #2196F3; }
+        .booster-item:hover { background-color: #444; }
+        .booster-notification { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 15px 20px; border-radius: 5px; color: white; z-index: 999999; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4); opacity: 1; transition: opacity 0.5s, transform 0.3s ease-out; text-align: center; min-width: 250px; max-width: 80%; pointer-events: none; }
+        .booster-notification.success { background-color: rgba(76, 175, 80, 0.9); border: 1px solid #4CAF50; }
+        .booster-notification.error { background-color: rgba(244, 67, 54, 0.9); border: 1px solid #f44336; }
+        .booster-notification.info { background-color: rgba(33, 150, 243, 0.9); border: 1px solid #2196F3; }
+
+        /* --- Quick Use Styles (Booster Specific) --- */
+        .booster-quick-use-container { position: fixed; right: 20px; background-color: rgba(34, 34, 34, 0.8); padding: 10px; border-radius: 5px; z-index: 9998; display: flex; flex-direction: column; gap: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); transition: top 0.3s ease, padding 0.3s ease; }
+        .booster-quick-button { /* color set dynamically */ border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-weight: bold; margin-bottom: 5px; text-align: center; transition: background-color 0.2s, filter 0.2s; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .booster-quick-button:hover { filter: brightness(1.2); }
+        .booster-settings-button { background-color: #555; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-weight: bold; margin-top: 5px; text-align: center; font-size: 12px; transition: background-color 0.2s; }
+        .booster-settings-button:hover { background-color: #666; }
+        .booster-quick-use-toggle-button { position: absolute; top: -8px; right: -8px; background-color: #2196F3; color: white; border: none; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 10px; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.5); z-index: 1; }
+        #booster-customization-ui, #add-boosters-ui { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #222; color: white; padding: 20px; border-radius: 8px; z-index: 9999998; width: 90vw; max-width: 400px; max-height: 70vh; overflow-y: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.7); border: 1px solid #444; box-sizing: border-box; }
+        #booster-customization-ui h3, #add-boosters-ui h3 { margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 10px; }
+        #booster-customization-ui p { margin-bottom: 15px; font-size: 14px; }
+        .booster-selection-area, .add-booster-list-container { margin-bottom: 15px; border: 1px solid #444; border-radius: 5px; padding: 10px; max-height: 250px; overflow-y: auto; }
+        .booster-selection-item, .add-booster-item { display: flex; align-items: center; padding: 8px; margin-bottom: 5px; background-color: #333; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; }
+        .booster-selection-item span:first-of-type { margin-right: 10px; cursor: move; user-select: none; }
+        .booster-selection-item input[type="checkbox"], .add-booster-item input[type="checkbox"] { margin-right: 10px; }
+        .booster-selection-item span:nth-of-type(2), .add-booster-item span { flex-grow: 1; }
+        .booster-selection-item input[type="color"] { width: 25px; height: 25px; border: none; background: none; cursor: pointer; vertical-align: middle; margin-left: 10px; padding: 0; }
+        .booster-customization-button { background-color: #4CAF50; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex-grow: 1; margin: 0 5px; transition: background-color 0.2s; font-size: 13px; }
+        .booster-customization-button.cancel { background-color: #777; }
+        .booster-customization-button.add { width: 100%; margin-bottom: 15px; box-sizing: border-box; }
+        .booster-customization-button:hover { filter: brightness(1.1); }
+        .booster-customization-button-container { display: flex; justify-content: space-between; margin-top: 10px; }
+        #add-boosters-ui input[type="text"] { width: 100%; padding: 8px; margin-bottom: 10px; background-color: #333; border: 1px solid #444; border-radius: 4px; color: white; box-sizing: border-box; }
+        .add-booster-item.selected { background-color: #444; }
+        .add-boosters-button-container { display: flex; justify-content: flex-end; margin-top: 10px; }
+        .add-boosters-done-button { background-color: #4CAF50; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; font-size: 13px; }
+        .add-boosters-done-button:hover { filter: brightness(1.1); }
+    `);
+    // --- End Styles ---
+
+
+    // --- Main Alert & GUI Functions ---
     function createAlert() {
         let header = findHeader();
+        // Clean up previous alert/GUI elements specifically managed by this function
+        const existingAlert = document.querySelector('.booster-alert'); if (existingAlert) existingAlert.remove();
+        const existingGui = document.getElementById('boosterGui'); if (existingGui) existingGui.remove();
+        alertElements = null; // Reset reference
 
-        if (!header) {
-            header = createFixedHeader();
-        }
-
-        // Always remove existing alert and GUI
-        removeExistingAlerts(); // Use the dedicated function
-
-        // Create alert button
-        const alert = document.createElement('div');
-        alert.className = 'booster-alert';
-        alert.textContent = 'No Boosters';
-        alert.style.cursor = 'pointer';
-        alert.style.backgroundColor = '#2196F3';
-
-        // Position the alert
+        const alert = document.createElement('div'); alert.className = 'booster-alert'; alert.textContent = 'No Boosters'; alert.style.cursor = 'pointer'; alert.style.backgroundColor = '#2196F3';
         positionBoosterAlert(alert, header);
 
-        // Check if we're on the correct pages
         const isItemsPage = window.location.href.includes('torn.com/item.php');
-        const isFactionArmouryBoostersPage = window.location.href.includes('factions.php') &&
-                                             window.location.href.includes('armoury') &&
-                                            (window.location.href.includes('sub=boosters') ||
-                                             window.location.href.includes('tab=armoury'));
-        const isOtherFactionPage = window.location.href.includes('factions.php') &&
-                                   (!window.location.href.includes('armoury') ||
-                                    (!window.location.href.includes('sub=boosters') &&
-                                     !window.location.href.includes('tab=armoury')));
+        const isFactionArmouryBoostersPage = window.location.href.includes('factions.php') && window.location.href.includes('armoury') && (window.location.href.includes('sub=boosters') || window.location.href.includes('tab=armoury'));
+        // debugLog(`Page check - Items: ${isItemsPage}, Faction Armoury Boosters: ${isFactionArmouryBoostersPage}`);
 
-        debugLog(`Page check - Items: ${isItemsPage}, Faction Armoury Boosters: ${isFactionArmouryBoostersPage}, Other Faction: ${isOtherFactionPage}`);
-
-        // Create GUI only if on the appropriate page
-        let gui = null;
-        // Create GUI regardless of page, but only show it when needed
-        gui = document.createElement('div');
-        gui.className = 'booster-gui';
-        gui.id = 'boosterGui';
-        gui.innerHTML = `
-            <h3>Take Boosters</h3>
-            <div class="settings-section">
-                <div class="settings-toggle">
-                    <input type="checkbox" id="useFactionBoosters" ${useFactionBoosters ? 'checked' : ''}>
-                    <label for="useFactionBoosters">Use Faction Armoury Boosters</label>
-                </div>
-            </div>
-            <input type="text" class="booster-search" placeholder="Search boosters...">
-
-            <div class="category-header energy-header" data-category="energy">
-                <span>Energy Boosters</span>
-                <button class="toggle-category">-</button>
-            </div>
-            <div class="booster-list energy-list"></div>
-
-            <div class="category-header nerve-header" data-category="nerve">
-                <span>Nerve Boosters</span>
-                <button class="toggle-category">-</button>
-            </div>
-            <div class="booster-list nerve-list"></div>
-
-            <div class="category-header happy-header" data-category="happy">
-                <span>Happy Boosters</span>
-                <button class="toggle-category">-</button>
-            </div>
-            <div class="booster-list happy-list"></div>
-
-            <div class="category-header statEnhancers-header" data-category="statEnhancers">
-                <span>Stat Enhancers</span>
-                <button class="toggle-category">-</button>
-            </div>
-            <div class="booster-list statEnhancers-list"></div>
-        `;
-
-        document.body.appendChild(gui);
-
-        // Add event listener for faction boosters checkbox
-        const factionBoostersCheckbox = gui.querySelector('#useFactionBoosters');
-        if (factionBoostersCheckbox) {
-            factionBoostersCheckbox.addEventListener('change', function() {
-                useFactionBoosters = this.checked;
-                localStorage.setItem('useFactionBoosters', useFactionBoosters);
-                debugLog(`Using faction boosters set to: ${useFactionBoosters}`);
-
-                // Update UI immediately if needed
-                showNotification(`${useFactionBoosters ? 'Using faction armoury boosters' : 'Using personal inventory boosters'}`, 'info');
-
-                // Close GUI since the booster source changed
-                gui.style.display = 'none';
-
-                // Recreate alert with new settings (optional, could just update state)
-                // removeExistingAlerts();
-                // alertElements = createAlert(); // This might cause flicker, consider just updating state
-            });
+        let gui = document.getElementById('boosterGui');
+        if (!gui) {
+            gui = document.createElement('div'); gui.className = 'booster-gui'; gui.id = 'boosterGui';
+            gui.innerHTML = `<h3>Take Boosters</h3><div class="settings-section"><div class="settings-toggle"><input type="checkbox" id="useFactionBoosters" ${useFactionBoosters ? 'checked' : ''}><label for="useFactionBoosters">Use Faction Armoury Boosters</label></div></div><input type="text" class="booster-search" placeholder="Search boosters..."><div class="category-header energy-header" data-category="energy"><span>Energy Boosters</span><button class="toggle-category">-</button></div><div class="booster-list energy-list"></div><div class="category-header nerve-header" data-category="nerve"><span>Nerve Boosters</span><button class="toggle-category">-</button></div><div class="booster-list nerve-list"></div><div class="category-header happy-header" data-category="happy"><span>Happy Boosters</span><button class="toggle-category">-</button></div><div class="booster-list happy-list"></div><div class="category-header statEnhancers-header" data-category="statEnhancers"><span>Stat Enhancers</span><button class="toggle-category">-</button></div><div class="booster-list statEnhancers-list"></div>`;
+            document.body.appendChild(gui);
+            // Setup GUI listeners and content
+            const factionBoostersCheckbox = gui.querySelector('#useFactionBoosters'); if (factionBoostersCheckbox) { factionBoostersCheckbox.addEventListener('change', function() { useFactionBoosters = this.checked; localStorage.setItem('useFactionBoosters', useFactionBoosters); showNotification(`${useFactionBoosters ? 'Using faction armoury boosters' : 'Using personal inventory boosters'}`, 'info'); gui.style.display = 'none'; }); }
+            const searchInput = gui.querySelector('.booster-search'); searchInput.addEventListener('input', function() { const term = this.value.toLowerCase(); gui.querySelectorAll('.booster-item').forEach(item => { const name = item.getAttribute('data-name').toLowerCase(); item.style.display = (term === '' || name.includes(term)) ? 'block' : 'none'; }); Object.keys(BOOSTERS).forEach(cat => { const h = gui.querySelector(`.${cat}-header`); const l = gui.querySelector(`.${cat}-list`); const vis = Array.from(l.querySelectorAll('.booster-item')).filter(i => i.style.display !== 'none').length; h.style.display = vis > 0 ? 'flex' : 'none'; const min = localStorage.getItem(`boosterCategory_${cat}`) === 'minimized'; l.style.display = (vis > 0 && !min) ? 'grid' : 'none'; }); });
+            function setupCategoryToggles() { Object.keys(BOOSTERS).forEach(cat => { const h = gui.querySelector(`.${cat}-header`); const l = gui.querySelector(`.${cat}-list`); const btn = h.querySelector('.toggle-category'); const min = localStorage.getItem(`boosterCategory_${cat}`) === 'minimized'; l.style.display = min ? 'none' : 'grid'; btn.textContent = min ? '+' : '-'; h.addEventListener('click', (e) => { if (e.target === h || e.target === btn || e.target === h.querySelector('span')) { toggleCategory(cat, l, btn); } }); }); }
+            function toggleCategory(cat, list, btn) { const vis = list.style.display !== 'none'; if (vis) { list.style.display = 'none'; btn.textContent = '+'; localStorage.setItem(`boosterCategory_${cat}`, 'minimized'); } else { list.style.display = 'grid'; btn.textContent = '-'; localStorage.setItem(`boosterCategory_${cat}`, 'expanded'); } }
+            populateBoosterList(gui.querySelector('.energy-list'), BOOSTERS.energy, 'energy-item'); populateBoosterList(gui.querySelector('.nerve-list'), BOOSTERS.nerve, 'nerve-item'); populateBoosterList(gui.querySelector('.happy-list'), BOOSTERS.happy, 'happy-item'); populateBoosterList(gui.querySelector('.statEnhancers-list'), BOOSTERS.statEnhancers, 'stat-item'); setupCategoryToggles();
+            document.addEventListener('click', function(e) { if (gui && gui.style.display === 'block' && !gui.contains(e.target) && !alert.contains(e.target)) { gui.style.display = 'none'; } });
         }
 
-        // Add search functionality
-        const searchInput = gui.querySelector('.booster-search');
-        searchInput.addEventListener('input', function() {
-            const searchTerm = this.value.toLowerCase();
-            const allBoosterItems = gui.querySelectorAll('.booster-item');
-
-            allBoosterItems.forEach(item => {
-                const boosterName = item.getAttribute('data-name').toLowerCase();
-                if (searchTerm === '' || boosterName.includes(searchTerm)) {
-                    item.style.display = 'block'; // Use block or grid depending on list style
-                } else {
-                    item.style.display = 'none';
-                }
-            });
-
-            // Show/hide category headers based on visible items
-            const categories = ['energy', 'nerve', 'happy', 'statEnhancers'];
-            categories.forEach(category => {
-                const categoryHeader = gui.querySelector(`.${category}-header`);
-                const categoryList = gui.querySelector(`.${category}-list`); // Get the list container
-                const categoryItems = categoryList.querySelectorAll('.booster-item');
-                const visibleItems = Array.from(categoryItems).filter(item => item.style.display !== 'none');
-
-                if (visibleItems.length === 0) {
-                    categoryHeader.style.display = 'none';
-                    categoryList.style.display = 'none'; // Hide the list too if empty
-                } else {
-                    categoryHeader.style.display = 'flex'; // Changed to flex for the new layout
-                    // Only show the list if it's not manually collapsed
-                    const isMinimized = localStorage.getItem(`boosterCategory_${category}`) === 'minimized';
-                    if (!isMinimized) {
-                         categoryList.style.display = 'grid'; // Show the list (assuming grid layout)
-                    }
-                }
-            });
-        });
-
-        // Add category toggle functionality
-        function setupCategoryToggles() {
-            const categories = ['energy', 'nerve', 'happy', 'statEnhancers'];
-
-            categories.forEach(category => {
-                const header = gui.querySelector(`.${category}-header`);
-                const list = gui.querySelector(`.${category}-list`);
-                const toggleBtn = header.querySelector('.toggle-category');
-
-                // Load saved state
-                const isMinimized = localStorage.getItem(`boosterCategory_${category}`) === 'minimized';
-                if (isMinimized) {
-                    list.style.display = 'none';
-                    toggleBtn.textContent = '+';
-                } else {
-                    list.style.display = 'grid'; // Ensure expanded by default if not minimized
-                    toggleBtn.textContent = '-';
-                }
-
-                // Toggle on header click
-                header.addEventListener('click', function(e) {
-                    // Only toggle if clicking the header itself or the toggle button
-                    if (e.target === header || e.target === toggleBtn || e.target === header.querySelector('span')) {
-                        toggleCategory(category, list, toggleBtn);
-                    }
-                });
-            });
-        }
-
-        function toggleCategory(category, listElement, toggleBtn) {
-            const isCurrentlyVisible = listElement.style.display !== 'none';
-
-            if (isCurrentlyVisible) {
-                // Minimize
-                listElement.style.display = 'none';
-                toggleBtn.textContent = '+';
-                localStorage.setItem(`boosterCategory_${category}`, 'minimized');
-            } else {
-                // Expand
-                listElement.style.display = 'grid'; // Use grid display when expanding
-                toggleBtn.textContent = '-';
-                localStorage.setItem(`boosterCategory_${category}`, 'expanded');
-            }
-        }
-
-        // Populate booster lists by category
-        populateBoosterList(gui.querySelector('.energy-list'), BOOSTERS.energy, 'energy-item');
-        populateBoosterList(gui.querySelector('.nerve-list'), BOOSTERS.nerve, 'nerve-item');
-        populateBoosterList(gui.querySelector('.happy-list'), BOOSTERS.happy, 'happy-item');
-        populateBoosterList(gui.querySelector('.statEnhancers-list'), BOOSTERS.statEnhancers, 'stat-item');
-
-        // Setup toggles after populating lists
-        setupCategoryToggles(); // Call it directly now
-
-        // Add click outside to close
-        document.addEventListener('click', function(e) {
-            if (gui.style.display === 'block' && !gui.contains(e.target) && !alert.contains(e.target)) {
-                gui.style.display = 'none';
-            }
-        });
-
-
-        // Add click handler based on page context
         alert.onclick = function(event) {
-            debugLog(`Alert clicked. Items page: ${isItemsPage}, Faction armoury boosters page: ${isFactionArmouryBoostersPage}, Other faction page: ${isOtherFactionPage}, Using faction boosters: ${useFactionBoosters}`);
+            // debugLog(`Alert clicked. Items page: ${isItemsPage}, Faction armoury boosters page: ${isFactionArmouryBoostersPage}, Using faction boosters: ${useFactionBoosters}`);
             event.stopPropagation();
-
+            const currentGui = document.getElementById('boosterGui');
             if ((isItemsPage && !useFactionBoosters) || (isFactionArmouryBoostersPage && useFactionBoosters)) {
-                // If on the correct page, show the GUI
-                debugLog('Showing GUI on appropriate page');
-                // showNotification('Opening booster selection', 'info'); // Optional notification
-                gui.style.display = gui.style.display === 'block' ? 'none' : 'block'; // Toggle display
-                void gui.offsetWidth; // Force reflow
-            } else if (isOtherFactionPage && useFactionBoosters) {
-                // If on a faction page but not the armoury boosters page and using faction boosters
-                debugLog('Already on faction page but need to navigate to armoury boosters sub-page');
-                const targetUrl = 'https://www.torn.com/factions.php?step=your#/tab=armoury&start=0&sub=boosters';
-                sessionStorage.setItem('fromBoosterAlert', 'true');
-                showNotification('Navigating to faction armoury boosters page...', 'info');
-                window.location.href = targetUrl;
+                if (currentGui) { currentGui.style.display = currentGui.style.display === 'block' ? 'none' : 'block'; void currentGui.offsetWidth; }
+                else { debugLog("GUI not found on alert click, attempting to recreate."); alertElements = createAlert(); if (alertElements && alertElements.gui) alertElements.gui.style.display = 'block'; }
             } else {
-                // If not on the correct page, navigate to the appropriate page
-                const targetUrl = useFactionBoosters
-                    ? 'https://www.torn.com/factions.php?step=your#/tab=armoury&start=0&sub=boosters'
-                    : 'https://www.torn.com/item.php';
-
-                debugLog(`Navigating to ${targetUrl}`);
-                // Store a flag so we know to open the GUI when we arrive at the page
-                sessionStorage.setItem('fromBoosterAlert', 'true');
-                showNotification(`Navigating to ${useFactionBoosters ? 'faction armoury' : 'items'} page...`, 'info');
-                window.location.href = targetUrl;
+                const targetUrl = useFactionBoosters ? 'https://www.torn.com/factions.php?step=your#/tab=armoury&start=0&sub=boosters' : 'https://www.torn.com/item.php';
+                sessionStorage.setItem('fromBoosterAlert', 'true'); showNotification(`Navigating to ${useFactionBoosters ? 'faction armoury' : 'items'} page...`, 'info'); window.location.href = targetUrl;
             }
-
             return false;
         };
-
         return { alert, gui };
-    }
+     }
 
     function populateBoosterList(container, boosters, className) {
-        container.innerHTML = ''; // Clear previous items
-        boosters.forEach(booster => {
-            const boosterItem = document.createElement('div');
-            boosterItem.className = `booster-item ${className}`;
-            boosterItem.setAttribute('data-name', booster.name);
-            boosterItem.setAttribute('data-id', booster.id);
-
-            // Add effect info for other boosters
-            if (booster.effect) {
-                boosterItem.textContent = `${booster.name} (${booster.effect})`;
-            } else {
-                boosterItem.textContent = booster.name;
-            }
-
-            boosterItem.onclick = () => {
-                useBooster(booster.id, booster.name);
-                const gui = document.getElementById('boosterGui');
-                if (gui) gui.style.display = 'none';
-            };
-
-            container.appendChild(boosterItem);
-        });
+        container.innerHTML = ''; boosters.forEach(booster => { const item = document.createElement('div'); item.className = `booster-item ${className}`; item.setAttribute('data-name', booster.name); item.setAttribute('data-id', booster.id); item.textContent = booster.effect ? `${booster.name} (${booster.effect})` : booster.name; item.onclick = () => { useBooster(booster.id, booster.name); const g = document.getElementById('boosterGui'); if (g) g.style.display = 'none'; }; container.appendChild(item); });
     }
-
-    function useBooster(id, name) {
-        debugLog(`Attempting to use booster: ${name} (ID: ${id}), Using faction boosters: ${useFactionBoosters}`);
-        showNotification(`Using ${name}...`, 'info');
-
-        // Close GUI if open
-        const gui = document.getElementById('boosterGui');
-        if (gui) {
-            gui.style.display = 'none';
-        }
-
-        if (useFactionBoosters) {
-            tryFactionBoosterUseMethod(id, name);
-        } else {
-            tryDirectUseMethod(id, name);
-        }
-    }
-
-    function tryDirectUseMethod(id, name) {
-        debugLog('Attempting direct use method with XMLHttpRequest');
-
-        // Store booster use data for tracking
-        sessionStorage.setItem('boosterUseInProgress', JSON.stringify({
-            id: id,
-            name: name,
-            timestamp: Date.now(),
-            method: 'direct'
-        }));
-
-        // Use the item directly via XHR
-        useItemDirectly(id, name);
-    }
-
-    function useItemDirectly(id, name) {
-        debugLog(`Using item directly: ${name} (ID: ${id})`);
-
-        const token = getNSTStyleToken();
-        if (token) {
-            debugLog(`Using NST-style token: ${token.substring(0, 4)}...${token.substring(token.length - 4)}`);
-            submitBoosterUseRequest(id, name, token);
-        } else {
-            debugLog('No token found via NST method, trying backup methods');
-
-            const pageToken = getPageCsrfToken();
-            if (pageToken) {
-                debugLog(`Using page token: ${pageToken.substring(0, 4)}...${pageToken.substring(pageToken.length - 4)}`);
-                submitBoosterUseRequest(id, name, pageToken);
-                return;
-            }
-
-            debugLog('Failed to get token from any source');
-            showNotification(`Unable to use ${name}: Could not get authorization token`, 'error');
-            sessionStorage.removeItem('boosterUseInProgress');
-        }
-    }
-
-    function tryFactionBoosterUseMethod(id, name) {
-        debugLog(`Attempting faction armoury booster use for ${name} (ID: ${id})`);
-
-        sessionStorage.setItem('boosterUseInProgress', JSON.stringify({
-            id: id,
-            name: name,
-            timestamp: Date.now(),
-            method: 'faction'
-        }));
-
-        if (!window.location.href.includes('factions.php') ||
-            !window.location.href.includes('armoury') ||
-            (!window.location.href.includes('sub=boosters') && !window.location.href.includes('tab=armoury'))) {
-            debugLog('Not on faction armoury page, need to navigate manually');
-            showNotification(`Please navigate to faction armoury first to use ${name}`, 'info');
-
-            // Store pending use data for after navigation
-            sessionStorage.setItem('pendingFactionBoosterUse', JSON.stringify({
-                id: id,
-                name: name
-            }));
-
-            // Navigate to faction armoury boosters page
-            window.location.href = 'https://www.torn.com/factions.php?step=your#/tab=armoury&start=0&sub=boosters';
-            return;
-        }
-
-        const token = getNSTStyleToken();
-        if (!token) {
-            const pageToken = getPageCsrfToken();
-            if (!pageToken) {
-                debugLog('No CSRF token found for faction booster via any method');
-                showNotification('Unable to use faction booster: Authorization token not found', 'error');
-                sessionStorage.removeItem('boosterUseInProgress');
-                return;
-            }
-
-            debugLog(`Using page token for faction booster: ${pageToken.substring(0, 4)}...${pageToken.substring(pageToken.length - 4)}`);
-
-            // Try both methods with a small timeout between
-            tryBothFactionBoosterMethods(id, name, pageToken);
-        } else {
-            debugLog(`Using NST-style token for faction booster: ${token.substring(0, 4)}...${token.substring(token.length - 4)}`);
-
-            // Try both methods with a small timeout between
-            tryBothFactionBoosterMethods(id, name, token);
-        }
-    }
-
-    function tryBothFactionBoosterMethods(id, name, token) {
-        // First, try using the item directly with the simpler API
-        debugLog('Trying direct faction booster use method first');
-        useFactionBoosterById(id, name, token);
-
-        // As a backup, also try the armoryItemID approach after a short delay
-        setTimeout(() => {
-            // Only proceed if we're still in a booster use attempt
-            if (sessionStorage.getItem('boosterUseInProgress')) {
-                debugLog('Direct method may not have succeeded, trying traditional method');
-                useFactionBoosterDirectly(id, name); // Note: This will fetch token again, might be redundant but safer
-            }
-        }, 2000);
-    }
-
-    function useFactionBoosterById(id, name, token) {
-        debugLog(`Directly using faction booster with ID: ${id}`);
-
-        const params = new URLSearchParams();
-        params.append('step', 'useItem');
-        params.append('confirm', 'yes');
-        params.append('itemID', id);
-        params.append('fac', '1'); // Flag to indicate faction item
-        params.append('csrf', token);
-
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', 'https://www.torn.com/item.php', true);
-        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-
-        xhr.onload = function() {
-            let boosterUsedSuccessfully = false;
-            if (this.status === 200) {
-                try {
-                    // First try parsing as JSON
-                    try {
-                        const response = JSON.parse(this.responseText);
-
-                        if (response && (response.success || (response.message && response.message.includes('consumed')))) {
-                            debugLog('Faction booster used successfully via direct method (JSON)');
-                            boosterUsedSuccessfully = true;
-                        } else if (response.error || response.message) {
-                            const errorMessage = response.error || response.message;
-                            debugLog('Direct method returned error (JSON):', errorMessage);
-                            showNotification(`Error: ${errorMessage}`, 'error');
-                            sessionStorage.removeItem('boosterUseInProgress'); // Clear progress on error
-                            return; // Stop processing
-                        }
-                    } catch (parseError) {
-                        // If not JSON, check text response
-                        debugLog('Direct method response is not JSON, checking text');
-                        const responseText = this.responseText || '';
-                        if (responseText.includes('success') || responseText.includes('used') || responseText.includes('consumed')) {
-                            debugLog('Found success in text response from direct method');
-                            boosterUsedSuccessfully = true;
-                        } else if (responseText.includes('cooldown') || responseText.includes('wait') || responseText.includes('effect of a booster')) {
-                            const timeMatches = responseText.match(/(\d+)m\s+(\d+)s|(\d+)\s+seconds|(\d+)\s+minutes/);
-                            let cooldownMessage = 'You are on booster cooldown';
-                            if (timeMatches) {
-                                // ... [cooldown message formatting logic] ...
-                                if (timeMatches[1] && timeMatches[2]) cooldownMessage = `Booster Cooldown: ${timeMatches[1]}m ${timeMatches[2]}s remaining`;
-                                else if (timeMatches[3]) cooldownMessage = `Booster Cooldown: 0m ${timeMatches[3]}s remaining`;
-                                else if (timeMatches[4]) cooldownMessage = `Booster Cooldown: ${timeMatches[4]}m 0s remaining`;
-                            }
-                            showNotification(cooldownMessage, 'info');
-                            sessionStorage.removeItem('boosterUseInProgress'); // Clear progress on cooldown
-                            return; // Stop processing
-                        } else {
-                            debugLog('Direct method gave unclear text response:', responseText.substring(0, 100) + '...');
-                            // Don't clear progress yet, let the other method try
-                        }
-                    }
-                } catch (e) {
-                    debugLog('Error processing direct method response:', e);
-                    // Don't clear progress yet, let the other method try
-                }
-            } else {
-                debugLog('Direct method request failed with status:', this.status);
-                // Don't clear progress yet, let the other method try
-            }
-
-            if (boosterUsedSuccessfully) {
-                showNotification(`Used ${name} from faction armoury successfully!`, 'success');
-                sessionStorage.removeItem('boosterUseInProgress'); // Clear progress on success
-                // Optionally trigger cooldown check immediately
-                setTimeout(startCooldownChecks, 500);
-            }
-        };
-
-        xhr.onerror = function() {
-            debugLog('Direct method request failed with network error');
-            // Don't clear progress yet, let the other method try
-        };
-
-        xhr.send(params.toString());
-    }
-
-    function useFactionBoosterDirectly(id, name) {
-        debugLog(`Using faction booster via armoury (traditional): ${name} (ID: ${id})`);
-
-        const token = getNSTStyleToken() || getPageCsrfToken(); // Get token again just in case
-        if (!token) {
-            debugLog('No CSRF token found for traditional faction booster method');
-            showNotification('Unable to use faction booster: Authorization token not found', 'error');
-            sessionStorage.removeItem('boosterUseInProgress');
-            return;
-        }
-        debugLog(`Using token for traditional method: ${token.substring(0, 4)}...`);
-        useFactionBoosterWithToken(id, name, token);
-    }
-
-
-    function useFactionBoosterWithToken(id, name, token) {
-        let armouryItemID = null;
-
-        // Try to find the armouryItemID in the page
-        const boosterItems = document.querySelectorAll('#armoury-boosters ul.item-list li, #faction-armoury .boosters-wrap .item, div[class*="armory"] div[class*="boosters"] div[class*="item"]');
-        debugLog(`Traditional faction armoury search found ${boosterItems.length} potential items`);
-
-        // --- Logic to find armouryItemID based on name and action links ---
-        // (This complex DOM searching logic remains the same)
-        for (const item of boosterItems) {
-            const nameElements = [
-                item.querySelector('.name, .title, .item-name, .name-wrap .t-overflow, [class*="name"], [class*="title"]'),
-                item.querySelector('div[class*="name"], div[class*="title"], span[class*="name"], span[class*="title"]'),
-                ...item.querySelectorAll('*') // Wider search within the item
-            ];
-
-            for (const nameElement of nameElements) {
-                if (!nameElement || !nameElement.textContent) continue;
-
-                const itemName = nameElement.textContent.trim();
-                // Use includes for more flexible matching
-                if (itemName && (itemName.toLowerCase().includes(name.toLowerCase()) || name.toLowerCase().includes(itemName.toLowerCase()))) {
-                    debugLog(`Found matching booster name: "${itemName}"`);
-
-                    const actionLinks = [
-                        item.querySelector('div.item-action a, .actions a, a[class*="action"], button[class*="action"]'),
-                        item.querySelector('a[href*="armoryItemID="], a[href*="step=armoryItemAction"]'),
-                        item.querySelector('a.t-blue, a.t-blue-cont'),
-                        ...item.querySelectorAll('a[class*="use"], button[class*="use"], a.act-use, div.use, span.use, [data-action="use"]') // Added data-action
-                    ];
-
-                    for (const actionLink of actionLinks) {
-                         if (!actionLink) continue;
-
-                        let match = null;
-                        let potentialId = null;
-
-                        // Check href
-                        if (actionLink.href) {
-                            debugLog(`Checking action link href: ${actionLink.href}`);
-                            match = actionLink.href.match(/armoryItemID=(\d+)/) || actionLink.href.match(/itemID=(\d+)/);
-                            if (match) potentialId = match[1];
-                        }
-
-                        // Check onclick
-                        if (!potentialId && actionLink.getAttribute('onclick')) {
-                            const onclick = actionLink.getAttribute('onclick');
-                            match = onclick.match(/armoryItemAction\((\d+)/) || onclick.match(/useItem\((\d+)/) || onclick.match(/(\d+)/); // Look for function calls or just numbers
-                             if (match) potentialId = match[1];
-                        }
-
-                        // Check data attributes
-                        if (!potentialId && actionLink.dataset) {
-                            for (const key in actionLink.dataset) {
-                                if (key.toLowerCase().includes('id') || key.toLowerCase().includes('itemid') || key.toLowerCase().includes('armory')) {
-                                    debugLog(`Found potential ID in data attribute ${key}: ${actionLink.dataset[key]}`);
-                                    const value = actionLink.dataset[key];
-                                    if (/^\d+$/.test(value)) {
-                                        potentialId = value;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-
-                        if (potentialId) {
-                            armouryItemID = potentialId;
-                            debugLog(`Found armouryItemID: ${armouryItemID}`);
-                            break; // Found ID for this item name
-                        }
-                    }
-                    if (armouryItemID) break; // Found ID for this item name
-                }
-            }
-            if (armouryItemID) break; // Found ID, exit outer loop
-        }
-        // --- End of armouryItemID finding logic ---
-
-
-        // If we couldn't find a matching item ID, use the provided ID as fallback
-        if (!armouryItemID) {
-            armouryItemID = id;
-            debugLog(`Using provided ID as fallback for traditional method: ${armouryItemID}`);
-        }
-
-        const params = new URLSearchParams();
-        params.append('step', 'armoryItemAction');
-        params.append('confirm', 'yes');
-        params.append('armoryItemID', armouryItemID);
-        params.append('action', 'use');
-        params.append('csrf', token);
-
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', 'https://www.torn.com/factions.php', true);
-        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-
-        xhr.onload = function() {
-            let boosterUsedSuccessfully = false;
-            if (this.status === 200) {
-                try {
-                    let response;
-                    try {
-                        response = JSON.parse(this.responseText);
-                        if (response && (response.success || (response.message && response.message.includes('used')))) {
-                            debugLog('Faction booster used successfully via traditional XHR (JSON)');
-                            boosterUsedSuccessfully = true;
-                        } else if (response && (response.text || response.message)) {
-                             const messageText = response.text || response.message || '';
-                             if (messageText.includes('cooldown') || messageText.includes('effect of a booster') || messageText.includes('wait')) {
-                                // ... [cooldown message formatting logic] ...
-                                const timeMatch = messageText.match(/data-time=\"(\d+)\"/) || messageText.match(/wait\s+(\d+)m\s+(\d+)s/) || messageText.match(/wait\s+(\d+)\s+seconds/) || messageText.match(/wait\s+(\d+)\s+minutes/);
-                                let cooldownMessage = 'You are on booster cooldown';
-                                let seconds = 0;
-                                if (timeMatch) {
-                                    if (timeMatch.length === 2 && /^\d+$/.test(timeMatch[1])) seconds = parseInt(timeMatch[1]); // data-time or seconds/minutes match
-                                    else if (timeMatch.length === 3) seconds = parseInt(timeMatch[1]) * 60 + parseInt(timeMatch[2]); // m s match
-                                }
-                                if (seconds > 0) {
-                                    const minutes = Math.floor(seconds / 60);
-                                    const remainingSeconds = seconds % 60;
-                                    cooldownMessage = `Booster Cooldown: ${minutes}m ${remainingSeconds}s remaining`;
-                                } else {
-                                    const tempDiv = document.createElement('div'); tempDiv.innerHTML = messageText;
-                                    cooldownMessage = (tempDiv.textContent || tempDiv.innerText || '').trim() || 'You are on booster cooldown';
-                                }
-                                showNotification(cooldownMessage, 'info');
-                                sessionStorage.removeItem('boosterUseInProgress'); // Clear on cooldown
-                                return;
-                             } else {
-                                 const tempDiv = document.createElement('div'); tempDiv.innerHTML = messageText;
-                                 const errorMessage = (tempDiv.textContent || tempDiv.innerText || '').trim() || 'Unknown error';
-                                 debugLog('Traditional XHR method returned error (JSON text):', errorMessage);
-                                 showNotification(`Error: ${errorMessage}`, 'error');
-                                 sessionStorage.removeItem('boosterUseInProgress'); // Clear on error
-                                 return;
-                             }
-                        } else {
-                             debugLog('Traditional XHR method returned unclear JSON:', response);
-                             showNotification('Error using faction booster: Unexpected JSON response', 'error');
-                             sessionStorage.removeItem('boosterUseInProgress'); // Clear on unclear error
-                             return;
-                        }
-
-                    } catch (parseError) {
-                        debugLog('Traditional response is not valid JSON, handling as HTML/text:', this.responseText.substring(0, 100) + '...');
-                        const successPattern = /used|consumed|taken|success/i;
-                        const cooldownPattern = /cooldown|wait|effect of a booster/i;
-
-                        if (successPattern.test(this.responseText)) {
-                            debugLog('Found success indicator in raw traditional response');
-                            boosterUsedSuccessfully = true;
-                        } else if (cooldownPattern.test(this.responseText)) {
-                            // ... [cooldown message formatting logic for raw text] ...
-                            const timeMatches = this.responseText.match(/(\d+)m\s+(\d+)s|(\d+)\s+seconds|(\d+)\s+minutes/);
-                            let cooldownMessage = 'You are on booster cooldown';
-                            if (timeMatches) {
-                                if (timeMatches[1] && timeMatches[2]) cooldownMessage = `Booster Cooldown: ${timeMatches[1]}m ${timeMatches[2]}s remaining`;
-                                else if (timeMatches[3]) cooldownMessage = `Booster Cooldown: 0m ${timeMatches[3]}s remaining`;
-                                else if (timeMatches[4]) cooldownMessage = `Booster Cooldown: ${timeMatches[4]}m 0s remaining`;
-                            }
-                            showNotification(cooldownMessage, 'info');
-                            sessionStorage.removeItem('boosterUseInProgress'); // Clear on cooldown
-                            return;
-                        } else {
-                            const errorMatch = this.responseText.match(/<[^>]*class=['"]error['"][^>]*>(.*?)<\/|Validation failed|Error:|not authorized/i);
-                            let errorMessage = 'Unexpected response format';
-                            if (errorMatch) {
-                                errorMessage = errorMatch[1] || 'Validation failed - please try again';
-                                if (errorMatch[0].includes('not authorized')) errorMessage = 'Not authorized to use faction boosters';
-                            }
-                            debugLog('Found error message in raw traditional response:', errorMessage);
-                            showNotification(`Error: ${errorMessage}`, 'error');
-                            sessionStorage.removeItem('boosterUseInProgress'); // Clear on error
-                            return;
-                        }
-                    }
-                } catch (e) {
-                    debugLog('Error parsing traditional XHR response:', e);
-                    showNotification('Error using faction booster: Response parsing error', 'error');
-                    sessionStorage.removeItem('boosterUseInProgress'); // Clear on parsing error
-                    return;
-                }
-            } else {
-                debugLog('Traditional XHR request failed with status:', this.status);
-                showNotification(`Error using faction booster: Request failed (${this.status})`, 'error');
-                sessionStorage.removeItem('boosterUseInProgress'); // Clear on request failure
-                return;
-            }
-
-            // Handle success if flag is set
-            if (boosterUsedSuccessfully) {
-                showNotification(`Used ${name} from faction armoury successfully!`, 'success');
-                sessionStorage.removeItem('boosterUseInProgress'); // Clear progress on success
-                // Optionally trigger cooldown check immediately
-                setTimeout(startCooldownChecks, 500);
-            }
-        };
-
-        xhr.onerror = function() {
-            debugLog('Traditional XHR request failed with network error');
-            showNotification('Error using faction booster: Network error', 'error');
-            sessionStorage.removeItem('boosterUseInProgress'); // Clear on network error
-        };
-
-        xhr.send(params.toString());
-    }
-
-
-    function submitBoosterUseRequest(id, name, token) {
-        const params = new URLSearchParams();
-        params.append('step', 'useItem');
-        params.append('confirm', 'yes');
-        params.append('itemID', id);
-        params.append('csrf', token);
-
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', 'https://www.torn.com/item.php', true);
-        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-
-        xhr.onload = function() {
-            let boosterUsedSuccessfully = false;
-            if (this.status === 200) {
-                try {
-                    const response = JSON.parse(this.responseText);
-
-                    if (response && (response.success || (response.message && response.message.includes('consumed')))) {
-                        debugLog('Personal booster used successfully via XHR');
-                        boosterUsedSuccessfully = true;
-                    } else if (response && (response.message || response.text)) {
-                        const messageText = response.message || response.text || '';
-                        if (messageText.includes('cooldown') || messageText.includes('effect of a booster') || messageText.includes('wait')) {
-                            debugLog('Personal booster is on cooldown');
-                            // ... [cooldown message formatting logic] ...
-                            let cooldownMessage = 'You are already on booster cooldown';
-                            let seconds = 0;
-                            const timeMatch = messageText.match(/data-time=\"(\d+)\"/) || messageText.match(/wait\s+(\d+)m\s+(\d+)s/) || messageText.match(/wait\s+(\d+)\s+seconds/) || messageText.match(/wait\s+(\d+)\s+minutes/);
-                            if (timeMatch) {
-                                if (timeMatch.length === 2 && /^\d+$/.test(timeMatch[1])) seconds = parseInt(timeMatch[1]);
-                                else if (timeMatch.length === 3) seconds = parseInt(timeMatch[1]) * 60 + parseInt(timeMatch[2]);
-                            }
-                            if (seconds > 0) {
-                                const minutes = Math.floor(seconds / 60);
-                                const remainingSeconds = seconds % 60;
-                                cooldownMessage = `Booster Cooldown: ${minutes}m ${remainingSeconds}s remaining`;
-                            } else {
-                                const tempDiv = document.createElement('div'); tempDiv.innerHTML = messageText;
-                                cooldownMessage = (tempDiv.textContent || tempDiv.innerText || '').trim() || 'You are on booster cooldown';
-                            }
-                            showNotification(cooldownMessage, 'info');
-                            sessionStorage.removeItem('boosterUseInProgress'); // Clear on cooldown
-                            return;
-                        } else {
-                            debugLog('Personal XHR method returned error:', messageText);
-                            showNotification(`Error: ${messageText || 'Unknown error'}`, 'error');
-                            sessionStorage.removeItem('boosterUseInProgress'); // Clear on error
-                            return;
-                        }
-                    } else {
-                         debugLog('Unexpected personal XHR response (JSON):', response);
-                         showNotification(`Unable to use ${name}: Unexpected response`, 'error');
-                         sessionStorage.removeItem('boosterUseInProgress'); // Clear on unexpected response
-                         return;
-                    }
-                } catch (e) {
-                    // Check raw text if JSON parsing fails
-                    const responseText = this.responseText || '';
-                     if (responseText.includes('success') || responseText.includes('used') || responseText.includes('consumed')) {
-                            debugLog('Found success in raw personal response text');
-                            boosterUsedSuccessfully = true;
-                    } else if (responseText.includes('cooldown') || responseText.includes('wait') || responseText.includes('effect of a booster')) {
-                            // ... [cooldown message formatting logic for raw text] ...
-                            const timeMatches = responseText.match(/(\d+)m\s+(\d+)s|(\d+)\s+seconds|(\d+)\s+minutes/);
-                            let cooldownMessage = 'You are on booster cooldown';
-                            if (timeMatches) {
-                                if (timeMatches[1] && timeMatches[2]) cooldownMessage = `Booster Cooldown: ${timeMatches[1]}m ${timeMatches[2]}s remaining`;
-                                else if (timeMatches[3]) cooldownMessage = `Booster Cooldown: 0m ${timeMatches[3]}s remaining`;
-                                else if (timeMatches[4]) cooldownMessage = `Booster Cooldown: ${timeMatches[4]}m 0s remaining`;
-                            }
-                            showNotification(cooldownMessage, 'info');
-                            sessionStorage.removeItem('boosterUseInProgress'); // Clear on cooldown
-                            return;
-                    } else {
-                        debugLog('Error parsing personal XHR response and raw text unclear:', e, responseText.substring(0,100));
-                        showNotification(`Unable to use ${name}: Response parsing error`, 'error');
-                        sessionStorage.removeItem('boosterUseInProgress'); // Clear on parsing error
-                        return;
-                    }
-                }
-            } else {
-                debugLog('Personal XHR request failed with status:', this.status);
-                showNotification(`Unable to use ${name}: Request failed (${this.status})`, 'error');
-                sessionStorage.removeItem('boosterUseInProgress'); // Clear on request failure
-                return;
-            }
-
-            // Handle success if flag is set
-            if (boosterUsedSuccessfully) {
-                showNotification(`Used ${name} successfully!`, 'success');
-                sessionStorage.removeItem('boosterUseInProgress'); // Clear progress on success
-                // Optionally trigger cooldown check immediately
-                setTimeout(startCooldownChecks, 500);
-            }
-        };
-
-        xhr.onerror = function() {
-            debugLog('Personal XHR request failed with network error');
-            showNotification(`Unable to use ${name}: Network error`, 'error');
-            sessionStorage.removeItem('boosterUseInProgress'); // Clear on network error
-        };
-
-        xhr.send(params.toString());
-    }
-
-
-    function showNotification(message, type = 'info') {
-        // Remove existing notifications first
-        const existingNotifications = document.querySelectorAll('.booster-notification');
-        existingNotifications.forEach(note => note.remove());
-
-        const notification = document.createElement('div');
-        notification.className = `booster-notification ${type}`;
-
-        // Sanitize message (basic HTML removal)
-        let cleanMessage = message;
-        if (typeof message === 'string' && message.includes('<') && message.includes('>')) {
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = message; // Let browser parse HTML
-            cleanMessage = tempDiv.textContent || tempDiv.innerText || message; // Extract text content
-        }
-
-        // Add specific styling for cooldown messages
-        if (cleanMessage.toLowerCase().includes('cooldown')) {
-            notification.innerHTML = `
-                <div style="font-weight: bold; margin-bottom: 5px; font-size: 16px;">Booster Cooldown Active</div>
-                <div>${cleanMessage}</div>
-            `;
-            notification.style.minWidth = '280px';
-            notification.style.padding = '15px 25px';
-        } else {
-            notification.textContent = cleanMessage;
-        }
-
-        document.body.appendChild(notification);
-
-        // Animation
-        notification.style.transform = 'translate(-50%, -50%) scale(0.9)';
-        notification.style.opacity = '0';
-        void notification.offsetWidth; // Force reflow
-
-        requestAnimationFrame(() => { // Use requestAnimationFrame for smoother animation start
-            notification.style.transform = 'translate(-50%, -50%) scale(1)';
-            notification.style.opacity = '1';
-        });
-
-
-        // Auto-hide
-        setTimeout(() => {
-             requestAnimationFrame(() => { // Use requestAnimationFrame for smoother fade out
-                notification.style.opacity = '0';
-                notification.style.transform = 'translate(-50%, -50%) scale(0.9)';
-            });
-            setTimeout(() => notification.remove(), 500); // Remove after fade out animation (500ms matches transition duration)
-        }, 5000); // Notification duration
-
-        debugLog(`Notification [${type}]: ${cleanMessage}`);
-    }
-
-    function getNSTStyleToken() {
-        debugLog('Trying NST-style token retrieval');
-
-        try {
-            // Check cache first
-            const cachedToken = sessionStorage.getItem('boosterAlertsOnlineStatusToken');
-            const cachedTime = sessionStorage.getItem('boosterAlertsOnlineStatusTokenTime');
-
-            if (cachedToken && cachedTime && (Date.now() - parseInt(cachedTime)) < 300000) { // 5 min cache
-                debugLog('Using cached online status token');
-                return cachedToken;
-            }
-
-            // Try RFC cookie as a potential token
-            const rfcCookie = getRFC();
-            if (rfcCookie) {
-                debugLog('Using RFC cookie as token');
-                sessionStorage.setItem('boosterAlertsOnlineStatusToken', rfcCookie);
-                sessionStorage.setItem('boosterAlertsOnlineStatusTokenTime', Date.now().toString());
-                return rfcCookie;
-            }
-
-            // Make synchronous request (Use with caution - can block UI)
-            // Consider making this async if possible in the future
-            const xhr = new XMLHttpRequest();
-            xhr.open('GET', 'https://www.torn.com/onlinestatus.php?online', false); // SYNCHRONOUS!
-            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-
+    // --- End Main Alert & GUI ---
+
+
+    // --- Cooperative Positioning Function ---
+    function adjustBoosterQuickUsePosition() {
+        const boosterPanel = document.querySelector('.booster-quick-use-container');
+        if (!boosterPanel) { return; }
+
+        // Find potential drug panel (any .quick-use-container that isn't ours)
+        const allQuickUsePanels = document.querySelectorAll('.quick-use-container');
+        let drugPanel = null;
+        for (const panel of allQuickUsePanels) { if (!panel.classList.contains('booster-quick-use-container')) { drugPanel = panel; break; } }
+
+        const isBoosterMinimized = localStorage.getItem('boosterAlertMinimized') === 'true';
+        let targetTop = '100px'; // Default expanded top
+        let targetMinimizedTop = '110px'; // Default minimized top
+        const fixedOffsetTop = '250px'; // Fallback offset
+        const fixedOffsetMinimizedTop = '260px';
+
+        if (drugPanel) { // Check if drug panel element exists in the DOM first
+            // debugLog('Adjusting position based on detected Drug panel.');
             try {
-                xhr.send(null);
+                // Check computed style first for visibility
+                const drugPanelStyle = window.getComputedStyle(drugPanel);
+                const isDrugPanelVisible = drugPanelStyle.display !== 'none' && drugPanelStyle.visibility !== 'hidden';
 
-                if (xhr.status === 200) {
-                    // Check headers first
-                    const csrfHeader = xhr.getResponseHeader('X-CSRF-Token') ||
-                                       xhr.getResponseHeader('csrf-token');
-
-                    if (csrfHeader) {
-                        debugLog('Found token in response headers');
-                        sessionStorage.setItem('boosterAlertsOnlineStatusToken', csrfHeader);
-                        sessionStorage.setItem('boosterAlertsOnlineStatusTokenTime', Date.now().toString());
-                        return csrfHeader;
+                if (isDrugPanelVisible) {
+                    // Attempt to get geometry if visibly styled
+                    const drugPanelRect = drugPanel.getBoundingClientRect();
+                    // Check if geometry is valid (has height and a valid bottom position)
+                    if (drugPanelRect.height > 0 && drugPanelRect.bottom > 0) {
+                        targetTop = `${drugPanelRect.bottom + 15}px`; // Position below drug panel + margin
+                        targetMinimizedTop = `${drugPanelRect.bottom + 5}px`; // Position slightly below drug panel bottom when booster is minimized
+                        // debugLog(`Drug panel rendered (bottom: ${drugPanelRect.bottom}px). New targetTop: ${targetTop}, targetMinimizedTop: ${targetMinimizedTop}`);
+                    } else {
+                        // If visible styled but rect invalid/zero height, use fixed offset
+                        // debugLog('Drug panel visible but rect invalid, using fixed offset.');
+                        targetTop = fixedOffsetTop; targetMinimizedTop = fixedOffsetMinimizedTop;
                     }
-
-                    // Try parsing JSON response
-                    try {
-                        const responseData = JSON.parse(xhr.responseText);
-                        if (responseData && responseData.csrf) {
-                            debugLog('Found token in parsed JSON response');
-                            sessionStorage.setItem('boosterAlertsOnlineStatusToken', responseData.csrf);
-                            sessionStorage.setItem('boosterAlertsOnlineStatusTokenTime', Date.now().toString());
-                            return responseData.csrf;
-                        }
-                    } catch (jsonError) {
-                        debugLog('Response is not valid JSON, attempting regex extraction');
-                        // Try regex on response text
-                        const tokenMatch = xhr.responseText.match(/csrf["']?\s*:\s*["']([a-f0-9]{16,})["']/i);
-                        if (tokenMatch && tokenMatch[1]) {
-                            debugLog('Extracted token with regex from response text');
-                            sessionStorage.setItem('boosterAlertsOnlineStatusToken', tokenMatch[1]);
-                            sessionStorage.setItem('boosterAlertsOnlineStatusTokenTime', Date.now().toString());
-                            return tokenMatch[1];
-                        }
-                    }
-                }
-            } catch (xhrError) {
-                debugLog('XHR request failed:', xhrError);
-            }
-
-            // Final fallback: extract from current page
-            return extractTokenFromPage();
-        } catch (e) {
-            debugLog('Error in getNSTStyleToken:', e);
-            return extractTokenFromPage(); // Fallback if anything goes wrong
-        }
-    }
-
-    function extractTokenFromPage() {
-        try {
-            // Look for specific script content patterns
-            const scripts = document.querySelectorAll('script:not([src])');
-            for (const script of scripts) {
-                if (!script.textContent) continue;
-
-                const patterns = [
-                    /var\s+csrf\s*=\s*["']([a-f0-9]{16,})["']/, // var csrf = '...'
-                    /csrf["']?\s*:\s*["']([a-f0-9]{16,})["']/, // { csrf: '...' }
-                    /window\.csrf\s*=\s*["']([a-f0-9]{16,})["']/, // window.csrf = '...'
-                    /csrf_token\s*=\s*["']([a-f0-9]{16,})["']/, // csrf_token = '...'
-                     /name="csrf"\s+value="([a-f0-9]{16,})"/ // Input field in script
-                ];
-
-                for (const pattern of patterns) {
-                    const match = script.textContent.match(pattern);
-                    if (match && match[1]) {
-                        debugLog('Found token in page script tag');
-                        return match[1];
-                    }
-                }
-            }
-        } catch (e) {
-            debugLog('Error extracting token from scripts:', e);
-        }
-
-        try {
-            // Look for input fields
-            const csrfInputs = document.querySelectorAll('input[name="csrf"], input[name="csrf_token"], input[id="csrf"]');
-            for (const input of csrfInputs) {
-                if (input.value && /^[a-f0-9]{16,}$/i.test(input.value)) { // Check format
-                    debugLog('Found token in page input field');
-                    return input.value;
-                }
-            }
-        } catch (e) {
-            debugLog('Error extracting token from inputs:', e);
-        }
-
-        // Check global window variables
-        if (typeof window.csrf !== 'undefined' && window.csrf && /^[a-f0-9]{16,}$/i.test(window.csrf)) {
-            debugLog('Found token in window.csrf');
-            return window.csrf;
-        }
-         if (typeof window.csrf_token !== 'undefined' && window.csrf_token && /^[a-f0-9]{16,}$/i.test(window.csrf_token)) {
-            debugLog('Found token in window.csrf_token');
-            return window.csrf_token;
-        }
-
-        // Check meta tags
-         try {
-            const metaTags = document.querySelectorAll('meta[name="csrf-token"]');
-            for (const meta of metaTags) {
-                if (meta.content && /^[a-f0-9]{16,}$/i.test(meta.content)) {
-                     debugLog('Found token in meta tag');
-                    return meta.content;
-                }
-            }
-        } catch(e) {
-             debugLog('Error extracting token from meta tags:', e);
-        }
-
-
-        debugLog('No token found in page');
-        return null;
-    }
-
-    function getRFC() {
-        // Try jQuery cookie if available
-        if (typeof $ !== 'undefined' && typeof $.cookie === 'function') {
-            const rfcCookie = $.cookie('rfc_v');
-            if (rfcCookie) {
-                debugLog('Found RFC in jQuery cookie:', rfcCookie);
-                return rfcCookie;
-            }
-        }
-
-        // Fallback to manual cookie parsing
-        try {
-            const cookies = document.cookie.split('; ');
-            for (const cookie of cookies) {
-                const [name, value] = cookie.split('=');
-                if (name === 'rfc_v') {
-                    debugLog('Found RFC in document.cookie:', value);
-                    return value;
-                }
-            }
-        } catch (e) {
-            debugLog('Error parsing cookies for RFC:', e);
-        }
-
-        // Fallback to searching script tags (less reliable)
-        try {
-            const scripts = document.querySelectorAll('script:not([src])');
-            for (const script of scripts) {
-                if (!script.textContent) continue;
-
-                const match = script.textContent.match(/var\s+rfcv\s*=\s*["']([^"']+)["']/);
-                if (match && match[1]) {
-                    debugLog('Found RFC in script tag:', match[1]);
-                    return match[1];
-                }
-            }
-        } catch (e) {
-            debugLog('Error extracting RFC from scripts:', e);
-        }
-
-        debugLog('No RFC found');
-        return null;
-    }
-
-    function getPageCsrfToken() {
-        debugLog('Searching for token in page (getPageCsrfToken)');
-        // Use the more robust extraction method
-        return extractTokenFromPage();
-    }
-
-    function hasBoosterCooldown() {
-        debugLog('Checking for booster cooldown...');
-
-        // Primary check: Look for elements with the specific aria-label for booster cooldown
-        const boosterCooldownElements = document.querySelectorAll('a[aria-label="Booster Cooldown"], [aria-label^="Booster Cooldown"]');
-        if (boosterCooldownElements.length > 0) {
-            for(const el of boosterCooldownElements) {
-                // Check if the element is actually visible
-                if (el.offsetParent !== null) {
-                     debugLog('Found VISIBLE booster cooldown via aria-label');
-                     return true;
-                }
-            }
-             debugLog('Found booster cooldown via aria-label, but element might be hidden');
-             // Don't return true yet if element is hidden, let other checks run
-        }
-
-        // Secondary check: Status icons area with cooldown text (fallback)
-        const statusIcons = document.querySelectorAll('.status-icons__wrap a, .status-icons li, .user-icons__wrap a, [class*="status-icon"], [class*="user-icon"]');
-        for (const icon of statusIcons) {
-            // Check visibility first
-             if (icon.offsetParent === null) continue;
-
-            const ariaLabel = icon.getAttribute('aria-label') || '';
-            const title = icon.getAttribute('title') || '';
-            const iconText = icon.textContent || '';
-            const dataContent = icon.getAttribute('data-content') || ''; // For tooltips
-
-            if ((ariaLabel.includes('Booster') && ariaLabel.includes('Cooldown')) ||
-                (title.includes('Booster') && title.includes('Cooldown')) ||
-                (dataContent.includes('Booster') && dataContent.includes('Cooldown')) ||
-                (iconText.includes('Booster') && iconText.includes('Cooldown'))) {
-                debugLog('Found booster cooldown in status icons via text attributes');
-                return true;
-            }
-
-            // Check for specific image sources or classes if text fails
-            const img = icon.querySelector('img');
-            if (img && img.src && (img.src.includes('booster') || img.src.includes('cooldown'))) {
-                 debugLog('Found booster cooldown via image source');
-                 return true;
-            }
-            if (icon.className && typeof icon.className === 'string' && icon.className.includes('booster-cooldown')) { // Example class
-                 debugLog('Found booster cooldown via specific class name');
-                 return true;
-            }
-        }
-
-        // Tertiary check: Look for specific icon ids (less reliable, last resort)
-        const boosterIcons = document.querySelectorAll('#icon39, #icon40, #icon41, #icon42, #icon43'); // Torn's specific cooldown icon IDs
-         for(const icon of boosterIcons) {
-             if (icon.offsetParent !== null) { // Check visibility
-                 debugLog('Found booster cooldown via icon IDs (fallback method)');
-                 return true;
-             }
-         }
-
-        debugLog('No booster cooldown detected');
-        return false;
-    }
-
-    function checkForPendingAlert() {
-        try {
-            const fromAlert = sessionStorage.getItem('fromBoosterAlert');
-
-            if (fromAlert) {
-                debugLog('Detected navigation from booster alert');
-                sessionStorage.removeItem('fromBoosterAlert'); // Clear the flag immediately
-
-                const isItemsPage = window.location.href.includes('torn.com/item.php');
-                const isFactionArmouryBoostersPage = window.location.href.includes('factions.php') &&
-                                                     window.location.href.includes('armoury') &&
-                                                    (window.location.href.includes('sub=boosters') ||
-                                                     window.location.href.includes('tab=armoury'));
-
-                // Check if we are now on the correct page based on the setting
-                if ((isItemsPage && !useFactionBoosters) || (isFactionArmouryBoostersPage && useFactionBoosters)) {
-                    debugLog('On appropriate page after navigation from alert');
-
-                    // Wait a bit for the page and script elements to finish loading/initializing
-                    setTimeout(() => {
-                        // Ensure alertElements are properly initialized before trying to show GUI
-                        if (!alertElements) {
-                            removeExistingAlerts(); // Clean up just in case
-                            alertElements = createAlert(); // Recreate if missing
-                        }
-
-                        if (alertElements && alertElements.gui) {
-                            debugLog('Showing booster GUI after navigation');
-                            alertElements.gui.style.display = 'block';
-                        } else {
-                            debugLog('Could not find GUI element to show after navigation');
-                        }
-                    }, 1500); // Increased delay slightly for potentially slower page loads
                 } else {
-                     debugLog('Not on the expected page after navigation, GUI not shown.');
+                     // If element exists but is hidden via computed style, use fixed offset
+                     // debugLog('Drug panel detected but hidden via style, using fixed offset.');
+                     targetTop = fixedOffsetTop; targetMinimizedTop = fixedOffsetMinimizedTop;
                 }
+            } catch (e) {
+                // debugLog('Error getting drug panel dimensions/style, using fixed offset.', e);
+                targetTop = fixedOffsetTop; targetMinimizedTop = fixedOffsetMinimizedTop;
             }
+        } else {
+             // debugLog('Drug panel not detected, using default positions.');
+        }
 
-            // Clear any potentially stale booster use progress flag on page load
-             const boosterProgress = sessionStorage.getItem('boosterUseInProgress');
-             if (boosterProgress) {
-                 try {
-                    const progressData = JSON.parse(boosterProgress);
-                    // Clear if older than 1 minute to prevent stale flags
-                    if (Date.now() - progressData.timestamp > 60000) {
-                         debugLog('Clearing stale booster use progress flag.');
-                         sessionStorage.removeItem('boosterUseInProgress');
-                    }
-                 } catch(e) {
-                     debugLog('Error parsing booster progress, clearing flag.');
-                     sessionStorage.removeItem('boosterUseInProgress');
-                 }
-             }
-
-        } catch (e) {
-            debugLog('Error in checkForPendingAlert:', e);
-            sessionStorage.removeItem('boosterUseInProgress'); // Ensure cleanup on error
-            sessionStorage.removeItem('fromBoosterAlert'); // Ensure cleanup on error
+        const finalTop = isBoosterMinimized ? targetMinimizedTop : targetTop;
+        if (boosterPanel.style.top !== finalTop) {
+             boosterPanel.style.top = finalTop;
+             // debugLog(`Applied top: ${boosterPanel.style.top} (Booster minimized: ${isBoosterMinimized})`);
         }
     }
-
-    function removeExistingAlerts() {
-        const existingAlerts = document.querySelectorAll('.booster-alert');
-        const existingGuis = document.querySelectorAll('.booster-gui');
-        const existingNotifications = document.querySelectorAll('.booster-notification'); // Also remove notifications
-
-        existingAlerts.forEach(alert => {
-            debugLog('Removing existing alert:', alert.id || 'unnamed');
-            alert.remove();
-        });
-        existingGuis.forEach(gui => {
-            debugLog('Removing existing GUI:', gui.id || 'unnamed');
-            gui.remove();
-        });
-         existingNotifications.forEach(note => {
-            debugLog('Removing existing notification');
-            note.remove();
-        });
+    // --- End Cooperative Positioning ---
 
 
-        alertElements = null; // Reset the reference
-        debugLog('Removed all existing booster alerts, GUIs, and notifications');
+    // --- Quick Use Functions ---
+    function addBoosterQuickUseButtons() {
+        // Only show on relevant pages
+        const isItemsPage = window.location.href.includes('torn.com/item.php');
+        const isFactionArmouryBoostersPage = window.location.href.includes('factions.php') && window.location.href.includes('armoury') && (window.location.href.includes('sub=boosters') || window.location.href.includes('tab=armoury'));
+        const existingContainer = document.querySelector('.booster-quick-use-container'); if (existingContainer) { existingContainer.remove(); } // Clean up previous instance
+        if (!isItemsPage && !isFactionArmouryBoostersPage) { /*debugLog('Not on Items or Faction Boosters page, Quick Use UI will not be shown.');*/ return; }
+
+        // debugLog('On valid page, creating Quick Use UI.');
+        const quickUseContainer = document.createElement('div'); quickUseContainer.className = 'booster-quick-use-container';
+        const savedQuickUseBoosters = localStorage.getItem('customQuickUseBoosters'); let quickUseBoosters = []; const defaultQuickBoosters = [ { id: 532, name: "Can of Red Cow" }, { id: 533, name: "Can of Taurine Elite" }, { id: 530, name: "Can of Munster" } ];
+        if (savedQuickUseBoosters) { try { quickUseBoosters = JSON.parse(savedQuickUseBoosters); quickUseBoosters.forEach(b => { if (!b.color) b.color = getDefaultBoosterColor(b.id); }); } catch (e) { console.error("Booster Alerts: Error parsing saved quick use boosters", e); quickUseBoosters = defaultQuickBoosters.map(b => ({ ...b, color: getDefaultBoosterColor(b.id) })); localStorage.setItem('customQuickUseBoosters', JSON.stringify(quickUseBoosters)); } } else { quickUseBoosters = defaultQuickBoosters.map(b => ({ ...b, color: getDefaultBoosterColor(b.id) })); localStorage.setItem('customQuickUseBoosters', JSON.stringify(quickUseBoosters)); }
+        const boosterButtons = []; quickUseBoosters.forEach(booster => { const btn = document.createElement('div'); btn.textContent = booster.name; btn.className = 'booster-quick-button'; const bgColor = booster.color || getDefaultBoosterColor(booster.id); btn.style.backgroundColor = bgColor; btn.style.color = getTextColorForBackground(bgColor); btn.addEventListener('click', () => useBooster(booster.id, booster.name)); boosterButtons.push(btn); quickUseContainer.appendChild(btn); });
+        const settingsButton = document.createElement('div'); settingsButton.textContent = '⚙️ Edit'; settingsButton.className = 'booster-settings-button'; settingsButton.addEventListener('click', () => showBoosterCustomizationUI(quickUseBoosters)); quickUseContainer.appendChild(settingsButton);
+        const toggleButton = document.createElement('button'); toggleButton.className = 'booster-quick-use-toggle-button'; let isMinimized = localStorage.getItem('boosterAlertMinimized') === 'true';
+        function applyMinimizedState() { const currentContainer = document.querySelector('.booster-quick-use-container'); if (!currentContainer) return; boosterButtons.forEach(btn => { btn.style.display = isMinimized ? 'none' : 'block'; }); settingsButton.style.display = isMinimized ? 'none' : 'block'; currentContainer.style.padding = isMinimized ? '2px' : '10px'; toggleButton.textContent = isMinimized ? '+' : 'X'; adjustBoosterQuickUsePosition(); }
+        toggleButton.addEventListener('click', () => { isMinimized = !isMinimized; localStorage.setItem('boosterAlertMinimized', isMinimized.toString()); applyMinimizedState(); });
+        quickUseContainer.appendChild(toggleButton); document.body.appendChild(quickUseContainer);
+        // Set initial visual state, position relies on later adjustment calls
+        boosterButtons.forEach(btn => { btn.style.display = isMinimized ? 'none' : 'block'; }); settingsButton.style.display = isMinimized ? 'none' : 'block'; quickUseContainer.style.padding = isMinimized ? '2px' : '10px'; toggleButton.textContent = isMinimized ? '+' : 'X';
+     }
+    function showBoosterCustomizationUI(currentBoosters) {
+        let justOpened = true; setTimeout(() => { justOpened = false; }, 300);
+        const existingUI = document.getElementById('booster-customization-ui'); if (existingUI) existingUI.remove();
+        const customizationUI = document.createElement('div'); customizationUI.id = 'booster-customization-ui';
+        customizationUI.innerHTML = `<h3>Customize Quick Use Boosters</h3><p>Select boosters to show. Drag ≡ to reorder. Click color swatch to customize.</p><div class="booster-selection-area"></div><button class="booster-customization-button add">+ Add More Boosters</button><div class="booster-customization-button-container"><button class="booster-customization-button save">Save Changes</button><button class="booster-customization-button cancel">Cancel</button></div>`;
+        const boosterSelectionArea = customizationUI.querySelector('.booster-selection-area');
+        const selectedBoosters = JSON.parse(JSON.stringify(currentBoosters)).map(b => ({ ...b, color: b.color || getDefaultBoosterColor(b.id) }));
+        function createColorPicker(booster) { const c = document.createElement('input'); c.type = 'color'; c.value = booster.color || getDefaultBoosterColor(booster.id); c.addEventListener('input', (e) => { booster.color = e.target.value; }); return c; }
+        function renderBoosterItem(booster) { const i = document.createElement('div'); i.className = 'booster-selection-item'; i.setAttribute('data-booster-id', booster.id); i.setAttribute('draggable', 'true'); const h = document.createElement('span'); h.innerHTML = '≡'; i.appendChild(h); const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = true; cb.addEventListener('change', () => { i.style.opacity = cb.checked ? '1' : '0.5'; i.style.textDecoration = cb.checked ? 'none' : 'line-through'; if (!cb.checked) i.setAttribute('data-remove', 'true'); else i.removeAttribute('data-remove'); }); i.appendChild(cb); const n = document.createElement('span'); n.textContent = booster.name; i.appendChild(n); const cp = createColorPicker(booster); i.appendChild(cp); boosterSelectionArea.appendChild(i); i.addEventListener('dragstart', handleDragStart); i.addEventListener('dragover', handleDragOver); i.addEventListener('drop', handleDrop); i.addEventListener('dragend', handleDragEnd); }
+        selectedBoosters.forEach(renderBoosterItem);
+        let draggedItem = null; function handleDragStart(e) { draggedItem = e.target.closest('.booster-selection-item'); if (!draggedItem) return; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', draggedItem.dataset.boosterId); setTimeout(() => { if (draggedItem) draggedItem.style.opacity = '0.5'; }, 0); } function handleDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; const t = e.target.closest('.booster-selection-item'); if (t && t !== draggedItem) { const r = t.getBoundingClientRect(); const o = e.clientY - r.top; if (o < r.height / 2) boosterSelectionArea.insertBefore(draggedItem, t); else boosterSelectionArea.insertBefore(draggedItem, t.nextSibling); } } function handleDrop(e) { e.preventDefault(); } function handleDragEnd() { if (draggedItem) { draggedItem.style.opacity = '1'; } draggedItem = null; const items = Array.from(boosterSelectionArea.querySelectorAll('.booster-selection-item')); const reordered = []; items.forEach(item => { const id = parseInt(item.dataset.boosterId); const data = selectedBoosters.find(b => b.id === id); if (data) { const cp = item.querySelector('input[type="color"]'); if (cp) data.color = cp.value; reordered.push(data); } }); selectedBoosters.length = 0; selectedBoosters.push(...reordered); }
+        customizationUI.querySelector('.booster-customization-button.add').addEventListener('click', () => { showAddBoostersUI(selectedBoosters, boosterSelectionArea, renderBoosterItem); });
+        customizationUI.querySelector('.booster-customization-button.save').addEventListener('click', () => { const final = selectedBoosters.filter(b => { const i = boosterSelectionArea.querySelector(`.booster-selection-item[data-booster-id="${b.id}"]`); return i && !i.hasAttribute('data-remove'); }).map(b => { const i = boosterSelectionArea.querySelector(`.booster-selection-item[data-booster-id="${b.id}"]`); const cp = i ? i.querySelector('input[type="color"]') : null; return { id: b.id, name: b.name, color: cp ? cp.value : b.color }; }); localStorage.setItem('customQuickUseBoosters', JSON.stringify(final)); customizationUI.remove(); addBoosterQuickUseButtons(); showNotification('Quick use boosters updated!', 'success'); });
+        customizationUI.querySelector('.booster-customization-button.cancel').addEventListener('click', () => { customizationUI.remove(); });
+        document.body.appendChild(customizationUI);
+        function closeOnClickOutside(e) { if (justOpened) return; const isSettings = e.target.closest('.booster-settings-button'); const isAddUI = e.target.closest('#add-boosters-ui'); if (customizationUI && !customizationUI.contains(e.target) && !isSettings && !isAddUI) { customizationUI.remove(); document.removeEventListener('click', closeOnClickOutside); } }
+        setTimeout(() => { document.addEventListener('click', closeOnClickOutside); }, 100);
     }
+    function showAddBoostersUI(selectedBoostersRef, parentBoosterSelectionArea, renderBoosterItemFn) {
+        const existingAddUI = document.getElementById('add-boosters-ui'); if (existingAddUI) existingAddUI.remove();
+        const addUI = document.createElement('div'); addUI.id = 'add-boosters-ui'; addUI.innerHTML = `<h3>Add Boosters to Quick Use</h3><input type="text" placeholder="Search all boosters..."><div class="add-booster-list-container"></div><div class="add-boosters-button-container"><button class="add-boosters-done-button">Done</button></div>`;
+        const searchBox = addUI.querySelector('input[type="text"]'); const listContainer = addUI.querySelector('.add-booster-list-container');
+        function refreshList(term = '') { listContainer.innerHTML = ''; const filtered = allBoostersFlat.filter(b => b.name.toLowerCase().includes(term.toLowerCase())); if (filtered.length === 0) { listContainer.innerHTML = '<div style="padding: 10px; color: #aaa;">No boosters found</div>'; return; } filtered.forEach(b => { const pItem = parentBoosterSelectionArea.querySelector(`.booster-selection-item[data-booster-id="${b.id}"]`); const isSel = pItem && !pItem.hasAttribute('data-remove'); const item = document.createElement('div'); item.className = `add-booster-item ${isSel ? 'selected' : ''}`; const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = isSel; const name = document.createElement('span'); name.textContent = b.name; item.appendChild(cb); item.appendChild(name); const handleClick = () => { const pOnClick = parentBoosterSelectionArea.querySelector(`.booster-selection-item[data-booster-id="${b.id}"]`); const currentSel = pOnClick && !pOnClick.hasAttribute('data-remove'); cb.checked = !currentSel; if (!currentSel) { if (pOnClick) { pOnClick.style.opacity = '1'; pOnClick.style.textDecoration = 'none'; pOnClick.removeAttribute('data-remove'); const pCb = pOnClick.querySelector('input[type="checkbox"]'); if(pCb) pCb.checked = true; if (!selectedBoostersRef.some(r => r.id === b.id)) { selectedBoostersRef.push({ ...b, color: pOnClick.querySelector('input[type="color"]').value || getDefaultBoosterColor(b.id) }); } } else { const newData = { ...b, color: getDefaultBoosterColor(b.id) }; renderBoosterItemFn(newData); selectedBoostersRef.push(newData); } item.classList.add('selected'); } else { if (pOnClick) { pOnClick.style.opacity = '0.5'; pOnClick.style.textDecoration = 'line-through'; pOnClick.setAttribute('data-remove', 'true'); const pCb = pOnClick.querySelector('input[type="checkbox"]'); if(pCb) pCb.checked = false; } item.classList.remove('selected'); } }; item.addEventListener('click', handleClick); listContainer.appendChild(item); }); }
+        refreshList(); searchBox.addEventListener('input', () => { refreshList(searchBox.value); });
+        addUI.querySelector('.add-boosters-done-button').addEventListener('click', () => { addUI.remove(); }); document.body.appendChild(addUI); addUI.addEventListener('click', e => { e.stopPropagation(); });
+    }
+    // --- End Quick Use Functions ---
 
-    let cooldownCheckInterval = null; // Store interval ID
-    let cooldownObserver = null; // Store observer instance
 
-    function startCooldownChecks() {
-         // Clear previous checks if any
-        if (cooldownCheckInterval) clearInterval(cooldownCheckInterval);
-        if (cooldownObserver) cooldownObserver.disconnect();
-
-        const checkCooldownLogic = () => {
-            const hasCooldown = hasBoosterCooldown();
-            debugLog(`Cooldown check: ${hasCooldown ? 'ON COOLDOWN' : 'NO COOLDOWN'}`);
+    // --- Core Logic (useBooster, XHR requests, cooldown checks, etc.) ---
+    // ... (Functions remain largely unchanged) ...
+    function useBooster(id, name) { /*debugLog(`Attempting to use booster: ${name} (ID: ${id}), Using faction boosters: ${useFactionBoosters}`);*/ showNotification(`Using ${name}...`, 'info'); const gui = document.getElementById('boosterGui'); if (gui) gui.style.display = 'none'; if (useFactionBoosters) tryFactionBoosterUseMethod(id, name); else tryDirectUseMethod(id, name); }
+    function tryDirectUseMethod(id, name) { /*debugLog('Attempting direct use method');*/ sessionStorage.setItem('boosterUseInProgress', JSON.stringify({ id, name, timestamp: Date.now(), method: 'direct' })); useItemDirectly(id, name); }
+    function useItemDirectly(id, name) { /*debugLog(`Using item directly: ${name} (ID: ${id})`);*/ const token = getNSTStyleToken() || getPageCsrfToken(); if (token) { /*debugLog(`Using token: ${token.substring(0, 4)}...`);*/ submitBoosterUseRequest(id, name, token); } else { console.error('BoosterAlerts: Failed to get token'); showNotification(`Unable to use ${name}: Could not get token`, 'error'); sessionStorage.removeItem('boosterUseInProgress'); } }
+    function tryFactionBoosterUseMethod(id, name) { /*debugLog(`Attempting faction booster use: ${name} (ID: ${id})`);*/ sessionStorage.setItem('boosterUseInProgress', JSON.stringify({ id, name, timestamp: Date.now(), method: 'faction' })); const isFacBoostersPage = window.location.href.includes('factions.php') && window.location.href.includes('armoury') && (window.location.href.includes('sub=boosters') || window.location.href.includes('tab=armoury')); if (!isFacBoostersPage) { sessionStorage.setItem('pendingFactionBoosterUse', JSON.stringify({ id, name })); window.location.href = 'https://www.torn.com/factions.php?step=your#/tab=armoury&start=0&sub=boosters'; return; } const token = getNSTStyleToken() || getPageCsrfToken(); if (!token) { console.error('BoosterAlerts: No CSRF token for faction booster'); showNotification('Unable to use faction booster: No token', 'error'); sessionStorage.removeItem('boosterUseInProgress'); return; } /*debugLog(`Using token for faction booster: ${token.substring(0, 4)}...`);*/ tryBothFactionBoosterMethods(id, name, token); }
+    function tryBothFactionBoosterMethods(id, name, token) { /*debugLog('Trying direct faction method first (item.php?fac=1)');*/ useFactionBoosterById(id, name, token); setTimeout(() => { if (sessionStorage.getItem('boosterUseInProgress')) { /*debugLog('Direct faction method failed/slow, trying traditional');*/ useFactionBoosterDirectly(id, name); } }, 2000); }
+    function useFactionBoosterById(id, name, token) { /*debugLog(`Directly using faction booster via item.php?fac=1: ${id}`);*/ const params = new URLSearchParams({ step: 'useItem', confirm: 'yes', itemID: id, fac: '1', csrf: token }); const xhr = new XMLHttpRequest(); xhr.open('POST', 'https://www.torn.com/item.php', true); xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest'); xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded'); xhr.onload = function() { handleBoosterResponse(this, name, 'faction_direct', true); }; xhr.onerror = function() { /*debugLog('Direct faction (item.php) network error');*/ }; xhr.send(params.toString()); }
+    function useFactionBoosterDirectly(id, name) { /*debugLog(`Using traditional faction booster method: ${name} (ID: ${id})`);*/ const token = getNSTStyleToken() || getPageCsrfToken(); if (!token) { console.error('BoosterAlerts: No token for traditional faction method'); showNotification('Unable to use faction booster: No token (retry)', 'error'); sessionStorage.removeItem('boosterUseInProgress'); return; } useFactionBoosterWithToken(id, name, token); }
+    function useFactionBoosterWithToken(id, name, token) { let armouryItemID = findArmouryItemId(id, name, 'boosters'); if (!armouryItemID) { /*debugLog(`Could not find armouryItemID for ${name}, using original ID ${id} as fallback.`);*/ armouryItemID = id; } /*debugLog(`Using faction booster (traditional) with armouryItemID: ${armouryItemID}`);*/ const params = new URLSearchParams({ step: 'armoryItemAction', confirm: 'yes', armoryItemID, action: 'use', csrf: token }); const xhr = new XMLHttpRequest(); xhr.open('POST', 'https://www.torn.com/factions.php', true); xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest'); xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded'); xhr.onload = function() { handleBoosterResponse(this, name, 'faction_traditional'); }; xhr.onerror = function() { /*debugLog('Traditional faction network error');*/ showNotification(`Error using ${name}: Network error`, 'error'); sessionStorage.removeItem('boosterUseInProgress'); }; xhr.send(params.toString()); }
+    function findArmouryItemId(itemId, itemName, itemType = 'boosters') { const selector = `#armoury-${itemType} ul.item-list li, #faction-armoury .${itemType}-wrap .item, div[class*="armory"] div[class*="${itemType}"] div[class*="item"]`; const items = document.querySelectorAll(selector); for (const item of items) { const nameElements = item.querySelectorAll('.name, .title, .item-name, .name-wrap .t-overflow, [class*="name"], [class*="title"]'); let foundName = Array.from(nameElements).some(el => el && el.textContent.trim().toLowerCase() === itemName.toLowerCase()); if (foundName) { const actionLinks = item.querySelectorAll('a[href*="armoryItemID="], button[data-id], a[onclick*="armoryItemAction"], div[data-id]'); for (const actionLink of actionLinks) { let match = null; if (actionLink.href) match = actionLink.href.match(/armoryItemID=(\d+)/); else if (actionLink.dataset && actionLink.dataset.id) match = [null, actionLink.dataset.id]; else if (actionLink.onclick) match = actionLink.onclick.toString().match(/armoryItemAction\((\d+)/); if (match && match[1]) return match[1]; } if (item.dataset && item.dataset.id) return item.dataset.id; if (item.getAttribute('data-armoryitemid')) return item.getAttribute('data-armoryitemid'); } } return null; }
+    function submitBoosterUseRequest(id, name, token) { const params = new URLSearchParams({ step: 'useItem', confirm: 'yes', itemID: id, csrf: token }); const xhr = new XMLHttpRequest(); xhr.open('POST', 'https://www.torn.com/item.php', true); xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest'); xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded'); xhr.onload = function() { handleBoosterResponse(this, name, 'personal'); }; xhr.onerror = function() { /*debugLog('Personal booster network error');*/ showNotification(`Error using ${name}: Network error`, 'error'); sessionStorage.removeItem('boosterUseInProgress'); }; xhr.send(params.toString()); }
+    function handleBoosterResponse(xhr, name, method, maybeClearProgress = false) { let success = false; let cooldown = false; let message = `Error using ${name}: Unknown response`; let isJson = false; let responseData = null; if (xhr.status === 200) { try { responseData = JSON.parse(xhr.responseText); isJson = true; /*debugLog(`[${method}] JSON Response:`, responseData);*/ const responseText = responseData.text || responseData.message || ''; if (responseData.success || (responseText && (responseText.includes('consumed') || responseText.includes('used')))) { success = true; message = `Used ${name} successfully!`; } else if (responseText && (responseText.includes('cooldown') || responseText.includes('effect of a booster') || responseText.includes('wait'))) { cooldown = true; message = extractCooldownMessage(responseText, 'Booster') || 'You are on booster cooldown'; } else { const tempDiv = document.createElement('div'); tempDiv.innerHTML = responseText || responseData.error || ''; message = `Error: ${(tempDiv.textContent || tempDiv.innerText || 'Unknown error').trim()}`; } } catch (e) { /*debugLog(`[${method}] Text Response:`, xhr.responseText.substring(0, 150));*/ const responseText = xhr.responseText || ''; if (responseText.includes('success') || responseText.includes('consumed') || responseText.includes('used')) { success = true; message = `Used ${name} successfully!`; } else if (responseText.includes('cooldown') || responseText.includes('effect of a booster') || responseText.includes('wait')) { cooldown = true; message = extractCooldownMessage(responseText, 'Booster') || 'You are on booster cooldown'; } else { const errorMatch = responseText.match(/<[^>]*class=['"]error['"][^>]*>(.*?)<\/|Validation failed|Error:|not authorized/i); if (errorMatch) { message = `Error: ${errorMatch[1] || 'Validation failed'}`; } else { message = `Error using ${name}: Unexpected response`; } } } } else { message = `Error using ${name}: Request failed (${xhr.status})`; } showNotification(message, success ? 'success' : (cooldown ? 'info' : 'error')); if (success || cooldown || method === 'faction_traditional' || method === 'personal') { sessionStorage.removeItem('boosterUseInProgress'); } else if (maybeClearProgress && (success || cooldown)) { sessionStorage.removeItem('boosterUseInProgress'); } if (success || cooldown) { setTimeout(startCooldownChecks, 500); } }
+    function extractCooldownMessage(responseText, type = 'Booster') { if (!responseText) return null; const timeMatch = responseText.match(/data-time=["']?(\d+)["']?/); const timeMatch2 = responseText.match(/wait\s+(\d+)\s*m\s+(\d+)\s*s/i); const timeMatch3 = responseText.match(/wait\s+(\d+)\s+seconds?/i); const timeMatch4 = responseText.match(/wait\s+(\d+)\s+minutes?/i); let seconds = 0; if (timeMatch && timeMatch[1]) seconds = parseInt(timeMatch[1]); else if (timeMatch2 && timeMatch2[1] && timeMatch2[2]) seconds = parseInt(timeMatch2[1]) * 60 + parseInt(timeMatch2[2]); else if (timeMatch3 && timeMatch3[1]) seconds = parseInt(timeMatch3[1]); else if (timeMatch4 && timeMatch4[1]) seconds = parseInt(timeMatch4[1]) * 60; if (seconds > 0) { const minutes = Math.floor(seconds / 60); const remainingSeconds = seconds % 60; return `${type} Cooldown: ${minutes}m ${remainingSeconds}s remaining`; } else { try { const tempDiv = document.createElement('div'); tempDiv.innerHTML = responseText; const msgEl = tempDiv.querySelector('.message, .msg, .cont_gray'); let txt = (msgEl ? (msgEl.textContent || msgEl.innerText) : (tempDiv.textContent || tempDiv.innerText || '')).trim(); if (txt.length > 100) txt = txt.substring(0, 100) + '...'; if (txt) return txt; } catch(e) {} } return null; }
+    function showNotification(message, type = 'info') { document.querySelectorAll('.booster-notification').forEach(note => note.remove()); const n = document.createElement('div'); n.className = `booster-notification ${type}`; let clean = message; if (typeof message === 'string' && message.includes('<') && message.includes('>')) { try { const d = document.createElement('div'); d.innerHTML = message; clean = d.textContent || d.innerText || message; } catch (e) {} } clean = clean.replace(/\s+/g, ' ').trim(); if (clean.toLowerCase().includes('cooldown')) { n.innerHTML = `<div style="font-weight: bold; margin-bottom: 5px; font-size: 16px;">${type === 'Booster' ? 'Booster' : 'Drug'} Cooldown Active</div><div>${clean}</div>`; n.style.minWidth = '280px'; n.style.padding = '15px 25px'; } else { n.textContent = clean; } document.body.appendChild(n); n.style.transform = 'translate(-50%, -50%) scale(0.9)'; n.style.opacity = '0'; void n.offsetWidth; requestAnimationFrame(() => { n.style.transform = 'translate(-50%, -50%) scale(1)'; n.style.opacity = '1'; }); const dur = (type === 'error' || type === 'info') ? 7000 : 4000; setTimeout(() => { requestAnimationFrame(() => { n.style.opacity = '0'; n.style.transform = 'translate(-50%, -50%) scale(0.9)'; }); n.addEventListener('transitionend', () => n.remove(), { once: true }); }, dur); /*debugLog(`Notification [${type}]: ${clean}`);*/ }
+    function getNSTStyleToken() { try { const r = getRFC(); if (r) return r; } catch (e) {} return null; }
+    function extractTokenFromPage() { try { if (typeof window.csrf !== 'undefined' && window.csrf && /^[a-f0-9]{16,}$/i.test(window.csrf)) return window.csrf; if (typeof window.csrf_token !== 'undefined' && window.csrf_token && /^[a-f0-9]{16,}$/i.test(window.csrf_token)) return window.csrf_token; if (typeof $ !== 'undefined' && typeof $.cookie === 'function') { const c = $.cookie('csrf'); if(c && /^[a-f0-9]{16,}$/i.test(c)) return c; } const inputs = document.querySelectorAll('input[name="csrf"], input[name="csrf_token"], input[id="csrf"], input[name="X-Csrf-Token"], input[data-csrf]'); for (const input of inputs) { const t = input.value || input.dataset?.csrf; if(t && /^[a-f0-9]{16,}$/i.test(t)) return t; } const patterns = [ /["']csrf["']\s*:\s*["']([a-f0-9]{16,})["']/, /csrf_token\s*=\s*["']([a-f0-9]{16,})["']/, /window\.csrf\s*=\s*["']([a-f0-9]{16,})["']/, /value=["']([a-f0-9]{16,})["']\s*name=["']csrf["']/ ]; const scripts = document.querySelectorAll('script:not([src])'); for (const script of scripts) { if (!script.textContent) continue; for (const p of patterns) { const m = script.textContent.match(p); if(m && m[1]) return m[1]; } } const meta = document.querySelector('meta[name="csrf-token"]'); if(meta && meta.content && /^[a-f0-9]{16,}$/i.test(meta.content)) return meta.content; } catch (e) {} /*debugLog('No CSRF token found in page');*/ return null; }
+    function getPageCsrfToken() { return extractTokenFromPage(); }
+    function getRFC() { if (typeof $ !== 'undefined' && typeof $.cookie === 'function') { const c = $.cookie('rfc_v'); if(c) return c; } try { const cs = document.cookie.split('; '); for (const c of cs) { const [n, v] = c.split('='); if(n === 'rfc_v') return v; } } catch (e) {} return null; }
+    function hasBoosterCooldown() { /* ... function ... */
+        // debugLog('Checking for booster cooldown...'); // Reduce noise
+        const boosterCooldownElements = document.querySelectorAll('a[aria-label="Booster Cooldown"], [aria-label^="Booster Cooldown"]');
+        if (boosterCooldownElements.length > 0) { for(const el of boosterCooldownElements) { if (el.offsetParent !== null) { /*debugLog('Cooldown detected: Visible aria-label');*/ return true; } } }
+        const statusIcons = document.querySelectorAll('.status-icons__wrap a, .status-icons li, .user-icons__wrap a, [class*="status-icon"], [class*="user-icon"]');
+        for (const icon of statusIcons) { if (icon.offsetParent === null) continue; const ariaLabel = icon.getAttribute('aria-label') || ''; const title = icon.getAttribute('title') || ''; const dataContent = icon.getAttribute('data-content') || ''; const iconText = icon.textContent || ''; if (ariaLabel.includes('Booster Cooldown') || title.includes('Booster Cooldown') || dataContent.includes('Booster Cooldown') || iconText.includes('Booster Cooldown')) { /*debugLog('Cooldown detected: Text/Attribute phrase match');*/ return true; } if (icon.className && typeof icon.className === 'string' && icon.className.includes('booster-cooldown')) { /*debugLog('Cooldown detected: Specific class name');*/ return true; } }
+        return false;
+     }
+    function checkForPendingAlert() { /* ... function ... */ try { const fromAlert = sessionStorage.getItem('fromBoosterAlert'); if (fromAlert) { sessionStorage.removeItem('fromBoosterAlert'); const isItemsPage = window.location.href.includes('torn.com/item.php'); const isFacBoostersPage = window.location.href.includes('factions.php') && window.location.href.includes('armoury') && (window.location.href.includes('sub=boosters') || window.location.href.includes('tab=armoury')); const onCorrectPage = (isItemsPage && !useFactionBoosters) || (isFacBoostersPage && useFactionBoosters); if (onCorrectPage) { setTimeout(() => { if (!hasBoosterCooldown()) { if (!alertElements) alertElements = createAlert(); if (alertElements && alertElements.gui) alertElements.gui.style.display = 'block'; } }, 1500); } } const boosterProgress = sessionStorage.getItem('boosterUseInProgress'); if (boosterProgress) { try { const d = JSON.parse(boosterProgress); if (Date.now() - d.timestamp > 60000) sessionStorage.removeItem('boosterUseInProgress'); } catch(e) { sessionStorage.removeItem('boosterUseInProgress'); } } } catch (e) { /*debugLog('Error in checkForPendingAlert:', e);*/ sessionStorage.removeItem('boosterUseInProgress'); sessionStorage.removeItem('fromBoosterAlert'); } }
+    function removeExistingAlertsAndGui() { // Leaves Quick Use Panel
+        const alertBtn = document.querySelector('.booster-alert'); if (alertBtn) alertBtn.remove();
+        const mainGui = document.getElementById('boosterGui'); if (mainGui) mainGui.remove();
+        const custUi = document.getElementById('booster-customization-ui'); if (custUi) custUi.remove();
+        const addUi = document.getElementById('add-boosters-ui'); if (addUi) addUi.remove();
+        const notifications = document.querySelectorAll('.booster-notification'); notifications.forEach(n => n.remove());
+        if (alertElements) alertElements = null; // Reset reference if it pointed to the removed elements
+        // debugLog('Removed main booster alert/GUI and customization popups');
+    }
+    function startCooldownChecks() { /* ... function ... */
+         if (cooldownCheckInterval) clearInterval(cooldownCheckInterval); if (cooldownObserver) cooldownObserver.disconnect();
+         const checkCooldownLogic = () => {
+            const hasCooldown = hasBoosterCooldown(); // Use refined function
+            // debugLog(`Cooldown check: ${hasCooldown ? 'ON' : 'OFF'}`); // Reduce noise
+            const currentAlert = document.querySelector('.booster-alert');
 
             if (!hasCooldown) {
-                if (!alertElements || !document.body.contains(alertElements.alert)) { // Only create if it doesn't exist or was removed
-                    removeExistingAlerts(); // Clean up potential remnants
+                if (!currentAlert) {
+                    // FIX from v1.1.7: Only call createAlert
                     alertElements = createAlert();
-                    debugLog('Created "No Boosters" alert');
-                    // Check for pending alert display right after creation
+                    // debugLog('Created "No Boosters" alert');
                     checkForPendingAlert();
                 }
-            } else if (alertElements && document.body.contains(alertElements.alert)) { // If cooldown IS active and alert exists, remove it
-                alertElements.alert.remove();
-                if (alertElements.gui) alertElements.gui.remove();
-                alertElements = null;
-                debugLog('Removed "No Boosters" alert due to cooldown');
+            } else if (currentAlert) {
+                 currentAlert.remove();
+                 const mainGui = document.getElementById('boosterGui'); if (mainGui) mainGui.remove();
+                 alertElements = null;
+                 // debugLog('Removed "No Boosters" alert/GUI due to cooldown');
             }
-        };
-
-        // Initial check with a delay
-        setTimeout(checkCooldownLogic, 1500); // Slightly increased delay
-
-        // Use MutationObserver for faster updates
-        cooldownObserver = new MutationObserver((mutations) => {
-            // More targeted check: only run if status icons area or specific attributes changed
-             const relevantMutation = mutations.some(mutation => {
-                 // Check target or added/removed nodes related to status/icons
-                 const targetNode = mutation.target;
-                 const addedNodes = Array.from(mutation.addedNodes);
-                 const removedNodes = Array.from(mutation.removedNodes);
-
-                 const checkNode = (node) => node.nodeType === 1 && (
-                     (node.className && typeof node.className === 'string' && node.className.includes('status-icon')) || // Class check
-                     (node.id && node.id.startsWith('icon')) || // ID check
-                     node.querySelector('[aria-label*="Cooldown"]') // Content check
-                 );
-
-                 return checkNode(targetNode) || addedNodes.some(checkNode) || removedNodes.some(checkNode);
-             });
-
-            if (relevantMutation) {
-                debugLog('Relevant DOM mutation detected, re-checking cooldown.');
-                checkCooldownLogic(); // Re-check immediately
-            }
-        });
-
-        // Observe a more specific area if possible, fallback to body
-        const observeTarget = document.querySelector('.status-icons__wrap') || document.querySelector('.user-icons__wrap') || document.body;
-        cooldownObserver.observe(observeTarget, {
-            childList: true,
-            subtree: true,
-            attributes: true,
-            attributeFilter: ['class', 'aria-label', 'title', 'style'] // Added style for visibility changes
-        });
-
-        // Periodic check as a fallback (less frequent)
-        cooldownCheckInterval = setInterval(checkCooldownLogic, 60000); // Check every 60 seconds
-
-        console.log('%c Booster Alerts Cooldown Checks Started ', 'background: #4CAF50; color: white; padding: 2px 5px; border-radius: 3px;');
+         };
+         setTimeout(checkCooldownLogic, 1500);
+         cooldownObserver = new MutationObserver((mutations) => { const relevant = mutations.some(m => { const t = m.target; const nodes = [...Array.from(m.addedNodes), ...Array.from(m.removedNodes)]; const check = n => n.nodeType === 1 && ((n.className && typeof n.className === 'string' && n.className.includes('status-icon')) || (n.id && n.id.startsWith('icon')) || n.querySelector('[aria-label*="Cooldown"]')); return check(t) || nodes.some(check); }); if (relevant) { /*debugLog('Relevant DOM mutation, re-checking cooldown.');*/ checkCooldownLogic(); } });
+         const target = document.querySelector('.status-icons__wrap, .user-icons__wrap, body'); if(target) cooldownObserver.observe(target, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'aria-label', 'title', 'style'] });
+         cooldownCheckInterval = setInterval(checkCooldownLogic, 60000);
+         // console.log('%c Booster Alerts Cooldown Checks Started ', 'background: #4CAF50; color: white; padding: 2px 5px; border-radius: 3px;');
     }
-
+    function setupForumMutationObserver() { /* ... function ... */ if (!window.location.href.includes('torn.com/forums.php')) return; /*debugLog('Setting up forum mutation observer');*/ const forumContainer = document.getElementById('mainContainer') || document.body; const observer = new MutationObserver((mutations) => { const titleChanged = mutations.some(m => [...Array.from(m.addedNodes), ...Array.from(m.removedNodes)].some(n => n.nodeType === 1 && n.classList && n.classList.contains('content-title'))); if (titleChanged) { /*debugLog('Forum content title changed, re-evaluating alert placement');*/ setTimeout(startCooldownChecks, 750); } }); observer.observe(forumContainer, { childList: true, subtree: true, attributes: false }); /*debugLog('Forum mutation observer started');*/ }
+    function checkPendingFactionBoosterUse() { /* ... function ... */ const pendingUseData = sessionStorage.getItem('pendingFactionBoosterUse'); if (pendingUseData) { try { const pendingUse = JSON.parse(pendingUseData); const isFacBoostersPage = window.location.href.includes('factions.php') && window.location.href.includes('armoury') && (window.location.href.includes('sub=boosters') || window.location.href.includes('tab=armoury')); if (isFacBoostersPage && pendingUse.id && pendingUse.name) { /*debugLog(`Processing pending faction booster use: ${pendingUse.name}`);*/ sessionStorage.removeItem('pendingFactionBoosterUse'); setTimeout(() => { useBooster(pendingUse.id, pendingUse.name); }, 1500); } else if (!isFacBoostersPage) { /*debugLog('Still not on faction boosters page, keeping pending use data');*/ } else { /*debugLog('Clearing invalid pending faction booster use data');*/ sessionStorage.removeItem('pendingFactionBoosterUse'); } } catch (e) { /*debugLog('Error processing pending faction booster use:', e);*/ sessionStorage.removeItem('pendingFactionBoosterUse'); } } }
+    // --- End Core Logic ---
 
     // --- Initialization ---
     function initialize() {
-        debugLog('Initializing Booster Alerts');
-
-        // Load settings
+        // debugLog('Initializing Booster Alerts with Quick Use & Cooperative Positioning');
         useFactionBoosters = localStorage.getItem('useFactionBoosters') === 'true';
-        debugLog(`Initialized with faction boosters setting: ${useFactionBoosters}`);
+        // Initial cleanup removes main alert/GUI and customization popups, leaves quick use panel if it exists
+         document.querySelectorAll('.booster-alert, .booster-gui, #booster-customization-ui, #add-boosters-ui, .booster-notification')
+            .forEach(el => el.remove());
+        alertElements = null;
+        if (coopObserver) coopObserver.disconnect(); // Disconnect previous observer if re-initializing
+        if (coopAdjustInterval) clearInterval(coopAdjustInterval); // Clear previous interval
 
-        // Clean up any old elements first
-        removeExistingAlerts();
+        checkPendingFactionBoosterUse(); // Check before starting cooldown checks
+        addBoosterQuickUseButtons(); // Add the quick use panel (includes initial position check)
 
-        // Check if we need to process a pending faction booster use (e.g., after navigation)
-        checkPendingFactionBoosterUse(); // Should run before first cooldown check
+        // Setup MutationObserver for cooperative positioning
+        coopObserver = new MutationObserver((mutations) => {
+            // Check if the mutation involves the drug panel class or its direct parent changing
+            const drugPanelChanged = mutations.some(mutation => {
+                 // More robust check: See if *any* added/removed node *is* or *contains* a potential drug panel
+                 const checkNode = (node) => node && node.nodeType === 1 && (
+                     (node.classList && node.classList.contains('quick-use-container') && !node.classList.contains('booster-quick-use-container')) || // Node is the drug panel
+                     node.querySelector('.quick-use-container:not(.booster-quick-use-container)') // Node contains the drug panel
+                 );
+                 const targetIsRelevant = checkNode(mutation.target); // Check if the target itself changed relevantly
+                 const added = Array.from(mutation.addedNodes).some(checkNode);
+                 const removed = Array.from(mutation.removedNodes).some(checkNode);
+                 return targetIsRelevant || added || removed;
+            });
 
-        // Check if we navigated from an alert click (will be handled by startCooldownChecks now)
-        // checkForPendingAlert(); // Moved logic into startCooldownChecks
-
-        // Start the main cooldown checking loop
-        startCooldownChecks();
-
-        // Add mutation observer for forum pages to handle AJAX navigation
-        setupForumMutationObserver();
-    }
-
-    function setupForumMutationObserver() {
-        // Only set this up on forum pages
-        if (!window.location.href.includes('torn.com/forums.php')) {
-            return;
-        }
-
-        debugLog('Setting up forum mutation observer');
-
-        // Target the main container that holds forum content
-        const forumContainer = document.getElementById('mainContainer') || document.body;
-
-        const observer = new MutationObserver((mutations) => {
-            // Check if the main content title area was potentially replaced
-            const titleChanged = mutations.some(mutation =>
-                Array.from(mutation.addedNodes).some(node => node.nodeType === 1 && node.classList && node.classList.contains('content-title')) ||
-                Array.from(mutation.removedNodes).some(node => node.nodeType === 1 && node.classList && node.classList.contains('content-title'))
-            );
-
-
-            if (titleChanged) {
-                debugLog('Forum content title changed, re-evaluating alert placement');
-                // Wait a moment for DOM to settle after potential AJAX load
-                setTimeout(() => {
-                    // Re-run the check/creation logic which includes finding the header
-                    startCooldownChecks();
-                }, 750); // Slightly longer delay for forum AJAX
+            if (drugPanelChanged) {
+                // debugLog('Drug panel added, removed, or changed. Re-adjusting booster panel position.');
+                adjustBoosterQuickUsePosition();
             }
         });
-
-        observer.observe(forumContainer, {
+        // Observe body more broadly for additions/removals and attribute changes
+        coopObserver.observe(document.body, {
             childList: true,
-            subtree: true, // Need subtree to detect changes within the container
-            attributes: false
+            subtree: true, // Crucial to catch nested changes or late additions
+            attributes: true,
+            attributeFilter: ['style', 'class'] // Watch for style changes (like display) or class changes
         });
 
-        debugLog('Forum mutation observer started');
-    }
+        startCooldownChecks(); // Start monitoring cooldown status (will create alert if needed)
+        setupForumMutationObserver();
 
-    function checkPendingFactionBoosterUse() {
-        const pendingUseData = sessionStorage.getItem('pendingFactionBoosterUse');
-
-        if (pendingUseData) {
-            try {
-                const pendingUse = JSON.parse(pendingUseData);
-                const isFactionArmouryBoostersPage = window.location.href.includes('factions.php') &&
-                                                     window.location.href.includes('armoury') &&
-                                                    (window.location.href.includes('sub=boosters') ||
-                                                     window.location.href.includes('tab=armoury'));
-
-                // Only proceed if we're now on the faction armoury boosters page
-                if (isFactionArmouryBoostersPage && pendingUse.id && pendingUse.name) {
-                    debugLog(`Processing pending faction booster use: ${pendingUse.name} (ID: ${pendingUse.id})`);
-
-                    // Clear the pending use data first to prevent loops
-                    sessionStorage.removeItem('pendingFactionBoosterUse');
-
-                    // Small delay to ensure page is fully loaded and script initialized
-                    setTimeout(() => {
-                        useBooster(pendingUse.id, pendingUse.name);
-                    }, 1500); // Increased delay
-                } else if (!isFactionArmouryBoostersPage) {
-                    debugLog('Still not on faction armoury boosters page, keeping pending use data');
-                    // Don't remove the item yet, maybe the page hasn't loaded fully or user navigated away
-                } else {
-                    // If we are on the page but data is invalid, clear it
-                    debugLog('Clearing invalid pending faction booster use data');
-                    sessionStorage.removeItem('pendingFactionBoosterUse');
+        // Fallback: Repeatedly check position for a few seconds after load
+        let adjustAttempts = 0;
+        const maxAdjustAttempts = 15; // Try for 15 seconds
+        setTimeout(() => {
+            // debugLog('Starting periodic position adjustment checks...');
+            coopAdjustInterval = setInterval(() => {
+                adjustBoosterQuickUsePosition();
+                adjustAttempts++;
+                if (adjustAttempts >= maxAdjustAttempts) {
+                    clearInterval(coopAdjustInterval);
+                    // debugLog('Finished periodic position adjustment checks.');
                 }
-            } catch (e) {
-                debugLog('Error processing pending faction booster use:', e);
-                sessionStorage.removeItem('pendingFactionBoosterUse'); // Clear on error
-            }
-        }
+            }, 1000); // Check every second
+        }, 3000); // Start checks 3 seconds after initialization
+
+        // Final check on window load
+        window.addEventListener('load', () => {
+             // debugLog('Window load event: Running final position adjustment.');
+             setTimeout(adjustBoosterQuickUsePosition, 500); // Delay slightly after load
+        });
     }
 
-    // --- Start the script execution ---
-    // Use window.onload or DOMContentLoaded to ensure the initial DOM is ready
+    // Start the script execution
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initialize);
     } else {
