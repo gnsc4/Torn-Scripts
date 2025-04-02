@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Torn Drug Alert
-// @version      1.1.2
-// @description  Alerts when no drug cooldown is active, allows taking drugs from any page, and auto-adjusts quick-use button text color.
-// @author       GNSC4 [268863] (Enhanced by Gemini)
+// @version      1.1.3
+// @description  Alerts when no drug cooldown is active, allows taking drugs, auto-adjusts text color, and conditionally shows Quick Use panel.
+// @author       GNSC4 [268863]
 // @match        https://www.torn.com/*
 // @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Torn%20Drug%20Alerts/DrugAlerts.user.js
 // @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Torn%20Drug%20Alerts/DrugAlerts.user.js
@@ -41,7 +41,7 @@
         return defaultDrugColors[id] || defaultDrugColors.default;
     }
 
-    // --- NEW HELPER FUNCTIONS for Text Color Adjustment ---
+    // --- Text Color Adjustment Helpers ---
 
     /**
      * Converts a HEX color value to RGB.
@@ -83,7 +83,7 @@
         return brightness > threshold ? '#000000' : '#FFFFFF'; // Dark text on light bg, White text on dark bg
     }
 
-    // --- END NEW HELPER FUNCTIONS ---
+    // --- END Text Color Helpers ---
 
 
     // Add CSS
@@ -408,6 +408,7 @@
                     gui.style.display = 'none'; // Hide GUI after changing setting
                     removeExistingAlerts(); // Re-create alert (might change click behavior)
                     alertElements = createAlert(drugList);
+                    addQuickUseButtons(); // Refresh quick use buttons visibility
                 });
             }
 
@@ -483,17 +484,35 @@
         return { alert, gui }; // Return references to the created elements
     }
 
+    /**
+     * Adds or removes the Quick Use button panel based on page and settings.
+     */
     function addQuickUseButtons() {
-        // Only add buttons on item or faction armoury pages
         const isItemsPage = window.location.href.includes('torn.com/item.php');
         const isFactionArmouryDrugsPage = window.location.href.includes('factions.php') && window.location.href.includes('armoury') && window.location.href.includes('sub=drugs');
-        if (!isItemsPage && !isFactionArmouryDrugsPage) {
-            debugLog("Not on items or faction armoury page, skipping quick use buttons.");
-            return;
-        }
 
-        // Remove existing container to prevent duplicates on re-renders
+        // *** MODIFIED LOGIC: Determine if the panel should be shown ***
+        const shouldShowOnItems = isItemsPage && !useFactionDrugs;
+        const shouldShowOnFaction = isFactionArmouryDrugsPage && useFactionDrugs;
+        const shouldShowPanel = shouldShowOnItems || shouldShowOnFaction;
+
         const existingContainer = document.querySelector('.quick-use-container');
+
+        if (!shouldShowPanel) {
+            if (existingContainer) {
+                existingContainer.remove(); // Remove panel if it shouldn't be shown
+                debugLog("Conditions not met to show Quick Use panel. Removed if existing.");
+            } else {
+                 debugLog("Conditions not met to show Quick Use panel.");
+            }
+            return; // Stop execution if panel shouldn't be shown
+        }
+        // *** END MODIFIED LOGIC ***
+
+        // If panel should be shown, proceed to create/update it
+        debugLog(`Conditions met to show Quick Use panel (Page: ${isItemsPage ? 'Items' : isFactionArmouryDrugsPage ? 'Faction' : 'Other'}, UseFaction: ${useFactionDrugs})`);
+
+        // Remove existing container to prevent duplicates if function is called again
         if (existingContainer) existingContainer.remove();
 
         const quickUseContainer = document.createElement('div');
@@ -533,7 +552,7 @@
             button.className = 'drug-quick-button';
             const bgColor = drug.color || getDefaultDrugColor(drug.id); // Ensure valid background
             button.style.backgroundColor = bgColor;
-            button.style.color = getTextColorBasedOnBackground(bgColor); // *** SET TEXT COLOR BASED ON BG ***
+            button.style.color = getTextColorBasedOnBackground(bgColor); // Set text color based on BG
             button.addEventListener('click', () => useDrug(drug.id, drug.name));
             drugButtons.push(button);
             quickUseContainer.appendChild(button);
@@ -571,6 +590,7 @@
         document.body.appendChild(quickUseContainer);
         debugLog("Quick use buttons added/updated.");
     }
+
 
     function showDrugCustomizationUI(currentDrugs) {
         let justOpened = true; // Flag to prevent immediate closing
@@ -1411,33 +1431,40 @@
     // Checks if a drug cooldown icon/status is present
     function hasDrugCooldown() {
         // Most reliable check first (specific aria-label)
-        if (document.querySelector("[aria-label^='Drug Cooldown:']")) return true;
+        if (document.querySelector("[aria-label^='Drug Cooldown:']")) {
+             debugLog("Cooldown detected via specific aria-label.");
+             return true;
+        }
 
         // Check various status icon containers and attributes
         const iconSelectors = [
             '.status-icons__wrap a', // Header icons
             '.status-icons li', // Alternative header icons
             '.user-icons__wrap a', // User bar icons
-            '[class*="statusIcon"]', // Generic status icon class
-            'a[href*="tab=buffs"]', // Link to buffs page (less specific)
-            'img[src*="drug"]', // Image source containing 'drug' (less reliable)
+            '[class*="statusIcon"]', // Generic status icon class (often has title/aria-label)
+            // Removed less reliable selectors like img[src*="drug"] and a[href*="buffs"]
         ];
         const icons = document.querySelectorAll(iconSelectors.join(', '));
 
         for (const icon of icons) {
-            const label = (icon.getAttribute('aria-label') || icon.getAttribute('title') || '').toLowerCase();
-            const cl = icon.classList.toString().toLowerCase();
+            const label = (icon.getAttribute('aria-label') || '').toLowerCase();
+            const title = (icon.getAttribute('title') || '').toLowerCase();
 
-            // Check for explicit "Drug Cooldown" text
-            if (label.includes('drug') && label.includes('cooldown')) return true;
+            // Check if EITHER label or title explicitly mentions BOTH "drug" and "cooldown"
+            // This is stricter than before to avoid matching booster/other cooldowns
+            const hasDrugText = label.includes('drug') || title.includes('drug');
+            const hasCooldownText = label.includes('cooldown') || title.includes('cooldown');
 
-            // Check for common class names AND confirm text to avoid matching other cooldowns (e.g., booster)
-            if ((cl.includes('icon5') || cl.includes('drug') || cl.includes('cooldown')) && label.includes('drug')) {
+            if (hasDrugText && hasCooldownText) {
+                 debugLog("Cooldown detected via label/title containing 'drug' and 'cooldown':", icon);
                  return true;
             }
         }
-        return false; // No cooldown detected
+
+        debugLog("No specific drug cooldown detected.");
+        return false; // No specific drug cooldown found
     }
+
 
     // --- Data Fetching ---
 
@@ -1597,7 +1624,7 @@
             // The interval check will still function as a fallback
         }
 
-        console.log('%c Drug Alerts Initialized %c v1.1.2 ', 'background: #4CAF50; color: white; padding: 2px 5px; border-radius: 3px 0 0 3px;', 'background: #2196F3; color: white; padding: 2px 5px; border-radius: 0 3px 3px 0;');
+        console.log('%c Drug Alerts Initialized %c v1.1.3 ', 'background: #4CAF50; color: white; padding: 2px 5px; border-radius: 3px 0 0 3px;', 'background: #FB8C00; color: white; padding: 2px 5px; border-radius: 0 3px 3px 0;');
     }
 
     // Handles actions needed after page navigation (e.g., opening GUI, using pending drug)
@@ -1688,7 +1715,7 @@
         document.querySelectorAll('.drug-alert, .drug-gui, #drug-customization-ui, #add-drugs-ui')
             .forEach(el => el.remove());
         alertElements = null; // Reset the reference
-        debugLog("Removed existing alert/GUI elements.");
+        // Don't log here, it's called frequently
     }
 
     // Main initialization function
@@ -1698,8 +1725,11 @@
         debugLog(`Initializing Drug Alerts. Use Faction Drugs: ${useFactionDrugs}`);
 
         // Clean up any potentially leftover UI elements from previous loads/errors
-        removeExistingAlerts();
-        document.querySelectorAll('#drug-customization-ui, #add-drugs-ui').forEach(el => el.remove());
+        removeExistingAlerts(); // Clear main alert/GUI
+        document.querySelectorAll('#drug-customization-ui, #add-drugs-ui').forEach(el => el.remove()); // Clear popups
+        const existingQuickUse = document.querySelector('.quick-use-container'); // Clear quick use panel
+        if(existingQuickUse) existingQuickUse.remove();
+
 
         // Check for actions pending from previous page (navigation)
         checkForPendingDrugUse();
@@ -1707,7 +1737,7 @@
         // Fetch the drug list, then add UI elements and start monitoring
         fetchDrugs().then(fetchedDrugs => {
             drugList = fetchedDrugs; // Store the fetched or fallback list
-            addQuickUseButtons(); // Add the quick use panel (if on relevant page)
+            addQuickUseButtons(); // Add the quick use panel (conditionally)
             startCooldownChecks(); // Start monitoring cooldown status and manage alert display
         }).catch(err => {
              // This catch is unlikely to be hit due to fetchDrugs resolving with fallback
