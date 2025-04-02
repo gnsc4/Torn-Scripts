@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Torn Booster Alert
-// @version      1.2.0
-// @description  Alerts when no booster cooldown is active, adds Quick Use panel (Cooperative Positioning, Auto Text Contrast). Release Version.
-// @author       GNSC4 [268863] (Release Version Prep)
+// @version      1.2.1
+// @description  Alerts when no booster cooldown is active, adds Quick Use panel
+// @author       GNSC4 [268863]
 // @match        https://www.torn.com/*
 // @grant        GM_addStyle
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=torn.com
