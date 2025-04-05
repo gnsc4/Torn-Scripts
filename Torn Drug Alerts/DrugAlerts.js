@@ -23,7 +23,7 @@
     }
 
     // --- Configuration ---
-    let DEBUG_MODE = true; // Set true for console logs
+    let DEBUG_MODE = false; // Set true for console logs
     const SCRIPT_VERSION = typeof GM_info !== 'undefined' ? GM_info.script.version : '1.5.7';
     const SESSION_STORAGE_KEY = 'drugAlerts_KnownCounts';
     const INITIAL_SCAN_DELAY = 1000; // Slightly reduced initial delay
