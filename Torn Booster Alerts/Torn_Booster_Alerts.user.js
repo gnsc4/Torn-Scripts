@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          Torn Booster Alert
 // @namespace     Torn_Booster_Alerts_GNSC4
-// @version       1.6.5
+// @version       1.6.8
 // @description   Alerts when no booster cooldown is active, adds Quick Use panel with item counts , and allows customization. Includes faction armoury support.
 // @author        GNSC4 [268863]
 // @match         https://www.torn.com/*
@@ -38,7 +38,7 @@
     // --- Configuration ---
     // Set true to enable detailed console logs for debugging counts and other actions
     let DEBUG_MODE = false;
-    const SCRIPT_VERSION = GM_info.script.version || '1.6.5'; // Get version from metadata
+    const SCRIPT_VERSION = GM_info.script.version || '1.6.8'; // Get version from metadata
     const SESSION_STORAGE_KEY = 'boosterAlerts_KnownCounts'; // Key for storing counts across tabs
     const TAB_SWITCH_RESCAN_DELAY = 750; // ms delay after tab click before rescanning items
     const CONTAINER_WAIT_TIMEOUT = 20000; // Max time (ms) to wait for main item container structure to appear
@@ -239,31 +239,56 @@
         .booster-settings-button:hover { background-color: #666; }
         .booster-quick-use-toggle-button { position: absolute; top: -8px; right: -8px; background-color: #2196F3; color: white; border: none; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 10px; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.5); z-index: 1; }
 
-        /* *** NEW: Styles for Faction Toggle in Quick Use Panel *** */
-        .quick-use-faction-toggle {
+        /* *** UPDATED: Styles for Faction Toggle SLIDER in Quick Use Panel *** */
+        .quick-use-faction-toggle-container { /* Wrapper for slider and label */
             display: flex;
             align-items: center;
-            padding: 4px 0 8px 0; /* Add some padding */
-            margin-bottom: 5px; /* Space before edit button */
-            border-bottom: 1px solid #444; /* Separator */
+            justify-content: space-between; /* Space slider and label */
+            padding: 4px 0 8px 0;
+            margin-bottom: 5px;
+            border-bottom: 1px solid #444;
         }
-        .quick-use-faction-toggle input[type="checkbox"] {
-            margin-right: 6px;
-            height: 14px; /* Adjust size */
-            width: 14px;
+        .quick-use-faction-slider {
+            width: 40px; /* Slider width */
+            height: 20px; /* Slider height */
+            background-color: #555; /* Default background */
+            border-radius: 10px; /* Rounded slider */
+            position: relative;
             cursor: pointer;
+            transition: background-color 0.3s ease;
+            flex-shrink: 0; /* Prevent shrinking */
         }
-        .quick-use-faction-toggle label {
-            font-size: 11px; /* Smaller font */
+        .quick-use-faction-slider-handle {
+            width: 16px; /* Handle size */
+            height: 16px;
+            background-color: #ccc;
+            border-radius: 50%; /* Circular handle */
+            position: absolute;
+            top: 2px;
+            left: 2px; /* Initial position (Inventory) */
+            transition: left 0.3s ease;
+        }
+        .quick-use-faction-slider.inventory {
+            background-color: #4CAF50; /* Green for Inventory */
+        }
+        .quick-use-faction-slider.faction {
+            background-color: #F44336; /* Red for Faction */
+        }
+        .quick-use-faction-slider.faction .quick-use-faction-slider-handle {
+            left: calc(100% - 16px - 2px); /* Move handle to the right */
+        }
+        .quick-use-faction-toggle-label {
+            font-size: 11px;
             color: #ccc;
-            cursor: pointer;
+            margin-left: 8px; /* Space between slider and label */
             flex-grow: 1; /* Allow label to take space */
+            text-align: right;
         }
         /* Hide toggle when panel is minimized */
-        .booster-quick-use-container[data-minimized="true"] .quick-use-faction-toggle {
+        .booster-quick-use-container[data-minimized="true"] .quick-use-faction-toggle-container {
              display: none;
         }
-        /* *** END: New Styles *** */
+        /* *** END: Slider Styles *** */
 
         /* --- Customization UI Styles --- */
         #booster-customization-ui, #add-boosters-ui { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #222; color: white; padding: 20px; border-radius: 8px; z-index: 9999998; width: 90vw; max-width: 400px; max-height: 70vh; overflow-y: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.7); border: 1px solid #444; box-sizing: border-box; }
@@ -305,9 +330,8 @@
         positionBoosterAlert(alert, header);
 
         const isItemsPage = window.location.href.includes('torn.com/item.php');
-        // *** Use broader check for any armoury tab ***
-        const isFactionArmouryPage = window.location.href.includes('factions.php') &&
-                                     window.location.href.includes('#/tab=armoury');
+        // *** UPDATED: Check if on faction page AND hash starts with #/tab=armoury ***
+        const isFactionArmouryPage = window.location.href.includes('factions.php') && window.location.hash.startsWith('#/tab=armoury');
         debugLog(`Page check - Items: ${isItemsPage}, Faction Armoury: ${isFactionArmouryPage}`);
 
         let gui = document.getElementById('boosterGui');
@@ -330,7 +354,7 @@
             debugLog(`Alert clicked. Items page: ${isItemsPage}, Faction Armoury page: ${isFactionArmouryPage}, Using faction boosters: ${useFactionBoosters}`);
             event.stopPropagation();
             const currentGui = document.getElementById('boosterGui');
-            // *** Use broader isFactionArmouryPage check ***
+            // *** Use updated isFactionArmouryPage check ***
             if ((isItemsPage && !useFactionBoosters) || (isFactionArmouryPage && useFactionBoosters)) {
                 if (currentGui) { currentGui.style.display = currentGui.style.display === 'block' ? 'none' : 'block'; void currentGui.offsetWidth; }
                 else { debugLog("GUI not found on alert click, attempting to recreate."); alertElements = createAlert(); if (alertElements && alertElements.gui) alertElements.gui.style.display = 'block'; }
@@ -785,14 +809,18 @@
 
         // --- VISIBILITY CHECK (Updated for broader armoury view) ---
         const isItemsPage = window.location.href.includes('torn.com/item.php');
-        const isFactionArmouryPage = window.location.href.includes('factions.php') &&
-                                     window.location.href.includes('#/tab=armoury'); // Check for base armoury tab hash
+        // *** UPDATED: Check if on faction page AND hash starts with #/tab=armoury ***
+        const isFactionArmouryPage = window.location.href.includes('factions.php') && window.location.hash.startsWith('#/tab=armoury');
 
         const shouldShowQuickUse = (isItemsPage && !useFactionBoosters) || (isFactionArmouryPage && useFactionBoosters);
 
+        // *** ADDED DEBUG LOGGING ***
+        debugLog(`[buildPanel] Visibility Check: isItemsPage=${isItemsPage}, isFactionArmouryPage=${isFactionArmouryPage}, useFactionBoosters=${useFactionBoosters}, shouldShowQuickUse=${shouldShowQuickUse}`);
+
+
         if (!shouldShowQuickUse) {
-            debugLog('[buildPanel] Quick Use UI should not be shown on this page/mode.');
-            return;
+            debugLog('[buildPanel] Quick Use UI should not be shown on this page/mode. Aborting panel build.');
+            return; // <-- Panel creation is skipped if not on the correct page/mode
         }
         // --- END VISIBILITY CHECK ---
 
@@ -845,36 +873,52 @@
 
         debugLog(`[buildPanel] Created ${boosterButtons.length} buttons structure, ${buttonsAddedCount} initially visible.`);
 
-        // *** Add Faction Toggle ***
+        // *** MODIFIED: Add Faction Toggle SLIDER ***
         const toggleContainer = document.createElement('div');
-        toggleContainer.className = 'quick-use-faction-toggle';
+        toggleContainer.className = 'quick-use-faction-toggle-container'; // Use new wrapper class
 
-        const factionCheckbox = document.createElement('input');
-        factionCheckbox.type = 'checkbox';
-        factionCheckbox.id = 'quickUseFactionToggle'; // Unique ID
-        factionCheckbox.checked = useFactionBoosters;
+        const sliderContainer = document.createElement('div');
+        sliderContainer.className = 'quick-use-faction-slider'; // Use new slider class
+        sliderContainer.classList.add(useFactionBoosters ? 'faction' : 'inventory'); // Set initial state class
 
-        const factionLabel = document.createElement('label');
-        factionLabel.htmlFor = factionCheckbox.id;
-        factionLabel.textContent = 'Use Faction';
+        const sliderHandle = document.createElement('div');
+        sliderHandle.className = 'quick-use-faction-slider-handle'; // Use new handle class
+        sliderContainer.appendChild(sliderHandle);
 
-        toggleContainer.appendChild(factionCheckbox);
-        toggleContainer.appendChild(factionLabel);
-        quickUseContainer.appendChild(toggleContainer); // Add toggle above settings
+        const sliderLabel = document.createElement('span');
+        sliderLabel.className = 'quick-use-faction-toggle-label'; // Use new label class
+        sliderLabel.textContent = useFactionBoosters ? 'Faction' : 'Inventory'; // Set initial text
 
-        factionCheckbox.addEventListener('change', function() {
-            useFactionBoosters = this.checked;
+        toggleContainer.appendChild(sliderContainer); // Add slider to wrapper
+        toggleContainer.appendChild(sliderLabel); // Add label to wrapper
+        quickUseContainer.appendChild(toggleContainer); // Add wrapper above settings
+
+        // Add click listener to the slider container
+        sliderContainer.addEventListener('click', function() {
+            // Toggle the state
+            useFactionBoosters = !useFactionBoosters;
+
+            // Update slider appearance
+            sliderContainer.classList.toggle('faction', useFactionBoosters);
+            sliderContainer.classList.toggle('inventory', !useFactionBoosters);
+
+            // Update label text
+            sliderLabel.textContent = useFactionBoosters ? 'Faction' : 'Inventory';
+
+            // Save the new state
             localStorage.setItem('useFactionBoosters', useFactionBoosters);
+
+            // Show notification
             showNotification(`${useFactionBoosters ? 'Using faction armoury boosters' : 'Using personal inventory boosters'}`, 'info');
 
-            // *** Clear counts and re-scan/rebuild ***
-            debugLog('[Faction Toggle] Clearing counts and triggering rescan/rebuild.');
+            // Clear counts and re-scan/rebuild (existing logic)
+            debugLog('[Faction Toggle Slider] Clearing counts and triggering rescan/rebuild.');
             boosterCounts = {};
             sessionStorage.removeItem(SESSION_STORAGE_KEY);
             // Trigger a fetch and rebuild for the current view
             handleDelayedScan(); // Use the delayed scan to allow DOM updates if needed
         });
-        // *** END: Add Faction Toggle ***
+        // *** END: Add Faction Toggle SLIDER ***
 
 
         // Add Settings Button
@@ -910,7 +954,7 @@
             }
             if (settingsButton) settingsButton.style.display = isMinimized ? 'none' : 'block';
             // Toggle container visibility handled by CSS using data-minimized attribute
-            // if (toggleContainer) toggleContainer.style.display = isMinimized ? 'none' : 'flex';
+            // if (toggleContainer) toggleContainer.style.display = isMinimized ? 'none' : 'flex'; // Now handled by CSS
 
             currentContainer.style.padding = isMinimized ? '2px' : '10px';
             toggleButton.textContent = isMinimized ? '+' : '–'; // Use en-dash
@@ -1212,10 +1256,12 @@
     function tryFactionBoosterUseMethod(id, name, originalCount) {
         debugLog(`[tryFaction] Attempting faction booster use: ${name} (ID: ${id})`);
         sessionStorage.setItem('boosterUseInProgress', JSON.stringify({ id, name, timestamp: Date.now(), method: 'faction' }));
-        const isFacBoostersPage = window.location.href.includes('factions.php') && window.location.href.includes('armoury') && (window.location.href.includes('sub=boosters') || window.location.href.includes('tab=armoury'));
-        if (!isFacBoostersPage) {
+        // *** UPDATED: Check if on faction page AND hash starts with #/tab=armoury ***
+        const isFacArmouryPage = window.location.href.includes('factions.php') && window.location.hash.startsWith('#/tab=armoury');
+        if (!isFacArmouryPage) {
+            debugLog(`[tryFaction] Not on armoury page. Navigating...`);
             sessionStorage.setItem('pendingFactionBoosterUse', JSON.stringify({ id, name, originalCount })); // Store count too
-            window.location.href = 'https://www.torn.com/factions.php?step=your#/tab=armoury&start=0&sub=boosters';
+            window.location.href = 'https://www.torn.com/factions.php?step=your#/tab=armoury'; // Navigate to base armoury
             return;
         }
         const token = getNSTStyleToken() || getPageCsrfToken();
@@ -1551,7 +1597,7 @@
         for (const icon of statusIcons) { if (icon.offsetParent === null) continue; const ariaLabel = icon.getAttribute('aria-label') || ''; const title = icon.getAttribute('title') || ''; const dataContent = icon.getAttribute('data-content') || ''; const iconText = icon.textContent || ''; if (ariaLabel.includes('Booster Cooldown') || title.includes('Booster Cooldown') || dataContent.includes('Booster Cooldown') || iconText.includes('Booster Cooldown')) { debugLog('Cooldown detected: Text/Attribute phrase match'); return true; } if (icon.className && typeof icon.className === 'string' && icon.className.includes('booster-cooldown')) { debugLog('Cooldown detected: Specific class name'); return true; } }
         return false;
        }
-    function checkForPendingAlert() { try { const fromAlert = sessionStorage.getItem('fromBoosterAlert'); if (fromAlert) { sessionStorage.removeItem('fromBoosterAlert'); const isItemsPage = window.location.href.includes('torn.com/item.php'); const isFacBoostersPage = window.location.href.includes('factions.php') && window.location.href.includes('armoury') && (window.location.href.includes('sub=boosters') || window.location.href.includes('tab=armoury')); const onCorrectPage = (isItemsPage && !useFactionBoosters) || (isFacBoostersPage && useFactionBoosters); if (onCorrectPage) { setTimeout(() => { if (!hasBoosterCooldown()) { if (!alertElements) alertElements = createAlert(); if (alertElements && alertElements.gui) alertElements.gui.style.display = 'block'; } }, 1500); } } const boosterProgress = sessionStorage.getItem('boosterUseInProgress'); if (boosterProgress) { try { const d = JSON.parse(boosterProgress); if (Date.now() - d.timestamp > 60000) sessionStorage.removeItem('boosterUseInProgress'); } catch(e) { sessionStorage.removeItem('boosterUseInProgress'); } } } catch (e) { debugLog('Error in checkForPendingAlert:', e); sessionStorage.removeItem('boosterUseInProgress'); sessionStorage.removeItem('fromBoosterAlert'); } }
+    function checkForPendingAlert() { try { const fromAlert = sessionStorage.getItem('fromBoosterAlert'); if (fromAlert) { sessionStorage.removeItem('fromBoosterAlert'); const isItemsPage = window.location.href.includes('torn.com/item.php'); const isFacArmouryPage = window.location.href.includes('factions.php') && window.location.hash.startsWith('#/tab=armoury'); const onCorrectPage = (isItemsPage && !useFactionBoosters) || (isFacArmouryPage && useFactionBoosters); if (onCorrectPage) { setTimeout(() => { if (!hasBoosterCooldown()) { if (!alertElements) alertElements = createAlert(); if (alertElements && alertElements.gui) alertElements.gui.style.display = 'block'; } }, 1500); } } const boosterProgress = sessionStorage.getItem('boosterUseInProgress'); if (boosterProgress) { try { const d = JSON.parse(boosterProgress); if (Date.now() - d.timestamp > 60000) sessionStorage.removeItem('boosterUseInProgress'); } catch(e) { sessionStorage.removeItem('boosterUseInProgress'); } } } catch (e) { debugLog('Error in checkForPendingAlert:', e); sessionStorage.removeItem('boosterUseInProgress'); sessionStorage.removeItem('fromBoosterAlert'); } }
     function startCooldownChecks() {
         if (cooldownCheckInterval) clearInterval(cooldownCheckInterval); if (cooldownObserver) cooldownObserver.disconnect();
         const checkCooldownLogic = () => {
@@ -1583,8 +1629,9 @@
         if (pendingUseData) {
             try {
                 const pendingUse = JSON.parse(pendingUseData);
-                const isFacBoostersPage = window.location.href.includes('factions.php') && window.location.href.includes('armoury') && (window.location.href.includes('sub=boosters') || window.location.href.includes('tab=armoury'));
-                if (isFacBoostersPage && pendingUse.id && pendingUse.name) {
+                // *** UPDATED: Check if on faction page AND hash starts with #/tab=armoury ***
+                 const isFacArmouryPage = window.location.href.includes('factions.php') && window.location.hash.startsWith('#/tab=armoury');
+                if (isFacArmouryPage && pendingUse.id && pendingUse.name) {
                     debugLog(`Processing pending faction booster use: ${pendingUse.name}`);
                     sessionStorage.removeItem('pendingFactionBoosterUse');
                     // Use the stored original count if available, otherwise assume 1 (it will be reverted if it fails anyway)
@@ -1598,8 +1645,8 @@
                               debugLog("Pending faction use detected, but user switched back to personal inventory. Aborting.");
                          }
                     }, 1500);
-                } else if (!isFacBoostersPage) {
-                    debugLog('Still not on faction boosters page, keeping pending use data');
+                } else if (!isFacArmouryPage) {
+                    debugLog('Still not on faction armoury page, keeping pending use data');
                 } else {
                     debugLog('Clearing invalid pending faction booster use data');
                     sessionStorage.removeItem('pendingFactionBoosterUse');
@@ -1754,11 +1801,17 @@
         setupCooperativePositioning();
 
         // --- Wait for Item List / Trigger Scan ---
-        const isRelevantPage = (window.location.href.includes('item.php') && !useFactionBoosters) ||
-                               (window.location.href.includes('factions.php') && window.location.href.includes('armoury') && useFactionBoosters);
+        const isItemsPage = window.location.href.includes('item.php');
+        // *** UPDATED: Check if on faction page AND hash starts with #/tab=armoury ***
+        const isFactionArmouryPage = window.location.href.includes('factions.php') && window.location.hash.startsWith('#/tab=armoury');
+        const isRelevantPage = (isItemsPage && !useFactionBoosters) || (isFactionArmouryPage && useFactionBoosters);
+
+        // *** ADDED DEBUG LOGGING ***
+        debugLog(`[initialize] State Check: isItemsPage=${isItemsPage}, isFactionArmouryPage=${isFactionArmouryPage}, useFactionBoosters=${useFactionBoosters}, isRelevantPage=${isRelevantPage}`);
+
 
         if (isRelevantPage) {
-            debugLog("[initialize] Relevant page detected.");
+            debugLog("[initialize] Relevant page detected. Proceeding with observer logic.");
 
             // Define selectors
             const containerSelector = useFactionBoosters
@@ -1850,11 +1903,11 @@
             }
 
         } else {
-             debugLog("[initialize] Not on relevant item/armoury page or wrong mode. Building panel with stored counts.");
+             debugLog("[initialize] Not on relevant item/armoury page or wrong mode. Fetching stored counts and attempting panel build.");
              // Fetch counts anyway to load from sessionStorage, then build panel
-             fetchInitialBoosterCounts(useFactionBoosters, document);
-             buildOrRebuildQuickUsePanel();
-             panelBuilt = true; // Mark as built
+             fetchInitialBoosterCounts(useFactionBoosters, document); // Fetch counts from storage
+             buildOrRebuildQuickUsePanel(); // Attempt to build (will check relevance again inside)
+             panelBuilt = true; // Mark as built (even if panel didn't show)
         }
 
 
