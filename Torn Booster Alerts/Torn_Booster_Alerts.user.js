@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name           Torn Booster Alert
 // @namespace      Torn_Booster_Alerts_GNSC4
-// @version        1.6.1
+// @version        1.6.9
 // @description    Alerts when no booster cooldown is active, adds Quick Use panel with item counts , and allows customization. Includes faction armoury support. Now handles timer cooldown messages correctly.
 // @author         GNSC4 [268863]
 // @match          https://www.torn.com/*
@@ -38,7 +38,7 @@
     // --- Configuration ---
     // Set true to enable detailed console logs for debugging counts and other actions
     let DEBUG_MODE = false;
-    const SCRIPT_VERSION = GM_info.script.version || '1.6.1'; // Get version from metadata
+    const SCRIPT_VERSION = GM_info.script.version || '1.6.9'; // Get version from metadata
     const SESSION_STORAGE_KEY = 'boosterAlerts_KnownCounts'; // Key for storing counts across tabs
     const TAB_SWITCH_RESCAN_DELAY = 750; // ms delay after tab click before rescanning items
     const CONTAINER_WAIT_TIMEOUT = 20000; // Max time (ms) to wait for main item container structure to appear
