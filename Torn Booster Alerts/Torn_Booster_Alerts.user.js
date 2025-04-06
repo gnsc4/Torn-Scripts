@@ -1,16 +1,16 @@
 // ==UserScript==
-// @name          Torn Booster Alert
-// @namespace     Torn_Booster_Alerts_GNSC4
-// @version       1.6.8
-// @description   Alerts when no booster cooldown is active, adds Quick Use panel with item counts , and allows customization. Includes faction armoury support.
-// @author        GNSC4 [268863]
-// @match         https://www.torn.com/*
-// @grant         GM_addStyle
-// @grant         GM_info
-// @require       https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js
-// @icon          https://www.google.com/s2/favicons?sz=64&domain=torn.com
-// @updateURL     https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Torn%20Booster%20Alerts/Torn_Booster_Alerts.user.js
-// @downloadURL   https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Torn%20Booster%20Alerts/Torn_Booster_Alerts.user.js
+// @name           Torn Booster Alert
+// @namespace      Torn_Booster_Alerts_GNSC4
+// @version        1.6.1
+// @description    Alerts when no booster cooldown is active, adds Quick Use panel with item counts , and allows customization. Includes faction armoury support. Now handles timer cooldown messages correctly.
+// @author         GNSC4 [268863]
+// @match          https://www.torn.com/*
+// @grant          GM_addStyle
+// @grant          GM_info
+// @require        https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js
+// @icon           https://www.google.com/s2/favicons?sz=64&domain=torn.com
+// @updateURL      https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Torn%20Booster%20Alerts/Torn_Booster_Alerts.user.js
+// @downloadURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Torn%20Booster%20Alerts/Torn_Booster_Alerts.user.js
 // ==/UserScript==
 
 // VERY EARLY LOG: Check if script file is loaded at all
@@ -38,7 +38,7 @@
     // --- Configuration ---
     // Set true to enable detailed console logs for debugging counts and other actions
     let DEBUG_MODE = false;
-    const SCRIPT_VERSION = GM_info.script.version || '1.6.8'; // Get version from metadata
+    const SCRIPT_VERSION = GM_info.script.version || '1.6.1'; // Get version from metadata
     const SESSION_STORAGE_KEY = 'boosterAlerts_KnownCounts'; // Key for storing counts across tabs
     const TAB_SWITCH_RESCAN_DELAY = 750; // ms delay after tab click before rescanning items
     const CONTAINER_WAIT_TIMEOUT = 20000; // Max time (ms) to wait for main item container structure to appear
@@ -186,7 +186,7 @@
         .booster-item { background-color: #333; padding: 12px; border-radius: 5px; text-align: center; cursor: pointer; transition: background-color 0.2s; font-size: 13px; font-weight: bold; word-wrap: break-word; }
         .energy-item { border-left: 3px solid #4CAF50; }
         .nerve-item { border-left: 3px solid #F44336; }
-        .happy-item { border-left: 3px solid #FFEB3B; color: black; /* Ensure contrast */ }
+        .happy-item { border-left: 3px solid #FFEB3B; color: white; /* Ensure contrast */ }
         .stat-item { border-left: 3px solid #2196F3; }
         .booster-item:hover { background-color: #444; }
         .booster-notification { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 15px 20px; border-radius: 5px; color: white; z-index: 999999; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4); opacity: 1; transition: opacity 0.5s, transform 0.3s ease-out; text-align: center; min-width: 250px; max-width: 80%; pointer-events: none; }
@@ -660,8 +660,8 @@
                         boosterCounts[itemId] = quantity; // Update with the latest count found
                     } else {
                          if (boosterCounts[itemId] === undefined) { // Avoid overwriting a known count with 0
-                            debugLog(`[fetchCounts] Failed to parse valid quantity for ${itemName} (ID: ${itemId}). Storing 0.`, itemLi);
-                            boosterCounts[itemId] = 0;
+                             debugLog(`[fetchCounts] Failed to parse valid quantity for ${itemName} (ID: ${itemId}). Storing 0.`, itemLi);
+                             boosterCounts[itemId] = 0;
                          }
                     }
 
@@ -1415,67 +1415,97 @@
         xhr.send(params.toString());
     }
 
-    // Modified handleBoosterResponse to accept and use originalCount
+    // --- *** MODIFIED handleBoosterResponse *** ---
     function handleBoosterResponse(xhr, id, name, method, originalCount, maybeClearProgress = false) {
         id = parseInt(id); // Ensure ID is number for consistency
-        let success = false;
-        let cooldown = false;
-        let message = `Error using ${name}: Unknown response`;
+        let success = false; // Default to failure
+        let cooldown = false; // Flag for cooldown state
+        let message = `Error using ${name}: Unknown response`; // Default message
         let isJson = false;
         let responseData = null;
+        let rawResponseText = xhr.responseText || ''; // Store raw text
 
         debugLog(`[handleResponse ${method}] Received response for ${name} (ID: ${id}). Original count: ${originalCount}`);
 
         if (xhr.status === 200) {
             try {
-                responseData = JSON.parse(xhr.responseText);
+                // Attempt to parse JSON first
+                responseData = JSON.parse(rawResponseText);
                 isJson = true;
                 debugLog(`[handleResponse ${method}] JSON Response:`, responseData);
-                const responseText = responseData.text || responseData.message || (responseData.error ? JSON.stringify(responseData.error) : '');
-                if (responseData.success || (responseText && (responseText.includes('consumed') || responseText.includes('used')))) {
+                const responseTextFromJson = responseData.text || responseData.message || (responseData.error ? JSON.stringify(responseData.error) : '');
+
+                if (responseData.success) {
+                    // Explicit success from JSON
                     success = true;
-                    message = responseData.text || `Used ${name} successfully!`; // Use Torn's success message
-                } else if (responseText && (responseText.includes('cooldown') || responseText.includes('effect of a booster') || responseText.includes('wait'))) {
-                    cooldown = true; // Treat cooldown as non-success for count purposes
-                    message = extractCooldownMessage(responseText, 'Booster') || 'You are on booster cooldown or effect already active.';
+                    message = responseTextFromJson || `Used ${name} successfully!`;
+                } else if (responseTextFromJson && responseTextFromJson.includes('<span class="counter-wrap"')) {
+                    // *** NEW: Cooldown with timer span (JSON) ***
+                    cooldown = true;
+                    success = false; // Ensure success is false for cooldown
+                    message = responseTextFromJson; // Use the raw HTML message with the span
+                    debugLog(`[handleResponse ${method}] Detected cooldown with timer span (JSON).`);
+                } else if (responseTextFromJson && (responseTextFromJson.includes('cooldown') || responseTextFromJson.includes('effect of a booster') || responseTextFromJson.includes('wait'))) {
+                    // Generic cooldown without timer (JSON)
+                    cooldown = true;
+                    success = false; // Ensure success is false
+                    message = extractCooldownMessage(responseTextFromJson, 'Booster') || 'You are on booster cooldown or effect already active.';
+                    debugLog(`[handleResponse ${method}] Detected generic cooldown (JSON).`);
                 } else {
                     // Other JSON error
-                    const tempDiv = document.createElement('div'); tempDiv.innerHTML = responseText || '';
-                    message = `Error: ${(tempDiv.textContent || tempDiv.innerText || responseText || 'Unknown error').trim()}`;
+                    success = false;
+                    const tempDiv = document.createElement('div'); tempDiv.innerHTML = responseTextFromJson || '';
+                    message = `Error: ${(tempDiv.textContent || tempDiv.innerText || responseTextFromJson || 'Unknown error').trim()}`;
                 }
             } catch (e) {
                 // Response is likely HTML/Text
-                debugLog(`[handleResponse ${method}] Text Response:`, xhr.responseText.substring(0, 200));
-                const responseText = xhr.responseText || '';
-                if (responseText.includes('success') || responseText.includes('consumed') || responseText.includes('used')) {
-                    success = true;
-                     // Try extracting success message
-                    const successMatch = responseText.match(/<div[^>]*class=["'][^"']*success[^"']*["'][^>]*>(.*?)<\/div>/i)
-                                       || responseText.match(/<p[^>]*class=["'][^"']*msg[^"']*["'][^>]*>(.*?)<\/p>/i);
-                    message = successMatch ? (successMatch[1].replace(/<[^>]+>/g, '').trim() || `Used ${name} successfully!`) : `Used ${name} successfully!`;
-                } else if (responseText.includes('cooldown') || responseText.includes('effect of a booster') || responseText.includes('wait')) {
+                isJson = false;
+                debugLog(`[handleResponse ${method}] Text Response (first 200 chars):`, rawResponseText.substring(0, 200));
+
+                if (rawResponseText.includes('<span class="counter-wrap"')) {
+                     // *** NEW: Cooldown with timer span (HTML/Text) ***
                     cooldown = true;
-                    message = extractCooldownMessage(responseText, 'Booster') || 'You are on booster cooldown or effect already active.';
+                    success = false; // Ensure success is false
+                    message = rawResponseText; // Use the raw HTML message with the span
+                    debugLog(`[handleResponse ${method}] Detected cooldown with timer span (HTML/Text).`);
+                } else if (rawResponseText.includes('consumed') || rawResponseText.includes('used')) {
+                    // Success based on keywords (HTML/Text) - check this *after* specific cooldown span
+                    success = true;
+                    const successMatch = rawResponseText.match(/<div[^>]*class=["'][^"']*success[^"']*["'][^>]*>(.*?)<\/div>/i)
+                                      || rawResponseText.match(/<p[^>]*class=["'][^"']*msg[^"']*["'][^>]*>(.*?)<\/p>/i);
+                    message = successMatch ? (successMatch[1].replace(/<[^>]+>/g, '').trim() || `Used ${name} successfully!`) : `Used ${name} successfully!`;
+                } else if (rawResponseText.includes('cooldown') || rawResponseText.includes('effect of a booster') || rawResponseText.includes('wait')) {
+                    // Generic cooldown without timer (HTML/Text)
+                    cooldown = true;
+                    success = false; // Ensure success is false
+                    message = extractCooldownMessage(rawResponseText, 'Booster') || 'You are on booster cooldown or effect already active.';
+                    debugLog(`[handleResponse ${method}] Detected generic cooldown (HTML/Text).`);
                 } else {
-                    const errorMatch = responseText.match(/<[^>]*class=['"]error['"][^>]*>(.*?)<\/|Validation failed|Error:|not authorized/i);
+                    // Other HTML/Text error
+                    success = false;
+                    const errorMatch = rawResponseText.match(/<[^>]*class=['"]error['"][^>]*>(.*?)<\/|Validation failed|Error:|not authorized/i);
                     if (errorMatch) { message = `Error: ${(errorMatch[1] || 'Validation failed').replace(/<[^>]+>/g, '').trim()}`; }
                     else { message = `Error using ${name}: Unexpected response`; }
                 }
             }
         } else {
+            // HTTP error
+            success = false;
             message = `Error using ${name}: Request failed (${xhr.status})`;
         }
 
+        // Show the resulting notification
+        // Use 'info' type for cooldown messages, 'error' for others failures
         showNotification(message, success ? 'success' : (cooldown ? 'info' : 'error'));
 
         // --- Revert Count Logic ---
+        // This block now correctly handles cooldowns because 'success' will be false
         if (!success) {
-            debugLog(`[handleResponse ${method}] Usage failed for ${name} (ID: ${id}). Reverting count to ${originalCount}.`);
+            debugLog(`[handleResponse ${method}] Usage failed or cooldown for ${name} (ID: ${id}). Reverting count to ${originalCount}.`);
             updateBoosterCountDisplay(id, originalCount); // Revert count (updates global state + storage)
         } else {
              debugLog(`[handleResponse ${method}] Usage successful for ${name} (ID: ${id}). Count remains decremented.`);
              // Count was already updated optimistically and saved in updateBoosterCountDisplay
-             // No need to save again here unless we implement a forced refresh.
         }
         // --- End Revert Logic ---
 
@@ -1496,6 +1526,25 @@
             setTimeout(startCooldownChecks, 500);
         }
     }
+    // --- *** END MODIFIED handleBoosterResponse *** ---
+
+    // Helper to extract cleaner cooldown message (if needed, but now we pass raw HTML for timer)
+    function extractCooldownMessage(html, type = 'Booster') {
+        try {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            // Prioritize specific messages
+            let msgElement = tempDiv.querySelector('.msg');
+            if (msgElement) return msgElement.textContent.trim();
+            let errorElement = tempDiv.querySelector('.error');
+            if (errorElement) return errorElement.textContent.trim();
+            // Fallback to generic text content if specific elements aren't found
+            return tempDiv.textContent.trim() || `You are on ${type.toLowerCase()} cooldown.`;
+        } catch (e) {
+            return `You are on ${type.toLowerCase()} cooldown.`; // Fallback
+        }
+    }
+
 
     // *** MODIFIED showNotification to use innerHTML and add timer ***
     function showNotification(message, type = 'info') {
@@ -1513,7 +1562,7 @@
         n.innerHTML = message; // Use raw HTML message
 
         // Special styling for cooldown messages
-        if (typeof message === 'string' && message.toLowerCase().includes('cooldown')) {
+        if (typeof message === 'string' && (message.toLowerCase().includes('cooldown') || message.includes('counter-wrap'))) { // Check for span too
              n.style.minWidth = '280px';
              n.style.padding = '15px 25px';
         }
@@ -1579,7 +1628,10 @@
         // Store removal timeout ID to potentially clear it if a new notification appears quickly
         n.dataset.removalTimeoutId = removalTimeoutId.toString();
 
-        debugLog(`Notification [${type}]: ${message}`); // Log raw message
+        // Log the message *content* after potential HTML stripping for cleaner console logs
+        const tempDivLog = document.createElement('div');
+        tempDivLog.innerHTML = message;
+        debugLog(`Notification [${type}]: ${(tempDivLog.textContent || tempDivLog.innerText || message).trim()}`);
     }
 
 
@@ -1852,30 +1904,30 @@
                          waitForContainerObserver = new MutationObserver((mutations, observer) => {
                              let foundContainer = null; // Variable to store the found container
                              for (const mutation of mutations) {
-                                 // Log added nodes for debugging
-                                 // if (DEBUG_MODE && mutation.addedNodes.length > 0) {
-                                 //     debugLog('[waitForContainerObserver] Nodes added:', Array.from(mutation.addedNodes).map(n => n.nodeName + (n.id ? '#'+n.id : '') + (n.className ? '.'+n.className.split(' ').join('.') : '')));
-                                 // }
+                                  // Log added nodes for debugging
+                                  // if (DEBUG_MODE && mutation.addedNodes.length > 0) {
+                                  //    debugLog('[waitForContainerObserver] Nodes added:', Array.from(mutation.addedNodes).map(n => n.nodeName + (n.id ? '#'+n.id : '') + (n.className ? '.'+n.className.split(' ').join('.') : '')));
+                                  // }
 
-                                 for (const node of mutation.addedNodes) {
-                                     if (node.nodeType === 1) {
-                                         // Check if the added node *is* the container or *contains* the container
-                                         if (node.matches(containerSelector)) {
-                                             foundContainer = node;
-                                         } else if (typeof node.querySelector === 'function') { // Ensure querySelector exists
-                                             foundContainer = node.querySelector(containerSelector);
-                                         }
+                                  for (const node of mutation.addedNodes) {
+                                      if (node.nodeType === 1) {
+                                          // Check if the added node *is* the container or *contains* the container
+                                          if (node.matches(containerSelector)) {
+                                              foundContainer = node;
+                                          } else if (typeof node.querySelector === 'function') { // Ensure querySelector exists
+                                              foundContainer = node.querySelector(containerSelector);
+                                          }
 
-                                         if (foundContainer) {
-                                             debugLog(`[initialize] Initial load: Container '${containerSelector}' detected via observer.`);
-                                             clearTimeout(waitForContainerTimeout); // Clear timeout
-                                             observer.disconnect(); // Stop observing for container
-                                             waitForContainerObserver = null;
-                                             observeItemListContainerOnce(foundContainer, itemSelector); // Start observing for items
-                                             return; // Exit once found
-                                         }
-                                     }
-                                 }
+                                          if (foundContainer) {
+                                              debugLog(`[initialize] Initial load: Container '${containerSelector}' detected via observer.`);
+                                              clearTimeout(waitForContainerTimeout); // Clear timeout
+                                              observer.disconnect(); // Stop observing for container
+                                              waitForContainerObserver = null;
+                                              observeItemListContainerOnce(foundContainer, itemSelector); // Start observing for items
+                                              return; // Exit once found
+                                          }
+                                      }
+                                  }
                              }
                          });
 
@@ -1954,7 +2006,7 @@
              }
         }, 250);
     } catch (e) {
-         console.error("BoosterAlerts: Critical error during initial setup:", e);
+        console.error("BoosterAlerts: Critical error during initial setup:", e);
     }
 
 })();
