@@ -30,7 +30,7 @@
      window.location.href.includes('loader2.php') ||
      window.location.href.includes('sid=travel') ||
      window.location.pathname.includes('loader2.php')) {
-         // console.log('[BoosterAlert Script] Exiting: Detected attack/loader page.');
+          console.log('[BoosterAlert Script] Exiting: Detected attack/loader page.');
         return;
     }
      // console.log('[BoosterAlert Script] Passed attack page check.');
