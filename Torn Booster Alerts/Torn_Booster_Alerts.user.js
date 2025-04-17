@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name           Torn Booster Alert
 // @namespace      Torn_Booster_Alerts_GNSC4
-// @version        1.6.9
+// @version        1.6.10
 // @description    Alerts when no booster cooldown is active, adds Quick Use panel with item counts , and allows customization. Includes faction armoury support. Now handles timer cooldown messages correctly.
 // @author         GNSC4 [268863]
 // @match          https://www.torn.com/*
@@ -25,10 +25,11 @@
     // Check if we're on an attack page and exit early if true
      // Log URL before checking
      // console.log('[BoosterAlert Script] Current URL:', window.location.href);
-    if (window.location.href.includes('sid=getInAttack') ||
-        window.location.href.includes('sid=attack') ||
-        window.location.href.includes('loader2.php') ||
-        window.location.pathname.includes('loader2.php')) {
+     if (window.location.href.includes('sid=getInAttack') || 
+     window.location.href.includes('sid=attack') || 
+     window.location.href.includes('loader2.php') ||
+     window.location.href.includes('sid=travel') ||
+     window.location.pathname.includes('loader2.php')) {
          // console.log('[BoosterAlert Script] Exiting: Detected attack/loader page.');
         return;
     }

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Drug Alert
-// @version      1.2.5
+// @version      1.2.6
 // @description  Alerts when no drug cooldown is active, shows counts, Faster panel loading on tab switch.
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/*
@@ -15,11 +15,13 @@
     'use strict';
 
     // Check if we're on an attack page and exit early if true
-    if (window.location.href.includes('sid=getInAttack') ||
-        window.location.href.includes('sid=attack') ||
-        window.location.href.includes('loader2.php') ||
-        window.location.pathname.includes('loader2.php')) {
-        return;
+    if (window.location.href.includes('sid=getInAttack') || 
+    window.location.href.includes('sid=attack') || 
+    window.location.href.includes('loader2.php') ||
+    window.location.href.includes('sid=travel') ||
+    window.location.pathname.includes('loader2.php')) {
+    console.log('Drug Alerts: Not initializing on Attack page or Travel page.');
+    return;
     }
 
     // --- Configuration ---
