@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name         Torn Chat Blocker
 // @namespace    Torn-Chat-Blocker
-// @version      1.0.34
+// @version      1.0.35
 // @description  Block users in Torn Chat 3.0: Removes recent chats, windows, buttons. Hides messages. Provides integrated UI.
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/*
 // @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Torn_Chat_Blocker/Torn_Chat_Blocker.user.js
 // @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Torn_Chat_Blocker/Torn_Chat_Blocker.user.js
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=torn.com
 // @run-at       document-end
 // @grant        GM_addStyle
 // @grant        GM_setValue
