@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name           Torn Booster Alert
 // @namespace      Torn_Booster_Alerts_GNSC4
-// @version        1.6.10
+// @version        1.6.11
 // @description    Alerts when no booster cooldown is active, adds Quick Use panel with item counts , and allows customization. Includes faction armoury support. Now handles timer cooldown messages correctly.
 // @author         GNSC4 [268863]
 // @match          https://www.torn.com/*
@@ -30,7 +30,7 @@
      window.location.href.includes('loader2.php') ||
      window.location.href.includes('sid=travel') ||
      window.location.pathname.includes('loader2.php')) {
-          console.log('[BoosterAlert Script] Exiting: Detected attack/loader page.');
+          console.log('[BoosterAlert Script] Exiting: Detected Attack/Travel page.');
         return;
     }
      // console.log('[BoosterAlert Script] Passed attack page check.');
