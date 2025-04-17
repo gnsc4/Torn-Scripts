@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Torn Race Manager
-// @version      3.7.11
+// @version      3.7.12
 // @description  GUI to configure Torn racing parameters and create races with presets and quick launch buttons
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -28,8 +28,9 @@
         if (window.location.href.includes('sid=getInAttack') || 
         window.location.href.includes('sid=attack') || 
         window.location.href.includes('loader2.php') ||
+        window.location.href.includes('sid=travel') ||
         window.location.pathname.includes('loader2.php')) {
-        console.log('Drug Alerts: Not initializing on attack page');
+        console.log('Drug Alerts: Not initializing on Attack page or Travel page.');
         return;
     }
 
@@ -1587,7 +1588,7 @@
 
             <div style="text-align: center; margin-top: 20px; color: #888; font-size: 1.2em;">
                 Script created by <a href="https://www.torn.com/profiles.php?XID=268863" target="_blank" style="color: #888; text-decoration: none;">GNSC4 [268863]</a><br>
-                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.7.6 Official Forum Link</a>
+                <a href="https://www.torn.com/forums.php#/p=threads&f=67&t=16454445&b=0&a=0" target="_blank" style="color: #888; text-decoration: none;">v3.7.12 Official Forum Link</a>
             </div>
         `;
 
