@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Chat Blocker
 // @namespace    Torn-Chat-Blocker
-// @version      1.32
+// @version      1.0.33
 // @description  Block users in Torn Chat 3.0: Removes recent chats, windows, buttons. Hides messages. Provides integrated UI.
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/*
@@ -20,7 +20,7 @@
     const MAX_USER_ID_LENGTH = 10; // Basic validation for User ID length
     const DEBUG_MODE = false; // Set to false for normal use
     const HIDDEN_CLASS = 'torn-blocker-hidden-layout'; // CSS class for aggressive hiding
-    const INITIAL_SCAN_DELAY = 1000; // Delay in ms before running the first block scan
+    const INITIAL_SCAN_DELAY = 100; // Delay in ms before running the first block scan
 
     // --- Selectors ---
     // Blocking Targets
