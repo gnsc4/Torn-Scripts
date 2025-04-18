@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Drug Alert
-// @version      1.2.6
-// @description  Alerts when no drug cooldown is active, shows counts, Faster panel loading on tab switch.
+// @version      1.3.1
+// @description  Alerts when no drug cooldown is active, shows counts
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/*
 // @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Torn%20Drug%20Alerts/DrugAlerts.user.js
@@ -15,21 +15,21 @@
     'use strict';
 
     // Check if we're on an attack page and exit early if true
-    if (window.location.href.includes('sid=getInAttack') || 
-    window.location.href.includes('sid=attack') || 
-    window.location.href.includes('loader2.php') ||
-    window.location.href.includes('sid=travel') ||
-    window.location.pathname.includes('loader2.php')) {
-    console.log('Drug Alerts: Not initializing on Attack page or Travel page.');
-    return;
+    if (window.location.href.includes('sid=getInAttack') ||
+        window.location.href.includes('sid=attack') ||
+        window.location.href.includes('loader2.php') ||
+        window.location.href.includes('sid=travel') ||
+        window.location.pathname.includes('loader2.php')) {
+        console.log('Drug Alerts: Not initializing on Attack page or Travel page.');
+        return;
     }
 
     // --- Configuration ---
     let DEBUG_MODE = false; // Set true for console logs
-    const SCRIPT_VERSION = typeof GM_info !== 'undefined' ? GM_info.script.version : '1.2.5'; // Updated version
-    const SESSION_STORAGE_KEY = 'drugAlerts_KnownCounts';
-    const INITIAL_SCAN_DELAY = 1000; // Slightly reduced initial delay
-    const TAB_SCAN_DELAY = 300; // Delay after tab click before scanning (reduced from observer timeout)
+    const SCRIPT_VERSION = typeof GM_info !== 'undefined' ? GM_info.script.version : '1.3.1'; // Updated version
+    const LOCAL_STORAGE_KEY = 'drugAlerts_KnownCounts_v2';
+    const INITIAL_SCAN_DELAY = 1000;
+    const TAB_SCAN_DELAY = 300;
     const FACTION_FALLBACK_TIMEOUT = 2000;
     // --- End Configuration ---
 
@@ -52,13 +52,15 @@
     let cooldownCheckInterval = null;
     let cooldownObserver = null;
     let isInitialLoad = true;
-    let tabScanTimeout = null; // Timeout for delayed scan after tab click
-    let currentPanelInstance = null; // Reference to the currently attached panel
+    let tabScanTimeout = null;
+    let currentPanelInstance = null;
+    let coopObserver = null; // Observer for cooperative positioning
+    let coopAdjustTimeout = null; // Timeout for cooperative positioning adjustment
     // --- End Global State ---
 
     function debugLog(...args) { if (DEBUG_MODE) { console.log('[DrugAlerts Debug]', ...args); } }
 
-    // Add CSS (Added margin-top/bottom to maximized state, removed from minimized state)
+    // Add CSS (MODIFIED .drug-quick-use-toggle-button top position)
     GM_addStyle(`
         .drug-alert { background-color: #ff3333; color: white; padding: 5px 10px; border-radius: 3px; font-weight: bold; cursor: pointer; margin-left: 15px; display: inline-flex; align-items: center; font-size: 12px; vertical-align: middle; }
         .drug-gui, #drug-customization-ui, #add-drugs-ui { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #222; color: white; padding: 20px; border-radius: 8px; z-index: 9999998; width: 90vw; max-width: 350px; max-height: 80vh; overflow-y: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.7); border: 1px solid #444; display: none; box-sizing: border-box; }
@@ -76,12 +78,12 @@
         /* --- START: Updated Spacing --- */
         .drug-quick-use-container {
             position: fixed;
-            top: 150px;
+            /* top: 150px; /* REMOVED - Now set dynamically */
             right: 20px;
             background-color: rgba(34, 34, 34, 0.85);
             padding: 10px;
             border-radius: 5px;
-            z-index: 9998;
+            z-index: 9997; /* Lowered z-index slightly */
             display: flex;
             flex-direction: column;
             gap: 5px;
@@ -89,12 +91,8 @@
             transition: top 0.3s ease, padding 0.3s ease;
             border: 1px solid #555;
             max-width: 180px;
-            margin-top: 15px;    /* Add 15px space above when maximized */
-            margin-bottom: 15px; /* Add 15px space below when maximized */
-        }
-        .drug-quick-use-container[data-minimized="true"] {
-            margin-top: 15;
-            margin-bottom: 15;
+            /* margin-top: 15px; /* REMOVED - Handled by positioning logic */
+            /* margin-bottom: 15px; /* REMOVED - Handled by positioning logic */
         }
         /* --- END: Updated Spacing --- */
         .drug-quick-button { border: 1px solid #555; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-weight: bold; margin-bottom: 5px; text-align: left; transition: background-color 0.2s, filter 0.2s; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; justify-content: space-between; align-items: center; }
@@ -103,7 +101,25 @@
         .drug-quick-button:hover { filter: brightness(1.2); }
         .drug-settings-button { background-color: #555; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-weight: bold; text-align: center; font-size: 12px; transition: background-color 0.2s; display: block; margin-top: 5px; }
         .drug-settings-button:hover { background-color: #666; }
-        .drug-quick-use-toggle-button { position: absolute; top: -8px; right: -8px; background-color: #f44336; color: white; border: none; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 10px; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.5); z-index: 1; }
+        .drug-quick-use-toggle-button {
+            position: absolute;
+            top: -4px;
+            right: -14px;
+            background-color: #f44336;
+            color: white;
+            border: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 10px;
+            font-weight: bold;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+            z-index: 1;
+        }
         .quick-use-slider-toggle-container { display: flex; align-items: center; padding: 6px 0 10px 0; margin-bottom: 5px; border-bottom: 1px solid #444; cursor: pointer; }
         .quick-use-slider-toggle-label { font-size: 11px; color: #ccc; flex-grow: 1; margin-right: 8px; text-align: left; }
         .quick-use-slider { width: 40px; height: 20px; background-color: #ccc; border-radius: 10px; position: relative; transition: background-color 0.3s ease; flex-shrink: 0; border: 1px solid #555; }
@@ -115,6 +131,9 @@
         .drug-quick-use-container[data-minimized="true"] .drug-settings-button,
         .drug-quick-use-container[data-minimized="true"] .quick-use-slider-toggle-container {
             display: none;
+        }
+        .drug-quick-use-container[data-minimized="true"] {
+             padding: 2px; /* Reduce padding when minimized */
         }
         #drug-customization-ui p { margin-bottom: 15px; font-size: 14px; }
         .drug-selection-area { margin-bottom: 15px; border: 1px solid #444; border-radius: 5px; padding: 10px; max-height: 250px; overflow-y: auto; background-color: #2a2a2a; }
@@ -144,18 +163,183 @@
     // Fallback drug list
     const fallbackDrugs = [ { id: 196, name: "Cannabis" }, { id: 197, name: "Ecstasy" }, { id: 198, name: "Ketamine" }, { id: 199, name: "LSD" }, { id: 200, name: "Opium" }, { id: 201, name: "PCP" }, { id: 203, name: "Shrooms" }, { id: 204, name: "Speed" }, { id: 205, name: "Vicodin" }, { id: 206, name: "Xanax" } ];
 
-    // --- Drug Count Fetching (Unchanged from v1.5.5) ---
-    function fetchInitialDrugCounts(useFaction = false, container = document) { debugLog(`[fetchCounts] Starting drug count fetch. Faction mode: ${useFaction}. Container:`, container); let storedCounts = {}; try { const storedData = sessionStorage.getItem(SESSION_STORAGE_KEY); if (storedData) { storedCounts = JSON.parse(storedData); if (typeof storedCounts !== 'object' || storedCounts === null) storedCounts = {}; } } catch (e) { console.error("DrugAlerts: Error parsing stored drug counts", e); storedCounts = {}; } drugCounts = { ...storedCounts }; const factionItemsSelector = 'ul.item-list > li'; const personalItemsSelector = 'div#category-wrap > ul.ui-tabs-panel:not([aria-hidden="true"]) li[data-item], ul#item-list-wrap > li[data-item]'; const itemsSelector = useFaction ? factionItemsSelector : personalItemsSelector; const isKnownDrug = (id) => fallbackDrugs.some(drug => drug.id === parseInt(id)); let itemElements = []; try { if (!container || typeof container.querySelectorAll !== 'function') { container = document; } itemElements = Array.from(container.querySelectorAll(itemsSelector)); debugLog(`[fetchCounts] Found ${itemElements.length} potential item elements using selector: "${itemsSelector}" within container.`); } catch (e) { console.error(`[fetchCounts] Error querying selector "${itemsSelector}":`, e); itemElements = []; } if (!useFaction && itemElements.length === 0) { const altSelector = 'li[id^="item"]'; try { const altItemElements = Array.from(container.querySelectorAll(altSelector)); if (altItemElements.length > 0) { itemElements = altItemElements; } } catch(e) {} } if (itemElements.length === 0) { console.warn("[fetchCounts] No item elements found on current tab/view."); } else { itemElements.forEach((itemLi, index) => { if (!(itemLi instanceof HTMLElement)) return; try { let itemId = null, quantity = null, itemName = null; if (useFaction) { itemId = itemLi.getAttribute('data-itemid') || itemLi.getAttribute('data-id'); if (!itemId) { const imgWrap = itemLi.querySelector('div.img-wrap[data-itemid]'); itemId = imgWrap?.dataset.itemid; } if (!itemId || !isKnownDrug(itemId)) return; const nameDiv = itemLi.querySelector('div.name'); const qtySpan = nameDiv?.querySelector('span.qty'); if (nameDiv) { itemName = nameDiv.firstChild?.textContent?.trim().replace(/ x$/, '').trim() || `Faction Drug ${itemId}`; if (qtySpan?.textContent) { quantity = parseInt(qtySpan.textContent.replace(/[\D]/g, '')); } else { const nameMatch = nameDiv.textContent.match(/ x([\d,]+)$/); if (nameMatch && nameMatch[1]) { quantity = parseInt(nameMatch[1].replace(/,/g, '')); itemName = nameDiv.textContent.substring(0, nameMatch.index).trim(); } else { quantity = 1; } } } else { return; } } else { if (itemLi.classList.contains('clear') || itemLi.classList.contains('select-all') || itemLi.classList.contains('deselect-all') || !itemLi.querySelector('.name, .title-wrap')) return; itemId = itemLi.getAttribute('data-item') || itemLi.getAttribute('data-itemid'); if (!itemId && itemLi.id && itemLi.id.startsWith('item')) itemId = itemLi.id.replace('item', ''); if (!itemId || !isKnownDrug(itemId)) return; const nameElement = itemLi.querySelector('.name, .title .name, .name-wrap .t-overflow, .item-name'); itemName = nameElement ? nameElement.textContent.trim() : `Drug (ID: ${itemId})`; const dataQty = itemLi.getAttribute('data-qty'); if (dataQty !== null) quantity = parseInt(dataQty); if (quantity === null) { const qtyElement = itemLi.querySelector('.qty, .quantity, .amount'); if (qtyElement?.textContent) { const qtyText = qtyElement.textContent.replace(/[\D]/g, ''); quantity = parseInt(qtyText); } } if (quantity === null) quantity = 1; } itemId = parseInt(itemId); if (isNaN(itemId)) return; if (quantity !== null && !isNaN(quantity) && quantity >= 0) { if (isKnownDrug(itemId)) { drugCounts[itemId] = quantity; } } else { if (drugCounts[itemId] === undefined && isKnownDrug(itemId)) { drugCounts[itemId] = 0; } } } catch (e) { console.error(`[fetchCounts] Error processing drug element index ${index}:`, itemLi, e); } }); } try { sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(drugCounts)); } catch (e) { console.error("DrugAlerts: Error saving drug counts to sessionStorage", e); } }
-    function updateDrugCountDisplay(drugId, newCount) { drugId = parseInt(drugId); newCount = parseInt(newCount); if (isNaN(drugId) || isNaN(newCount)) { return; } drugCounts[drugId] = newCount; try { sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(drugCounts)); } catch (e) {} let button = document.querySelector(`.drug-quick-button[data-drug-id="${drugId}"]`); const quickUseContainer = document.querySelector('.drug-quick-use-container'); if (button) { const countSpan = button.querySelector('.drug-quick-button-count'); if (countSpan) { countSpan.textContent = `x${newCount}`; const isMinimized = quickUseContainer?.dataset.minimized === 'true'; button.style.display = isMinimized ? 'none' : (newCount > 0 ? 'flex' : 'none'); } } else if (newCount > 0 && quickUseContainer) { const savedDrugs = JSON.parse(localStorage.getItem('customQuickUseDrugs') || '[]'); const drugData = savedDrugs.find(d => parseInt(d.id) === drugId); if (drugData) { const newButton = createQuickUseButtonElement(drugData, newCount); const settingsButton = quickUseContainer.querySelector('.drug-settings-button'); if (settingsButton) { quickUseContainer.insertBefore(newButton, settingsButton); } else { quickUseContainer.appendChild(newButton); } const isMinimized = localStorage.getItem('drugAlertMinimized') === 'true'; if (isMinimized) newButton.style.display = 'none'; } } }
+    // --- Drug Count Fetching (Uses localStorage) ---
+    function fetchInitialDrugCounts(useFaction = false, container = document) {
+        debugLog(`[fetchCounts] Starting drug count fetch. Faction mode: ${useFaction}. Container:`, container);
+        let storedCounts = {};
+        try {
+            const storedData = localStorage.getItem(LOCAL_STORAGE_KEY);
+            if (storedData) {
+                storedCounts = JSON.parse(storedData);
+                if (typeof storedCounts !== 'object' || storedCounts === null) storedCounts = {};
+            }
+        } catch (e) {
+            console.error("DrugAlerts: Error parsing stored drug counts from localStorage", e);
+            storedCounts = {};
+        }
+        drugCounts = { ...storedCounts }; // Initialize with stored counts
+
+        const factionItemsSelector = 'ul.item-list > li';
+        const personalItemsSelector = 'div#category-wrap > ul.ui-tabs-panel:not([aria-hidden="true"]) li[data-item], ul#item-list-wrap > li[data-item]';
+        const itemsSelector = useFaction ? factionItemsSelector : personalItemsSelector;
+        const isKnownDrug = (id) => fallbackDrugs.some(drug => drug.id === parseInt(id));
+        let itemElements = [];
+
+        try {
+            if (!container || typeof container.querySelectorAll !== 'function') {
+                container = document; // Fallback to document if container is invalid
+            }
+            itemElements = Array.from(container.querySelectorAll(itemsSelector));
+            debugLog(`[fetchCounts] Found ${itemElements.length} potential item elements using selector: "${itemsSelector}" within container.`);
+        } catch (e) {
+            console.error(`[fetchCounts] Error querying selector "${itemsSelector}":`, e);
+            itemElements = [];
+        }
+
+        // Fallback selector for personal items if the primary one fails
+        if (!useFaction && itemElements.length === 0) {
+            const altSelector = 'li[id^="item"]';
+            try {
+                const altItemElements = Array.from(container.querySelectorAll(altSelector));
+                if (altItemElements.length > 0) {
+                    debugLog(`[fetchCounts] Using fallback selector "${altSelector}"`);
+                    itemElements = altItemElements;
+                }
+            } catch(e) {
+                console.warn(`[fetchCounts] Error querying fallback selector "${altSelector}":`, e);
+            }
+        }
+
+        if (itemElements.length === 0) {
+            console.warn("[fetchCounts] No item elements found on current tab/view. Counts will rely solely on stored data.");
+        } else {
+            // Clear counts for the *current* view (faction or personal) before scanning,
+            // but keep counts from the other view type from localStorage.
+            const currentViewDrugIds = new Set(fallbackDrugs.map(d => d.id)); // Assume all drugs could be in this view
+            currentViewDrugIds.forEach(id => {
+                // Only reset if the item *could* potentially be found in this view.
+                // This prevents accidentally clearing counts if we switch views and the new view hasn't loaded yet.
+                // We rely on the scan below to repopulate. If an item isn't found, its count remains from localStorage.
+                // A better approach might be needed if items can exist in both views simultaneously with different counts.
+                // For now, we assume the scan updates the relevant counts.
+            });
+
+            itemElements.forEach((itemLi, index) => {
+                if (!(itemLi instanceof HTMLElement)) return;
+                try {
+                    let itemId = null, quantity = null, itemName = null;
+
+                    // Logic for extracting item ID, name, and quantity (unchanged)
+                    if (useFaction) {
+                        itemId = itemLi.getAttribute('data-itemid') || itemLi.getAttribute('data-id');
+                        if (!itemId) { const imgWrap = itemLi.querySelector('div.img-wrap[data-itemid]'); itemId = imgWrap?.dataset.itemid; }
+                        if (!itemId || !isKnownDrug(itemId)) return;
+                        const nameDiv = itemLi.querySelector('div.name');
+                        const qtySpan = nameDiv?.querySelector('span.qty');
+                        if (nameDiv) {
+                            itemName = nameDiv.firstChild?.textContent?.trim().replace(/ x$/, '').trim() || `Faction Drug ${itemId}`;
+                            if (qtySpan?.textContent) { quantity = parseInt(qtySpan.textContent.replace(/[\D]/g, '')); }
+                            else { const nameMatch = nameDiv.textContent.match(/ x([\d,]+)$/); if (nameMatch && nameMatch[1]) { quantity = parseInt(nameMatch[1].replace(/,/g, '')); itemName = nameDiv.textContent.substring(0, nameMatch.index).trim(); } else { quantity = 1; } }
+                        } else { return; }
+                    } else {
+                        if (itemLi.classList.contains('clear') || itemLi.classList.contains('select-all') || itemLi.classList.contains('deselect-all') || !itemLi.querySelector('.name, .title-wrap')) return;
+                        itemId = itemLi.getAttribute('data-item') || itemLi.getAttribute('data-itemid');
+                        if (!itemId && itemLi.id && itemLi.id.startsWith('item')) itemId = itemLi.id.replace('item', '');
+                        if (!itemId || !isKnownDrug(itemId)) return;
+                        const nameElement = itemLi.querySelector('.name, .title .name, .name-wrap .t-overflow, .item-name');
+                        itemName = nameElement ? nameElement.textContent.trim() : `Drug (ID: ${itemId})`;
+                        const dataQty = itemLi.getAttribute('data-qty');
+                        if (dataQty !== null) quantity = parseInt(dataQty);
+                        if (quantity === null) { const qtyElement = itemLi.querySelector('.qty, .quantity, .amount'); if (qtyElement?.textContent) { const qtyText = qtyElement.textContent.replace(/[\D]/g, ''); quantity = parseInt(qtyText); } }
+                        if (quantity === null) quantity = 1;
+                    }
+
+                    itemId = parseInt(itemId);
+                    if (isNaN(itemId)) return;
+
+                    if (quantity !== null && !isNaN(quantity) && quantity >= 0) {
+                        if (isKnownDrug(itemId)) {
+                            drugCounts[itemId] = quantity; // Update count from scan
+                        }
+                    } else {
+                        // If quantity couldn't be found, but the item exists, assume 0 for this view
+                        if (isKnownDrug(itemId)) {
+                             drugCounts[itemId] = 0;
+                        }
+                    }
+                } catch (e) {
+                    console.error(`[fetchCounts] Error processing drug element index ${index}:`, itemLi, e);
+                }
+            });
+        }
+
+        // After scanning, save the potentially updated counts back to localStorage
+        try {
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(drugCounts));
+            debugLog("[fetchCounts] Updated drug counts saved to localStorage:", drugCounts);
+        } catch (e) {
+            console.error("DrugAlerts: Error saving drug counts to localStorage", e);
+        }
+    }
+
+    // Uses localStorage
+    function updateDrugCountDisplay(drugId, newCount) {
+        drugId = parseInt(drugId);
+        newCount = parseInt(newCount);
+        if (isNaN(drugId) || isNaN(newCount)) {
+            debugLog(`[updateCountDisplay] Invalid ID or count:`, drugId, newCount);
+            return;
+        }
+
+        drugCounts[drugId] = newCount; // Update in-memory count
+
+        // Save updated counts to localStorage
+        try {
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(drugCounts));
+        } catch (e) {
+            console.error("DrugAlerts: Error saving updated drug counts to localStorage", e);
+        }
+
+        // Update the UI element if it exists
+        let button = document.querySelector(`.drug-quick-button[data-drug-id="${drugId}"]`);
+        const quickUseContainer = document.querySelector('.drug-quick-use-container');
+
+        if (button) {
+            const countSpan = button.querySelector('.drug-quick-button-count');
+            if (countSpan) {
+                countSpan.textContent = `x${newCount}`;
+            }
+            // Adjust visibility based on count and minimized state
+            const isMinimized = quickUseContainer?.dataset.minimized === 'true';
+            button.style.display = isMinimized ? 'none' : (newCount > 0 ? 'flex' : 'none');
+            debugLog(`[updateCountDisplay] Updated button for ${drugId}. Count: ${newCount}, Visible: ${button.style.display}`);
+        } else if (newCount > 0 && quickUseContainer) {
+            // If button doesn't exist but count > 0, try to add it (if it's in the quick use list)
+            const savedDrugs = JSON.parse(localStorage.getItem('customQuickUseDrugs') || '[]');
+            const drugData = savedDrugs.find(d => parseInt(d.id) === drugId);
+            if (drugData) {
+                debugLog(`[updateCountDisplay] Creating new button for ${drugId} as count is now > 0.`);
+                const newButton = createQuickUseButtonElement(drugData, newCount);
+                const settingsButton = quickUseContainer.querySelector('.drug-settings-button');
+                if (settingsButton) {
+                    quickUseContainer.insertBefore(newButton, settingsButton);
+                } else {
+                    quickUseContainer.appendChild(newButton);
+                }
+                const isMinimized = localStorage.getItem('drugAlertMinimized') === 'true';
+                if (isMinimized) newButton.style.display = 'none'; // Ensure it respects minimized state
+            }
+        }
+    }
     // --- END Drug Count Fetching ---
 
-    // --- Helper Functions (Unchanged from v1.5.5) ---
+    // --- Helper Functions (Positioning Unchanged) ---
     function positionDrugAlert(alert, header) { if (!header || !header.appendChild) { header = createFixedHeader(); } try { if (window.location.href.includes('forums.php')) { const linksWrap = document.querySelector('.links-top-wrap'); if (linksWrap) { linksWrap.appendChild(alert); alert.style.cssText = `display: inline-flex !important; align-items: center !important; margin-left: 15px !important; float: right !important; position: relative !important; z-index: 99999 !important; margin-top: 5px !important; background-color: #ff3333; color: white; padding: 5px 10px; border-radius: 3px; font-weight: bold; cursor: pointer; font-size: 12px;`; } else { header.appendChild(alert); } } else { header.appendChild(alert); alert.style.cssText = `display: inline-flex !important; align-items: center !important; margin-left: 10px !important; order: 2 !important; z-index: 99999 !important; pointer-events: auto !important; background-color: #ff3333; color: white; padding: 5px 10px; border-radius: 3px; font-weight: bold; cursor: pointer; font-size: 12px; vertical-align: middle;`; } const isMobilePDA = navigator.userAgent.includes('PDA') || window.innerWidth < 768 || document.documentElement.classList.contains('tornPDA'); if (isMobilePDA) { alert.style.fontSize = '10px'; alert.style.padding = '3px 6px'; alert.style.marginLeft = '5px'; } if (header.id === 'torn-drug-fixed-header') { alert.style.margin = '0'; alert.style.marginLeft = '5px'; } } catch (e) { if (alert && !alert.parentElement) { document.body.appendChild(alert); alert.style.position = 'fixed'; alert.style.top = '60px'; alert.style.right = '30px'; alert.style.zIndex = '10000'; } } }
     function findHeader() { const selectors = [ '.content-title h4', '.content-title .title', '.title-black', '.pageTitle___CaFrO', '.appHeader___gUnYC h4', '.captionWithActionContainment___nVTbE', '.topSection___CvKvI', '.mainStatsContainer___TXO7F', 'div[role="heading"]', '.titleContainer___QrlWP .title___rhtB4', '.clearfix .t-black', '.page-head > h4', '.header-title', '.mobile-title', '.app-header', '.content-title.m-bottom10', '.forum-thread-wrap header', '.forum-post-reply', '.forums-subcats', '.forums-threadList', '.content-title.m-bottom10', '.content-wrapper .header', '.content-wrapper .title-black', '.sortable-list .title', '#skip-to-content', '.tutorial-cont', '.cont-gray' ]; const found = selectors.map(s => document.querySelector(s)).find(el => el !== null && el.offsetParent !== null); if (found) return found; if (window.location.href.includes('forums.php')) { const lw = document.querySelector('.links-top-wrap'); if (lw) return lw; } return createFixedHeader(); }
     function createFixedHeader() { let fh = document.getElementById('torn-drug-fixed-header'); if (!fh) { fh = document.createElement('div'); fh.id = 'torn-drug-fixed-header'; Object.assign(fh.style, { position: 'fixed', top: '50px', right: '20px', zIndex: '9999', backgroundColor: 'rgba(34, 34, 34, 0.8)', padding: '5px 10px', borderRadius: '5px', display: 'flex', alignItems: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.3)' }); document.body.appendChild(fh); } return fh; }
     // --- END Helper Functions ---
 
-    // --- Main Alert & GUI Functions (FIXED to prevent closing) ---
+    // --- Main Alert & GUI Functions (Unchanged) ---
     function createAlert(drugs) {
         let header = findHeader();
         removeExistingAlerts();
@@ -258,7 +442,7 @@
                 if (alertElements && alertElements.gui) alertElements.gui.style.display = 'block';
             } else {
                 const targetUrl = useFactionDrugs ? 'https://www.torn.com/factions.php?step=your#/tab=armoury' : 'https://www.torn.com/item.php';
-                sessionStorage.setItem('fromDrugAlert', 'true');
+                sessionStorage.setItem('fromDrugAlert', 'true'); // Keep using sessionStorage for temporary flags
                 showNotification(`Navigating to ${useFactionDrugs ? 'faction armoury' : 'items'} page...`, 'info');
                 window.location.href = targetUrl;
             }
@@ -269,7 +453,7 @@
     }
     // --- END Main Alert & GUI ---
 
-    // --- Quick Use Panel & Customization (FIXED with stopPropagation & positioning) ---
+    // --- Quick Use Panel & Customization (MODIFIED slider handler) ---
     function createQuickUseButtonElement(drug, count) {
         const drugIdNum = parseInt(drug.id);
         const btn = document.createElement('div');
@@ -283,7 +467,7 @@
 
         const countSpan = document.createElement('span');
         countSpan.className = 'drug-quick-button-count';
-        countSpan.textContent = `x${count}`;
+        countSpan.textContent = `x${count}`; // Use the passed count
 
         btn.appendChild(nameSpan);
         btn.appendChild(countSpan);
@@ -298,6 +482,11 @@
             useDrug(drugIdNum, drug.name);
         });
 
+        // Initial visibility based on count
+        const isMinimized = localStorage.getItem('drugAlertMinimized') === 'true';
+        btn.style.display = isMinimized ? 'none' : (count > 0 ? 'flex' : 'none');
+
+
         return btn;
     }
 
@@ -306,10 +495,11 @@
 
         const existingContainer = document.querySelector('.drug-quick-use-container');
         if (existingContainer) {
+            debugLog("[buildPanel Drugs] Removing existing panel.");
             existingContainer.remove();
         }
 
-        currentPanelInstance = null;
+        currentPanelInstance = null; // Reset panel instance reference
 
         const isItemsPage = window.location.href.includes('torn.com/item.php');
         const isFactionPage = window.location.href.includes('factions.php'); // Broader check for faction page
@@ -320,14 +510,14 @@
 
         if (!shouldShowQuickUse) {
             debugLog(`[buildPanel Drugs] Quick Use UI should not be shown. isItemsPage: ${isItemsPage}, useFactionDrugs: ${useFactionDrugs}, isArmouryTabActive: ${isArmouryTabActive}`);
-            return;
+            return; // Don't build if not on the right page/mode
         }
 
         debugLog('[buildPanel Drugs] Conditions met, creating Quick Use UI container.');
 
         const quickUseContainer = document.createElement('div');
         quickUseContainer.className = 'drug-quick-use-container';
-        currentPanelInstance = quickUseContainer;
+        currentPanelInstance = quickUseContainer; // Store reference
 
         const savedQuickUseDrugs = localStorage.getItem('customQuickUseDrugs');
         let quickUseDrugs = [];
@@ -342,9 +532,10 @@
                 quickUseDrugs = JSON.parse(savedQuickUseDrugs);
                 quickUseDrugs.forEach(d => {
                     d.id = parseInt(d.id);
-                    if (!d.color) d.color = getDefaultDrugColor(d.id);
+                    if (!d.color) d.color = getDefaultDrugColor(d.id); // Ensure color exists
                 });
             } catch (e) {
+                console.error("DrugAlerts: Error parsing custom quick use drugs, using defaults.", e);
                 quickUseDrugs = defaultQuickDrugs.map(d => ({ ...d, id: parseInt(d.id), color: getDefaultDrugColor(d.id) }));
                 localStorage.setItem('customQuickUseDrugs', JSON.stringify(quickUseDrugs));
             }
@@ -353,9 +544,10 @@
             localStorage.setItem('customQuickUseDrugs', JSON.stringify(quickUseDrugs));
         }
 
+        // Populate buttons using current drugCounts
         quickUseDrugs.forEach(drug => {
             const drugIdNum = parseInt(drug.id);
-            const count = drugCounts[drugIdNum] || 0;
+            const count = drugCounts[drugIdNum] || 0; // Get count from memory (updated by fetchInitialDrugCounts)
             const btn = createQuickUseButtonElement(drug, count);
             quickUseContainer.appendChild(btn);
         });
@@ -370,7 +562,7 @@
 
         const sliderLabel = document.createElement('span');
         sliderLabel.className = 'quick-use-slider-toggle-label';
-        sliderLabel.textContent = useFactionDrugs ? 'Faction' : 'Inventory';
+        sliderLabel.textContent = useFactionDrugs ? 'Source: Faction' : 'Source: Inventory'; // Updated label
 
         const sliderElement = document.createElement('div');
         sliderElement.className = 'quick-use-slider';
@@ -385,13 +577,22 @@
         sliderContainer.addEventListener('click', function(e) {
             e.stopPropagation(); // Prevent click from closing other panels
             useFactionDrugs = !useFactionDrugs;
-            localStorage.setItem('useFactionDrugs', useFactionDrugs);
+            localStorage.setItem('useFactionDrugs', useFactionDrugs); // Save preference
             sliderElement.classList.toggle('faction-mode', useFactionDrugs);
             sliderElement.classList.toggle('inventory-mode', !useFactionDrugs);
-            sliderLabel.textContent = useFactionDrugs ? 'Source: Faction' : 'Source: Inventory';
-            showNotification(`${useFactionDrugs ? 'Using faction armoury drugs' : 'Using personal inventory drugs'}`, 'info');
-            drugCounts = {};
-            sessionStorage.removeItem(SESSION_STORAGE_KEY);
+            sliderLabel.textContent = useFactionDrugs ? 'Source: Faction' : 'Source: Inventory'; // Update label
+            showNotification(`${useFactionDrugs ? 'Switched to Faction Armoury' : 'Switched to Personal Inventory'}`, 'info');
+
+            // MODIFIED: Clear localStorage counts when switching
+            drugCounts = {}; // Clear in-memory counts immediately
+            try {
+                localStorage.removeItem(LOCAL_STORAGE_KEY);
+                debugLog("[SliderClick] Cleared drug counts from localStorage due to source switch.");
+            } catch (e) {
+                console.error("DrugAlerts: Failed to clear localStorage on source switch", e);
+            }
+
+            // Re-initialize to fetch new counts and rebuild UI for the new source
             initialize();
         });
 
@@ -412,7 +613,8 @@
 
         function applyMinimizedState() {
             if (!currentPanelInstance || !document.body.contains(currentPanelInstance)) {
-                return;
+                 debugLog(`[applyMinimizedState] Panel instance not found or not in DOM.`);
+                 return; // Exit if panel doesn't exist
             }
 
             let isMinimized = localStorage.getItem('drugAlertMinimized') === 'true';
@@ -428,29 +630,28 @@
 
             // Show/hide all drug buttons based on minimized state
             currentPanelInstance.querySelectorAll('.drug-quick-button').forEach(btn => {
-                // When minimized, hide ALL buttons regardless of count
-                // When maximized, only show buttons with count > 0
                 const drugId = btn.getAttribute('data-drug-id');
                 const currentCount = drugCounts[drugId] || 0;
-
+                // Hide if minimized OR if count is 0 when maximized
                 btn.style.display = isMinimized ? 'none' : (currentCount > 0 ? 'flex' : 'none');
             });
 
             // Show/hide settings button based on minimized state
-            const settingsButton = currentPanelInstance.querySelector('.drug-settings-button');
-            if (settingsButton) {
-                settingsButton.style.display = isMinimized ? 'none' : 'block';
+            const settingsBtn = currentPanelInstance.querySelector('.drug-settings-button');
+            if (settingsBtn) {
+                settingsBtn.style.display = isMinimized ? 'none' : 'block';
             }
 
             // Show/hide slider toggle container based on minimized state
-            const sliderContainer = currentPanelInstance.querySelector('.quick-use-slider-toggle-container');
-            if (sliderContainer) {
-                sliderContainer.style.display = isMinimized ? 'none' : 'flex';
+            const sliderCont = currentPanelInstance.querySelector('.quick-use-slider-toggle-container');
+            if (sliderCont) {
+                sliderCont.style.display = isMinimized ? 'none' : 'flex';
             }
 
-            adjustQuickUsePosition();
+            adjustQuickUsePosition(); // Adjust position after changing visibility/size
             debugLog(`[applyMinimizedState] Applied state: ${isMinimized ? 'minimized' : 'maximized'}`);
         }
+
 
         // Add stopPropagation to toggle button
         toggleButton.addEventListener('click', (e) => {
@@ -458,339 +659,58 @@
             let isMinimized = localStorage.getItem('drugAlertMinimized') === 'true';
             isMinimized = !isMinimized;
             localStorage.setItem('drugAlertMinimized', isMinimized.toString());
-            applyMinimizedState();
+            applyMinimizedState(); // Apply the new state
         });
 
         quickUseContainer.appendChild(toggleButton);
         document.body.appendChild(quickUseContainer);
 
-        applyMinimizedState();
-        adjustQuickUsePosition();
+        applyMinimizedState(); // Apply initial state after adding to DOM
+        adjustQuickUsePosition(); // Adjust position after adding to DOM
 
         debugLog("[buildPanel Drugs] Panel build complete.");
     }
 
-    // Modified to prevent UI closures due to click propagation
+    // Modified to prevent UI closures due to click propagation (Unchanged from previous fix)
     function showDrugCustomizationUI(currentDrugs) {
-        let justOpened = true;
-        setTimeout(() => {
-            justOpened = false;
-        }, 300);
-
-        const existingUI = document.getElementById('drug-customization-ui');
-        if (existingUI) existingUI.remove();
-
-        const customizationUI = document.createElement('div');
-        customizationUI.id = 'drug-customization-ui';
-        customizationUI.innerHTML = `<h3>Customize Quick Use Drugs</h3><p>Select drugs. Drag ≡ to reorder. Click color swatch.</p><div class="drug-selection-area"></div><button class="customization-button add">+ Add More Drugs</button><div class="customization-button-container"><button class="customization-button save">Save Changes</button><button class="customization-button cancel">Cancel</button></div>`;
-
-        // Add stopPropagation to prevent closing other UIs
-        customizationUI.addEventListener('click', (e) => {
-            e.stopPropagation();
-        });
-
-        const drugSelectionArea = customizationUI.querySelector('.drug-selection-area');
-        const selectedDrugs = JSON.parse(JSON.stringify(currentDrugs)).map(d => ({ ...d, id: parseInt(d.id), color: d.color || getDefaultDrugColor(d.id) }));
-
-        function createColorPicker(drug) {
-            const c = document.createElement('input');
-            c.type = 'color';
-            c.value = drug.color || getDefaultDrugColor(drug.id);
-
-            // Add stopPropagation
-            c.addEventListener('input', (e) => {
-                e.stopPropagation();
-                const item = selectedDrugs.find(d => d.id === drug.id);
-                if(item) item.color = e.target.value;
-            });
-
-            c.addEventListener('click', (e) => e.stopPropagation());
-            return c;
-        }
-
-        function renderDrugItem(drug) {
-            const id = parseInt(drug.id);
-            const i = document.createElement('div');
-            i.className = 'drug-selection-item';
-            i.setAttribute('data-drug-id', id);
-            i.setAttribute('draggable', 'true');
-
-            const h = document.createElement('span');
-            h.innerHTML = '≡';
-            i.appendChild(h);
-
-            const cb = document.createElement('input');
-            cb.type = 'checkbox';
-            cb.checked = true;
-
-            // Add stopPropagation
-            cb.addEventListener('change', (e) => {
-                e.stopPropagation();
-                i.style.opacity = cb.checked ? '1' : '0.5';
-                i.style.textDecoration = cb.checked ? 'none' : 'line-through';
-                if (!cb.checked) i.setAttribute('data-remove', 'true');
-                else i.removeAttribute('data-remove');
-            });
-
-            i.appendChild(cb);
-
-            const n = document.createElement('span');
-            n.textContent = drug.name;
-            i.appendChild(n);
-
-            const cp = createColorPicker(drug);
-            i.appendChild(cp);
-
-            // Add stopPropagation to entire item
-            i.addEventListener('click', (e) => {
-                e.stopPropagation();
-            });
-
-            drugSelectionArea.appendChild(i);
-        }
-
+        let justOpened = true; setTimeout(() => { justOpened = false; }, 300);
+        const existingUI = document.getElementById('drug-customization-ui'); if (existingUI) existingUI.remove();
+        const customizationUI = document.createElement('div'); customizationUI.id = 'drug-customization-ui'; customizationUI.innerHTML = `<h3>Customize Quick Use Drugs</h3><p>Select drugs. Drag ≡ to reorder. Click color swatch.</p><div class="drug-selection-area"></div><button class="customization-button add">+ Add More Drugs</button><div class="customization-button-container"><button class="customization-button save">Save Changes</button><button class="customization-button cancel">Cancel</button></div>`;
+        customizationUI.addEventListener('click', (e) => { e.stopPropagation(); });
+        const drugSelectionArea = customizationUI.querySelector('.drug-selection-area'); const selectedDrugs = JSON.parse(JSON.stringify(currentDrugs)).map(d => ({ ...d, id: parseInt(d.id), color: d.color || getDefaultDrugColor(d.id) }));
+        function createColorPicker(drug) { const c = document.createElement('input'); c.type = 'color'; c.value = drug.color || getDefaultDrugColor(drug.id); c.addEventListener('input', (e) => { e.stopPropagation(); const item = selectedDrugs.find(d => d.id === drug.id); if(item) item.color = e.target.value; }); c.addEventListener('click', (e) => e.stopPropagation()); return c; }
+        function renderDrugItem(drug) { const id = parseInt(drug.id); const i = document.createElement('div'); i.className = 'drug-selection-item'; i.setAttribute('data-drug-id', id); i.setAttribute('draggable', 'true'); const h = document.createElement('span'); h.innerHTML = '≡'; i.appendChild(h); const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = true; cb.addEventListener('change', (e) => { e.stopPropagation(); i.style.opacity = cb.checked ? '1' : '0.5'; i.style.textDecoration = cb.checked ? 'none' : 'line-through'; if (!cb.checked) i.setAttribute('data-remove', 'true'); else i.removeAttribute('data-remove'); }); i.appendChild(cb); const n = document.createElement('span'); n.textContent = drug.name; i.appendChild(n); const cp = createColorPicker(drug); i.appendChild(cp); i.addEventListener('click', (e) => { e.stopPropagation(); }); drugSelectionArea.appendChild(i); }
         selectedDrugs.forEach(renderDrugItem);
-
         let draggedItemElement = null;
-
-        // Add stopPropagation to drag events
-        drugSelectionArea.addEventListener('dragstart', (e) => {
-            e.stopPropagation();
-            draggedItemElement = e.target.closest('.drug-selection-item');
-            if (!draggedItemElement) return;
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', draggedItemElement.dataset.drugId);
-            setTimeout(() => {
-                if (draggedItemElement) draggedItemElement.style.opacity = '0.4';
-            }, 0);
-        });
-
-        drugSelectionArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            e.dataTransfer.dropEffect = 'move';
-            const target = e.target.closest('.drug-selection-item');
-            if (target && target !== draggedItemElement) {
-                const rect = target.getBoundingClientRect();
-                const mid = rect.top + rect.height / 2;
-                if (e.clientY < mid) drugSelectionArea.insertBefore(draggedItemElement, target);
-                else drugSelectionArea.insertBefore(draggedItemElement, target.nextSibling);
-            }
-        });
-
-        drugSelectionArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-        });
-
-        drugSelectionArea.addEventListener('dragend', (e) => {
-            e.stopPropagation();
-            if (draggedItemElement) draggedItemElement.style.opacity = '1';
-            draggedItemElement = null;
-            updateOrderAfterDrag();
-        });
-
-        function updateOrderAfterDrag() {
-            const items = Array.from(drugSelectionArea.querySelectorAll('.drug-selection-item'));
-            const reordered = [];
-            items.forEach(item => {
-                const id = parseInt(item.dataset.drugId);
-                let data = selectedDrugs.find(d => d.id === id);
-                if (data) {
-                    const cp = item.querySelector('input[type="color"]');
-                    if (cp) data.color = cp.value;
-                    reordered.push(data);
-                } else {
-                    const orig = fallbackDrugs.find(fb => fb.id === id);
-                    if (orig) {
-                        const cp = item.querySelector('input[type="color"]');
-                        reordered.push({ id: id, name: orig.name, color: cp ? cp.value : getDefaultDrugColor(id) });
-                    }
-                }
-            });
-            selectedDrugs.length = 0;
-            selectedDrugs.push(...reordered);
-        }
-
-        // Add stopPropagation to buttons
-        const addButton = customizationUI.querySelector('.customization-button.add');
-        addButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            showAddDrugsUI(selectedDrugs, drugSelectionArea, renderDrugItem);
-        });
-
-        const saveButton = customizationUI.querySelector('.customization-button.save');
-        saveButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const items = Array.from(drugSelectionArea.querySelectorAll('.drug-selection-item'));
-            const final = items.filter(i => !i.hasAttribute('data-remove')).map(i => {
-                const id = parseInt(i.dataset.drugId);
-                const data = selectedDrugs.find(d => d.id === id);
-                const cp = i.querySelector('input[type="color"]');
-                return {
-                    id: id,
-                    name: data ? data.name : fallbackDrugs.find(fb => fb.id === id)?.name || 'Unknown',
-                    color: cp ? cp.value : (data ? data.color : getDefaultDrugColor(id))
-                };
-            });
-            localStorage.setItem('customQuickUseDrugs', JSON.stringify(final));
-            customizationUI.remove();
-            buildOrRebuildQuickUsePanel();
-            showNotification('Quick use drugs updated!', 'success');
-        });
-
-        const cancelButton = customizationUI.querySelector('.customization-button.cancel');
-        cancelButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            customizationUI.remove();
-            const addUI = document.getElementById('add-drugs-ui');
-            if (addUI) addUI.remove();
-        });
-
-        document.body.appendChild(customizationUI);
-        customizationUI.style.display = 'block';
-
-        // Simplified click outside handler that respects stopPropagation
-        function closeOnClickOutside(e) {
-            if (justOpened) return;
-
-            // Check if click is on any drug UI element or quick use panel
-            const isInDrugUI = e.target.closest('#drug-customization-ui, #add-drugs-ui, .drug-settings-button, .drug-quick-use-container, .drug-gui, .booster-quick-use-container');
-
-            if (!isInDrugUI) {
-                const cui = document.getElementById('drug-customization-ui');
-                if (cui) cui.remove();
-                const aui = document.getElementById('add-drugs-ui');
-                if (aui) aui.remove();
-                document.removeEventListener('click', closeOnClickOutside, true);
-            }
-        }
-
-        setTimeout(() => {
-            document.addEventListener('click', closeOnClickOutside, true);
-        }, 100);
+        drugSelectionArea.addEventListener('dragstart', (e) => { e.stopPropagation(); draggedItemElement = e.target.closest('.drug-selection-item'); if (!draggedItemElement) return; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', draggedItemElement.dataset.drugId); setTimeout(() => { if (draggedItemElement) draggedItemElement.style.opacity = '0.4'; }, 0); });
+        drugSelectionArea.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'move'; const target = e.target.closest('.drug-selection-item'); if (target && target !== draggedItemElement) { const rect = target.getBoundingClientRect(); const mid = rect.top + rect.height / 2; if (e.clientY < mid) drugSelectionArea.insertBefore(draggedItemElement, target); else drugSelectionArea.insertBefore(draggedItemElement, target.nextSibling); } });
+        drugSelectionArea.addEventListener('drop', (e) => { e.preventDefault(); e.stopPropagation(); });
+        drugSelectionArea.addEventListener('dragend', (e) => { e.stopPropagation(); if (draggedItemElement) draggedItemElement.style.opacity = '1'; draggedItemElement = null; updateOrderAfterDrag(); });
+        function updateOrderAfterDrag() { const items = Array.from(drugSelectionArea.querySelectorAll('.drug-selection-item')); const reordered = []; items.forEach(item => { const id = parseInt(item.dataset.drugId); let data = selectedDrugs.find(d => d.id === id); if (data) { const cp = item.querySelector('input[type="color"]'); if (cp) data.color = cp.value; reordered.push(data); } else { const orig = fallbackDrugs.find(fb => fb.id === id); if (orig) { const cp = item.querySelector('input[type="color"]'); reordered.push({ id: id, name: orig.name, color: cp ? cp.value : getDefaultDrugColor(id) }); } } }); selectedDrugs.length = 0; selectedDrugs.push(...reordered); }
+        const addButton = customizationUI.querySelector('.customization-button.add'); addButton.addEventListener('click', (e) => { e.stopPropagation(); showAddDrugsUI(selectedDrugs, drugSelectionArea, renderDrugItem); });
+        const saveButton = customizationUI.querySelector('.customization-button.save'); saveButton.addEventListener('click', (e) => { e.stopPropagation(); const items = Array.from(drugSelectionArea.querySelectorAll('.drug-selection-item')); const final = items.filter(i => !i.hasAttribute('data-remove')).map(i => { const id = parseInt(i.dataset.drugId); const data = selectedDrugs.find(d => d.id === id); const cp = i.querySelector('input[type="color"]'); return { id: id, name: data ? data.name : fallbackDrugs.find(fb => fb.id === id)?.name || 'Unknown', color: cp ? cp.value : (data ? data.color : getDefaultDrugColor(id)) }; }); localStorage.setItem('customQuickUseDrugs', JSON.stringify(final)); customizationUI.remove(); buildOrRebuildQuickUsePanel(); showNotification('Quick use drugs updated!', 'success'); });
+        const cancelButton = customizationUI.querySelector('.customization-button.cancel'); cancelButton.addEventListener('click', (e) => { e.stopPropagation(); customizationUI.remove(); const addUI = document.getElementById('add-drugs-ui'); if (addUI) addUI.remove(); });
+        document.body.appendChild(customizationUI); customizationUI.style.display = 'block';
+        function closeOnClickOutside(e) { if (justOpened) return; const isInDrugUI = e.target.closest('#drug-customization-ui, #add-drugs-ui, .drug-settings-button, .drug-quick-use-container, .drug-gui, .booster-quick-use-container'); if (!isInDrugUI) { const cui = document.getElementById('drug-customization-ui'); if (cui) cui.remove(); const aui = document.getElementById('add-drugs-ui'); if (aui) aui.remove(); document.removeEventListener('click', closeOnClickOutside, true); } }
+        setTimeout(() => { document.addEventListener('click', closeOnClickOutside, true); }, 100);
     }
 
-    // Modified showAddDrugsUI to prevent UI closures
+    // Modified showAddDrugsUI to prevent UI closures (Unchanged from previous fix)
     function showAddDrugsUI(selectedDrugsRef, parentDrugSelectionArea, renderDrugItemFn) {
-        const existingAddUI = document.getElementById('add-drugs-ui');
-        if (existingAddUI) existingAddUI.remove();
-
-        const addDrugsUI = document.createElement('div');
-        addDrugsUI.id = 'add-drugs-ui';
-        addDrugsUI.innerHTML = `<h3>Add Drugs to Quick Use</h3><input type="text" placeholder="Search available drugs..."><div class="add-drug-list-container"></div><div class="add-drugs-button-container"><button class="add-drugs-done-button">Done</button></div>`;
-
-        // Add stopPropagation to prevent closing other UIs
-        addDrugsUI.addEventListener('click', (e) => {
-            e.stopPropagation();
-        });
-
-        const searchBox = addDrugsUI.querySelector('input[type="text"]');
-        const listContainer = addDrugsUI.querySelector('.add-drug-list-container');
-        const availableDrugs = drugList.length > 0 ? drugList : fallbackDrugs;
-
-        function refreshDrugList(searchTerm = '') {
-            listContainer.innerHTML = '';
-            const filtered = availableDrugs.filter(d => d.name.toLowerCase().includes(searchTerm.toLowerCase()));
-
-            if (filtered.length === 0) {
-                listContainer.innerHTML = '<div style="padding: 10px; color: #aaa;">No drugs found</div>';
-                return;
-            }
-
-            filtered.forEach(drug => {
-                const id = parseInt(drug.id);
-                const pItem = parentDrugSelectionArea.querySelector(`.drug-selection-item[data-drug-id="${id}"]`);
-                const isSel = pItem && !pItem.hasAttribute('data-remove');
-                const item = document.createElement('div');
-                item.className = `add-drug-item ${isSel ? 'selected' : ''}`;
-                item.setAttribute('data-drug-id', id);
-
-                const cb = document.createElement('input');
-                cb.type = 'checkbox';
-                cb.checked = isSel;
-                cb.style.pointerEvents = 'none';
-
-                const name = document.createElement('span');
-                name.textContent = drug.name;
-
-                item.appendChild(cb);
-                item.appendChild(name);
-
-                // Add stopPropagation to handleClick
-                const handleClick = (e) => {
-                    e.stopPropagation();
-                    const pOnClick = parentDrugSelectionArea.querySelector(`.drug-selection-item[data-drug-id="${id}"]`);
-                    const currentSel = pOnClick && !pOnClick.hasAttribute('data-remove');
-
-                    if (!currentSel) {
-                        if (pOnClick) {
-                            pOnClick.style.opacity = '1';
-                            pOnClick.style.textDecoration = 'none';
-                            pOnClick.removeAttribute('data-remove');
-                            const pCb = pOnClick.querySelector('input[type="checkbox"]');
-                            if(pCb) pCb.checked = true;
-
-                            if (!selectedDrugsRef.some(r => r.id === id)) {
-                                const cp = pOnClick.querySelector('input[type="color"]');
-                                selectedDrugsRef.push({ ...drug, id: id, color: cp ? cp.value : getDefaultDrugColor(id) });
-                            }
-                        } else {
-                            const newData = { ...drug, id: id, color: getDefaultDrugColor(id) };
-                            renderDrugItemFn(newData);
-                            selectedDrugsRef.push(newData);
-                        }
-
-                        item.classList.add('selected');
-                        cb.checked = true;
-                    } else {
-                        if (pOnClick) {
-                            pOnClick.style.opacity = '0.5';
-                            pOnClick.style.textDecoration = 'line-through';
-                            pOnClick.setAttribute('data-remove', 'true');
-                            const pCb = pOnClick.querySelector('input[type="checkbox"]');
-                            if(pCb) pCb.checked = false;
-                        }
-
-                        item.classList.remove('selected');
-                        cb.checked = false;
-                    }
-                };
-
-                item.addEventListener('click', handleClick);
-                listContainer.appendChild(item);
-            });
-        }
-
+        const existingAddUI = document.getElementById('add-drugs-ui'); if (existingAddUI) existingAddUI.remove();
+        const addDrugsUI = document.createElement('div'); addDrugsUI.id = 'add-drugs-ui'; addDrugsUI.innerHTML = `<h3>Add Drugs to Quick Use</h3><input type="text" placeholder="Search available drugs..."><div class="add-drug-list-container"></div><div class="add-drugs-button-container"><button class="add-drugs-done-button">Done</button></div>`;
+        addDrugsUI.addEventListener('click', (e) => { e.stopPropagation(); });
+        const searchBox = addDrugsUI.querySelector('input[type="text"]'); const listContainer = addDrugsUI.querySelector('.add-drug-list-container'); const availableDrugs = drugList.length > 0 ? drugList : fallbackDrugs;
+        function refreshDrugList(searchTerm = '') { listContainer.innerHTML = ''; const filtered = availableDrugs.filter(d => d.name.toLowerCase().includes(searchTerm.toLowerCase())); if (filtered.length === 0) { listContainer.innerHTML = '<div style="padding: 10px; color: #aaa;">No drugs found</div>'; return; } filtered.forEach(drug => { const id = parseInt(drug.id); const pItem = parentDrugSelectionArea.querySelector(`.drug-selection-item[data-drug-id="${id}"]`); const isSel = pItem && !pItem.hasAttribute('data-remove'); const item = document.createElement('div'); item.className = `add-drug-item ${isSel ? 'selected' : ''}`; item.setAttribute('data-drug-id', id); const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = isSel; cb.style.pointerEvents = 'none'; const name = document.createElement('span'); name.textContent = drug.name; item.appendChild(cb); item.appendChild(name); const handleClick = (e) => { e.stopPropagation(); const pOnClick = parentDrugSelectionArea.querySelector(`.drug-selection-item[data-drug-id="${id}"]`); const currentSel = pOnClick && !pOnClick.hasAttribute('data-remove'); if (!currentSel) { if (pOnClick) { pOnClick.style.opacity = '1'; pOnClick.style.textDecoration = 'none'; pOnClick.removeAttribute('data-remove'); const pCb = pOnClick.querySelector('input[type="checkbox"]'); if(pCb) pCb.checked = true; if (!selectedDrugsRef.some(r => r.id === id)) { const cp = pOnClick.querySelector('input[type="color"]'); selectedDrugsRef.push({ ...drug, id: id, color: cp ? cp.value : getDefaultDrugColor(id) }); } } else { const newData = { ...drug, id: id, color: getDefaultDrugColor(id) }; renderDrugItemFn(newData); selectedDrugsRef.push(newData); } item.classList.add('selected'); cb.checked = true; } else { if (pOnClick) { pOnClick.style.opacity = '0.5'; pOnClick.style.textDecoration = 'line-through'; pOnClick.setAttribute('data-remove', 'true'); const pCb = pOnClick.querySelector('input[type="checkbox"]'); if(pCb) pCb.checked = false; } item.classList.remove('selected'); cb.checked = false; } }; item.addEventListener('click', handleClick); listContainer.appendChild(item); }); }
         refreshDrugList();
-
-        // Add stopPropagation to search input
-        searchBox.addEventListener('input', (e) => {
-            e.stopPropagation();
-            refreshDrugList(searchBox.value);
-        });
-
-        // Add stopPropagation to done button
-        const doneButton = addDrugsUI.querySelector('.add-drugs-done-button');
-        doneButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            addDrugsUI.remove();
-        });
-
-        document.body.appendChild(addDrugsUI);
-        addDrugsUI.style.display = 'block';
-        addDrugsUI.style.zIndex = '9999999';
-
-        // Prevent clicks inside from closing anything
-        addDrugsUI.addEventListener('click', e => {
-            e.stopPropagation();
-        });
-
-        searchBox.focus();
+        searchBox.addEventListener('input', (e) => { e.stopPropagation(); refreshDrugList(searchBox.value); });
+        const doneButton = addDrugsUI.querySelector('.add-drugs-done-button'); doneButton.addEventListener('click', (e) => { e.stopPropagation(); addDrugsUI.remove(); });
+        document.body.appendChild(addDrugsUI); addDrugsUI.style.display = 'block'; addDrugsUI.style.zIndex = '9999999';
+        addDrugsUI.addEventListener('click', e => { e.stopPropagation(); }); searchBox.focus();
     }
     // --- END Quick Use Panel & Customization ---
 
-    // --- Core Logic (Unchanged from v1.5.5) ---
+    // --- Core Logic (Unchanged, uses sessionStorage for temporary flags only) ---
     function useDrug(id, name) { const drugIdNum = parseInt(id); debugLog(`[useDrug] Attempting: ${name} (ID: ${drugIdNum}), Faction: ${useFactionDrugs}`); showNotification(`Using ${name}...`, 'info'); const gui = document.getElementById('drugGui'); if (gui) gui.style.display = 'none'; const currentCount = drugCounts[drugIdNum] || 0; if (currentCount > 0) { updateDrugCountDisplay(drugIdNum, currentCount - 1); } else { updateDrugCountDisplay(drugIdNum, 0); } if (useFactionDrugs) { tryFactionDrugUseMethod(drugIdNum, name, currentCount); } else { tryDirectUseMethod(drugIdNum, name, currentCount); } }
     function tryDirectUseMethod(id, name, originalCount) { debugLog(`[tryDirect] Direct use: ${name} (ID: ${id})`); sessionStorage.setItem('drugUseInProgress', JSON.stringify({ id, name, timestamp: Date.now(), method: 'direct' })); useItemDirectly(id, name, originalCount); }
     function useItemDirectly(id, name, originalCount) { debugLog(`[useDirect] via item.php: ${name} (ID: ${id})`); const token = getNSTStyleToken() || getPageCsrfToken(); if (token) { submitDrugUseRequest(id, name, token, false, originalCount); } else { showNotification(`Unable to use ${name}: No token`, 'error'); sessionStorage.removeItem('drugUseInProgress'); updateDrugCountDisplay(id, originalCount); } }
@@ -801,463 +721,152 @@
         if (!armouryItemID) {
             showNotification(`Cannot find ${itemName} in faction armoury (Fallback Failed).`, 'error');
             const p = sessionStorage.getItem('drugUseInProgress');
-            if (p) {
-                try {
-                    const pd = JSON.parse(p);
-                    if (pd && parseInt(pd.id) === itemId && pd.method === 'faction_traditional') {
-                        sessionStorage.removeItem('drugUseInProgress');
-                        updateDrugCountDisplay(itemId, originalCount);
-                    }
-                } catch(e){}
-            }
+            if (p) { try { const pd = JSON.parse(p); if (pd && parseInt(pd.id) === itemId && pd.method === 'faction_traditional') { sessionStorage.removeItem('drugUseInProgress'); updateDrugCountDisplay(itemId, originalCount); } } catch(e){} }
             return;
         }
         submitFactionArmouryRequest(armouryItemID, itemId, itemName, token, originalCount);
     }
-
     function findArmouryItemId(targetItemId, targetItemName) {
-        targetItemId = parseInt(targetItemId);
-        debugLog(`[findArmouryId] Searching for Drug: ${targetItemName} (ID: ${targetItemId})`);
-        const specificSelectors = [
-            `#armoury-drugs ul.item-list li[data-itemid="${targetItemId}"]`,
-            `#faction-armoury .drugs-wrap ul.item-list > li[data-id="${targetItemId}"]`
-        ];
-        const generalSelectors = [
-            `#faction-armoury ul.item-list > li[data-id="${targetItemId}"]`,
-            `#faction-armoury ul.item-list > li[data-itemid="${targetItemId}"]`,
-            `li[data-armoryitemid]`
-        ];
+        targetItemId = parseInt(targetItemId); debugLog(`[findArmouryId] Searching for Drug: ${targetItemName} (ID: ${targetItemId})`);
+        const specificSelectors = [ `#armoury-drugs ul.item-list li[data-itemid="${targetItemId}"]`, `#faction-armoury .drugs-wrap ul.item-list > li[data-id="${targetItemId}"]` ];
+        const generalSelectors = [ `#faction-armoury ul.item-list > li[data-id="${targetItemId}"]`, `#faction-armoury ul.item-list > li[data-itemid="${targetItemId}"]`, `li[data-armoryitemid]` ];
         const allSelectors = [...specificSelectors, ...generalSelectors];
-        for (const selector of allSelectors) {
-            try {
-                const itemLi = document.querySelector(selector);
-                if (itemLi) {
-                    const nameEl = itemLi.querySelector('.name, .title, .item-name, .name-wrap .t-overflow, [class*="name"]');
-                    const actionLink = itemLi.querySelector('a[href*="armoryItemID="], button[data-id][onclick*="armoryItemAction"], a[onclick*="armoryItemAction"], div[data-id][onclick*="armoryItemAction"]');
-                    if (actionLink) {
-                        let match = null;
-                        if (actionLink.href) match = actionLink.href.match(/armoryItemID=(\d+)/);
-                        else if (actionLink.dataset && actionLink.dataset.id && actionLink.onclick && actionLink.onclick.toString().includes('armoryItemAction')) match = [null, actionLink.dataset.id];
-                        else if (actionLink.onclick) match = actionLink.onclick.toString().match(/armoryItemAction\((\d+)/);
-                        if (match && match[1]) {
-                            return match[1];
-                        }
-                    }
-                    const liArmouryId = itemLi.getAttribute('data-armoryitemid');
-                    if (liArmouryId) {
-                        return liArmouryId;
-                    }
-                    const liDataId = itemLi.getAttribute('data-id') || itemLi.getAttribute('data-itemid');
-                    if (liDataId) {
-                        return liDataId;
-                    }
-                }
-            } catch (e) {}
-        }
-        debugLog(`[findArmouryId] Could not find specific armouryItemID for ${targetItemName} (ID: ${targetItemId}) using any selector.`);
-        return null;
+        for (const selector of allSelectors) { try { const itemLi = document.querySelector(selector); if (itemLi) { const nameEl = itemLi.querySelector('.name, .title, .item-name, .name-wrap .t-overflow, [class*="name"]'); const actionLink = itemLi.querySelector('a[href*="armoryItemID="], button[data-id][onclick*="armoryItemAction"], a[onclick*="armoryItemAction"], div[data-id][onclick*="armoryItemAction"]'); if (actionLink) { let match = null; if (actionLink.href) match = actionLink.href.match(/armoryItemID=(\d+)/); else if (actionLink.dataset && actionLink.dataset.id && actionLink.onclick && actionLink.onclick.toString().includes('armoryItemAction')) match = [null, actionLink.dataset.id]; else if (actionLink.onclick) match = actionLink.onclick.toString().match(/armoryItemAction\((\d+)/); if (match && match[1]) { return match[1]; } } const liArmouryId = itemLi.getAttribute('data-armoryitemid'); if (liArmouryId) { return liArmouryId; } const liDataId = itemLi.getAttribute('data-id') || itemLi.getAttribute('data-itemid'); if (liDataId) { return liDataId; } } } catch (e) {} }
+        debugLog(`[findArmouryId] Could not find specific armouryItemID for ${targetItemName} (ID: ${targetItemId}) using any selector.`); return null;
     }
-
     function submitDrugUseRequest(id, name, token, isFaction, originalCount) {
-        const endpoint = 'https://www.torn.com/item.php';
-        const params = new URLSearchParams({ step: 'useItem', confirm: 'yes', itemID: id, csrf: token });
-        if (isFaction) params.append('fac', '1');
-        const methodType = isFaction ? 'faction_direct' : 'personal';
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', endpoint, true);
-        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-        xhr.onload = function() {
-            handleDrugResponse(this, id, name, methodType, originalCount, isFaction);
-        };
-        xhr.onerror = function() {
-            debugLog(`[submitDrugRequest] Network error (${methodType}).`);
-            showNotification(`Error using ${name}: Network error`, 'error');
-            if (!isFaction) {
-                sessionStorage.removeItem('drugUseInProgress');
-                updateDrugCountDisplay(id, originalCount);
-            }
-        };
-        xhr.send(params.toString());
+        const endpoint = 'https://www.torn.com/item.php'; const params = new URLSearchParams({ step: 'useItem', confirm: 'yes', itemID: id, csrf: token }); if (isFaction) params.append('fac', '1'); const methodType = isFaction ? 'faction_direct' : 'personal'; const xhr = new XMLHttpRequest(); xhr.open('POST', endpoint, true); xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest'); xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded'); xhr.onload = function() { handleDrugResponse(this, id, name, methodType, originalCount, isFaction); }; xhr.onerror = function() { debugLog(`[submitDrugRequest] Network error (${methodType}).`); showNotification(`Error using ${name}: Network error`, 'error'); if (!isFaction) { sessionStorage.removeItem('drugUseInProgress'); updateDrugCountDisplay(id, originalCount); } }; xhr.send(params.toString());
     }
-
     function submitFactionArmouryRequest(armouryItemID, originalItemId, name, token, originalCount) {
-        const endpoint = 'https://www.torn.com/factions.php';
-        const params = new URLSearchParams({ step: 'armoryItemAction', confirm: 'yes', armoryItemID: armouryItemID, action: 'use', csrf: token });
-        const methodType = 'faction_traditional';
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', endpoint, true);
-        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-        xhr.onload = function() {
-            handleDrugResponse(this, originalItemId, name, methodType, originalCount, false);
-        };
-        xhr.onerror = function() {
-            debugLog('[submitFactionRequest] Traditional faction network error.');
-            showNotification(`Error using ${name}: Network error (Fallback)`, 'error');
-            sessionStorage.removeItem('drugUseInProgress');
-            updateDrugCountDisplay(originalItemId, originalCount);
-        };
-        xhr.send(params.toString());
+        const endpoint = 'https://www.torn.com/factions.php'; const params = new URLSearchParams({ step: 'armoryItemAction', confirm: 'yes', armoryItemID: armouryItemID, action: 'use', csrf: token }); const methodType = 'faction_traditional'; const xhr = new XMLHttpRequest(); xhr.open('POST', endpoint, true); xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest'); xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded'); xhr.onload = function() { handleDrugResponse(this, originalItemId, name, methodType, originalCount, false); }; xhr.onerror = function() { debugLog('[submitFactionRequest] Traditional faction network error.'); showNotification(`Error using ${name}: Network error (Fallback)`, 'error'); sessionStorage.removeItem('drugUseInProgress'); updateDrugCountDisplay(originalItemId, originalCount); }; xhr.send(params.toString());
     }
-
     function handleDrugResponse(xhr, id, name, method, originalCount, maybeClearProgress = false) {
-        id = parseInt(id);
-        let success = false;
-        let cooldown = false;
-        let message = `Error using ${name}: Unknown response`;
-        let isJson = false;
-        let responseData = null;
-        debugLog(`[handleDrugResponse ${method}] Received response for ${name} (ID: ${id}). Original count: ${originalCount}`);
-
-        if (method === 'faction_direct') {
-            try {
-                const progressData = JSON.parse(sessionStorage.getItem('drugUseInProgress') || '{}');
-                if (progressData.fallbackTimerId) {
-                    clearTimeout(progressData.fallbackTimerId);
-                    delete progressData.fallbackTimerId;
-                    sessionStorage.setItem('drugUseInProgress', JSON.stringify(progressData));
-                }
-            } catch (e) {}
-        }
-
-        if (xhr.status === 200) {
-            try {
-                responseData = JSON.parse(xhr.responseText);
-                isJson = true;
-                const responseText = responseData.text || responseData.message || (responseData.error ? JSON.stringify(responseData.error) : '');
-                if (responseData.success || (responseText && (responseText.includes('consumed') || responseText.includes('used')))) {
-                    success = true;
-                    message = responseData.text || `Used ${name} successfully!`;
-                } else if (responseText && (responseText.includes('cooldown') || responseText.includes('effect of a drug') || responseText.includes('wait'))) {
-                    cooldown = true;
-                    message = extractCooldownMessage(responseText, 'Drug') || 'On drug cooldown or effect already active.';
-                } else {
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = responseText || '';
-                    message = `Error: ${(tempDiv.textContent || tempDiv.innerText || responseText || 'Unknown error').trim()}`;
-                }
-            } catch (e) {
-                const responseText = xhr.responseText || '';
-                if (responseText.includes('success') || responseText.includes('consumed') || responseText.includes('used')) {
-                    success = true;
-                    const successMatch = responseText.match(/<div[^>]*class=["'][^"']*success[^"']*["'][^>]*>(.*?)<\/div>/i) || responseText.match(/<p[^>]*class=["'][^"']*msg[^"']*["'][^>]*>(.*?)<\/p>/i);
-                    message = successMatch ? (successMatch[1].replace(/<[^>]+>/g, '').trim() || `Used ${name} successfully!`) : `Used ${name} successfully!`;
-                } else if (responseText.includes('cooldown') || responseText.includes('effect of a drug') || responseText.includes('wait')) {
-                    cooldown = true;
-                    message = extractCooldownMessage(responseText, 'Drug') || 'You are on drug cooldown or effect already active.';
-                } else {
-                    const errorMatch = responseText.match(/<[^>]*class=['"]error['"][^>]*>(.*?)<\/|Validation failed|Error:|not authorized/i);
-                    if (errorMatch) {
-                        message = `Error: ${(errorMatch[1] || 'Validation failed').replace(/<[^>]+>/g, '').trim()}`;
-                    } else {
-                        message = `Error using ${name}: Unexpected response`;
-                    }
-                }
-            }
-        } else {
-            message = `Error using ${name}: Request failed (${xhr.status})`;
-        }
-
+        id = parseInt(id); let success = false; let cooldown = false; let message = `Error using ${name}: Unknown response`; let isJson = false; let responseData = null; debugLog(`[handleDrugResponse ${method}] Received response for ${name} (ID: ${id}). Original count: ${originalCount}`);
+        if (method === 'faction_direct') { try { const progressData = JSON.parse(sessionStorage.getItem('drugUseInProgress') || '{}'); if (progressData.fallbackTimerId) { clearTimeout(progressData.fallbackTimerId); delete progressData.fallbackTimerId; sessionStorage.setItem('drugUseInProgress', JSON.stringify(progressData)); } } catch (e) {} }
+        if (xhr.status === 200) { try { responseData = JSON.parse(xhr.responseText); isJson = true; const responseText = responseData.text || responseData.message || (responseData.error ? JSON.stringify(responseData.error) : ''); if (responseData.success || (responseText && (responseText.includes('consumed') || responseText.includes('used')))) { success = true; message = responseData.text || `Used ${name} successfully!`; } else if (responseText && (responseText.includes('cooldown') || responseText.includes('effect of a drug') || responseText.includes('wait'))) { cooldown = true; message = extractCooldownMessage(responseText, 'Drug') || 'On drug cooldown or effect already active.'; } else { const tempDiv = document.createElement('div'); tempDiv.innerHTML = responseText || ''; message = `Error: ${(tempDiv.textContent || tempDiv.innerText || responseText || 'Unknown error').trim()}`; } } catch (e) { const responseText = xhr.responseText || ''; if (responseText.includes('success') || responseText.includes('consumed') || responseText.includes('used')) { success = true; const successMatch = responseText.match(/<div[^>]*class=["'][^"']*success[^"']*["'][^>]*>(.*?)<\/div>/i) || responseText.match(/<p[^>]*class=["'][^"']*msg[^"']*["'][^>]*>(.*?)<\/p>/i); message = successMatch ? (successMatch[1].replace(/<[^>]+>/g, '').trim() || `Used ${name} successfully!`) : `Used ${name} successfully!`; } else if (responseText.includes('cooldown') || responseText.includes('effect of a drug') || responseText.includes('wait')) { cooldown = true; message = extractCooldownMessage(responseText, 'Drug') || 'You are on drug cooldown or effect already active.'; } else { const errorMatch = responseText.match(/<[^>]*class=['"]error['"][^>]*>(.*?)<\/|Validation failed|Error:|not authorized/i); if (errorMatch) { message = `Error: ${(errorMatch[1] || 'Validation failed').replace(/<[^>]+>/g, '').trim()}`; } else { message = `Error using ${name}: Unexpected response`; } } } } else { message = `Error using ${name}: Request failed (${xhr.status})`; }
         showNotification(message, success ? 'success' : (cooldown ? 'info' : 'error'));
-
-        if (!success) {
-            if (method === 'personal' || method === 'faction_traditional') {
-                updateDrugCountDisplay(id, originalCount);
-            }
-        } else {}
-
-        if (success || cooldown || method === 'faction_traditional' || method === 'personal') {
-            const currentProgress = sessionStorage.getItem('drugUseInProgress');
-            if(currentProgress) {
-                try {
-                    const progressData = JSON.parse(currentProgress);
-                    if (progressData && parseInt(progressData.id) === id) {
-                        sessionStorage.removeItem('drugUseInProgress');
-                    }
-                } catch(e){
-                    sessionStorage.removeItem('drugUseInProgress');
-                }
-            }
-        }
-
-        if (success || cooldown) {
-            setTimeout(startCooldownChecks, 500);
-        }
+        if (!success) { if (method === 'personal' || method === 'faction_traditional') { updateDrugCountDisplay(id, originalCount); } } else {} // On success, count was already decremented optimistically
+        if (success || cooldown || method === 'faction_traditional' || method === 'personal') { const currentProgress = sessionStorage.getItem('drugUseInProgress'); if(currentProgress) { try { const progressData = JSON.parse(currentProgress); if (progressData && parseInt(progressData.id) === id) { sessionStorage.removeItem('drugUseInProgress'); } } catch(e){ sessionStorage.removeItem('drugUseInProgress'); } } }
+        if (success || cooldown) { setTimeout(startCooldownChecks, 500); }
     }
-
-    function extractCooldownMessage(responseText, type = 'Drug') {
-        if (!responseText) return null;
-        try {
-            const timerSpanMatch = responseText.match(/<span[^>]*class=["']counter-wrap["'][^>]*data-time=["'](\d+)["'][^>]*>/i);
-            if (timerSpanMatch && timerSpanMatch[1]) {
-                const seconds = parseInt(timerSpanMatch[1]);
-                if (seconds > 0) return `${type} Cooldown Active: ${timerSpanMatch[0]}</span>`;
-            }
-            const timeMatch = responseText.match(/(\d+)\s*hours?,\s*(\d+)\s*minutes?,\s*(\d+)\s*seconds?/i) || responseText.match(/(\d+)\s*minutes?,\s*(\d+)\s*seconds?/i) || responseText.match(/wait\s+(\d+)\s*m\s+(\d+)\s*s/i) || responseText.match(/(\d+)\s*seconds?/i) ;
-            if (timeMatch) {
-                let m = 0, s = 0;
-                if (timeMatch.length === 4) {
-                    m = parseInt(timeMatch[1]) * 60 + parseInt(timeMatch[2]);
-                    s = parseInt(timeMatch[3]);
-                } else if (timeMatch.length === 3 && responseText.includes('minute')) {
-                    m = parseInt(timeMatch[1]);
-                    s = parseInt(timeMatch[2]);
-                } else if (timeMatch.length === 3 && responseText.includes('m') && responseText.includes('s')) {
-                    m = parseInt(timeMatch[1]);
-                    s = parseInt(timeMatch[2]);
-                } else if (timeMatch.length === 2 && responseText.includes('second')) {
-                    s = parseInt(timeMatch[1]);
-                    m = Math.floor(s / 60);
-                    s %= 60;
-                }
-                if(m > 0 || s > 0) return `${type} Cooldown: ${m}m ${s}s remaining`;
-            }
-            const div = document.createElement('div');
-            div.innerHTML = responseText;
-            const msgEl = div.querySelector('.message, .msg, .cont_gray, div[class*="cooldown"], div[class*="note"]');
-            if (msgEl) {
-                let txt = (msgEl.textContent || msgEl.innerText || '').replace(/\s+/g, ' ').trim();
-                if (txt.toLowerCase().includes('cooldown') || txt.toLowerCase().includes('wait') || txt.toLowerCase().includes('effect')) {
-                    if (txt.length > 150) txt = txt.substring(0, 150) + '...';
-                    return txt;
-                }
-            }
-        } catch(e) {}
-
-        if (responseText.toLowerCase().includes('cooldown') || responseText.toLowerCase().includes('wait'))
-            return `On ${type.toLowerCase()} cooldown`;
-
-        return null;
-    }
-
-    function showNotification(message, type = 'info') {
-        document.querySelectorAll('.drug-notification').forEach(n => n.remove());
-        const n = document.createElement('div');
-        n.className = `drug-notification ${type}`;
-        n.innerHTML = message;
-
-        if (typeof message === 'string' && message.toLowerCase().includes('cooldown')) {
-            n.style.minWidth = '280px';
-            n.style.padding = '15px 25px';
-        }
-
-        document.body.appendChild(n);
-
-        let timerId = null;
-        const timerSpan = n.querySelector('.counter-wrap[data-time]');
-        if (timerSpan) {
-            let secs = parseInt(timerSpan.dataset.time);
-            const update = () => {
-                if (secs <= 0) {
-                    timerSpan.textContent = "00:00:00";
-                    if (timerId) clearInterval(timerId);
-                    return;
-                }
-                const h = Math.floor(secs / 3600).toString().padStart(2, '0');
-                const m = Math.floor((secs % 3600) / 60).toString().padStart(2, '0');
-                const s = (secs % 60).toString().padStart(2, '0');
-                timerSpan.textContent = `${h}:${m}:${s}`;
-                secs--;
-            };
-            update();
-            timerId = setInterval(update, 1000);
-        }
-
-        n.style.transform = 'translate(-50%, -50%) scale(0.9)';
-        n.style.opacity = '0';
-        void n.offsetWidth;
-        requestAnimationFrame(() => {
-            n.style.transform = 'translate(-50%, -50%) scale(1)';
-            n.style.opacity = '1';
-        });
-
-        const dur = (type === 'error' || type === 'info') ? 7000 : 4000;
-
-        setTimeout(() => {
-            requestAnimationFrame(() => {
-                n.style.opacity = '0';
-                n.style.transform = 'translate(-50%, -50%) scale(0.9)';
-            });
-            n.addEventListener('transitionend', () => {
-                if (timerId) clearInterval(timerId);
-                n.remove();
-            }, { once: true });
-        }, dur);
-    }
-
+    function extractCooldownMessage(responseText, type = 'Drug') { if (!responseText) return null; try { const timerSpanMatch = responseText.match(/<span[^>]*class=["']counter-wrap["'][^>]*data-time=["'](\d+)["'][^>]*>/i); if (timerSpanMatch && timerSpanMatch[1]) { const seconds = parseInt(timerSpanMatch[1]); if (seconds > 0) return `${type} Cooldown Active: ${timerSpanMatch[0]}</span>`; } const timeMatch = responseText.match(/(\d+)\s*hours?,\s*(\d+)\s*minutes?,\s*(\d+)\s*seconds?/i) || responseText.match(/(\d+)\s*minutes?,\s*(\d+)\s*seconds?/i) || responseText.match(/wait\s+(\d+)\s*m\s+(\d+)\s*s/i) || responseText.match(/(\d+)\s*seconds?/i) ; if (timeMatch) { let m = 0, s = 0; if (timeMatch.length === 4) { m = parseInt(timeMatch[1]) * 60 + parseInt(timeMatch[2]); s = parseInt(timeMatch[3]); } else if (timeMatch.length === 3 && responseText.includes('minute')) { m = parseInt(timeMatch[1]); s = parseInt(timeMatch[2]); } else if (timeMatch.length === 3 && responseText.includes('m') && responseText.includes('s')) { m = parseInt(timeMatch[1]); s = parseInt(timeMatch[2]); } else if (timeMatch.length === 2 && responseText.includes('second')) { s = parseInt(timeMatch[1]); m = Math.floor(s / 60); s %= 60; } if(m > 0 || s > 0) return `${type} Cooldown: ${m}m ${s}s remaining`; } const div = document.createElement('div'); div.innerHTML = responseText; const msgEl = div.querySelector('.message, .msg, .cont_gray, div[class*="cooldown"], div[class*="note"]'); if (msgEl) { let txt = (msgEl.textContent || msgEl.innerText || '').replace(/\s+/g, ' ').trim(); if (txt.toLowerCase().includes('cooldown') || txt.toLowerCase().includes('wait') || txt.toLowerCase().includes('effect')) { if (txt.length > 150) txt = txt.substring(0, 150) + '...'; return txt; } } } catch(e) {} if (responseText.toLowerCase().includes('cooldown') || responseText.toLowerCase().includes('wait')) return `On ${type.toLowerCase()} cooldown`; return null; }
+    function showNotification(message, type = 'info') { document.querySelectorAll('.drug-notification').forEach(n => n.remove()); const n = document.createElement('div'); n.className = `drug-notification ${type}`; n.innerHTML = message; if (typeof message === 'string' && message.toLowerCase().includes('cooldown')) { n.style.minWidth = '280px'; n.style.padding = '15px 25px'; } document.body.appendChild(n); let timerId = null; const timerSpan = n.querySelector('.counter-wrap[data-time]'); if (timerSpan) { let secs = parseInt(timerSpan.dataset.time); const update = () => { if (secs <= 0) { timerSpan.textContent = "00:00:00"; if (timerId) clearInterval(timerId); return; } const h = Math.floor(secs / 3600).toString().padStart(2, '0'); const m = Math.floor((secs % 3600) / 60).toString().padStart(2, '0'); const s = (secs % 60).toString().padStart(2, '0'); timerSpan.textContent = `${h}:${m}:${s}`; secs--; }; update(); timerId = setInterval(update, 1000); } n.style.transform = 'translate(-50%, -50%) scale(0.9)'; n.style.opacity = '0'; void n.offsetWidth; requestAnimationFrame(() => { n.style.transform = 'translate(-50%, -50%) scale(1)'; n.style.opacity = '1'; }); const dur = (type === 'error' || type === 'info') ? 7000 : 4000; setTimeout(() => { requestAnimationFrame(() => { n.style.opacity = '0'; n.style.transform = 'translate(-50%, -50%) scale(0.9)'; }); n.addEventListener('transitionend', () => { if (timerId) clearInterval(timerId); n.remove(); }, { once: true }); }, dur); }
     function getNSTStyleToken() { try { const r = getRFC(); if (r) return r; } catch (e) {} return null; }
     function extractTokenFromPage() { try { if (typeof window.csrf === 'string' && /^[a-f0-9]{16,}$/i.test(window.csrf)) return window.csrf; if (typeof window.csrf_token === 'string' && /^[a-f0-9]{16,}$/i.test(window.csrf_token)) return window.csrf_token; if (typeof $ === 'function' && typeof $.cookie === 'function') { const c = $.cookie('csrf'); if(c && /^[a-f0-9]{16,}$/i.test(c)) return c; } const inputs = document.querySelectorAll('input[name="csrf"], input[name="csrf_token"], input[id="csrf"], input[name="X-Csrf-Token"], input[data-csrf]'); for (const input of inputs) { const t = input.value || input.dataset?.csrf; if(t && /^[a-f0-9]{16,}$/i.test(t)) return t; } const patterns = [ /["']csrf["']\s*:\s*["']([a-f0-9]{16,})["']/, /csrf_token\s*=\s*["']([a-f0-9]{16,})["']/, /window\.csrf\s*=\s*["']([a-f0-9]{16,})["']/, /value=["']([a-f0-9]{16,})["']\s*name=["']csrf["']/ ]; const scripts = document.querySelectorAll('script:not([src])'); for (const script of scripts) { if (!script.textContent) continue; for (const p of patterns) { const m = script.textContent.match(p); if(m && m[1]) return m[1]; } } const meta = document.querySelector('meta[name="csrf-token"]'); if(meta && meta.content && /^[a-f0-9]{16,}$/i.test(meta.content)) return meta.content; } catch (e) {} return null; }
     function getPageCsrfToken() { return extractTokenFromPage(); }
     function getRFC() { if (typeof $ === 'function' && typeof $.cookie === 'function') { const c = $.cookie('rfc_v'); if(c) return c; } try { const cs = document.cookie.split('; '); for (const c of cs) { const [n, v] = c.split('='); if(n === 'rfc_v') return decodeURIComponent(v); } } catch (e) {} return null; }
-
-    function hasDrugCooldown() {
-        if (document.querySelector("[aria-label^='Drug Cooldown:']")) return true;
-        const selectors = [
-            '.status-icons__wrap a',
-            '.status-icons li',
-            '.user-icons__wrap a',
-            '[class*="statusIcon"]',
-            '[class*="status-icon"]',
-            '#user-icons li'
-        ];
-        const icons = document.querySelectorAll(selectors.join(', '));
-        for (const icon of icons) {
-            if (icon.offsetParent === null) continue;
-            const label = (icon.getAttribute('aria-label') || '').toLowerCase();
-            const title = (icon.getAttribute('title') || '').toLowerCase();
-            if ((label.includes('drug') && label.includes('cooldown')) ||
-                (title.includes('drug') && title.includes('cooldown')))
-                return true;
-        }
-        return false;
-    }
+    function hasDrugCooldown() { if (document.querySelector("[aria-label^='Drug Cooldown:']")) return true; const selectors = [ '.status-icons__wrap a', '.status-icons li', '.user-icons__wrap a', '[class*="statusIcon"]', '[class*="status-icon"]', '#user-icons li' ]; const icons = document.querySelectorAll(selectors.join(', ')); for (const icon of icons) { if (icon.offsetParent === null) continue; const label = (icon.getAttribute('aria-label') || '').toLowerCase(); const title = (icon.getAttribute('title') || '').toLowerCase(); if ((label.includes('drug') && label.includes('cooldown')) || (title.includes('drug') && title.includes('cooldown'))) return true; } return false; }
     // --- END Core Logic ---
 
-    // --- fetchDrugs (Unchanged from v1.5.5) ---
-    function fetchDrugs() { return new Promise((resolve) => { fetch('https://www.torn.com/item.php').then(r => r.text()).then(html => { const doc = new DOMParser().parseFromString(html, 'text/html'); const items = []; const knownDrugIds = new Set(fallbackDrugs.map(d => d.id)); const itemSelectors = [ '#drugs li[data-item]', 'ul[data-category="Drugs"] li[data-item]', '#item-market-main-wrap li[data-item]', '.items-list-wrap li[data-item]', '#itemlist li[data-item]', '.items-list li[data-item]' ]; const foundElements = new Map(); doc.querySelectorAll(itemSelectors.join(', ')).forEach(item => { try { const id = parseInt(item.dataset.item); if (!id || !knownDrugIds.has(id) || foundElements.has(id)) return; const nameEl = item.querySelector('.name, .title, .item-name, .name-wrap .t-overflow, [class*="name"]'); let itemName = fallbackDrugs.find(d => d.id === id)?.name || `Drug ${id}`; if (nameEl) { const nameElClone = nameEl.cloneNode(true); const qtySpanClone = nameElClone.querySelector('span.qty, span.amount'); if (qtySpanClone) qtySpanClone.remove(); let cleanedName = nameElClone.textContent.trim().replace(/\s*x[\d,]*$/, '').trim(); if (cleanedName) itemName = cleanedName; } foundElements.set(id, { id, name: itemName }); } catch (e) {} }); const uniqueDrugs = Array.from(foundElements.values()); resolve(uniqueDrugs.length > 0 ? uniqueDrugs : [...fallbackDrugs]); }).catch(err => { resolve([...fallbackDrugs]); }); }); }
+    // --- fetchDrugs (Unchanged) ---
+    function fetchDrugs() { return new Promise((resolve) => { fetch('https://www.torn.com/item.php').then(r => r.text()).then(html => { const doc = new DOMParser().parseFromString(html, 'text/html'); const items = []; const knownDrugIds = new Set(fallbackDrugs.map(d => d.id)); const itemSelectors = [ '#drugs li[data-item]', 'ul[data-category="Drugs"] li[data-item]', '#item-market-main-wrap li[data-item]', '.items-list-wrap li[data-item]', '#itemlist li[data-item]', '.items-list li[data-item]' ]; const foundElements = new Map(); doc.querySelectorAll(itemSelectors.join(', ')).forEach(item => { try { const id = parseInt(item.dataset.item); if (!id || !knownDrugIds.has(id) || foundElements.has(id)) return; const nameEl = item.querySelector('.name, .title, .item-name, .name-wrap .t-overflow, [class*="name"]'); let itemName = fallbackDrugs.find(d => d.id === id)?.name || `Drug ${id}`; if (nameEl) { const nameElClone = nameEl.cloneNode(true); const qtySpanClone = nameElClone.querySelector('span.qty, span.amount'); if (qtySpanClone) qtySpanClone.remove(); let cleanedName = nameElClone.textContent.trim().replace(/\s*x[\d,]*$/, '').trim(); if (cleanedName) itemName = cleanedName; } foundElements.set(id, { id, name: itemName }); } catch (e) {} }); const uniqueDrugs = Array.from(foundElements.values()); resolve(uniqueDrugs.length > 0 ? uniqueDrugs : [...fallbackDrugs]); }).catch(err => { console.warn("DrugAlerts: Failed to fetch item page for drug list, using fallback.", err); resolve([...fallbackDrugs]); }); }); }
     // --- END fetchDrugs ---
 
-    // --- Cooldown Checks & Positioning (Improved Cooperation) ---
+    // --- Cooldown Checks & Positioning (MODIFIED adjustQuickUsePosition) ---
     function startCooldownChecks() {
-        if (cooldownCheckInterval) clearInterval(cooldownCheckInterval);
-        if (cooldownObserver) cooldownObserver.disconnect();
-
-        const checkLogic = () => {
-            const hasCD = hasDrugCooldown();
-            const alert = document.querySelector('.drug-alert');
-            if (!hasCD && !alert) {
-                alertElements = createAlert(drugList);
-                checkForPendingDrugUse();
-            } else if (hasCD && alert) {
-                removeExistingAlerts();
-            }
-        };
-
-        setTimeout(checkLogic, 1500);
-
-        try {
-            cooldownObserver = new MutationObserver((muts) => {
-                const rel = muts.some(m => {
-                    const t = m.target;
-                    if (t && t.nodeType === 1) {
-                        if (t.closest('.status-icons__wrap, .user-icons__wrap, #status-icons, #user-icons') ||
-                            t.matches('[aria-label*="Cooldown"]'))
-                            return true;
-                    }
-                    return [...m.addedNodes, ...m.removedNodes].some(n =>
-                        n.nodeType === 1 &&
-                        (n.matches('[aria-label*="Cooldown"]') ||
-                         n.querySelector('[aria-label*="Cooldown"]')));
-                });
-
-                if (rel) {
-                    checkLogic();
-                }
-            });
-
-            const target = document.body;
-            if (target) cooldownObserver.observe(target, {
-                childList: true,
-                subtree: true,
-                attributes: true,
-                attributeFilter: ['class', 'aria-label', 'title', 'style']
-            });
-        } catch (e) {}
-
-        cooldownCheckInterval = setInterval(checkLogic, 30000);
+        if (cooldownCheckInterval) clearInterval(cooldownCheckInterval); if (cooldownObserver) cooldownObserver.disconnect();
+        const checkLogic = () => { const hasCD = hasDrugCooldown(); const alert = document.querySelector('.drug-alert'); if (!hasCD && !alert) { alertElements = createAlert(drugList); checkForPendingDrugUse(); } else if (hasCD && alert) { removeExistingAlerts(); } };
+        setTimeout(checkLogic, 1500); // Initial check slightly delayed
+        try { cooldownObserver = new MutationObserver((muts) => { const rel = muts.some(m => { const t = m.target; if (t && t.nodeType === 1) { if (t.closest('.status-icons__wrap, .user-icons__wrap, #status-icons, #user-icons') || t.matches('[aria-label*="Cooldown"]')) return true; } return [...m.addedNodes, ...m.removedNodes].some(n => n.nodeType === 1 && (n.matches('[aria-label*="Cooldown"]') || n.querySelector('[aria-label*="Cooldown"]'))); }); if (rel) { checkLogic(); } }); const target = document.body; if (target) cooldownObserver.observe(target, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'aria-label', 'title', 'style'] }); } catch (e) { console.error("DrugAlerts: Failed to observe cooldown icons:", e); }
+        cooldownCheckInterval = setInterval(checkLogic, 30000); // Periodic check
     }
 
-    // IMPROVED: Better cooperative positioning with the Booster panel
+    // *** MODIFIED: adjustQuickUsePosition (Increased margin values) ***
     function adjustQuickUsePosition() {
-        const panel = document.querySelector('.drug-quick-use-container');
-        if (!panel) return;
+        const drugPanel = document.querySelector('.drug-quick-use-container');
+        if (!drugPanel) return;
 
-        // Find other panels (especially Booster panel)
-        const boosterPanel = document.querySelector('.booster-quick-use-container');
-        const otherPanels = document.querySelectorAll('.tt-quick-items-container, .quick-items-react-root');
+        // Selectors for other panels (Booster, TT Quick Items, other potential quick-use panels)
+        const otherPanelSelectors = [
+            '.booster-quick-use-container',
+            '.tt-quick-items-container',
+            '.quick-items-react-root',
+            '.quick-use-container:not(.drug-quick-use-container)' // General catch-all, excluding self
+        ];
 
-        let top = 90; // Default starting position
-        const margin = 10; // Space between panels
+        let highestBottom = 90; // Default starting position (px from top of viewport)
+        let panelAbove = null; // Keep track of the panel determining the position
 
-        // Check booster panel first (if it exists)
-        if (boosterPanel) {
+        document.querySelectorAll(otherPanelSelectors.join(', ')).forEach(panel => {
             try {
-                const style = window.getComputedStyle(boosterPanel);
-                if (style.display !== 'none' && style.visibility !== 'hidden' && boosterPanel.offsetHeight > 0) {
-                    const rect = boosterPanel.getBoundingClientRect();
-                    if (rect.height > 0) {
-                        const bottom = rect.bottom + window.scrollY;
-                        if (bottom > top) top = bottom + margin;
-                    }
-                }
-            } catch (e) {}
-        }
-
-        // Then check any other panels
-        otherPanels.forEach(p => {
-            try {
-                const style = window.getComputedStyle(p);
-                if (style.display !== 'none' && style.visibility !== 'hidden' && p.offsetHeight > 0) {
-                    const rect = p.getBoundingClientRect();
+                // Check if the panel is visible and has height
+                const style = window.getComputedStyle(panel);
+                if (style.display !== 'none' && style.visibility !== 'hidden' && panel.offsetHeight > 0) {
+                    const rect = panel.getBoundingClientRect();
+                    // Ensure the panel is actually rendered in the viewport and has dimensions
+                    // Use rect.bottom directly (relative to viewport)
                     if (rect.height > 0 && rect.bottom > 0) {
-                        const bottom = rect.bottom + window.scrollY;
-                        if (bottom > top) top = bottom + margin;
+                        const panelBottomViewport = rect.bottom; // Use viewport coordinate
+                        if (panelBottomViewport > highestBottom) {
+                            highestBottom = panelBottomViewport;
+                            panelAbove = panel; // Store the element setting the highest bottom
+                        }
                     }
                 }
-            } catch (e) {}
+            } catch (e) {
+                console.warn("DrugAlerts: Error getting geometry for panel:", panel, e);
+            }
         });
 
-        // Apply position
-        if (panel.style.top !== `${top}px`) {
-            panel.style.top = `${top}px`;
-            debugLog(`[adjustPosition] Positioned Drug Panel at top: ${top}px`);
+        // Determine margin based on whether the panel above is minimized
+        // *** MODIFIED: Increased margin values ***
+        const panelMargin = 15; // Standard margin (was 10)
+        const minimizedPanelMargin = 30; // Increased margin when panel above is minimized (was 25)
+        let currentMargin = panelMargin;
+
+        if (panelAbove && panelAbove.dataset.minimized === 'true') {
+            currentMargin = minimizedPanelMargin;
+            debugLog(`[adjustPosition Drugs] Panel above is minimized (${panelAbove.className}). Using larger margin: ${currentMargin}px`);
+        } else {
+             debugLog(`[adjustPosition Drugs] Panel above is not minimized or not found. Using standard margin: ${currentMargin}px`);
+        }
+
+
+        // Calculate the target top position for the drug panel (relative to viewport)
+        const targetTop = highestBottom + currentMargin;
+        const targetTopPx = `${targetTop}px`;
+
+        // Apply the new position if it has changed
+        if (drugPanel.style.top !== targetTopPx) {
+            drugPanel.style.top = targetTopPx;
+            debugLog(`[adjustPosition Drugs] Positioned Drug Panel at viewport top: ${targetTopPx}`);
         }
     }
 
+    // *** MODIFIED: setupCooperativePositioning (Unchanged from previous update, still relevant) ***
     function setupCooperativePositioning() {
-        // Initial adjustment
-        setTimeout(adjustQuickUsePosition, 500);
+        debugLog("[setupPositioning Drugs] Setting up cooperative positioning observer.");
+        if (coopObserver) coopObserver.disconnect(); // Disconnect previous observer if exists
 
-        // Watch for changes in ALL quick use panels
-        const observer = new MutationObserver((mutations) => {
+        setTimeout(adjustQuickUsePosition, 500); // Initial adjustment after a short delay
+
+        const observerCallback = (mutations) => {
             let shouldAdjust = false;
+            // Selectors for panels that affect positioning
+            const relevantPanelSelectors = [
+                '.booster-quick-use-container',
+                '.tt-quick-items-container',
+                '.quick-items-react-root',
+                '.quick-use-container' // General selector
+            ];
 
             for (const mutation of mutations) {
-                // Check if mutation is relevant to panel display/positioning
-                const isRelevantTarget = mutation.target.classList &&
-                    (mutation.target.classList.contains('booster-quick-use-container') ||
-                     mutation.target.classList.contains('drug-quick-use-container') ||
-                     mutation.target.classList.contains('tt-quick-items-container') ||
-                     mutation.target.classList.contains('quick-items-react-root'));
+                // Check if the mutation target itself is a relevant panel and attributes changed
+                const targetIsRelevant = mutation.target.nodeType === 1 && relevantPanelSelectors.some(sel => mutation.target.matches(sel));
+                const attributeChanged = mutation.type === 'attributes' && (mutation.attributeName === 'style' || mutation.attributeName === 'class' || mutation.attributeName === 'data-minimized');
 
-                const hasStyleChange = mutation.type === 'attributes' &&
-                    (mutation.attributeName === 'style' ||
-                     mutation.attributeName === 'class' ||
-                     mutation.attributeName === 'data-minimized');
-
-                if (isRelevantTarget && hasStyleChange) {
+                if (targetIsRelevant && attributeChanged) {
                     shouldAdjust = true;
                     break;
                 }
 
-                // Also check for added/removed panels
+                // Check if relevant nodes were added or removed
                 if (mutation.type === 'childList') {
-                    const relevantNodeAdded = Array.from(mutation.addedNodes).some(node =>
-                        node.nodeType === 1 && node.classList &&
-                        (node.classList.contains('booster-quick-use-container') ||
-                         node.classList.contains('drug-quick-use-container') ||
-                         node.classList.contains('tt-quick-items-container') ||
-                         node.classList.contains('quick-items-react-root')));
+                    const checkNode = (node) => node.nodeType === 1 && relevantPanelSelectors.some(sel => node.matches(sel) || node.querySelector(sel));
+                    const nodeAdded = Array.from(mutation.addedNodes).some(checkNode);
+                    const nodeRemoved = Array.from(mutation.removedNodes).some(checkNode);
 
-                    const relevantNodeRemoved = Array.from(mutation.removedNodes).some(node =>
-                        node.nodeType === 1 && node.classList &&
-                        (node.classList.contains('booster-quick-use-container') ||
-                         node.classList.contains('drug-quick-use-container') ||
-                         node.classList.contains('tt-quick-items-container') ||
-                         node.classList.contains('quick-items-react-root')));
-
-                    if (relevantNodeAdded || relevantNodeRemoved) {
+                    if (nodeAdded || nodeRemoved) {
                         shouldAdjust = true;
                         break;
                     }
@@ -1265,218 +874,101 @@
             }
 
             if (shouldAdjust) {
-                // Use debounce to avoid too many recalculations
-                clearTimeout(window.drugAlertPositionTimeout);
-                window.drugAlertPositionTimeout = setTimeout(adjustQuickUsePosition, 100);
+                debugLog('[setupPositioning Drugs] Relevant panel change detected. Scheduling position adjustment.');
+                clearTimeout(coopAdjustTimeout); // Debounce adjustment
+                coopAdjustTimeout = setTimeout(adjustQuickUsePosition, 150); // Adjust after a short delay
             }
-        });
+        };
+
+        coopObserver = new MutationObserver(observerCallback);
 
         try {
-            observer.observe(document.body, {
+            // Observe the body for changes that might affect panel layout
+            coopObserver.observe(document.body, {
                 childList: true,
                 subtree: true,
                 attributes: true,
-                attributeFilter: ['style', 'class', 'data-minimized']
+                attributeFilter: ['style', 'class', 'data-minimized'] // Observe relevant attributes
             });
+            debugLog("[setupPositioning Drugs] Cooperative positioning observer attached to body.");
         } catch (e) {
             console.error("DrugAlerts: Failed to set up observer for cooperative positioning:", e);
         }
 
-        // Periodic adjustment as a fallback
-        setInterval(adjustQuickUsePosition, 3000);
-
-        // Adjust on window resize
+        // Fallback periodic check and resize listener
+        setInterval(adjustQuickUsePosition, 5000); // Check every 5 seconds as a fallback
         window.addEventListener('resize', () => {
-            clearTimeout(window.drugAlertPositionTimeout);
-            window.drugAlertPositionTimeout = setTimeout(adjustQuickUsePosition, 100);
+             clearTimeout(coopAdjustTimeout);
+             coopAdjustTimeout = setTimeout(adjustQuickUsePosition, 150);
         });
-
-        // Final adjustment after full page load
-        window.addEventListener('load', () => {
-            setTimeout(adjustQuickUsePosition, 500);
-        });
+        window.addEventListener('load', () => { setTimeout(adjustQuickUsePosition, 500); }); // Final adjustment on load
     }
     // --- END Cooldown Checks & Positioning ---
 
-    // --- **UPDATED Tab Switch Handling (v1.5.6 - Reverted to Delayed Scan)** ---
+    // --- Tab Switch Handling (Unchanged) ---
     function runDelayedScanAndBuild() {
         debugLog(`[runDelayedScanAndBuild] Running scan after delay...`);
-
-        // Determine container based on current mode
         const isItemsPage = window.location.href.includes('item.php');
         const isFactionArmouryPage = window.location.href.includes('factions.php') && window.location.href.includes('#/tab=armoury');
         const shouldBeVisible = (isItemsPage && !useFactionDrugs) || (isFactionArmouryPage && useFactionDrugs);
-
         if (shouldBeVisible) {
-             const container = useFactionDrugs
-                 ? document.querySelector('#faction-armoury') // Scan whole armoury container
-                 : document.querySelector('div#category-wrap > ul.ui-tabs-panel:not([aria-hidden="true"])'); // Scan visible item tab
-
+             const container = useFactionDrugs ? document.querySelector('#faction-armoury') : document.querySelector('div#category-wrap > ul.ui-tabs-panel:not([aria-hidden="true"])');
              fetchInitialDrugCounts(useFactionDrugs, container || document); // Scan appropriate container or fallback
              buildOrRebuildQuickUsePanel(); // Build or rebuild panel
         } else {
-             // If not relevant, ensure panel is removed
              const existingPanel = document.querySelector('.drug-quick-use-container');
-             if (existingPanel) {
-                  debugLog(`[runDelayedScanAndBuild] Page no longer relevant, removing panel.`);
-                  existingPanel.remove();
-                  currentPanelInstance = null;
-             }
+             if (existingPanel) { debugLog(`[runDelayedScanAndBuild] Page no longer relevant, removing panel.`); existingPanel.remove(); currentPanelInstance = null; }
         }
     }
-
     function handleTabClick(event) {
-        // First check if the click is on the quick use panel itself - if so, ignore it completely
-        if (event.target.closest('.drug-quick-use-container')) {
-            // Click is within our own Quick Use UI, so do nothing
-            return;
-        }
-
-        // Check if click is on a tab or related UI element
-        const itemTabLink = event.target.closest('div[class*="items-cont"] ul[role="tablist"] a[href^="#"]');
-        const factionArmourySubTabLink = event.target.closest('#faction-armoury-tabs a[href^="#armoury-"]');
-        const mainFactionArmoryTabLink = event.target.closest('.ui-tabs-nav a[href="#faction-armoury"]');
-
-        let isRelevantClick = false;
-
-        if (itemTabLink && !useFactionDrugs) {
-            isRelevantClick = true;
-            debugLog(`[handleTabClick Drugs] Item tab clicked: ${itemTabLink.hash}`);
-        } else if ((factionArmourySubTabLink || mainFactionArmoryTabLink) && useFactionDrugs) {
-            isRelevantClick = true;
-            const targetHash = factionArmourySubTabLink?.hash || mainFactionArmoryTabLink?.hash;
-            debugLog(`[handleTabClick Drugs] Faction Armory tab/sub-tab clicked: ${targetHash}`);
-        }
-
-        // Clear previous timeout
+        if (event.target.closest('.drug-quick-use-container')) { return; } // Ignore clicks within our panel
+        const itemTabLink = event.target.closest('div[class*="items-cont"] ul[role="tablist"] a[href^="#"]'); const factionArmourySubTabLink = event.target.closest('#faction-armoury-tabs a[href^="#armoury-"]'); const mainFactionArmoryTabLink = event.target.closest('.ui-tabs-nav a[href="#faction-armoury"]'); let isRelevantClick = false;
+        if (itemTabLink && !useFactionDrugs) { isRelevantClick = true; debugLog(`[handleTabClick Drugs] Item tab clicked: ${itemTabLink.hash}`); }
+        else if ((factionArmourySubTabLink || mainFactionArmoryTabLink) && useFactionDrugs) { isRelevantClick = true; const targetHash = factionArmourySubTabLink?.hash || mainFactionArmoryTabLink?.hash; debugLog(`[handleTabClick Drugs] Faction Armory tab/sub-tab clicked: ${targetHash}`); }
         clearTimeout(tabScanTimeout);
-
-        if (isRelevantClick) {
-            // Schedule the scan and build after a short delay
-            debugLog(`[handleTabClick Drugs] Scheduling scan/build in ${TAB_SCAN_DELAY}ms.`);
-            tabScanTimeout = setTimeout(runDelayedScanAndBuild, TAB_SCAN_DELAY);
-        } else {
-            // MODIFIED: Check if this is a click on UI elements we want to preserve
-            const isOnDrugUI = event.target.closest('.drug-gui, .drug-alert, #drug-customization-ui, #add-drugs-ui, .drug-notification');
-            const isOnBoosterUI = event.target.closest('.booster-quick-use-container, .booster-gui, .booster-alert');
-
-            // Only remove if not clicking on any Drug or Booster UI elements
-            if (!isOnDrugUI && !isOnBoosterUI) {
-                const existingPanel = document.querySelector('.drug-quick-use-container');
-                if (existingPanel) {
-                    // We're only removing the panel on genuine navigation, not when interacting with UI
-                    if (event.target.closest('a[href], button[type="submit"]')) {
-                        debugLog(`[handleTabClick Drugs] Navigation detected, removing panel.`);
-                        existingPanel.remove();
-                        currentPanelInstance = null;
-                    }
-                }
-            }
-        }
+        if (isRelevantClick) { debugLog(`[handleTabClick Drugs] Scheduling scan/build in ${TAB_SCAN_DELAY}ms.`); tabScanTimeout = setTimeout(runDelayedScanAndBuild, TAB_SCAN_DELAY); }
+        else { const isOnDrugUI = event.target.closest('.drug-gui, .drug-alert, #drug-customization-ui, #add-drugs-ui, .drug-notification'); const isOnBoosterUI = event.target.closest('.booster-quick-use-container, .booster-gui, .booster-alert'); if (!isOnDrugUI && !isOnBoosterUI) { const existingPanel = document.querySelector('.drug-quick-use-container'); if (existingPanel) { if (event.target.closest('a[href], button[type="submit"]')) { debugLog(`[handleTabClick Drugs] Navigation detected, removing panel.`); existingPanel.remove(); currentPanelInstance = null; } } } }
     }
-    // --- **END UPDATED Tab Switch Handling** ---
+    // --- END Tab Switch Handling ---
 
-
-    // --- Pending Action Checks & Cleanup ---
+    // --- Pending Action Checks & Cleanup (Uses sessionStorage for temporary flags only) ---
     function checkForPendingDrugUse() {
         try {
-            const fromAlert = sessionStorage.getItem('fromDrugAlert');
-            const pendingFacUse = sessionStorage.getItem('pendingFactionDrugUse');
-            const inProg = sessionStorage.getItem('drugUseInProgress');
-
-            if (inProg) {
-                const d = JSON.parse(inProg);
-                if (Date.now() - (d.timestamp || 0) > 15000) {
-                    sessionStorage.removeItem('drugUseInProgress');
-                }
-            }
-
-            if (fromAlert) {
-                sessionStorage.removeItem('fromDrugAlert');
-                const isItems = window.location.href.includes('item.php');
-                const isFacArmoury = window.location.href.includes('factions.php') && window.location.href.includes('#/tab=armoury');
-                const correctPage = (isItems && !useFactionDrugs) || (isFacArmoury && useFactionDrugs);
-
-                if (correctPage) {
-                    setTimeout(() => {
-                        if (drugList && drugList.length > 0 && !hasDrugCooldown()) {
-                            if (!document.querySelector('.drug-alert')) alertElements = createAlert(drugList);
-                            const gui = document.getElementById('drugGui');
-                            if (gui) {
-                                gui.style.display = 'block';
-                                const si = gui.querySelector('.drug-search');
-                                if (si) si.focus();
-                            }
-                        }
-                    }, 1200);
-                }
-            } else if (pendingFacUse) {
-                const isFacArmoury = window.location.href.includes('factions.php') && window.location.href.includes('#/tab=armoury');
-
-                if (isFacArmoury) {
-                    try {
-                        const p = JSON.parse(pendingFacUse);
-                        if (p.id && p.name) {
-                            sessionStorage.removeItem('pendingFactionDrugUse');
-                            const origCount = p.originalCount !== undefined ? p.originalCount : 1;
-
-                            setTimeout(() => {
-                                useFactionDrugs = localStorage.getItem('useFactionDrugs') === 'true';
-                                if (useFactionDrugs) {
-                                    showNotification(`Using pending drug: ${p.name}...`, 'info');
-                                    useDrug(p.id, p.name);
-                                }
-                            }, 1500);
-                        } else sessionStorage.removeItem('pendingFactionDrugUse');
-                    } catch (e) {
-                        sessionStorage.removeItem('pendingFactionDrugUse');
-                    }
-                }
-            }
-        } catch (e) {
-            sessionStorage.removeItem('drugUseInProgress');
-            sessionStorage.removeItem('fromDrugAlert');
-            sessionStorage.removeItem('pendingFactionDrugUse');
-        }
+            const fromAlert = sessionStorage.getItem('fromDrugAlert'); const pendingFacUse = sessionStorage.getItem('pendingFactionDrugUse'); const inProg = sessionStorage.getItem('drugUseInProgress');
+            if (inProg) { const d = JSON.parse(inProg); if (Date.now() - (d.timestamp || 0) > 15000) { sessionStorage.removeItem('drugUseInProgress'); } }
+            if (fromAlert) { sessionStorage.removeItem('fromDrugAlert'); const isItems = window.location.href.includes('item.php'); const isFacArmoury = window.location.href.includes('factions.php') && window.location.href.includes('#/tab=armoury'); const correctPage = (isItems && !useFactionDrugs) || (isFacArmoury && useFactionDrugs); if (correctPage) { setTimeout(() => { if (drugList && drugList.length > 0 && !hasDrugCooldown()) { if (!document.querySelector('.drug-alert')) alertElements = createAlert(drugList); const gui = document.getElementById('drugGui'); if (gui) { gui.style.display = 'block'; const si = gui.querySelector('.drug-search'); if (si) si.focus(); } } }, 1200); } }
+            else if (pendingFacUse) { const isFacArmoury = window.location.href.includes('factions.php') && window.location.href.includes('#/tab=armoury'); if (isFacArmoury) { try { const p = JSON.parse(pendingFacUse); if (p.id && p.name) { sessionStorage.removeItem('pendingFactionDrugUse'); const origCount = p.originalCount !== undefined ? p.originalCount : 1; setTimeout(() => { useFactionDrugs = localStorage.getItem('useFactionDrugs') === 'true'; if (useFactionDrugs) { showNotification(`Using pending drug: ${p.name}...`, 'info'); useDrug(p.id, p.name); } }, 1500); } else sessionStorage.removeItem('pendingFactionDrugUse'); } catch (e) { sessionStorage.removeItem('pendingFactionDrugUse'); } } }
+        } catch (e) { sessionStorage.removeItem('drugUseInProgress'); sessionStorage.removeItem('fromDrugAlert'); sessionStorage.removeItem('pendingFactionDrugUse'); }
     }
-
-    function removeExistingAlerts() {
-        document.querySelectorAll('.drug-alert').forEach(el => el.remove());
-        alertElements = null;
-    }
+    function removeExistingAlerts() { document.querySelectorAll('.drug-alert').forEach(el => el.remove()); alertElements = null; }
     // --- END Pending Action Checks & Cleanup ---
 
-
-    // --- **UPDATED Initialization** ---
+    // --- Initialization (MODIFIED to use localStorage & call new positioning) ---
     function initialize() {
-        console.log(`%c Drug Alerts v${SCRIPT_VERSION} Initializing (isInitialLoad: ${isInitialLoad}) `, 'background: #f44336; color: white; padding: 2px 5px; border-radius: 3px;');
+        console.log(`%c Drug Alerts v${SCRIPT_VERSION} Initializing (Persistent Counts, Compat Update 3, Increased Spacing) (isInitialLoad: ${isInitialLoad}) `, 'background: #f44336; color: white; padding: 2px 5px; border-radius: 3px;');
         if(DEBUG_MODE) debugLog('Using DEBUG_MODE');
         const wasInitialLoad = isInitialLoad; isInitialLoad = false;
 
         // Cleanup previous listeners/observers
-        if (cooldownObserver) cooldownObserver.disconnect();
-        if (cooldownCheckInterval) clearInterval(cooldownCheckInterval);
-        clearTimeout(tabScanTimeout); // Clear tab scan timeout
-        document.body.removeEventListener('click', handleTabClick, true); // Remove previous listener
+        if (cooldownObserver) cooldownObserver.disconnect(); if (cooldownCheckInterval) clearInterval(cooldownCheckInterval); clearTimeout(tabScanTimeout);
+        if (coopObserver) coopObserver.disconnect(); clearTimeout(coopAdjustTimeout); // Clear positioning observer/timeout
+        document.body.removeEventListener('click', handleTabClick, true); // Remove previous listener if any
 
         useFactionDrugs = localStorage.getItem('useFactionDrugs') === 'true';
         removeExistingAlerts(); // Remove alert/GUI popups
 
-        checkForPendingDrugUse(); // Check for navigation-related actions
+        checkForPendingDrugUse(); // Check for navigation-related actions (uses sessionStorage flags)
 
         fetchDrugs().then(fetchedDrugs => {
-            drugList = fetchedDrugs; // Store the potentially improved list global
+            drugList = fetchedDrugs; // Store the potentially improved list globally
             const isItemsPage = window.location.href.includes('item.php');
-            const isFactionPage = window.location.href.includes('factions.php'); // Broader check for faction page
-
-            // *** Determine initial panel visibility ***
+            const isFactionPage = window.location.href.includes('factions.php');
             const isArmouryTabActive = isFactionPage && window.location.href.includes('#/tab=armoury');
             const isRelevantPageForPanel = (isItemsPage && !useFactionDrugs) || (isArmouryTabActive && useFactionDrugs);
 
-            // Fetch counts on every init
+            // Fetch counts using localStorage on every init
             fetchInitialDrugCounts(useFactionDrugs, document);
 
-            // *** Only rebuild the quick use panel if needed ***
             const quickUsePanel = document.querySelector('.drug-quick-use-container');
 
             if (isRelevantPageForPanel) {
@@ -1485,8 +977,17 @@
                     debugLog("[initialize Drugs] Relevant page/mode detected. Building panel.");
                     buildOrRebuildQuickUsePanel();
                 } else {
-                    debugLog("[initialize Drugs] Panel already exists, just updating position.");
-                    adjustQuickUsePosition();
+                    debugLog("[initialize Drugs] Panel already exists, updating counts and position.");
+                    // Update counts on existing buttons
+                    quickUsePanel.querySelectorAll('.drug-quick-button').forEach(btn => {
+                        const drugId = btn.getAttribute('data-drug-id');
+                        const count = drugCounts[drugId] || 0;
+                        const countSpan = btn.querySelector('.drug-quick-button-count');
+                        if(countSpan) countSpan.textContent = `x${count}`;
+                        const isMinimized = quickUsePanel.dataset.minimized === 'true';
+                        btn.style.display = isMinimized ? 'none' : (count > 0 ? 'flex' : 'none');
+                    });
+                    adjustQuickUsePosition(); // Ensure position is correct
                 }
             } else if (quickUsePanel) {
                 // Remove panel if it exists but shouldn't be shown
@@ -1499,28 +1000,36 @@
             if (wasInitialLoad) {
                 setTimeout(() => {
                     debugLog(`[initialize Drugs] Running delayed secondary scan after ${INITIAL_SCAN_DELAY}ms.`);
-                    fetchInitialDrugCounts(useFactionDrugs, document); // Re-scan counts
-                    // Re-evaluate panel visibility and rebuild/remove if necessary
+                    fetchInitialDrugCounts(useFactionDrugs, document); // Re-scan counts using localStorage
+                    // Re-evaluate panel visibility and rebuild/update if necessary
                     const isArmouryTabNow = window.location.href.includes('factions.php') && window.location.href.includes('#/tab=armoury');
                     const shouldBeVisibleNow = (window.location.href.includes('item.php') && !useFactionDrugs) || (isArmouryTabNow && useFactionDrugs);
-                     if (shouldBeVisibleNow) {
-                         // Build/Rebuild only if needed (e.g., if not already built by initial check)
-                         if (!document.querySelector('.drug-quick-use-container')) {
+                    const existingPanelNow = document.querySelector('.drug-quick-use-container');
+
+                    if (shouldBeVisibleNow) {
+                         if (!existingPanelNow) {
                              debugLog("[initialize Drugs][Timeout] Building panel as it's relevant and not present.");
                              buildOrRebuildQuickUsePanel();
                          } else {
-                              debugLog("[initialize Drugs][Timeout] Panel already exists, just adjusting position.");
-                              adjustQuickUsePosition();
+                             debugLog("[initialize Drugs][Timeout] Panel already exists, updating counts and position after timeout.");
+                             // Update counts on existing buttons
+                             existingPanelNow.querySelectorAll('.drug-quick-button').forEach(btn => {
+                                 const drugId = btn.getAttribute('data-drug-id');
+                                 const count = drugCounts[drugId] || 0;
+                                 const countSpan = btn.querySelector('.drug-quick-button-count');
+                                 if(countSpan) countSpan.textContent = `x${count}`;
+                                 const isMinimized = existingPanelNow.dataset.minimized === 'true';
+                                 btn.style.display = isMinimized ? 'none' : (count > 0 ? 'flex' : 'none');
+                             });
+                             adjustQuickUsePosition(); // Ensure position is correct
                          }
-                     } else {
-                         // If it shouldn't be visible now, ensure it's removed
-                         const existingPanelNow = document.querySelector('.drug-quick-use-container');
+                    } else {
                          if (existingPanelNow) {
-                              debugLog("[initialize Drugs][Timeout] Page no longer relevant, removing panel.");
-                              existingPanelNow.remove();
-                              currentPanelInstance = null;
+                             debugLog("[initialize Drugs][Timeout] Page no longer relevant, removing panel.");
+                             existingPanelNow.remove();
+                             currentPanelInstance = null;
                          }
-                     }
+                    }
                 }, INITIAL_SCAN_DELAY);
             }
 
@@ -1532,20 +1041,20 @@
 
             // Start common functions AFTER fetchDrugs promise resolves
             startCooldownChecks();
-            setupCooperativePositioning();
+            setupCooperativePositioning(); // *** Call the updated positioning setup ***
 
         }).catch(err => {
              // Handle failure to fetch drug list
              console.error("Drug Alerts: Critical error fetching drug list during initialization:", err);
              drugList = [...fallbackDrugs]; // Use fallback
-             // Still try to initialize other parts
+             // Still try to initialize other parts using localStorage counts
              fetchInitialDrugCounts(useFactionDrugs, document);
              buildOrRebuildQuickUsePanel(); // Attempt build with potentially stored counts
              startCooldownChecks();
-             setupCooperativePositioning();
+             setupCooperativePositioning(); // *** Call the updated positioning setup even on error ***
         });
     }
-    // --- **END UPDATED Initialization** ---
+    // --- END Initialization ---
 
     // --- Script Entry Point ---
     if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', initialize); }
