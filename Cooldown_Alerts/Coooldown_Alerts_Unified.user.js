@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Torn Cooldown Manager
 // @namespace    Torn_Cooldown_Manager
-// @version      1.0.1
-// @description  Tracks cooldowns, life, refills, items (Med, Drug, Booster) from Personal or Faction inventory. Quick Use buttons, persistent counts, alerts & notifications. Configurable item colors. Uses local storage to cache API data. Clickable headers for timers and quick-use sections. Points refill configurable.
+// @version      1.0.3
+// @description  Tracks cooldowns, life, refills, items (Med, Drug, Booster) from Personal or Faction inventory. Quick Use buttons, persistent counts, alerts & notifications. Configurable item colors. Uses local storage to cache API data. Clickable headers for timers and quick-use sections. Points refill configurable. Mobile friendly UI.
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/*
 // @exclude      https://www.torn.com/loader.php?sid=attack*
@@ -27,7 +27,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = typeof GM_info !== 'undefined' ? GM_info.script.version : '1.0.0';
+    const SCRIPT_VERSION = typeof GM_info !== 'undefined' ? GM_info.script.version : '1.0.3';
     const FACTION_FALLBACK_TIMEOUT = 2500;
 
     const ITEM_TYPES = { MEDICAL: 'medical', DRUG: 'drug', BOOSTER: 'booster' };
@@ -142,16 +142,16 @@
     function getCsrfToken() { const rfc = getRFC(); if (rfc) { return rfc; } const pageToken = extractTokenFromPage(); if (pageToken) { return pageToken; } return null; }
 
     try { GM_addStyle(`
-.unified-tracker-container { position: fixed; right: 20px; top: 90px; background-color: rgba(34, 34, 34, 0.9); padding: 10px; border-radius: 5px; z-index: 9990; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.5); transition: padding 0.3s ease, max-height 0.3s ease, top 0.3s ease; border: 1px solid #555; max-width: 220px; font-size: 12px; color: #ccc; max-height: 85vh; overflow: visible; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+.unified-tracker-container { position: fixed; right: 20px; top: 90px; background-color: rgba(34, 34, 34, 0.9); padding: 10px; border-radius: 5px; z-index: 9990; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.5); transition: padding 0.3s ease, max-height 0.3s ease, top 0.3s ease, right 0.3s ease; border: 1px solid #555; max-width: 220px; font-size: 12px; color: #ccc; max-height: 85vh; overflow: visible; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; box-sizing: border-box; }
 .unified-tracker-container[data-minimized="true"] { padding: 2px; max-height: 26px; overflow: visible; }
-.tracker-content-wrapper { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.tracker-content-wrapper { display: flex; flex-direction: column; gap: 8px; width: 100%; overflow-y: auto; overflow-x: hidden; flex-grow: 1; padding-right: 5px; box-sizing: border-box; }
 .unified-tracker-container[data-minimized="true"] .tracker-content-wrapper { display: none !important; }
-.unified-tracker-container .tracker-section { border-bottom: 1px solid #444; padding-bottom: 8px; margin-bottom: 8px; width: 100%; box-sizing: border-box; }
+.unified-tracker-container .tracker-section { border-bottom: 1px solid #444; padding-bottom: 8px; margin-bottom: 8px; width: 100%; box-sizing: border-box; flex-shrink: 0; }
 .unified-tracker-container .tracker-section:last-child { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
-.unified-tracker-container h4 { margin: 0 0 5px 0; font-size: 13px; color: #eee; font-weight: bold; text-align: center; border-bottom: 1px solid #555; padding-bottom: 4px; width: 100%; box-sizing: border-box; }
+.unified-tracker-container h4 { margin: 0 0 5px 0; font-size:  0.8125rem; line-height: 2.0; color: #eee; font-weight: bold; text-align: center; border-bottom: 1px solid #555; padding-bottom: 4px; width: 100%; box-sizing: border-box; flex-shrink: 0; }
 .unified-tracker-container .unified-tracker-toggle-button { display: flex !important; position: absolute; top: -8px; right: -12px; z-index: 10; background-color: #007bff; color: white; border: none; width: 22px; height: 22px; border-radius: 50%; align-items: center; justify-content: center; cursor: pointer; font-size: 12px; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
 .unified-tracker-container[data-minimized="true"] .unified-tracker-toggle-button { background-color: #28a745; }
-.api-status { font-size: 10px; text-align: center; color: #888; margin-bottom: 5px; }
+.api-status { font-size: 10px; text-align: center; color: #888; margin-bottom: 5px; flex-shrink: 0; }
 .api-error { color: #ff6b6b; font-weight: bold; }
 .cooldown-timers-list, .refills-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
 .cooldown-timers-list li, .refills-list li { display: flex; justify-content: space-between; align-items: center; font-size: 11px; }
@@ -168,16 +168,16 @@
 .blood-bag-alert-active { background-color: #c0392b !important; animation: pulse-red 1.5s infinite; }
 @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(255, 82, 82, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0); } }
 .medical-quick-use-container, .drug-quick-use-container, .booster-quick-use-container { display: flex; flex-direction: column; gap: 5px; }
-.quick-use-header { font-size: 11px; color: #aaa; font-weight: bold; text-align: center; margin: 8px 0 2px 0; padding-top: 8px; border-top: 1px solid #444; }
+.quick-use-header { font-size: 11px; color: #aaa; font-weight: bold; text-align: center; margin: 8px 0 2px 0; padding-top: 8px; border-top: 1px solid #444; flex-shrink: 0; }
 .quick-use-header a { text-decoration: none; color: inherit; }
-.quick-use-source-toggle-container { display: flex; align-items: center; justify-content: space-between; padding: 4px 0 8px 0; margin-bottom: 5px; border-bottom: 1px solid #444; }
+.quick-use-source-toggle-container { display: flex; align-items: center; justify-content: space-between; padding: 4px 0 8px 0; margin-bottom: 5px; border-bottom: 1px solid #444; flex-shrink: 0; }
 .quick-use-source-toggle-label { font-size: 10px; color: #bbb; flex-grow: 1; margin-right: 6px; text-align: left; white-space: nowrap; }
 .quick-use-source-slider { width: 36px; height: 18px; background-color: #ccc; border-radius: 9px; position: relative; transition: background-color 0.3s ease; flex-shrink: 0; border: 1px solid #555; cursor: pointer; }
 .quick-use-source-slider::after { content: ''; position: absolute; width: 14px; height: 14px; background-color: white; border-radius: 50%; top: 1px; left: 1px; transition: left 0.3s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.3); }
 .quick-use-source-slider.personal-mode { background-color: #4CAF50; }
 .quick-use-source-slider.faction-mode { background-color: #f44336; }
 .quick-use-source-slider.faction-mode::after { left: calc(100% - 15px); }
-.quick-use-button { border: 1px solid #555; padding: 5px 8px; border-radius: 3px; cursor: pointer; font-weight: bold; text-align: left; transition: background-color 0.2s, filter 0.2s; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; justify-content: space-between; align-items: center; }
+.quick-use-button { border: 1px solid #555; padding: 5px 8px; border-radius: 3px; cursor: pointer; font-weight: bold; text-align: left; transition: background-color 0.2s, filter 0.2s; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
 .quick-use-button-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-grow: 1; margin-right: 5px; }
 .quick-use-button-count { font-size: 10px; font-weight: normal; background-color: rgba(0, 0, 0, 0.2); padding: 1px 4px; border-radius: 2px; margin-left: 5px; flex-shrink: 0; min-width: 16px; text-align: right; }
 .quick-use-button:hover { filter: brightness(1.2); }
@@ -185,14 +185,14 @@
 .quick-use-button.type-drug { border-left: 3px solid #9C27B0; }
 .quick-use-button.type-booster { border-left: 3px solid #2196F3; }
 .quick-use-button.type-medical { border-left: 3px solid #4CAF50; }
-.unified-settings-button { background-color: #555; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-weight: bold; text-align: center; font-size: 11px; transition: background-color 0.2s; margin-top: 8px; width: 100%; }
+.unified-settings-button { background-color: #555; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-weight: bold; text-align: center; font-size: 11px; transition: background-color 0.2s; margin-top: 8px; width: 100%; flex-shrink: 0; }
 .unified-settings-button:hover { background-color: #666; }
 .unified-settings-panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: rgba(40, 40, 40, 0.95); border: 1px solid #666; border-radius: 8px; padding: 15px; z-index: 9995; box-shadow: 0 5px 15px rgba(0,0,0,0.6); display: none; flex-direction: column; gap: 15px; width: 90%; max-width: 450px; max-height: 85vh; font-size: 12px; color: #ccc; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
-.unified-settings-panel-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #555; padding-bottom: 8px; margin-bottom: 10px; }
+.unified-settings-panel-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #555; padding-bottom: 8px; margin-bottom: 10px; flex-shrink: 0; }
 .unified-settings-panel-header h4 { margin: 0; font-size: 14px; color: #eee; font-weight: bold; }
 .unified-settings-panel-close-button { background: none; border: none; color: #aaa; font-size: 20px; font-weight: bold; cursor: pointer; line-height: 1; padding: 0 5px; }
 .unified-settings-panel-close-button:hover { color: #fff; }
-.unified-settings-panel-content { overflow-y: auto; padding-right: 10px; display: flex; flex-direction: column; gap: 15px; }
+.unified-settings-panel-content { overflow-y: auto; padding-right: 10px; display: flex; flex-direction: column; gap: 15px; flex-grow: 1; }
 .unified-settings-panel label { font-size: 11px; margin-bottom: 3px; color: #bbb; display: block; }
 .unified-settings-panel input[type="text"], .unified-settings-panel input[type="password"], .unified-settings-panel input[type="number"] { width: 100%; padding: 5px 7px; border: 1px solid #444; background-color: #333; color: white; border-radius: 3px; box-sizing: border-box; font-size: 11px; margin-bottom: 5px; }
 .unified-settings-panel input::placeholder { color: #888; }
@@ -206,7 +206,7 @@
 .api-key-status.valid { color: #90ee90; }
 .api-key-status.invalid { color: #ff6b6b; }
 .api-key-status.testing { color: #ffcc00; }
-.settings-section { border-top: 1px dashed #555; margin-top: 10px; padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.settings-section { border-top: 1px dashed #555; margin-top: 10px; padding-top: 10px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
 .settings-section h5 { font-size: 13px; margin: 0 0 8px 0; color: #ddd; text-align: center; }
 .settings-section label.checkbox-label { display: flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 5px; }
 .settings-section input[type="checkbox"] { cursor: pointer; margin: 0; }
@@ -239,6 +239,46 @@
 #unified-tracker-tooltip { position: fixed; display: none; padding: 5px 8px; background-color: rgba(20, 20, 20, 0.9); color: #eee; border: 1px solid #555; border-radius: 4px; font-size: 11px; z-index: 10000; pointer-events: none; white-space: pre-wrap; max-width: 200px; }
     `); } catch (e) { }
 
+    function adjustTitleFontSize() {
+        if (!uiContainer) return; // Make sure the main UI container exists
+        const titleElement = uiContainer.querySelector('h4');
+        if (!titleElement) return; // Make sure the title element exists
+    
+        // Reset font size slightly larger initially in case it was previously reduced
+        titleElement.style.fontSize = '0.8125rem';
+    
+        // Allow browser to render and calculate widths
+        requestAnimationFrame(() => {
+            const containerWidth = titleElement.clientWidth;
+            let currentFontSize = parseFloat(window.getComputedStyle(titleElement).fontSize);
+            const MIN_FONT_SIZE = 9; // Minimum font size in pixels to prevent it becoming unreadable
+    
+            // Check if text is overflowing (scrollWidth > clientWidth)
+            // Add a small buffer (e.g., 1px) to prevent edge cases
+            while (titleElement.scrollWidth > containerWidth + 1 && currentFontSize > MIN_FONT_SIZE) {
+                currentFontSize -= 0.5; // Decrease font size by 0.5px
+                titleElement.style.fontSize = `${currentFontSize}px`;
+    
+                // Safety break to prevent infinite loops in weird scenarios
+                if (currentFontSize <= MIN_FONT_SIZE) {
+                    break;
+                }
+            }
+             // Optional: If it goes below minimum, apply ellipsis as a fallback
+             if (titleElement.scrollWidth > containerWidth + 1 && currentFontSize <= MIN_FONT_SIZE) {
+                titleElement.style.whiteSpace = 'nowrap';
+                titleElement.style.overflow = 'hidden';
+                titleElement.style.textOverflow = 'ellipsis';
+             } else {
+                // Ensure these aren't set if the text fits or was adjusted successfully
+                titleElement.style.whiteSpace = '';
+                titleElement.style.overflow = '';
+                titleElement.style.textOverflow = '';
+             }
+        });
+    }
+    
+    
     function showInteractiveNotification(message, type = 'info', navigateUrl = null, notificationId = null, isRestored = false, triggerEndTimeMs = null) {
         if (!notificationId) {
             return;
@@ -2182,7 +2222,7 @@
             toggleButton.textContent = isMinimized ? '+' : '–';
             toggleButton.title = isMinimized ? 'Expand Tracker' : 'Minimize Tracker';
         }
-        uiContainer.style.transition = useTransition ? 'padding 0.3s ease, max-height 0.3s ease, top 0.3s ease' : '';
+        uiContainer.style.transition = useTransition ? 'padding 0.3s ease, max-height 0.3s ease, top 0.3s ease, right 0.3s ease' : '';
 
         localStorage.setItem(MINIMIZED_STATE_STORAGE, isMinimized.toString());
         updateSectionVisibility();
@@ -2196,7 +2236,7 @@
             '.tt-quick-items-container',
             '.quick-items-react-root',
         ];
-        let highestBottom = 90;
+        let highestBottom = 5;
 
         document.querySelectorAll(otherPanelSelectors.join(', ')).forEach(panel => {
             try {
@@ -2210,7 +2250,7 @@
             } catch (e) { }
         });
 
-        const margin = 15;
+        const margin = 10;
         const targetTop = highestBottom + margin;
         const targetTopPx = `${targetTop}px`;
 
@@ -2581,6 +2621,7 @@
             document.body.addEventListener('click', handleTabClick, true);
 
             checkForPendingActions();
+            adjustTitleFontSize();
 
             isInitialized = true;
         } catch (error) {
