@@ -41,7 +41,7 @@ This userscript enhances the Torn.com interface by providing a comprehensive man
 
 1.  **Install a Userscript Manager:** You need a browser extension like [Tampermonkey](https://www.tampermonkey.net/) (recommended) or Greasemonkey.
 2.  **Install the Script:**
-    * Navigate to the script's installation URL (usually the `.user.js` file link).
+    * Navigate to the script's [installation URL](https://kwack.dev/script-install/?gmFix=true&scriptUrl=https%3A%2F%2Fgithub.com%2Fgnsc4%2FTorn-Scripts%2Fraw%2Frefs%2Fheads%2Fmaster%2FCooldown_Alerts%2FCoooldown_Alerts_Unified.user.js)
     * Your userscript manager should automatically detect the script and prompt you for installation.
     * Click "Install".
 
