@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Cooldown Manager
 // @namespace    Torn_Cooldown_Manager
-// @version      1.0.0
+// @version      1.0.1
 // @description  Tracks cooldowns, life, refills, items (Med, Drug, Booster) from Personal or Faction inventory. Quick Use buttons, persistent counts, alerts & notifications. Configurable item colors. Uses local storage to cache API data. Clickable headers for timers and quick-use sections. Points refill configurable.
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/*
@@ -240,26 +240,20 @@
     `); } catch (e) { }
 
     function showInteractiveNotification(message, type = 'info', navigateUrl = null, notificationId = null, isRestored = false, triggerEndTimeMs = null) {
-
-
         if (!notificationId) {
-
             return;
         }
 
         let container = document.getElementById('unified-tracker-alerts-container');
         if (!container) {
-
             container = document.createElement('div');
             container.id = 'unified-tracker-alerts-container';
             document.body.appendChild(container);
         }
 
         if (container.querySelector(`.unified-tracker-interactive-alert[data-notification-id="${notificationId}"]`)) {
-
             return;
         }
-
 
         const n = document.createElement('div');
         n.className = `unified-tracker-interactive-alert ${type}`;
@@ -283,7 +277,6 @@
             }
             navigateBtn.title = `Go to ${navigateUrl}`;
             navigateBtn.onclick = () => {
-
                 updateAlertState(notificationId, false);
                 window.location.href = navigateUrl;
             };
@@ -295,17 +288,13 @@
         dismissBtn.innerHTML = '&times;';
         dismissBtn.title = 'Dismiss';
         dismissBtn.onclick = () => {
-
             const currentState = activeAlertStates[notificationId];
             if (currentState) {
                 const newDismissCount = (currentState.dismissCount || 0) + 1;
                 const dismissalTime = Date.now();
-
                 updateAlertState(notificationId, true, currentState.triggeredAt, newDismissCount, dismissalTime);
             } else {
-
             }
-
             n.classList.add('hiding');
             n.addEventListener('transitionend', () => {
                 n.remove();
@@ -316,22 +305,17 @@
         };
         buttonsDiv.appendChild(dismissBtn);
         n.appendChild(buttonsDiv);
-
         container.prepend(n);
-
         if (!isRestored) {
-
         }
     }
 
     function updateAlertState(notificationId, isActive, triggerEndTimeMs = null, dismissCount = 0, dismissedAt = null) {
-
         if (!notificationId) return;
         let currentStates = {};
         try {
             currentStates = JSON.parse(GM_getValue(ACTIVE_ALERTS_STORAGE, '{}'));
         } catch (e) {
-
             currentStates = {};
         }
         const currentState = currentStates[notificationId];
@@ -339,37 +323,30 @@
 
         if (isActive) {
             if (!currentState || currentState.triggeredAt !== triggerEndTimeMs) {
-
                 currentStates[notificationId] = { triggeredAt: triggerEndTimeMs, dismissCount: 0, dismissedAt: null };
                 changed = true;
             } else {
                 if (currentState.dismissCount !== dismissCount || currentState.dismissedAt !== dismissedAt) {
-
                      currentState.dismissCount = dismissCount;
                      currentState.dismissedAt = dismissedAt;
                      changed = true;
                 } else {
-
                 }
             }
         } else {
             if (currentState !== undefined) {
-
                 delete currentStates[notificationId];
                 changed = true;
             } else {
-
             }
         }
 
         activeAlertStates = currentStates;
 
         if (changed) {
-
             try {
                 GM_setValue(ACTIVE_ALERTS_STORAGE, JSON.stringify(currentStates));
             } catch (e) {
-
                 GM_setValue(ACTIVE_ALERTS_STORAGE, '{}');
                 activeAlertStates = {};
             }
@@ -443,7 +420,6 @@
                 }
             }
         } catch (e) {
-
             localStorage.removeItem(API_DATA_CACHE_KEY);
         }
 
@@ -469,11 +445,9 @@
                                 };
                                 localStorage.setItem(API_DATA_CACHE_KEY, JSON.stringify(cachePayload));
                             } catch (e) {
-
                             }
                         }
                     } catch (e) {
-
                         apiData.error = "API Parse Error";
                         apiData.lastUpdate = Date.now();
                         apiData.cooldowns = { drug: 0, booster: 0, medical: 0, drugEnd: 0, boosterEnd: 0, medicalEnd: 0 };
@@ -487,7 +461,6 @@
                     resolve();
                 },
                 onerror: function(response) {
-
                     apiData.error = "API Network Error";
                     apiData.lastUpdate = Date.now();
                     isApiDataReady = true;
@@ -497,7 +470,6 @@
                     resolve();
                 },
                 ontimeout: function() {
-
                     apiData.error = "API Timeout";
                     apiData.lastUpdate = Date.now();
                     isApiDataReady = true;
@@ -542,7 +514,6 @@
                             isValid = true;
                         }
                     } catch (e) {
-
                         if (statusEl) { statusEl.textContent = 'Test Error'; statusEl.className = 'api-key-status invalid'; }
                     }
                     resolve(isValid);
@@ -576,12 +547,10 @@
             if (storedData) {
                 storedCounts = JSON.parse(storedData);
                 if (typeof storedCounts !== 'object' || storedCounts === null) {
-
                     storedCounts = {};
                 }
             }
         } catch (e) {
-
             storedCounts = {};
         }
         return storedCounts;
@@ -593,10 +562,8 @@
             if (typeof countsToSave === 'object' && countsToSave !== null) {
                 localStorage.setItem(storageKey, JSON.stringify(countsToSave));
             } else {
-
             }
         } catch (e) {
-
          }
     }
 
@@ -613,12 +580,10 @@
         let itemElements = [];
         try {
             if (!container || typeof container.querySelectorAll !== 'function') {
-
                 container = document;
             }
             itemElements = Array.from(container.querySelectorAll(itemsSelector));
         } catch (e) {
-
             itemElements = [];
         }
 
@@ -659,7 +624,6 @@
                             }
                         }
                     } else {
-
                         return;
                     }
                 } else {
@@ -693,7 +657,6 @@
                              quantity = 1;
                          } else {
                              quantity = 0;
-
                          }
                     }
                 }
@@ -715,18 +678,15 @@
                      }
                 }
             } catch (e) {
-
             }
         });
 
         if (scanMadeChanges) {
             itemCounts[source] = currentSourceCounts;
             saveCountsToLocalStorage(source, currentSourceCounts);
-
             if (source === medicalSource) updateQuickUsePanel(ITEM_TYPES.MEDICAL);
             if (source === drugSource) updateQuickUsePanel(ITEM_TYPES.DRUG);
             if (source === boosterSource) updateQuickUsePanel(ITEM_TYPES.BOOSTER);
-
             checkEmptyBloodBagAlert();
         } else {
             checkEmptyBloodBagAlert();
@@ -737,7 +697,6 @@
         itemId = parseInt(itemId);
         newCount = parseInt(newCount);
         if (isNaN(itemId) || isNaN(newCount) || newCount < 0 || (source !== 'personal' && source !== 'faction')) {
-
             return;
         }
 
@@ -777,7 +736,6 @@
         targetItemId = parseInt(targetItemId);
         const armouryContainer = document.querySelector('#faction-armoury');
         if (!armouryContainer) {
-
              return null;
         }
 
@@ -822,10 +780,8 @@
                     }
                 }
             } catch (e) {
-
             }
         }
-
         return null;
     }
 
@@ -876,7 +832,6 @@
             handleItemUseResponse(this, id, name, source, methodType, originalCount);
         };
         xhr.onerror = function() {
-
             showTemporaryFeedback(`Network error using ${name}.`, 'error');
             if (methodType !== 'faction_direct') {
                 clearItemUseProgress(id, source);
@@ -884,7 +839,6 @@
             }
         };
         xhr.ontimeout = function() {
-
              showTemporaryFeedback(`Timeout using ${name}.`, 'error');
              if (methodType !== 'faction_direct') {
                  clearItemUseProgress(id, source);
@@ -909,7 +863,6 @@
                 }
             }
         } catch (e) {
-
         }
         return message;
     }
@@ -1068,7 +1021,6 @@
                 return `On ${type.toLowerCase()} cooldown`;
             }
         } catch (e) {
-
         }
         return null;
     }
@@ -1093,7 +1045,6 @@
                 GM_deleteValue(key);
             }
         } catch (e) {
-
              GM_deleteValue(key);
         }
     }
@@ -1122,12 +1073,10 @@
                 if (parsed && (Date.now() - (parsed.timestamp || 0)) < 30000) {
                     return true;
                 } else if (parsed) {
-
                     clearItemUseProgress(itemId, source);
                 }
             }
         } catch (e) {
-
             GM_deleteValue(key);
         }
         return false;
@@ -1149,7 +1098,6 @@
                 return parsed;
             }
         } catch (e) {
-
             GM_deleteValue(PENDING_FACTION_ITEM_USE_STORAGE);
         }
         return null;
@@ -1171,7 +1119,6 @@
                 return parsed;
             }
         } catch (e) {
-
             GM_deleteValue(PENDING_PERSONAL_ITEM_USE_STORAGE);
         }
         return null;
@@ -1227,7 +1174,6 @@
                         if (progressData) {
                             const parsed = JSON.parse(progressData);
                             if (parsed && parsed.method === 'faction_direct') {
-
                                 showTemporaryFeedback(`Faction use taking long, trying alternative method for ${itemName}...`, 'info');
                                 setItemUseProgress(itemId, source, 'faction_traditional');
                                 submitItemUseRequest(itemId, itemName, token, source, currentCount, 'faction_traditional');
@@ -1284,7 +1230,6 @@
                  onclick: function() { window.focus(); }
              });
         } else {
-
         }
     }
 
@@ -1303,26 +1248,21 @@
                 if (!storedState || storedState.triggeredAt !== endTimeMs) {
                     updateAlertState(alertId, true, endTimeMs, 0, null);
                     shouldShowNotification = true;
-
                 } else {
                     const dismissCount = storedState.dismissCount || 0;
                     const dismissedAt = storedState.dismissedAt || 0;
 
                     if (dismissCount === 0) {
                         shouldShowNotification = true;
-
                     } else if (dismissCount === 1) {
                         const timeSinceDismissal = now - dismissedAt;
                         if (timeSinceDismissal >= FIVE_MINUTES_MS) {
                             shouldShowNotification = true;
-
                         } else {
                             shouldShowNotification = false;
-
                         }
                     } else {
                         shouldShowNotification = false;
-
                     }
                 }
 
@@ -1331,32 +1271,24 @@
                     if (!existingDom) {
                         const message = `${titlePrefix} cooldown finished!`;
                         const navigateUrl = `https://www.torn.com/item.php${navigateSuffix}`;
-
                         showInteractiveNotification(message, 'info', navigateUrl, alertId, false, endTimeMs);
-
                         if (notificationsEnabled) {
-
                             sendDesktopNotification(`${titlePrefix} Ready`, message, type);
                         }
                     } else {
-
                     }
                 } else if (!shouldShowNotification) {
                      const existingDom = document.querySelector(`#unified-tracker-alerts-container .unified-tracker-interactive-alert[data-notification-id="${alertId}"]`);
                      if (existingDom) {
-
                          existingDom.remove();
                      }
                 }
-
             } else {
                 if (storedState) {
-
                     updateAlertState(alertId, false);
                 }
                 const existingAlert = document.querySelector(`#unified-tracker-alerts-container .unified-tracker-interactive-alert[data-notification-id="${alertId}"]`);
                 if (existingAlert) {
-
                     existingAlert.remove();
                 }
             }
@@ -1813,7 +1745,6 @@
                 activeConfig = JSON.parse(savedConfig);
                 if (!Array.isArray(activeConfig)) throw new Error("Not an array");
             } catch (e) {
-
                 activeConfig = [...defaultConfig];
                 GM_setValue(configStorageKey, JSON.stringify(activeConfig));
             }
@@ -1903,7 +1834,7 @@
                 <div class="settings-section">
                     <h5>API Key</h5>
                     <label for="tracker-api-key">Torn API Key (Minimal):</label>
-                    <input type="password" id="tracker-api-key" placeholder="Enter API Key" autocomplete="off">
+                    <input type="password" id="tracker-api-key" placeholder="Enter API Key" autocomplete="new-password">
                     <div class="api-key-status"></div>
                     <div class="setting-buttons">
                         <button class="test-api-key-button" title="Check if key is valid">Test</button>
@@ -2154,7 +2085,6 @@
                         GM_setValue(ITEM_COLOR_STORAGE_KEY, JSON.stringify(itemColors));
                         updateQuickUsePanel(itemType);
                     } catch (e) {
-
                     }
                 }
             });
@@ -2180,7 +2110,6 @@
                 else if (itemType === ITEM_TYPES.DRUG) drugSortableInstance = newSortableInstance;
                 else if (itemType === ITEM_TYPES.BOOSTER) boosterSortableInstance = newSortableInstance;
             } catch(e) {
-
                 if (itemType === ITEM_TYPES.MEDICAL) medicalSortableInstance = null;
                 else if (itemType === ITEM_TYPES.DRUG) drugSortableInstance = null;
                 else if (itemType === ITEM_TYPES.BOOSTER) boosterSortableInstance = null;
@@ -2205,7 +2134,6 @@
         } else { return; }
 
         if (!editorContainer) {
-
             return;
         }
 
@@ -2216,7 +2144,6 @@
             try {
                 orderedIds = sortableInstanceVar.toArray().map(idStr => parseInt(idStr));
             } catch(e) {
-
                 orderedIds = Array.from(editorContainer.querySelectorAll('.quick-use-selection-item')).map(el => parseInt(el.getAttribute('data-item-id')));
             }
         } else {
@@ -2343,7 +2270,6 @@
                 attributeFilter: ['style', 'class', 'data-minimized']
             });
         } catch (e) {
-
         }
 
         window.addEventListener('resize', () => {
@@ -2408,7 +2334,6 @@
             if (!storedState || storedState.triggeredAt !== EBB_ACTIVE_MARKER) {
                 updateAlertState(alertId, true, EBB_ACTIVE_MARKER, 0, null);
                 shouldShowAlert = true;
-
             } else {
                  const dismissCount = storedState.dismissCount || 0;
                  const dismissedAt = storedState.dismissedAt || 0;
@@ -2418,12 +2343,9 @@
                      const timeSinceDismissal = now - dismissedAt;
                      if (timeSinceDismissal >= FIVE_MINUTES_MS) {
                          shouldShowAlert = true;
-
                      } else {
-
                      }
                  } else {
-
                  }
             }
 
@@ -2443,10 +2365,8 @@
                  const existingDom = document.querySelector(`#unified-tracker-alerts-container .unified-tracker-interactive-alert[data-notification-id="${alertId}"]`);
                  if (existingDom) existingDom.remove();
             }
-
         } else {
             if (storedState) {
-
                 const existingAlert = document.querySelector(`#unified-tracker-alerts-container .unified-tracker-interactive-alert[data-notification-id="${alertId}"]`);
                 if (existingAlert) existingAlert.remove();
                 updateAlertState(alertId, false);
@@ -2514,11 +2434,9 @@
                             useItem(pendingFacUse.id, pendingFacUse.name, itemData?.type || 'unknown', 'faction');
                         }, 1500);
                     } else {
-
                         updateItemCountDisplay(pendingFacUse.id, pendingFacUse.originalCount, 'faction');
                     }
                 } else {
-
                      updateItemCountDisplay(pendingFacUse.id, pendingFacUse.originalCount, 'faction');
                 }
             }
@@ -2540,17 +2458,13 @@
                             useItem(pendingPersUse.id, pendingPersUse.name, itemData?.type || 'unknown', 'personal');
                         }, 1500);
                     } else {
-
                         updateItemCountDisplay(pendingPersUse.id, pendingPersUse.originalCount, 'personal');
                     }
                 } else {
-
                     updateItemCountDisplay(pendingPersUse.id, pendingPersUse.originalCount, 'personal');
                 }
             }
-
         } catch (e) {
-
             GM_deleteValue(PENDING_FACTION_ITEM_USE_STORAGE);
             GM_deleteValue(PENDING_PERSONAL_ITEM_USE_STORAGE);
         }
@@ -2585,7 +2499,6 @@
 
         const SCRIPT_ID = typeof GM_info !== 'undefined' ? GM_info.script.uuid : 'TornUnifiedTracker';
         const SCRIPT_V = typeof GM_info !== 'undefined' ? GM_info.script.version : '?.?.?';
-
 
         try {
             apiKey = GM_getValue(API_KEY_STORAGE, null);
@@ -2627,7 +2540,6 @@
                     }
 
                     if (!settingEnabled) {
-
                         updateAlertState(alertId, false);
                         return;
                     }
@@ -2639,26 +2551,19 @@
 
                     if (dismissCount === 0) {
                         shouldRestoreNotification = true;
-
                     } else if (dismissCount === 1) {
                         const timeSinceDismissal = now - dismissedAt;
                         if (timeSinceDismissal >= FIVE_MINUTES_MS) {
                             shouldRestoreNotification = true;
-
                         } else {
-
                         }
                     } else {
-
                     }
 
                     if (shouldRestoreNotification) {
-
                         showInteractiveNotification(message, type, navUrl, alertId, true, storedState.triggeredAt);
                     }
-
                 } else if (storedState) {
-
                     updateAlertState(alertId, false);
                 }
             });
@@ -2679,7 +2584,6 @@
 
             isInitialized = true;
         } catch (error) {
-
             showTemporaryFeedback("Unified Tracker failed to initialize. Check console (F12).", "error", 15000);
             isInitialized = false;
         }
