@@ -13,8 +13,8 @@
 // @connect      api.torn.com
 // @require      https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=torn.com
-// @updateURL    
-// @downloadURL  
+// @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Cooldown_Alerts/Coooldown_Alerts_Unified.user.js
+// @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Cooldown_Alerts/Coooldown_Alerts_Unified.user.js
 // @grant        GM_addStyle
 // @grant        GM_xmlhttpRequest
 // @grant        GM_setValue
