@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name         Torn Cooldown Tracker
-// @namespace    Torn_Cooldown_Tracker
-// @version      1.4.8
-// @description  Tracks cooldowns, life, refills, items (Med, Drug, Booster) from Personal or Faction inventory. Quick Use buttons, persistent counts, alerts & notifications. Configurable item colors. Selected quick use items move to top. Uses local storage to cache API data. Clickable headers for timers and quick-use sections. Points refill link configurable. All refills clickable when ready.
-// @author       GNSC4 [268863] (Modified by Gemini)
+// @name         Torn Cooldown Manager
+// @namespace    Torn_Cooldown_Manager
+// @version      1.0.11
+// @description  Tracks cooldowns, life, refills, items (Med, Drug, Booster) from Personal or Faction inventory. Quick Use buttons, persistent counts, alerts & notifications. Configurable item colors. Uses local storage to cache API data. Clickable headers for timers and quick-use sections. Points refill configurable. Mobile friendly UI. Movable UI with persistent position. Drag-and-drop quick use items enabled on mobile.
+// @author       GNSC4 [268863]
 // @match        https://www.torn.com/*
 // @exclude      https://www.torn.com/loader.php?sid=attack*
 // @exclude      https://www.torn.com/loader2.php?sid=attack*
@@ -13,8 +13,8 @@
 // @connect      api.torn.com
 // @require      https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=torn.com
-// @updateURL    
-// @downloadURL  
+// @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Cooldown_Alerts/Coooldown_Alerts_Unified.user.js
+// @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Cooldown_Alerts/Coooldown_Alerts_Unified.user.js
 // @grant        GM_addStyle
 // @grant        GM_xmlhttpRequest
 // @grant        GM_setValue
@@ -27,7 +27,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = typeof GM_info !== 'undefined' ? GM_info.script.version : '1.4.8';
+    const SCRIPT_VERSION = typeof GM_info !== 'undefined' ? GM_info.script.version : '1.0.11';
     const FACTION_FALLBACK_TIMEOUT = 2500;
 
     const ITEM_TYPES = { MEDICAL: 'medical', DRUG: 'drug', BOOSTER: 'booster' };
@@ -41,30 +41,32 @@
     const DEFAULT_DRUG_QUICK_USE_ITEMS = [206, 197];
     const DEFAULT_BOOSTER_QUICK_USE_ITEMS = [532, 530, 553, 555, 554];
 
-    const API_KEY_STORAGE = 'unifiedTracker_apiKey_v3';
-    const ITEM_COUNT_STORAGE_KEY = 'unifiedTracker_KnownCounts_v3';
-    const FACTION_ITEM_COUNT_STORAGE_KEY = 'unifiedTracker_FactionCounts_v3';
-    const MEDICAL_SOURCE_STORAGE = 'unifiedTracker_MedicalSource_v3';
-    const DRUG_SOURCE_STORAGE = 'unifiedTracker_DrugSource_v3';
-    const BOOSTER_SOURCE_STORAGE = 'unifiedTracker_BoosterSource_v3';
-    const POINTS_REFILL_SOURCE_STORAGE = 'unifiedTracker_PointsRefillSource_v1';
-    const MEDICAL_QUICK_USE_CONFIG_STORAGE = 'unifiedTracker_MedicalQuickUseConfig_v3';
-    const DRUG_QUICK_USE_CONFIG_STORAGE = 'unifiedTracker_DrugQuickUseConfig_v3';
-    const BOOSTER_QUICK_USE_CONFIG_STORAGE = 'unifiedTracker_BoosterQuickUseConfig_v3';
-    const MINIMIZED_STATE_STORAGE = 'unifiedTracker_MinimizedState_v3';
-    const MAX_MED_CD_STORAGE = 'unifiedTracker_MaxMedCD_v3';
-    const MAX_BOOSTER_CD_STORAGE = 'unifiedTracker_MaxBoosterCD_v3';
-    const EMPTY_BB_ALERT_STORAGE = 'unifiedTracker_EmptyBBAlert_v3';
-    const NOTIFICATIONS_ENABLED_STORAGE = 'unifiedTracker_NotificationsEnabled_v3';
-    const NOTIFY_DRUG_CD_STORAGE = 'unifiedTracker_NotifyDrugCD_v3';
-    const NOTIFY_BOOSTER_CD_STORAGE = 'unifiedTracker_NotifyBoosterCD_v3';
-    const NOTIFY_MEDICAL_CD_STORAGE = 'unifiedTracker_NotifyMedicalCD_v3';
-    const ACTIVE_ALERTS_STORAGE = 'unifiedTracker_ActiveAlerts_v4';
-    const ITEM_USE_IN_PROGRESS_STORAGE = 'unifiedTracker_ItemUseInProgress_v3';
-    const PENDING_FACTION_ITEM_USE_STORAGE = 'unifiedTracker_PendingFactionItemUse_v3';
-    const PENDING_PERSONAL_ITEM_USE_STORAGE = 'unifiedTracker_PendingPersonalItemUse_v1';
-    const ITEM_COLOR_STORAGE_KEY = 'unifiedTracker_ItemColors_v1';
-    const API_DATA_CACHE_KEY = 'unifiedTracker_apiDataCache_v1';
+    const API_KEY_STORAGE = 'unifiedTracker_apiKey';
+    const ITEM_COUNT_STORAGE_KEY = 'unifiedTracker_KnownCounts';
+    const FACTION_ITEM_COUNT_STORAGE_KEY = 'unifiedTracker_FactionCounts';
+    const MEDICAL_SOURCE_STORAGE = 'unifiedTracker_MedicalSource';
+    const DRUG_SOURCE_STORAGE = 'unifiedTracker_DrugSource';
+    const BOOSTER_SOURCE_STORAGE = 'unifiedTracker_BoosterSource';
+    const POINTS_REFILL_SOURCE_STORAGE = 'unifiedTracker_PointsRefillSource';
+    const MEDICAL_QUICK_USE_CONFIG_STORAGE = 'unifiedTracker_MedicalQuickUseConfig';
+    const DRUG_QUICK_USE_CONFIG_STORAGE = 'unifiedTracker_DrugQuickUseConfig';
+    const BOOSTER_QUICK_USE_CONFIG_STORAGE = 'unifiedTracker_BoosterQuickUseConfig';
+    const MINIMIZED_STATE_STORAGE = 'unifiedTracker_MinimizedState';
+    const MAX_MED_CD_STORAGE = 'unifiedTracker_MaxMedCD';
+    const MAX_BOOSTER_CD_STORAGE = 'unifiedTracker_MaxBoosterCD';
+    const EMPTY_BB_ALERT_STORAGE = 'unifiedTracker_EmptyBBAlert';
+    const NOTIFICATIONS_ENABLED_STORAGE = 'unifiedTracker_NotificationsEnabled';
+    const NOTIFY_DRUG_CD_STORAGE = 'unifiedTracker_NotifyDrugCD';
+    const NOTIFY_BOOSTER_CD_STORAGE = 'unifiedTracker_NotifyBoosterCD';
+    const NOTIFY_MEDICAL_CD_STORAGE = 'unifiedTracker_NotifyMedicalCD';
+    const ACTIVE_ALERTS_STORAGE = 'unifiedTracker_ActiveAlerts';
+    const ITEM_USE_IN_PROGRESS_STORAGE = 'unifiedTracker_ItemUseInProgress';
+    const PENDING_FACTION_ITEM_USE_STORAGE = 'unifiedTracker_PendingFactionItemUse';
+    const PENDING_PERSONAL_ITEM_USE_STORAGE = 'unifiedTracker_PendingPersonalItemUse';
+    const ITEM_COLOR_STORAGE_KEY = 'unifiedTracker_ItemColors';
+    const API_DATA_CACHE_KEY = 'unifiedTracker_apiDataCache';
+    const UI_POSITION_TOP_STORAGE = 'unifiedTracker_UIPositionTop';
+    const UI_POSITION_LEFT_STORAGE = 'unifiedTracker_UIPositionLeft';
 
     const DEFAULT_SOURCE = 'personal';
     const DEFAULT_POINTS_REFILL_SOURCE = 'personal';
@@ -131,6 +133,9 @@
     let medicalSortableInstance = null;
     let drugSortableInstance = null;
     let boosterSortableInstance = null;
+    let isDragging = false;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
 
     function formatTime(seconds) { if (isNaN(seconds) || seconds === null || seconds === undefined) { return '--'; } seconds = Number(seconds); if (seconds <= 0) { return '<span style="color: #90ee90;">Ready</span>'; } const d = Math.floor(seconds / (3600 * 24)); const h = Math.floor(seconds % (3600 * 24) / 3600); const m = Math.floor(seconds % 3600 / 60); const s = Math.floor(seconds % 60); let parts = []; if (d > 0) parts.push(d + 'd'); if (h > 0) parts.push(h + 'h'); if (m > 0) parts.push(m + 'm'); if (s > 0 || parts.length === 0) parts.push(s + 's'); let color = '#ffcc00'; if (seconds < 60) color = '#ff9900'; return `<span style="color: ${color};">${parts.join(' ')}</span>`; }
     function formatSecondsSimple(seconds) { if (isNaN(seconds) || seconds <= 0) { return 'None'; } const d = Math.floor(seconds / (3600 * 24)); const h = Math.floor(seconds % (3600 * 24) / 3600); const m = Math.floor(seconds % 3600 / 60); const s = Math.floor(seconds % 60); let parts = []; if (d > 0) parts.push(d + 'd'); if (h > 0) parts.push(h + 'h'); if (m > 0) parts.push(m + 'm'); parts.push(s + 's'); return parts.join(' '); }
@@ -142,59 +147,408 @@
     function getCsrfToken() { const rfc = getRFC(); if (rfc) { return rfc; } const pageToken = extractTokenFromPage(); if (pageToken) { return pageToken; } return null; }
 
     try { GM_addStyle(`
-.unified-tracker-container { position: fixed; right: 20px; top: 90px; background-color: rgba(34, 34, 34, 0.9); padding: 10px; border-radius: 5px; z-index: 9990; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.5); transition: padding 0.3s ease, max-height 0.3s ease, top 0.3s ease; border: 1px solid #555; max-width: 220px; font-size: 12px; color: #ccc; max-height: 85vh; overflow: visible; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
-.unified-tracker-container[data-minimized="true"] { padding: 2px; max-height: 26px; overflow: visible; }
-.tracker-content-wrapper { display: flex; flex-direction: column; gap: 8px; width: 100%; }
-.unified-tracker-container[data-minimized="true"] .tracker-content-wrapper { display: none !important; }
-.unified-tracker-container .tracker-section { border-bottom: 1px solid #444; padding-bottom: 8px; margin-bottom: 8px; width: 100%; box-sizing: border-box; }
-.unified-tracker-container .tracker-section:last-child { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
-.unified-tracker-container h4 { margin: 0 0 5px 0; font-size: 13px; color: #eee; font-weight: bold; text-align: center; border-bottom: 1px solid #555; padding-bottom: 4px; width: 100%; box-sizing: border-box; }
-.unified-tracker-container .unified-tracker-toggle-button { display: flex !important; position: absolute; top: -8px; right: -12px; z-index: 10; background-color: #007bff; color: white; border: none; width: 22px; height: 22px; border-radius: 50%; align-items: center; justify-content: center; cursor: pointer; font-size: 12px; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
-.unified-tracker-container[data-minimized="true"] .unified-tracker-toggle-button { background-color: #28a745; }
-.api-status { font-size: 10px; text-align: center; color: #888; margin-bottom: 5px; }
-.api-error { color: #ff6b6b; font-weight: bold; }
-.cooldown-timers-list, .refills-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
-.cooldown-timers-list li, .refills-list li { display: flex; justify-content: space-between; align-items: center; font-size: 11px; }
-.cooldown-timers-list li a { text-decoration: none; color: inherit; display: contents; }
-.refills-list li a { text-decoration: none; color: inherit; display: contents; }
-.cooldown-timers-list .timer-name, .refills-list .refill-name { color: #bbb; flex-shrink: 0; margin-right: 5px; }
-.cooldown-timers-list .timer-value, .refills-list .refill-value { font-weight: bold; color: #fff; text-align: right; }
-.cooldown-timers-list .timer-value.ready { color: #90ee90; }
-.refills-list .refill-value.available { color: #90ee90; }
-.refills-list .refill-value.used { color: #ff6b6b; }
-.life-bar-container { width: 100%; background-color: #555; border-radius: 3px; height: 14px; overflow: hidden; position: relative; border: 1px solid #666; box-sizing: border-box; margin-top: 4px;}
-.life-bar-fill { height: 100%; background-color: #e74c3c; border-radius: 2px; transition: width 0.5s ease; }
-.life-bar-text { position: absolute; top: 0; left: 0; width: 100%; height: 100%; text-align: center; line-height: 13px; font-size: 10px; color: #fff; font-weight: bold; text-shadow: 1px 1px 1px rgba(0,0,0,0.7); z-index: 1; }
-.blood-bag-alert-active { background-color: #c0392b !important; animation: pulse-red 1.5s infinite; }
-@keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(255, 82, 82, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0); } }
-.medical-quick-use-container, .drug-quick-use-container, .booster-quick-use-container { display: flex; flex-direction: column; gap: 5px; }
-.quick-use-header { font-size: 11px; color: #aaa; font-weight: bold; text-align: center; margin: 8px 0 2px 0; padding-top: 8px; border-top: 1px solid #444; }
-.quick-use-header a { text-decoration: none; color: inherit; }
-.quick-use-source-toggle-container { display: flex; align-items: center; justify-content: space-between; padding: 4px 0 8px 0; margin-bottom: 5px; border-bottom: 1px solid #444; }
-.quick-use-source-toggle-label { font-size: 10px; color: #bbb; flex-grow: 1; margin-right: 6px; text-align: left; white-space: nowrap; }
-.quick-use-source-slider { width: 36px; height: 18px; background-color: #ccc; border-radius: 9px; position: relative; transition: background-color 0.3s ease; flex-shrink: 0; border: 1px solid #555; cursor: pointer; }
-.quick-use-source-slider::after { content: ''; position: absolute; width: 14px; height: 14px; background-color: white; border-radius: 50%; top: 1px; left: 1px; transition: left 0.3s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.3); }
-.quick-use-source-slider.personal-mode { background-color: #4CAF50; }
-.quick-use-source-slider.faction-mode { background-color: #f44336; }
-.quick-use-source-slider.faction-mode::after { left: calc(100% - 15px); }
-.quick-use-button { border: 1px solid #555; padding: 5px 8px; border-radius: 3px; cursor: pointer; font-weight: bold; text-align: left; transition: background-color 0.2s, filter 0.2s; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; justify-content: space-between; align-items: center; }
-.quick-use-button-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-grow: 1; margin-right: 5px; }
-.quick-use-button-count { font-size: 10px; font-weight: normal; background-color: rgba(0, 0, 0, 0.2); padding: 1px 4px; border-radius: 2px; margin-left: 5px; flex-shrink: 0; min-width: 16px; text-align: right; }
-.quick-use-button:hover { filter: brightness(1.2); }
-.quick-use-button.type-medical.blood-bag-alert { animation: pulse-red 1.5s infinite; border-color: #ff6b6b; }
+/* Container for the entire tracker UI */
+.unified-tracker-container {
+    position: fixed;
+    left: calc(100vw - 240px); /* Position from right edge */
+    top: 90px;
+    background-color: rgba(34, 34, 34, 0.9); /* Semi-transparent dark background */
+    padding: 10px;
+    border-radius: 5px;
+    z-index: 99999; /* High z-index to stay on top */
+    display: flex;
+    flex-direction: column;
+    gap: 8px; /* Spacing between sections */
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5); /* Drop shadow */
+    transition: padding 0.3s ease, max-height 0.3s ease, top 0.3s ease, left 0.3s ease; /* Smooth transitions */
+    border: 1px solid #555; /* Subtle border */
+    max-width: 220px; /* Limit width */
+    font-size: 12px;
+    color: #ccc; /* Default text color */
+    max-height: 85vh; /* Limit height */
+    overflow: visible; /* Allow toggle button to overflow */
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    box-sizing: border-box; /* Include padding/border in width/height */
+}
+
+/* Styles when the tracker is minimized */
+.unified-tracker-container[data-minimized="true"] {
+    padding: 2px; /* Reduced padding */
+    max-height: 26px; /* Collapse height */
+    overflow: visible; /* Ensure toggle button remains visible */
+}
+
+/* Wrapper for the scrollable content inside the tracker */
+.tracker-content-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    overflow-y: auto; /* Enable vertical scrolling */
+    overflow-x: hidden; /* Prevent horizontal scrolling */
+    flex-grow: 1; /* Allow wrapper to fill available space */
+    padding-right: 5px; /* Space for scrollbar */
+    box-sizing: border-box;
+    scrollbar-width: thin; /* Firefox scrollbar style */
+    scrollbar-color: #666 #333; /* Firefox scrollbar colors */
+}
+
+/* Webkit scrollbar styles */
+.tracker-content-wrapper::-webkit-scrollbar { width: 6px; }
+.tracker-content-wrapper::-webkit-scrollbar-track { background: #333; border-radius: 3px; }
+.tracker-content-wrapper::-webkit-scrollbar-thumb { background-color: #666; border-radius: 3px; border: 1px solid #333; }
+
+/* Hide content wrapper when minimized */
+.unified-tracker-container[data-minimized="true"] .tracker-content-wrapper {
+    display: none !important;
+}
+
+/* Style for individual sections within the tracker (e.g., Cooldowns, Refills) */
+.unified-tracker-container .tracker-section {
+    border-bottom: 1px solid #444; /* Separator line */
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+    width: 100%;
+    box-sizing: border-box;
+    flex-shrink: 0; /* Prevent section from shrinking */
+}
+.unified-tracker-container .tracker-section:last-child {
+    border-bottom: none; /* No border for the last section */
+    padding-bottom: 0;
+    margin-bottom: 0;
+}
+
+/* Style for the main header/title of the tracker (draggable handle) */
+.unified-tracker-container h4 {
+    margin: 0 0 5px 0;
+    font-size: 0.8125rem; /* ~13px */
+    line-height: 2.0;
+    color: #eee;
+    font-weight: bold;
+    text-align: center;
+    border-bottom: 1px solid #555;
+    padding-bottom: 4px;
+    width: 100%;
+    box-sizing: border-box;
+    flex-shrink: 0;
+    cursor: grab; /* Indicate draggable */
+    user-select: none; /* Prevent text selection */
+    touch-action: none; /* Prevent default touch actions like scrolling */
+}
+.unified-tracker-container h4:active { cursor: grabbing; } /* Cursor when dragging */
+
+/* Minimize/Maximize toggle button */
+.unified-tracker-container .unified-tracker-toggle-button {
+    display: flex !important; /* Ensure visibility */
+    position: absolute;
+    top: -8px; /* Position slightly above the container */
+    right: -12px; /* Position slightly outside the container */
+    z-index: 99999; /* Ensure it's above the container */
+    background-color: #007bff; /* Blue background */
+    color: white;
+    border: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%; /* Circular button */
+    align-items: center; /* Center content */
+    justify-content: center; /* Center content */
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+.unified-tracker-container[data-minimized="true"] .unified-tracker-toggle-button {
+    background-color: #28a745; /* Green when minimized */
+}
+
+/* API status text */
+.api-status {
+    font-size: 10px;
+    text-align: center;
+    color: #888;
+    margin-bottom: 5px;
+    flex-shrink: 0;
+}
+.api-error { color: #ff6b6b; font-weight: bold; } /* Error color */
+
+/* Lists for cooldowns and refills */
+.cooldown-timers-list, .refills-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px; /* Spacing between list items */
+}
+.cooldown-timers-list li, .refills-list li {
+    display: flex;
+    justify-content: space-between; /* Space out name and value */
+    align-items: center;
+    font-size: 11px;
+}
+/* Make list items clickable if they contain links */
+.cooldown-timers-list li a, .refills-list li a {
+    text-decoration: none;
+    color: inherit;
+    display: contents; /* Allow link to wrap the flex items */
+}
+/* Item names */
+.cooldown-timers-list .timer-name, .refills-list .refill-name {
+    color: #bbb;
+    flex-shrink: 0; /* Prevent name from shrinking */
+    margin-right: 5px; /* Space between name and value */
+}
+/* Item values */
+.cooldown-timers-list .timer-value, .refills-list .refill-value {
+    font-weight: bold;
+    color: #fff;
+    text-align: right;
+}
+.cooldown-timers-list .timer-value.ready { color: #90ee90; } /* Green when ready */
+.refills-list .refill-value.available { color: #90ee90; } /* Green when available */
+.refills-list .refill-value.used { color: #ff6b6b; } /* Red when used */
+
+/* Life bar styles */
+.life-bar-container {
+    width: 100%;
+    background-color: #555;
+    border-radius: 3px;
+    height: 14px;
+    overflow: hidden; /* Clip the fill */
+    position: relative; /* For absolute positioning of text */
+    border: 1px solid #666;
+    box-sizing: border-box;
+    margin-top: 4px;
+}
+.life-bar-fill {
+    height: 100%;
+    background-color: #e74c3c; /* Red fill */
+    border-radius: 2px;
+    transition: width 0.5s ease; /* Smooth fill transition */
+}
+.life-bar-text {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    text-align: center;
+    line-height: 13px; /* Center text vertically */
+    font-size: 10px;
+    color: #fff;
+    font-weight: bold;
+    text-shadow: 1px 1px 1px rgba(0,0,0,0.7); /* Text shadow for readability */
+    z-index: 1; /* Ensure text is above the fill */
+}
+
+/* Alert style for low life / blood bag needed */
+.blood-bag-alert-active {
+    background-color: #c0392b !important; /* Darker red background */
+    animation: pulse-red 1.5s infinite; /* Pulsing animation */
+}
+@keyframes pulse-red {
+    0% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0.7); }
+    70% { box-shadow: 0 0 0 6px rgba(255, 82, 82, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0); }
+}
+
+/* Containers for quick-use buttons */
+.medical-quick-use-container, .drug-quick-use-container, .booster-quick-use-container {
+    display: flex;
+    flex-direction: column;
+    gap: 5px; /* Spacing between buttons */
+}
+
+/* Header for quick-use sections */
+.quick-use-header {
+    font-size: 11px;
+    color: #aaa;
+    font-weight: bold;
+    text-align: center;
+    margin: 8px 0 2px 0;
+    padding-top: 8px;
+    border-top: 1px solid #444; /* Separator line */
+    flex-shrink: 0;
+}
+.quick-use-header a { text-decoration: none; color: inherit; } /* Allow linking */
+
+/* Container for the personal/faction inventory toggle */
+.quick-use-source-toggle-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 0 8px 0;
+    margin-bottom: 5px;
+    border-bottom: 1px solid #444;
+    flex-shrink: 0;
+}
+.quick-use-source-toggle-label {
+    font-size: 10px;
+    color: #bbb;
+    flex-grow: 1; /* Take available space */
+    margin-right: 6px;
+    text-align: left;
+    white-space: nowrap; /* Prevent wrapping */
+}
+/* Slider toggle styles */
+.quick-use-source-slider {
+    width: 36px; height: 18px;
+    background-color: #ccc; /* Default background */
+    border-radius: 9px; /* Pill shape */
+    position: relative;
+    transition: background-color 0.3s ease;
+    flex-shrink: 0;
+    border: 1px solid #555;
+    cursor: pointer;
+}
+.quick-use-source-slider::after { /* The sliding knob */
+    content: '';
+    position: absolute;
+    width: 14px; height: 14px;
+    background-color: white;
+    border-radius: 50%;
+    top: 1px; left: 1px;
+    transition: left 0.3s ease; /* Animate sliding */
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+.quick-use-source-slider.personal-mode { background-color: #4CAF50; } /* Green for personal */
+.quick-use-source-slider.faction-mode { background-color: #f44336; } /* Red for faction */
+.quick-use-source-slider.faction-mode::after { left: calc(100% - 15px); } /* Move knob to right */
+
+/* Individual quick-use buttons */
+.quick-use-button {
+    border: 1px solid #555;
+    padding: 5px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-weight: bold;
+    text-align: left;
+    transition: background-color 0.2s, filter 0.2s;
+    font-size: 11px;
+    white-space: nowrap; /* Prevent wrapping */
+    overflow: hidden; /* Hide overflow */
+    text-overflow: ellipsis; /* Show ellipsis */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+.quick-use-button-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex-grow: 1; /* Allow name to take space */
+    margin-right: 5px; /* Space before count */
+}
+.quick-use-button-count {
+    font-size: 10px;
+    font-weight: normal;
+    background-color: rgba(0, 0, 0, 0.2); /* Subtle background for count */
+    padding: 1px 4px;
+    border-radius: 2px;
+    margin-left: 5px;
+    flex-shrink: 0; /* Prevent count from shrinking */
+    min-width: 16px; /* Ensure minimum width */
+    text-align: right;
+}
+.quick-use-button:hover { filter: brightness(1.2); } /* Hover effect */
+.quick-use-button.type-medical.blood-bag-alert {
+    animation: pulse-red 1.5s infinite; /* Pulse if blood bag alert */
+    border-color: #ff6b6b;
+}
+/* Colored left borders for different item types */
 .quick-use-button.type-drug { border-left: 3px solid #9C27B0; }
 .quick-use-button.type-booster { border-left: 3px solid #2196F3; }
 .quick-use-button.type-medical { border-left: 3px solid #4CAF50; }
-.unified-settings-button { background-color: #555; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-weight: bold; text-align: center; font-size: 11px; transition: background-color 0.2s; margin-top: 8px; width: 100%; }
+
+/* Settings button at the bottom of the tracker */
+.unified-settings-button {
+    background-color: #555;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-weight: bold;
+    text-align: center;
+    font-size: 11px;
+    transition: background-color 0.2s;
+    margin-top: 8px;
+    width: 100%;
+    flex-shrink: 0;
+}
 .unified-settings-button:hover { background-color: #666; }
-.unified-settings-panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: rgba(40, 40, 40, 0.95); border: 1px solid #666; border-radius: 8px; padding: 15px; z-index: 9995; box-shadow: 0 5px 15px rgba(0,0,0,0.6); display: none; flex-direction: column; gap: 15px; width: 90%; max-width: 450px; max-height: 85vh; font-size: 12px; color: #ccc; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
-.unified-settings-panel-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #555; padding-bottom: 8px; margin-bottom: 10px; }
+
+/* Main settings panel (modal) */
+.unified-settings-panel {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%); /* Center panel */
+    background-color: rgba(40, 40, 40, 0.95); /* Dark semi-transparent background */
+    border: 1px solid #666;
+    border-radius: 8px;
+    padding: 15px;
+    z-index: 99999; /* Ensure it's above most elements */
+    box-shadow: 0 5px 15px rgba(0,0,0,0.6); /* Stronger shadow */
+    display: none; /* Hidden by default */
+    flex-direction: column;
+    gap: 15px;
+    width: 90%; /* Responsive width */
+    max-width: 450px; /* Max width */
+    max-height: 85vh; /* Max height */
+    font-size: 12px;
+    color: #ccc;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+.unified-settings-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #555;
+    padding-bottom: 8px;
+    margin-bottom: 10px;
+    flex-shrink: 0; /* Prevent header shrinking */
+}
 .unified-settings-panel-header h4 { margin: 0; font-size: 14px; color: #eee; font-weight: bold; }
-.unified-settings-panel-close-button { background: none; border: none; color: #aaa; font-size: 20px; font-weight: bold; cursor: pointer; line-height: 1; padding: 0 5px; }
+.unified-settings-panel-close-button {
+    background: none; border: none;
+    color: #aaa;
+    font-size: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 5px;
+}
 .unified-settings-panel-close-button:hover { color: #fff; }
-.unified-settings-panel-content { overflow-y: auto; padding-right: 10px; display: flex; flex-direction: column; gap: 15px; }
+/* Scrollable content area within the settings panel */
+.unified-settings-panel-content {
+    overflow-y: auto; /* Enable vertical scroll */
+    padding-right: 10px; /* Space for scrollbar */
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    flex-grow: 1; /* Allow content to fill space */
+    scrollbar-width: thin;
+    scrollbar-color: #666 #333;
+}
+/* Webkit scrollbar styles for settings panel */
+.unified-settings-panel-content::-webkit-scrollbar { width: 6px; }
+.unified-settings-panel-content::-webkit-scrollbar-track { background: #333; border-radius: 3px; }
+.unified-settings-panel-content::-webkit-scrollbar-thumb { background-color: #666; border-radius: 3px; border: 1px solid #333; }
+
+/* General form element styles within settings */
 .unified-settings-panel label { font-size: 11px; margin-bottom: 3px; color: #bbb; display: block; }
-.unified-settings-panel input[type="text"], .unified-settings-panel input[type="password"], .unified-settings-panel input[type="number"] { width: 100%; padding: 5px 7px; border: 1px solid #444; background-color: #333; color: white; border-radius: 3px; box-sizing: border-box; font-size: 11px; margin-bottom: 5px; }
+.unified-settings-panel input[type="text"],
+.unified-settings-panel input[type="password"],
+.unified-settings-panel input[type="number"] {
+    width: 100%;
+    padding: 5px 7px;
+    border: 1px solid #444;
+    background-color: #333;
+    color: white;
+    border-radius: 3px;
+    box-sizing: border-box;
+    font-size: 11px;
+    margin-bottom: 5px;
+}
 .unified-settings-panel input::placeholder { color: #888; }
 .setting-buttons { display: flex; gap: 5px; justify-content: flex-end; margin-top: 5px;}
 .setting-buttons button { padding: 4px 9px; font-size: 11px; border-radius: 3px; border: none; cursor: pointer; font-weight: bold; }
@@ -202,64 +556,310 @@
 .save-api-key-button:hover { filter: brightness(1.1); }
 .test-api-key-button { background-color: #2196F3; color: white; }
 .test-api-key-button:hover { filter: brightness(1.1); }
+/* Status text for API key validation */
 .api-key-status { font-size: 10px; margin-top: 3px; text-align: right; min-height: 12px; }
 .api-key-status.valid { color: #90ee90; }
 .api-key-status.invalid { color: #ff6b6b; }
 .api-key-status.testing { color: #ffcc00; }
-.settings-section { border-top: 1px dashed #555; margin-top: 10px; padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+
+/* Sections within the settings panel */
+.settings-section {
+    border-top: 1px dashed #555; /* Dashed separator */
+    margin-top: 10px;
+    padding-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0; /* Prevent shrinking */
+}
 .settings-section h5 { font-size: 13px; margin: 0 0 8px 0; color: #ddd; text-align: center; }
+/* Checkbox labels */
 .settings-section label.checkbox-label { display: flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 5px; }
 .settings-section input[type="checkbox"] { cursor: pointer; margin: 0; }
-.settings-section .sub-label { font-size: 10px; color: #999; margin-left: 20px; }
+.settings-section .sub-label { font-size: 10px; color: #999; margin-left: 20px; } /* Indented helper text */
+
+/* Quick Use Customization Section */
 .quick-use-customization-section p { font-size: 10px; color: #999; text-align: center; margin-bottom: 5px; }
-.quick-use-editor { list-style: none; padding: 0; margin: 0 0 10px 0; border: 1px solid #444; border-radius: 3px; background-color: #2a2a2a; max-height: 150px; overflow-y: auto; }
-.quick-use-selection-item { display: flex; align-items: center; padding: 5px; border-bottom: 1px solid #383838; cursor: grab; background-color: #333; }
+/* Container for the sortable list of quick-use items */
+.quick-use-editor {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 10px 0;
+    border: 1px solid #444;
+    border-radius: 3px;
+    background-color: #2a2a2a; /* Slightly different background */
+    max-height: 150px; /* Limit height */
+    overflow-y: auto; /* Enable vertical scrolling */
+    overflow-x: hidden; /* Explicitly prevent horizontal scroll */
+    scrollbar-width: thin;
+    scrollbar-color: #666 #333;
+}
+/* Webkit scrollbar styles for quick-use editor */
+.quick-use-editor::-webkit-scrollbar { width: 6px; }
+.quick-use-editor::-webkit-scrollbar-track { background: #333; border-radius: 3px; }
+.quick-use-editor::-webkit-scrollbar-thumb { background-color: #666; border-radius: 3px; border: 1px solid #333; }
+
+/* Individual item row in the quick-use editor */
+.quick-use-selection-item {
+    display: flex;
+    align-items: center; /* Vertically center items */
+    padding: 5px 8px;
+    border-bottom: 1px solid #383838;
+    cursor: grab;
+    background-color: #333;
+    overflow: visible;
+}
 .quick-use-selection-item:last-child { border-bottom: none; }
-.quick-use-selection-item label { display: flex; align-items: center; flex-grow: 1; cursor: pointer; font-size: 11px; color: #ccc; }
-.quick-use-selection-item input[type="checkbox"] { margin-right: 8px; cursor: pointer; }
-.quick-use-selection-item .drag-handle { font-size: 14px; color: #777; margin-left: 5px; cursor: grab; padding: 0 3px; }
-.quick-use-selection-item input[type="color"].quick-use-color-picker { margin-left: 8px; cursor: pointer; width: 20px; height: 20px; border: 1px solid #555; padding: 0; vertical-align: middle; background: none; }
+
+/* Label (checkbox + name) within the item row */
+.quick-use-selection-item label {
+    display: flex;
+    align-items: center;
+    flex-grow: 1; /* Default: allow label to grow */
+    flex-shrink: 1;
+    flex-basis: 0;
+    min-width: 0; /* Allow shrinking */
+    max-width: 65%; /* Limit max width on desktop */
+    margin-right: 5px; /* Default right margin */
+    cursor: pointer;
+    font-size: 11px;
+    color: #ccc;
+    overflow: hidden;
+}
+
+/* Item name text within the label */
+.quick-use-selection-item label span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-block;
+    max-width: 100%;
+}
+
+/* Checkbox within the item row */
+.quick-use-selection-item input[type="checkbox"] {
+    margin-right: 8px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+/* Drag handle (☰) within the item row */
+.quick-use-selection-item .drag-handle {
+    font-size: 16px;
+    color: #777;
+    margin-right: 6px;
+    cursor: grab;
+    padding: 2px 4px;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    flex-shrink: 0; /* Prevent shrinking */
+    display: inline-block;
+    min-width: 1.2em;
+    text-align: center;
+    position: relative;
+    z-index: 999999;
+}
+
+/* Color picker within the item row */
+.quick-use-selection-item input[type="color"].quick-use-color-picker {
+    cursor: pointer;
+    width: 20px;
+    height: 20px;
+    border: 1px solid #555;
+    padding: 0;
+    vertical-align: middle;
+    background: none;
+    flex-shrink: 0; /* Prevent shrinking */
+}
+
+/* Change cursor when actively dragging an item */
 .quick-use-selection-item:active { cursor: grabbing; }
-.unified-tracker-temp-feedback { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 15px 20px; border-radius: 5px; color: white; z-index: 99999999; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4); opacity: 1; transition: opacity 0.5s, transform 0.3s ease-out; text-align: center; min-width: 250px; max-width: 80%; pointer-events: auto; cursor: pointer; background-color: rgba(33, 150, 243, 0.9); border: 1px solid #2196F3; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
-.unified-tracker-temp-feedback.success { background-color: rgba(76, 175, 80, 0.9); border: 1px solid #4CAF50; }
-.unified-tracker-temp-feedback.error { background-color: rgba(244, 67, 54, 0.9); border: 1px solid #f44336; }
-.unified-tracker-temp-feedback.info { background-color: rgba(33, 150, 243, 0.9); border: 1px solid #2196F3; }
-.unified-tracker-temp-feedback .counter-wrap { font-weight: bold; }
-#unified-tracker-alerts-container { position: fixed; top: 10px; right: 10px; z-index: 99999; display: flex; flex-direction: column; gap: 8px; max-width: 350px; pointer-events: none; }
-.unified-tracker-interactive-alert { background-color: #444; border: 1px solid #555; border-radius: 3px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); padding: 10px 12px; color: #ccc; font-size: 13px; line-height: 1.4; transition: opacity 0.3s ease, transform 0.3s ease; opacity: 1; transform: translateX(0); pointer-events: auto; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; display: flex; align-items: center; justify-content: space-between; }
-.unified-tracker-interactive-alert.hiding { opacity: 0; transform: translateX(20px); }
+
+
+/* --- Mobile Adjustments (Flex Adjustments) --- */
+@media (max-width: 480px) { /* Adjust this breakpoint based on testing */
+
+    .quick-use-selection-item label {
+        max-width: calc(100% - 60px); /* Adjusted: Approx width for handle+picker+margins */
+        margin-right: auto; /* Push subsequent items (handle, picker) to the right */
+        flex-grow: 0; /* Prevent growing unnecessarily on mobile */
+    }
+
+    .quick-use-selection-item .drag-handle {
+        flex-shrink: 0; /* Ensure handle doesn't shrink */
+        margin-left: 5px; /* Add space between label and handle */
+        margin-right: 8px; /* Increase space between handle and picker slightly */
+        order: 2; /* Explicitly place handle after label */
+    }
+
+    .quick-use-selection-item input[type="color"].quick-use-color-picker {
+        flex-shrink: 0; /* Ensure picker doesn't shrink */
+        margin-left: 0; /* Reset margin */
+        order: 3; /* Explicitly place picker after handle */
+    }
+}
+
+
+/* Temporary feedback message (e.g., "Settings Saved") */
+.unified-tracker-temp-feedback {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 15px 20px;
+    border-radius: 5px;
+    color: white;
+    z-index: 99999; /* High z-index */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+    opacity: 1;
+    transition: opacity 0.5s, transform 0.3s ease-out; /* Fade out effect */
+    text-align: center;
+    min-width: 250px;
+    max-width: 80%;
+    pointer-events: auto; /* Allow clicking */
+    cursor: pointer; /* Indicate clickable to dismiss */
+    background-color: rgba(33, 150, 243, 0.9); /* Default: Info blue */
+    border: 1px solid #2196F3;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+.unified-tracker-temp-feedback.success { background-color: rgba(76, 175, 80, 0.9); border: 1px solid #4CAF50; } /* Green for success */
+.unified-tracker-temp-feedback.error { background-color: rgba(244, 67, 54, 0.9); border: 1px solid #f44336; } /* Red for error */
+.unified-tracker-temp-feedback.info { background-color: rgba(33, 150, 243, 0.9); border: 1px solid #2196F3; } /* Blue for info */
+.unified-tracker-temp-feedback .counter-wrap { font-weight: bold; } /* Style for countdown timer */
+
+/* Container for interactive alerts (e.g., notifications) */
+#unified-tracker-alerts-container {
+    position: fixed;
+    top: 10px; right: 10px; /* Top right corner */
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px; /* Space between alerts */
+    max-width: 350px;
+    pointer-events: none; /* Allow clicks through the container */
+}
+
+/* Individual interactive alert */
+.unified-tracker-interactive-alert {
+    background-color: #444;
+    border: 1px solid #555;
+    border-radius: 3px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    padding: 10px 12px;
+    color: #ccc;
+    font-size: 13px;
+    line-height: 1.4;
+    transition: opacity 0.3s ease, transform 0.3s ease; /* Animate appearance/disappearance */
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto; /* Make alert itself clickable */
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+/* Style for alert when hiding */
+.unified-tracker-interactive-alert.hiding {
+    opacity: 0;
+    transform: translateX(20px); /* Slide out */
+}
 .unified-tracker-interactive-alert .alert-message { margin: 0; margin-right: 10px; flex-grow: 1; }
 .unified-tracker-interactive-alert .alert-buttons { display: flex; gap: 6px; margin: 0; flex-shrink: 0; }
-.unified-tracker-interactive-alert .alert-button { border: none; border-radius: 3px; color: white; padding: 5px 10px; cursor: pointer; font-size: 12px; font-weight: bold; transition: filter 0.2s; text-shadow: none; line-height: 1.2; }
+.unified-tracker-interactive-alert .alert-button {
+    border: none;
+    border-radius: 3px;
+    color: white;
+    padding: 5px 10px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+    transition: filter 0.2s;
+    text-shadow: none;
+    line-height: 1.2;
+}
 .unified-tracker-interactive-alert .alert-button:hover { filter: brightness(1.15); }
 .unified-tracker-interactive-alert .alert-button.navigate { background-color: #3478B4; min-width: 60px; text-align: center; }
 .unified-tracker-interactive-alert .alert-button.dismiss { background-color: #BE3432; padding: 5px 8px; font-size: 14px; }
-.sortable-ghost { opacity: 0.4; background: #444 !important; }
-.sortable-chosen, .sortable-drag { opacity: 1 !important; }
-#unified-tracker-tooltip { position: fixed; display: none; padding: 5px 8px; background-color: rgba(20, 20, 20, 0.9); color: #eee; border: 1px solid #555; border-radius: 4px; font-size: 11px; z-index: 10000; pointer-events: none; white-space: pre-wrap; max-width: 200px; }
-    `); } catch (e) { }
+
+/* SortableJS helper classes */
+.sortable-ghost {
+    opacity: 0.4;
+    background: #444 !important; /* Style the placeholder */
+}
+.sortable-chosen, .sortable-drag {
+    opacity: 1 !important; /* Ensure dragged item is fully visible */
+}
+
+/* Tooltip style */
+#unified-tracker-tooltip {
+    position: fixed; /* Position relative to viewport */
+    display: none; /* Hidden by default */
+    padding: 5px 8px;
+    background-color: rgba(20, 20, 20, 0.9); /* Dark background */
+    color: #eee;
+    border: 1px solid #555;
+    border-radius: 4px;
+    font-size: 11px;
+    z-index: 99999; /* High z-index */
+    pointer-events: none; /* Prevent tooltip from interfering with mouse */
+    white-space: pre-wrap; /* Allow line breaks in tooltip */
+    max-width: 200px;
+}
+
+
+
+    `); } catch (e) { console.error("GM_addStyle failed:", e); }
+
+    function adjustTitleFontSize() {
+        if (!uiContainer) return;
+        const titleElement = uiContainer.querySelector('h4');
+        if (!titleElement) return;
+
+        titleElement.style.fontSize = '0.8125rem';
+
+        requestAnimationFrame(() => {
+            const containerWidth = titleElement.clientWidth;
+            let currentFontSize = parseFloat(window.getComputedStyle(titleElement).fontSize);
+            const MIN_FONT_SIZE = 9;
+
+            while (titleElement.scrollWidth > containerWidth + 1 && currentFontSize > MIN_FONT_SIZE) {
+                currentFontSize -= 0.5;
+                titleElement.style.fontSize = `${currentFontSize}px`;
+
+                if (currentFontSize <= MIN_FONT_SIZE) {
+                    break;
+                }
+            }
+             if (titleElement.scrollWidth > containerWidth + 1 && currentFontSize <= MIN_FONT_SIZE) {
+                titleElement.style.whiteSpace = 'nowrap';
+                titleElement.style.overflow = 'hidden';
+                titleElement.style.textOverflow = 'ellipsis';
+             } else {
+                titleElement.style.whiteSpace = '';
+                titleElement.style.overflow = '';
+                titleElement.style.textOverflow = '';
+             }
+        });
+    }
+
 
     function showInteractiveNotification(message, type = 'info', navigateUrl = null, notificationId = null, isRestored = false, triggerEndTimeMs = null) {
-
-
         if (!notificationId) {
-
+            console.warn("showInteractiveNotification called without notificationId");
             return;
         }
 
         let container = document.getElementById('unified-tracker-alerts-container');
         if (!container) {
-
             container = document.createElement('div');
             container.id = 'unified-tracker-alerts-container';
             document.body.appendChild(container);
         }
 
         if (container.querySelector(`.unified-tracker-interactive-alert[data-notification-id="${notificationId}"]`)) {
-
             return;
         }
-
 
         const n = document.createElement('div');
         n.className = `unified-tracker-interactive-alert ${type}`;
@@ -283,7 +883,6 @@
             }
             navigateBtn.title = `Go to ${navigateUrl}`;
             navigateBtn.onclick = () => {
-
                 updateAlertState(notificationId, false);
                 window.location.href = navigateUrl;
             };
@@ -295,17 +894,14 @@
         dismissBtn.innerHTML = '&times;';
         dismissBtn.title = 'Dismiss';
         dismissBtn.onclick = () => {
-
             const currentState = activeAlertStates[notificationId];
             if (currentState) {
                 const newDismissCount = (currentState.dismissCount || 0) + 1;
                 const dismissalTime = Date.now();
-
                 updateAlertState(notificationId, true, currentState.triggeredAt, newDismissCount, dismissalTime);
             } else {
-
+                console.warn(`Dismiss clicked but no state found for ${notificationId}`);
             }
-
             n.classList.add('hiding');
             n.addEventListener('transitionend', () => {
                 n.remove();
@@ -316,22 +912,19 @@
         };
         buttonsDiv.appendChild(dismissBtn);
         n.appendChild(buttonsDiv);
-
         container.prepend(n);
-
         if (!isRestored) {
-
+            console.log(`Showing new interactive notification: ${notificationId}`);
         }
     }
 
     function updateAlertState(notificationId, isActive, triggerEndTimeMs = null, dismissCount = 0, dismissedAt = null) {
-
         if (!notificationId) return;
         let currentStates = {};
         try {
             currentStates = JSON.parse(GM_getValue(ACTIVE_ALERTS_STORAGE, '{}'));
         } catch (e) {
-
+            console.error("Error parsing active alerts from storage:", e);
             currentStates = {};
         }
         const currentState = currentStates[notificationId];
@@ -339,37 +932,31 @@
 
         if (isActive) {
             if (!currentState || currentState.triggeredAt !== triggerEndTimeMs) {
-
                 currentStates[notificationId] = { triggeredAt: triggerEndTimeMs, dismissCount: 0, dismissedAt: null };
                 changed = true;
             } else {
                 if (currentState.dismissCount !== dismissCount || currentState.dismissedAt !== dismissedAt) {
-
                      currentState.dismissCount = dismissCount;
                      currentState.dismissedAt = dismissedAt;
                      changed = true;
                 } else {
-
                 }
             }
         } else {
             if (currentState !== undefined) {
-
                 delete currentStates[notificationId];
                 changed = true;
             } else {
-
             }
         }
 
         activeAlertStates = currentStates;
 
         if (changed) {
-
             try {
                 GM_setValue(ACTIVE_ALERTS_STORAGE, JSON.stringify(currentStates));
             } catch (e) {
-
+                console.error("Error saving active alerts to storage:", e);
                 GM_setValue(ACTIVE_ALERTS_STORAGE, '{}');
                 activeAlertStates = {};
             }
@@ -380,6 +967,7 @@
         let newApiData = { ...apiData, lastUpdate: Date.now(), error: null };
         if (data.error) {
             newApiData.error = `API Error ${data.error.code}`;
+            console.error(`API Error: ${data.error.code} - ${data.error.error}`);
             if (data.error.code === 2 && source === 'API') showTemporaryFeedback("Invalid API Key provided.", "error");
             newApiData.cooldowns = { drug: 0, booster: 0, medical: 0, drugEnd: 0, boosterEnd: 0, medicalEnd: 0 };
             newApiData.bars = { life: { percentage: 0 }, energy: {}, nerve: {} };
@@ -443,7 +1031,7 @@
                 }
             }
         } catch (e) {
-
+            console.warn("Error reading API cache:", e);
             localStorage.removeItem(API_DATA_CACHE_KEY);
         }
 
@@ -469,11 +1057,11 @@
                                 };
                                 localStorage.setItem(API_DATA_CACHE_KEY, JSON.stringify(cachePayload));
                             } catch (e) {
-
+                                console.warn("Error saving API data to cache:", e);
                             }
                         }
                     } catch (e) {
-
+                        console.error("Error processing API response:", e, response.responseText);
                         apiData.error = "API Parse Error";
                         apiData.lastUpdate = Date.now();
                         apiData.cooldowns = { drug: 0, booster: 0, medical: 0, drugEnd: 0, boosterEnd: 0, medicalEnd: 0 };
@@ -487,7 +1075,7 @@
                     resolve();
                 },
                 onerror: function(response) {
-
+                    console.error("API Network Error:", response);
                     apiData.error = "API Network Error";
                     apiData.lastUpdate = Date.now();
                     isApiDataReady = true;
@@ -497,7 +1085,7 @@
                     resolve();
                 },
                 ontimeout: function() {
-
+                    console.error("API Timeout");
                     apiData.error = "API Timeout";
                     apiData.lastUpdate = Date.now();
                     isApiDataReady = true;
@@ -542,7 +1130,7 @@
                             isValid = true;
                         }
                     } catch (e) {
-
+                        console.error("API Key Test Error:", e);
                         if (statusEl) { statusEl.textContent = 'Test Error'; statusEl.className = 'api-key-status invalid'; }
                     }
                     resolve(isValid);
@@ -576,12 +1164,11 @@
             if (storedData) {
                 storedCounts = JSON.parse(storedData);
                 if (typeof storedCounts !== 'object' || storedCounts === null) {
-
                     storedCounts = {};
                 }
             }
         } catch (e) {
-
+            console.warn(`Error loading ${source} counts from localStorage:`, e);
             storedCounts = {};
         }
         return storedCounts;
@@ -593,10 +1180,10 @@
             if (typeof countsToSave === 'object' && countsToSave !== null) {
                 localStorage.setItem(storageKey, JSON.stringify(countsToSave));
             } else {
-
+                console.warn(`Attempted to save invalid counts for ${source}:`, countsToSave);
             }
         } catch (e) {
-
+            console.error(`Error saving ${source} counts to localStorage:`, e);
          }
     }
 
@@ -613,12 +1200,12 @@
         let itemElements = [];
         try {
             if (!container || typeof container.querySelectorAll !== 'function') {
-
+                console.warn("fetchInitialItemCounts: Invalid container provided, defaulting to document.");
                 container = document;
             }
             itemElements = Array.from(container.querySelectorAll(itemsSelector));
         } catch (e) {
-
+            console.error(`Error selecting items for ${source}:`, e);
             itemElements = [];
         }
 
@@ -629,7 +1216,7 @@
                 if (altItemElements.length > 0) {
                     itemElements = altItemElements;
                 }
-            } catch(e) { }
+            } catch(e) { console.warn("Error trying alternative personal item selector:", e); }
         }
 
         itemElements.forEach((itemLi) => {
@@ -659,7 +1246,6 @@
                             }
                         }
                     } else {
-
                         return;
                     }
                 } else {
@@ -693,7 +1279,6 @@
                              quantity = 1;
                          } else {
                              quantity = 0;
-
                          }
                     }
                 }
@@ -715,18 +1300,16 @@
                      }
                 }
             } catch (e) {
-
+                console.warn("Error processing item element:", itemLi, e);
             }
         });
 
         if (scanMadeChanges) {
             itemCounts[source] = currentSourceCounts;
             saveCountsToLocalStorage(source, currentSourceCounts);
-
             if (source === medicalSource) updateQuickUsePanel(ITEM_TYPES.MEDICAL);
             if (source === drugSource) updateQuickUsePanel(ITEM_TYPES.DRUG);
             if (source === boosterSource) updateQuickUsePanel(ITEM_TYPES.BOOSTER);
-
             checkEmptyBloodBagAlert();
         } else {
             checkEmptyBloodBagAlert();
@@ -737,7 +1320,7 @@
         itemId = parseInt(itemId);
         newCount = parseInt(newCount);
         if (isNaN(itemId) || isNaN(newCount) || newCount < 0 || (source !== 'personal' && source !== 'faction')) {
-
+            console.warn("Invalid updateItemCountDisplay call:", itemId, newCount, source);
             return;
         }
 
@@ -748,7 +1331,7 @@
         saveCountsToLocalStorage(source, itemCounts[source]);
 
         const itemData = ALL_ITEMS.find(item => item.id === itemId);
-        if (!itemData) { return; }
+        if (!itemData) { console.warn(`updateItemCountDisplay: Item data not found for ID ${itemId}`); return; }
         const itemType = itemData.type;
 
         let panelContainer, currentItemSource;
@@ -777,7 +1360,7 @@
         targetItemId = parseInt(targetItemId);
         const armouryContainer = document.querySelector('#faction-armoury');
         if (!armouryContainer) {
-
+             console.warn("findArmouryItemId: Faction armoury container not found.");
              return null;
         }
 
@@ -822,10 +1405,10 @@
                     }
                 }
             } catch (e) {
-
+                console.warn(`Error searching for armoury item ID with selector "${selector}":`, e);
             }
         }
-
+        console.warn(`findArmouryItemId: Could not find armouryItemID for ${targetItemName} (ID: ${targetItemId})`);
         return null;
     }
 
@@ -876,7 +1459,6 @@
             handleItemUseResponse(this, id, name, source, methodType, originalCount);
         };
         xhr.onerror = function() {
-
             showTemporaryFeedback(`Network error using ${name}.`, 'error');
             if (methodType !== 'faction_direct') {
                 clearItemUseProgress(id, source);
@@ -884,7 +1466,6 @@
             }
         };
         xhr.ontimeout = function() {
-
              showTemporaryFeedback(`Timeout using ${name}.`, 'error');
              if (methodType !== 'faction_direct') {
                  clearItemUseProgress(id, source);
@@ -909,7 +1490,7 @@
                 }
             }
         } catch (e) {
-
+            console.warn("Error formatting cooldown from message:", e);
         }
         return message;
     }
@@ -1068,7 +1649,7 @@
                 return `On ${type.toLowerCase()} cooldown`;
             }
         } catch (e) {
-
+            console.warn("Error extracting cooldown message:", e);
         }
         return null;
     }
@@ -1078,7 +1659,7 @@
         const data = { id: itemId, source: source, method: method, timestamp: Date.now(), fallbackTimerId: fallbackTimerId };
         try {
             GM_setValue(key, JSON.stringify(data));
-        } catch (e) { }
+        } catch (e) { console.error("Error setting item use progress:", e); }
     }
 
     function clearItemUseProgress(itemId, source) {
@@ -1093,7 +1674,7 @@
                 GM_deleteValue(key);
             }
         } catch (e) {
-
+             console.warn("Error clearing item use progress:", e);
              GM_deleteValue(key);
         }
     }
@@ -1110,7 +1691,7 @@
                     GM_setValue(key, JSON.stringify(parsedData));
                 }
             }
-        } catch (e) { }
+        } catch (e) { console.warn("Error clearing fallback timer in progress data:", e); }
     }
 
     function isItemUseInProgress(itemId, source) {
@@ -1122,12 +1703,11 @@
                 if (parsed && (Date.now() - (parsed.timestamp || 0)) < 30000) {
                     return true;
                 } else if (parsed) {
-
                     clearItemUseProgress(itemId, source);
                 }
             }
         } catch (e) {
-
+            console.warn("Error checking item use progress:", e);
             GM_deleteValue(key);
         }
         return false;
@@ -1137,7 +1717,7 @@
         const data = { id: itemId, name: itemName, originalCount: originalCount };
         try {
             GM_setValue(PENDING_FACTION_ITEM_USE_STORAGE, JSON.stringify(data));
-        } catch (e) { }
+        } catch (e) { console.error("Error setting pending faction use:", e); }
     }
 
     function getAndClearPendingFactionUse() {
@@ -1149,7 +1729,7 @@
                 return parsed;
             }
         } catch (e) {
-
+            console.warn("Error getting/clearing pending faction use:", e);
             GM_deleteValue(PENDING_FACTION_ITEM_USE_STORAGE);
         }
         return null;
@@ -1159,7 +1739,7 @@
         const data = { id: itemId, name: itemName, originalCount: originalCount };
         try {
             GM_setValue(PENDING_PERSONAL_ITEM_USE_STORAGE, JSON.stringify(data));
-        } catch (e) { }
+        } catch (e) { console.error("Error setting pending personal use:", e); }
     }
 
     function getAndClearPendingPersonalUse() {
@@ -1171,7 +1751,7 @@
                 return parsed;
             }
         } catch (e) {
-
+            console.warn("Error getting/clearing pending personal use:", e);
             GM_deleteValue(PENDING_PERSONAL_ITEM_USE_STORAGE);
         }
         return null;
@@ -1227,13 +1807,12 @@
                         if (progressData) {
                             const parsed = JSON.parse(progressData);
                             if (parsed && parsed.method === 'faction_direct') {
-
                                 showTemporaryFeedback(`Faction use taking long, trying alternative method for ${itemName}...`, 'info');
                                 setItemUseProgress(itemId, source, 'faction_traditional');
                                 submitItemUseRequest(itemId, itemName, token, source, currentCount, 'faction_traditional');
                             }
                         }
-                    } catch(e) { }
+                    } catch(e) { console.warn("Error in faction use fallback timer:", e); }
                 }, FACTION_FALLBACK_TIMEOUT);
 
                 setItemUseProgress(itemId, source, 'faction_direct', fallbackTimer);
@@ -1284,7 +1863,7 @@
                  onclick: function() { window.focus(); }
              });
         } else {
-
+            console.warn("Desktop notifications not supported by GM_notification or Notification API.");
         }
     }
 
@@ -1303,26 +1882,21 @@
                 if (!storedState || storedState.triggeredAt !== endTimeMs) {
                     updateAlertState(alertId, true, endTimeMs, 0, null);
                     shouldShowNotification = true;
-
                 } else {
                     const dismissCount = storedState.dismissCount || 0;
                     const dismissedAt = storedState.dismissedAt || 0;
 
                     if (dismissCount === 0) {
                         shouldShowNotification = true;
-
                     } else if (dismissCount === 1) {
                         const timeSinceDismissal = now - dismissedAt;
                         if (timeSinceDismissal >= FIVE_MINUTES_MS) {
                             shouldShowNotification = true;
-
                         } else {
                             shouldShowNotification = false;
-
                         }
                     } else {
                         shouldShowNotification = false;
-
                     }
                 }
 
@@ -1331,32 +1905,24 @@
                     if (!existingDom) {
                         const message = `${titlePrefix} cooldown finished!`;
                         const navigateUrl = `https://www.torn.com/item.php${navigateSuffix}`;
-
                         showInteractiveNotification(message, 'info', navigateUrl, alertId, false, endTimeMs);
-
                         if (notificationsEnabled) {
-
                             sendDesktopNotification(`${titlePrefix} Ready`, message, type);
                         }
                     } else {
-
                     }
                 } else if (!shouldShowNotification) {
                      const existingDom = document.querySelector(`#unified-tracker-alerts-container .unified-tracker-interactive-alert[data-notification-id="${alertId}"]`);
                      if (existingDom) {
-
                          existingDom.remove();
                      }
                 }
-
             } else {
                 if (storedState) {
-
                     updateAlertState(alertId, false);
                 }
                 const existingAlert = document.querySelector(`#unified-tracker-alerts-container .unified-tracker-interactive-alert[data-notification-id="${alertId}"]`);
                 if (existingAlert) {
-
                     existingAlert.remove();
                 }
             }
@@ -1380,6 +1946,12 @@
         uiContainer.id = 'unified-tracker-container-main';
         isMinimized = localStorage.getItem(MINIMIZED_STATE_STORAGE) === 'true';
 
+        const savedTop = GM_getValue(UI_POSITION_TOP_STORAGE, null);
+        const savedLeft = GM_getValue(UI_POSITION_LEFT_STORAGE, null);
+
+        if (savedTop !== null) uiContainer.style.top = savedTop;
+        if (savedLeft !== null) uiContainer.style.left = savedLeft;
+
         const toggleButton = document.createElement('button');
         toggleButton.className = 'unified-tracker-toggle-button';
         toggleButton.addEventListener('click', toggleMinimize);
@@ -1390,7 +1962,9 @@
         uiContainer.appendChild(contentWrapper);
 
         const title = document.createElement('h4');
-        title.textContent = 'Cooldown Tracker';
+        title.textContent = 'Cooldown Manager';
+        title.addEventListener('mousedown', startDrag);
+        title.addEventListener('touchstart', startDragTouch, { passive: false });
         contentWrapper.appendChild(title);
 
         const apiSection = document.createElement('div');
@@ -1813,7 +2387,7 @@
                 activeConfig = JSON.parse(savedConfig);
                 if (!Array.isArray(activeConfig)) throw new Error("Not an array");
             } catch (e) {
-
+                console.warn(`Error parsing ${itemType} quick use config, using default:`, e);
                 activeConfig = [...defaultConfig];
                 GM_setValue(configStorageKey, JSON.stringify(activeConfig));
             }
@@ -1903,7 +2477,7 @@
                 <div class="settings-section">
                     <h5>API Key</h5>
                     <label for="tracker-api-key">Torn API Key (Minimal):</label>
-                    <input type="password" id="tracker-api-key" placeholder="Enter API Key" autocomplete="off">
+                    <input type="password" id="tracker-api-key" placeholder="Enter API Key" autocomplete="new-password">
                     <div class="api-key-status"></div>
                     <div class="setting-buttons">
                         <button class="test-api-key-button" title="Check if key is valid">Test</button>
@@ -2081,7 +2655,7 @@
             sortableInstanceVar = boosterSortableInstance; globalConfigVar = 'boosterQuickUseConfig';
         } else { return; }
 
-        if (!editorContainer) { return; }
+        if (!editorContainer) { console.error(`Editor container not found for ${itemType}`); return; }
         editorContainer.innerHTML = '';
 
         const savedConfig = GM_getValue(configStorageKey, null);
@@ -2128,8 +2702,9 @@
                     <input type="checkbox" ${isChecked ? 'checked' : ''} data-item-id="${item.id}">
                     <span>${item.name}</span>
                 </label>
+                <span class="drag-handle">☰</span>
                 <input type="color" class="quick-use-color-picker" value="${currentColor}" data-item-id="${item.id}" title="Change item color">
-                <span class="drag-handle">☰</span> `;
+                `;
             editorContainer.appendChild(div);
 
             div.querySelector('input[type="checkbox"]').addEventListener('change', () => {
@@ -2154,7 +2729,7 @@
                         GM_setValue(ITEM_COLOR_STORAGE_KEY, JSON.stringify(itemColors));
                         updateQuickUsePanel(itemType);
                     } catch (e) {
-
+                        console.error("Error saving item colors:", e);
                     }
                 }
             });
@@ -2170,6 +2745,7 @@
                     chosenClass: 'sortable-chosen',
                     dragClass: 'sortable-drag',
                     dataIdAttr: 'data-item-id',
+                    forceFallback: true,
                     onEnd: (evt) => {
                          if (evt.oldIndex !== evt.newIndex) {
                             saveQuickUseConfig(itemType);
@@ -2180,12 +2756,13 @@
                 else if (itemType === ITEM_TYPES.DRUG) drugSortableInstance = newSortableInstance;
                 else if (itemType === ITEM_TYPES.BOOSTER) boosterSortableInstance = newSortableInstance;
             } catch(e) {
-
+                console.error(`Failed to initialize Sortable for ${itemType}:`, e);
                 if (itemType === ITEM_TYPES.MEDICAL) medicalSortableInstance = null;
                 else if (itemType === ITEM_TYPES.DRUG) drugSortableInstance = null;
                 else if (itemType === ITEM_TYPES.BOOSTER) boosterSortableInstance = null;
             }
         } else {
+            console.warn("Sortable library not found. Drag-and-drop customization disabled.");
             editorContainer.querySelectorAll('.drag-handle').forEach(h => h.style.display = 'none');
         }
     }
@@ -2205,7 +2782,6 @@
         } else { return; }
 
         if (!editorContainer) {
-
             return;
         }
 
@@ -2216,7 +2792,7 @@
             try {
                 orderedIds = sortableInstanceVar.toArray().map(idStr => parseInt(idStr));
             } catch(e) {
-
+                console.warn(`Error getting order from Sortable for ${itemType}, falling back to DOM order:`, e);
                 orderedIds = Array.from(editorContainer.querySelectorAll('.quick-use-selection-item')).map(el => parseInt(el.getAttribute('data-item-id')));
             }
         } else {
@@ -2255,7 +2831,7 @@
             toggleButton.textContent = isMinimized ? '+' : '–';
             toggleButton.title = isMinimized ? 'Expand Tracker' : 'Minimize Tracker';
         }
-        uiContainer.style.transition = useTransition ? 'padding 0.3s ease, max-height 0.3s ease, top 0.3s ease' : '';
+        uiContainer.style.transition = useTransition ? 'padding 0.3s ease, max-height 0.3s ease, top 0.3s ease, left 0.3s ease' : '';
 
         localStorage.setItem(MINIMIZED_STATE_STORAGE, isMinimized.toString());
         updateSectionVisibility();
@@ -2263,13 +2839,13 @@
     }
 
     function adjustUIPosition() {
-        if (!uiContainer || !document.body.contains(uiContainer)) return;
+        if (isDragging || !uiContainer || !document.body.contains(uiContainer)) return;
 
         const otherPanelSelectors = [
             '.tt-quick-items-container',
             '.quick-items-react-root',
         ];
-        let highestBottom = 90;
+        let highestBottom = 5;
 
         document.querySelectorAll(otherPanelSelectors.join(', ')).forEach(panel => {
             try {
@@ -2280,15 +2856,29 @@
                         highestBottom = Math.max(highestBottom, rect.bottom);
                     }
                 }
-            } catch (e) { }
+            } catch (e) { console.warn("Error checking other panel position:", e); }
         });
 
-        const margin = 15;
+        const margin = 10;
         const targetTop = highestBottom + margin;
-        const targetTopPx = `${targetTop}px`;
+        const savedTop = GM_getValue(UI_POSITION_TOP_STORAGE, null);
 
-        if (uiContainer.style.top !== targetTopPx) {
-            uiContainer.style.top = targetTopPx;
+        if (savedTop === null) {
+            const targetTopPx = `${targetTop}px`;
+            if (uiContainer.style.top !== targetTopPx) {
+                 uiContainer.style.top = targetTopPx;
+            }
+        } else {
+            if (uiContainer.style.top !== savedTop) {
+                 uiContainer.style.top = savedTop;
+            }
+        }
+
+        const savedLeft = GM_getValue(UI_POSITION_LEFT_STORAGE, null);
+        if (savedLeft !== null && uiContainer.style.left !== savedLeft) {
+            uiContainer.style.left = savedLeft;
+        } else if (savedLeft === null) {
+            uiContainer.style.left = 'calc(100vw - 240px)';
         }
     }
 
@@ -2343,7 +2933,7 @@
                 attributeFilter: ['style', 'class', 'data-minimized']
             });
         } catch (e) {
-
+            console.error("Failed to set up cooperative positioning observer:", e);
         }
 
         window.addEventListener('resize', () => {
@@ -2353,6 +2943,83 @@
         window.addEventListener('load', () => {
              setTimeout(adjustUIPosition, 500);
         });
+    }
+
+    function startDragTouch(e) {
+        if (!uiContainer || isDragging) return;
+        if (e.touches.length === 1) {
+            isDragging = true;
+            const touch = e.touches[0];
+            const rect = uiContainer.getBoundingClientRect();
+            dragOffsetX = touch.clientX - rect.left;
+            dragOffsetY = touch.clientY - rect.top;
+
+            document.addEventListener('touchmove', dragMoveTouch, { passive: false });
+            document.addEventListener('touchend', stopDragTouch);
+            document.addEventListener('touchcancel', stopDragTouch);
+            e.preventDefault();
+        }
+    }
+
+    function dragMoveTouch(e) {
+        if (!isDragging || !uiContainer) return;
+        if (e.touches.length === 1) {
+            const touch = e.touches[0];
+            let newLeft = touch.clientX - dragOffsetX;
+            let newTop = touch.clientY - dragOffsetY;
+
+            newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - uiContainer.offsetWidth));
+            newTop = Math.max(0, Math.min(newTop, window.innerHeight - uiContainer.offsetHeight));
+
+            uiContainer.style.left = `${newLeft}px`;
+            uiContainer.style.top = `${newTop}px`;
+            e.preventDefault();
+        }
+    }
+
+    function stopDragTouch() {
+        if (!isDragging || !uiContainer) return;
+        isDragging = false;
+        document.removeEventListener('touchmove', dragMoveTouch);
+        document.removeEventListener('touchend', stopDragTouch);
+        document.removeEventListener('touchcancel', stopDragTouch);
+
+        GM_setValue(UI_POSITION_LEFT_STORAGE, uiContainer.style.left);
+        GM_setValue(UI_POSITION_TOP_STORAGE, uiContainer.style.top);
+    }
+
+    function startDrag(e) {
+        if (!uiContainer || e.button !== 0 || isDragging) return;
+        isDragging = true;
+        const rect = uiContainer.getBoundingClientRect();
+        dragOffsetX = e.clientX - rect.left;
+        dragOffsetY = e.clientY - rect.top;
+
+        document.addEventListener('mousemove', dragMove);
+        document.addEventListener('mouseup', stopDrag);
+        e.preventDefault();
+    }
+
+    function dragMove(e) {
+        if (!isDragging || !uiContainer) return;
+        let newLeft = e.clientX - dragOffsetX;
+        let newTop = e.clientY - dragOffsetY;
+
+        newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - uiContainer.offsetWidth));
+        newTop = Math.max(0, Math.min(newTop, window.innerHeight - uiContainer.offsetHeight));
+
+        uiContainer.style.left = `${newLeft}px`;
+        uiContainer.style.top = `${newTop}px`;
+    }
+
+    function stopDrag() {
+        if (!isDragging || !uiContainer) return;
+        isDragging = false;
+        document.removeEventListener('mousemove', dragMove);
+        document.removeEventListener('mouseup', stopDrag);
+
+        GM_setValue(UI_POSITION_LEFT_STORAGE, uiContainer.style.left);
+        GM_setValue(UI_POSITION_TOP_STORAGE, uiContainer.style.top);
     }
 
     function checkBloodBagAlert() {
@@ -2408,7 +3075,6 @@
             if (!storedState || storedState.triggeredAt !== EBB_ACTIVE_MARKER) {
                 updateAlertState(alertId, true, EBB_ACTIVE_MARKER, 0, null);
                 shouldShowAlert = true;
-
             } else {
                  const dismissCount = storedState.dismissCount || 0;
                  const dismissedAt = storedState.dismissedAt || 0;
@@ -2418,12 +3084,9 @@
                      const timeSinceDismissal = now - dismissedAt;
                      if (timeSinceDismissal >= FIVE_MINUTES_MS) {
                          shouldShowAlert = true;
-
                      } else {
-
                      }
                  } else {
-
                  }
             }
 
@@ -2443,10 +3106,8 @@
                  const existingDom = document.querySelector(`#unified-tracker-alerts-container .unified-tracker-interactive-alert[data-notification-id="${alertId}"]`);
                  if (existingDom) existingDom.remove();
             }
-
         } else {
             if (storedState) {
-
                 const existingAlert = document.querySelector(`#unified-tracker-alerts-container .unified-tracker-interactive-alert[data-notification-id="${alertId}"]`);
                 if (existingAlert) existingAlert.remove();
                 updateAlertState(alertId, false);
@@ -2514,11 +3175,9 @@
                             useItem(pendingFacUse.id, pendingFacUse.name, itemData?.type || 'unknown', 'faction');
                         }, 1500);
                     } else {
-
                         updateItemCountDisplay(pendingFacUse.id, pendingFacUse.originalCount, 'faction');
                     }
                 } else {
-
                      updateItemCountDisplay(pendingFacUse.id, pendingFacUse.originalCount, 'faction');
                 }
             }
@@ -2540,17 +3199,14 @@
                             useItem(pendingPersUse.id, pendingPersUse.name, itemData?.type || 'unknown', 'personal');
                         }, 1500);
                     } else {
-
                         updateItemCountDisplay(pendingPersUse.id, pendingPersUse.originalCount, 'personal');
                     }
                 } else {
-
                     updateItemCountDisplay(pendingPersUse.id, pendingPersUse.originalCount, 'personal');
                 }
             }
-
         } catch (e) {
-
+            console.error("Error checking for pending actions:", e);
             GM_deleteValue(PENDING_FACTION_ITEM_USE_STORAGE);
             GM_deleteValue(PENDING_PERSONAL_ITEM_USE_STORAGE);
         }
@@ -2585,7 +3241,7 @@
 
         const SCRIPT_ID = typeof GM_info !== 'undefined' ? GM_info.script.uuid : 'TornUnifiedTracker';
         const SCRIPT_V = typeof GM_info !== 'undefined' ? GM_info.script.version : '?.?.?';
-
+        console.log(`Initializing ${SCRIPT_ID} v${SCRIPT_V}`);
 
         try {
             apiKey = GM_getValue(API_KEY_STORAGE, null);
@@ -2596,7 +3252,7 @@
             pointsRefillSource = GM_getValue(POINTS_REFILL_SOURCE_STORAGE, DEFAULT_POINTS_REFILL_SOURCE);
             itemCounts.personal = loadCountsFromLocalStorage('personal');
             itemCounts.faction = loadCountsFromLocalStorage('faction');
-            try { itemColors = JSON.parse(GM_getValue(ITEM_COLOR_STORAGE_KEY, '{}')); } catch (e) { itemColors = {}; GM_setValue(ITEM_COLOR_STORAGE_KEY, '{}'); }
+            try { itemColors = JSON.parse(GM_getValue(ITEM_COLOR_STORAGE_KEY, '{}')); } catch (e) { itemColors = {}; GM_setValue(ITEM_COLOR_STORAGE_KEY, '{}'); console.warn("Resetting item colors due to parse error:", e); }
             maxMedicalCooldown = GM_getValue(MAX_MED_CD_STORAGE, DEFAULT_MAX_MED_CD_HOURS * 3600);
             maxBoosterCooldown = GM_getValue(MAX_BOOSTER_CD_STORAGE, DEFAULT_MAX_BOOSTER_CD_HOURS * 3600);
             notifyEmptyBloodBag = GM_getValue(EMPTY_BB_ALERT_STORAGE, DEFAULT_NOTIFY_EMPTY_BB);
@@ -2605,7 +3261,7 @@
             notifyBoosterCD = GM_getValue(NOTIFY_BOOSTER_CD_STORAGE, DEFAULT_NOTIFY_BOOSTER_CD);
             notifyMedicalCD = GM_getValue(NOTIFY_MEDICAL_CD_STORAGE, DEFAULT_NOTIFY_MEDICAL_CD);
             try { activeAlertStates = JSON.parse(GM_getValue(ACTIVE_ALERTS_STORAGE, '{}')); }
-            catch (e) { activeAlertStates = {}; GM_setValue(ACTIVE_ALERTS_STORAGE, '{}'); }
+            catch (e) { activeAlertStates = {}; GM_setValue(ACTIVE_ALERTS_STORAGE, '{}'); console.warn("Resetting active alerts due to parse error:", e); }
 
             buildUI();
 
@@ -2627,7 +3283,6 @@
                     }
 
                     if (!settingEnabled) {
-
                         updateAlertState(alertId, false);
                         return;
                     }
@@ -2639,26 +3294,19 @@
 
                     if (dismissCount === 0) {
                         shouldRestoreNotification = true;
-
                     } else if (dismissCount === 1) {
                         const timeSinceDismissal = now - dismissedAt;
                         if (timeSinceDismissal >= FIVE_MINUTES_MS) {
                             shouldRestoreNotification = true;
-
                         } else {
-
                         }
                     } else {
-
                     }
 
                     if (shouldRestoreNotification) {
-
                         showInteractiveNotification(message, type, navUrl, alertId, true, storedState.triggeredAt);
                     }
-
                 } else if (storedState) {
-
                     updateAlertState(alertId, false);
                 }
             });
@@ -2676,18 +3324,27 @@
             document.body.addEventListener('click', handleTabClick, true);
 
             checkForPendingActions();
+            adjustTitleFontSize();
 
             isInitialized = true;
         } catch (error) {
-
+            console.error("Unified Tracker failed to initialize:", error);
             showTemporaryFeedback("Unified Tracker failed to initialize. Check console (F12).", "error", 15000);
             isInitialized = false;
         }
     }
 
     function runInitialization() {
-        if (!isInitialized) {
-            initialize();
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            if (!isInitialized) {
+                initialize();
+            }
+        } else {
+             window.addEventListener('DOMContentLoaded', () => {
+                 if (!isInitialized) {
+                     initialize();
+                 }
+             });
         }
     }
 
