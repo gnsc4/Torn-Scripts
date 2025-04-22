@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Cooldown Manager
 // @namespace    Torn_Cooldown_Manager
-// @version      1.0.6
+// @version      1.0.7
 // @description  Tracks cooldowns, life, refills, items (Med, Drug, Booster) from Personal or Faction inventory. Quick Use buttons, persistent counts, alerts & notifications. Configurable item colors. Uses local storage to cache API data. Clickable headers for timers and quick-use sections. Points refill configurable. Mobile friendly UI. Movable UI with persistent position. Drag-and-drop quick use items enabled on mobile.
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/*
@@ -27,7 +27,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = typeof GM_info !== 'undefined' ? GM_info.script.version : '1.0.6';
+    const SCRIPT_VERSION = typeof GM_info !== 'undefined' ? GM_info.script.version : '1.0.7';
     const FACTION_FALLBACK_TIMEOUT = 2500;
 
     const ITEM_TYPES = { MEDICAL: 'medical', DRUG: 'drug', BOOSTER: 'booster' };
@@ -230,10 +230,11 @@
 .quick-use-editor::-webkit-scrollbar-thumb { background-color: #666; border-radius: 3px; border: 1px solid #333; }
 .quick-use-selection-item { display: flex; align-items: center; padding: 5px; border-bottom: 1px solid #383838; cursor: grab; background-color: #333; }
 .quick-use-selection-item:last-child { border-bottom: none; }
-.quick-use-selection-item label { display: flex; align-items: center; flex-grow: 1; cursor: pointer; font-size: 11px; color: #ccc; }
-.quick-use-selection-item input[type="checkbox"] { margin-right: 8px; cursor: pointer; }
-.quick-use-selection-item .drag-handle { font-size: 14px; color: #777; margin-left: 5px; cursor: grab; padding: 0 3px; touch-action: manipulation; user-select: none; -webkit-user-select: none; -ms-user-select: none; }
-.quick-use-selection-item input[type="color"].quick-use-color-picker { margin-left: 8px; cursor: pointer; width: 20px; height: 20px; border: 1px solid #555; padding: 0; vertical-align: middle; background: none; }
+.quick-use-selection-item label { display: flex; align-items: center; flex-grow: 1; cursor: pointer; font-size: 11px; color: #ccc; min-width: 0; /* Prevent label from pushing out other elements */ }
+.quick-use-selection-item label span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* Ellipsis for long item names */
+.quick-use-selection-item input[type="checkbox"] { margin-right: 8px; cursor: pointer; flex-shrink: 0; }
+.quick-use-selection-item .drag-handle { font-size: 16px; /* Slightly larger for easier touch */ color: #777; margin-left: 5px; cursor: grab; padding: 2px 5px; /* More padding for touch */ touch-action: manipulation; user-select: none; -webkit-user-select: none; -ms-user-select: none; flex-shrink: 0; /* Prevent shrinking */ display: inline-block; /* Ensure it takes space */ min-width: 1.5em; /* Ensure minimum width */ text-align: center; }
+.quick-use-selection-item input[type="color"].quick-use-color-picker { margin-left: 8px; cursor: pointer; width: 20px; height: 20px; border: 1px solid #555; padding: 0; vertical-align: middle; background: none; flex-shrink: 0; }
 .quick-use-selection-item:active { cursor: grabbing; }
 .unified-tracker-temp-feedback { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 15px 20px; border-radius: 5px; color: white; z-index: 99999; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4); opacity: 1; transition: opacity 0.5s, transform 0.3s ease-out; text-align: center; min-width: 250px; max-width: 80%; pointer-events: auto; cursor: pointer; background-color: rgba(33, 150, 243, 0.9); border: 1px solid #2196F3; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
 .unified-tracker-temp-feedback.success { background-color: rgba(76, 175, 80, 0.9); border: 1px solid #4CAF50; }
@@ -2187,7 +2188,7 @@
                     chosenClass: 'sortable-chosen',
                     dragClass: 'sortable-drag',
                     dataIdAttr: 'data-item-id',
-                    forceFallback: true, // Changed from false to true for potentially better touch support
+                    forceFallback: true,
                     onEnd: (evt) => {
                          if (evt.oldIndex !== evt.newIndex) {
                             saveQuickUseConfig(itemType);
