@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         Torn Cooldown Manager
 // @namespace    Torn_Cooldown_Manager
-// @version      1.0.3
-// @description  Tracks cooldowns, life, refills, items (Med, Drug, Booster) from Personal or Faction inventory. Quick Use buttons, persistent counts, alerts & notifications. Configurable item colors. Uses local storage to cache API data. Clickable headers for timers and quick-use sections. Points refill configurable. Mobile friendly UI.
-// @author       GNSC4 [268863]
+// @version      1.0.4
+// @description  Tracks cooldowns, life, refills, items (Med, Drug, Booster) from Personal or Faction inventory. Quick Use buttons, persistent counts, alerts & notifications. Configurable item colors. Uses local storage to cache API data. Clickable headers for timers and quick-use sections. Points refill configurable. Mobile friendly UI. Movable UI with persistent position. Drag-and-drop quick use items enabled on mobile.
+// @author       GNSC4 [268863] & Gemini
 // @match        https://www.torn.com/*
 // @exclude      https://www.torn.com/loader.php?sid=attack*
 // @exclude      https://www.torn.com/loader2.php?sid=attack*
@@ -27,7 +27,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = typeof GM_info !== 'undefined' ? GM_info.script.version : '1.0.3';
+    const SCRIPT_VERSION = typeof GM_info !== 'undefined' ? GM_info.script.version : '1.1.0';
     const FACTION_FALLBACK_TIMEOUT = 2500;
 
     const ITEM_TYPES = { MEDICAL: 'medical', DRUG: 'drug', BOOSTER: 'booster' };
@@ -65,6 +65,8 @@
     const PENDING_PERSONAL_ITEM_USE_STORAGE = 'unifiedTracker_PendingPersonalItemUse';
     const ITEM_COLOR_STORAGE_KEY = 'unifiedTracker_ItemColors';
     const API_DATA_CACHE_KEY = 'unifiedTracker_apiDataCache';
+    const UI_POSITION_TOP_STORAGE = 'unifiedTracker_UIPositionTop';
+    const UI_POSITION_LEFT_STORAGE = 'unifiedTracker_UIPositionLeft';
 
     const DEFAULT_SOURCE = 'personal';
     const DEFAULT_POINTS_REFILL_SOURCE = 'personal';
@@ -131,6 +133,9 @@
     let medicalSortableInstance = null;
     let drugSortableInstance = null;
     let boosterSortableInstance = null;
+    let isDragging = false;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
 
     function formatTime(seconds) { if (isNaN(seconds) || seconds === null || seconds === undefined) { return '--'; } seconds = Number(seconds); if (seconds <= 0) { return '<span style="color: #90ee90;">Ready</span>'; } const d = Math.floor(seconds / (3600 * 24)); const h = Math.floor(seconds % (3600 * 24) / 3600); const m = Math.floor(seconds % 3600 / 60); const s = Math.floor(seconds % 60); let parts = []; if (d > 0) parts.push(d + 'd'); if (h > 0) parts.push(h + 'h'); if (m > 0) parts.push(m + 'm'); if (s > 0 || parts.length === 0) parts.push(s + 's'); let color = '#ffcc00'; if (seconds < 60) color = '#ff9900'; return `<span style="color: ${color};">${parts.join(' ')}</span>`; }
     function formatSecondsSimple(seconds) { if (isNaN(seconds) || seconds <= 0) { return 'None'; } const d = Math.floor(seconds / (3600 * 24)); const h = Math.floor(seconds % (3600 * 24) / 3600); const m = Math.floor(seconds % 3600 / 60); const s = Math.floor(seconds % 60); let parts = []; if (d > 0) parts.push(d + 'd'); if (h > 0) parts.push(h + 'h'); if (m > 0) parts.push(m + 'm'); parts.push(s + 's'); return parts.join(' '); }
@@ -142,14 +147,15 @@
     function getCsrfToken() { const rfc = getRFC(); if (rfc) { return rfc; } const pageToken = extractTokenFromPage(); if (pageToken) { return pageToken; } return null; }
 
     try { GM_addStyle(`
-.unified-tracker-container { position: fixed; right: 20px; top: 90px; background-color: rgba(34, 34, 34, 0.9); padding: 10px; border-radius: 5px; z-index: 9990; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.5); transition: padding 0.3s ease, max-height 0.3s ease, top 0.3s ease, right 0.3s ease; border: 1px solid #555; max-width: 220px; font-size: 12px; color: #ccc; max-height: 85vh; overflow: visible; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; box-sizing: border-box; }
+.unified-tracker-container { position: fixed; left: calc(100vw - 240px); top: 90px; background-color: rgba(34, 34, 34, 0.9); padding: 10px; border-radius: 5px; z-index: 99999; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.5); transition: padding 0.3s ease, max-height 0.3s ease, top 0.3s ease, left 0.3s ease; border: 1px solid #555; max-width: 220px; font-size: 12px; color: #ccc; max-height: 85vh; overflow: visible; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; box-sizing: border-box; }
 .unified-tracker-container[data-minimized="true"] { padding: 2px; max-height: 26px; overflow: visible; }
 .tracker-content-wrapper { display: flex; flex-direction: column; gap: 8px; width: 100%; overflow-y: auto; overflow-x: hidden; flex-grow: 1; padding-right: 5px; box-sizing: border-box; }
 .unified-tracker-container[data-minimized="true"] .tracker-content-wrapper { display: none !important; }
 .unified-tracker-container .tracker-section { border-bottom: 1px solid #444; padding-bottom: 8px; margin-bottom: 8px; width: 100%; box-sizing: border-box; flex-shrink: 0; }
 .unified-tracker-container .tracker-section:last-child { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
-.unified-tracker-container h4 { margin: 0 0 5px 0; font-size:  0.8125rem; line-height: 2.0; color: #eee; font-weight: bold; text-align: center; border-bottom: 1px solid #555; padding-bottom: 4px; width: 100%; box-sizing: border-box; flex-shrink: 0; }
-.unified-tracker-container .unified-tracker-toggle-button { display: flex !important; position: absolute; top: -8px; right: -12px; z-index: 10; background-color: #007bff; color: white; border: none; width: 22px; height: 22px; border-radius: 50%; align-items: center; justify-content: center; cursor: pointer; font-size: 12px; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+.unified-tracker-container h4 { margin: 0 0 5px 0; font-size:  0.8125rem; line-height: 2.0; color: #eee; font-weight: bold; text-align: center; border-bottom: 1px solid #555; padding-bottom: 4px; width: 100%; box-sizing: border-box; flex-shrink: 0; cursor: grab; user-select: none; touch-action: none; }
+.unified-tracker-container h4:active { cursor: grabbing; }
+.unified-tracker-container .unified-tracker-toggle-button { display: flex !important; position: absolute; top: -8px; right: -12px; z-index: 99999; background-color: #007bff; color: white; border: none; width: 22px; height: 22px; border-radius: 50%; align-items: center; justify-content: center; cursor: pointer; font-size: 12px; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
 .unified-tracker-container[data-minimized="true"] .unified-tracker-toggle-button { background-color: #28a745; }
 .api-status { font-size: 10px; text-align: center; color: #888; margin-bottom: 5px; flex-shrink: 0; }
 .api-error { color: #ff6b6b; font-weight: bold; }
@@ -164,7 +170,7 @@
 .refills-list .refill-value.used { color: #ff6b6b; }
 .life-bar-container { width: 100%; background-color: #555; border-radius: 3px; height: 14px; overflow: hidden; position: relative; border: 1px solid #666; box-sizing: border-box; margin-top: 4px;}
 .life-bar-fill { height: 100%; background-color: #e74c3c; border-radius: 2px; transition: width 0.5s ease; }
-.life-bar-text { position: absolute; top: 0; left: 0; width: 100%; height: 100%; text-align: center; line-height: 13px; font-size: 10px; color: #fff; font-weight: bold; text-shadow: 1px 1px 1px rgba(0,0,0,0.7); z-index: 1; }
+.life-bar-text { position: absolute; top: 0; left: 0; width: 100%; height: 100%; text-align: center; line-height: 13px; font-size: 10px; color: #fff; font-weight: bold; text-shadow: 1px 1px 1px rgba(0,0,0,0.7); z-index: 99999; }
 .blood-bag-alert-active { background-color: #c0392b !important; animation: pulse-red 1.5s infinite; }
 @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(255, 82, 82, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0); } }
 .medical-quick-use-container, .drug-quick-use-container, .booster-quick-use-container { display: flex; flex-direction: column; gap: 5px; }
@@ -187,7 +193,7 @@
 .quick-use-button.type-medical { border-left: 3px solid #4CAF50; }
 .unified-settings-button { background-color: #555; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-weight: bold; text-align: center; font-size: 11px; transition: background-color 0.2s; margin-top: 8px; width: 100%; flex-shrink: 0; }
 .unified-settings-button:hover { background-color: #666; }
-.unified-settings-panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: rgba(40, 40, 40, 0.95); border: 1px solid #666; border-radius: 8px; padding: 15px; z-index: 9995; box-shadow: 0 5px 15px rgba(0,0,0,0.6); display: none; flex-direction: column; gap: 15px; width: 90%; max-width: 450px; max-height: 85vh; font-size: 12px; color: #ccc; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+.unified-settings-panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: rgba(40, 40, 40, 0.95); border: 1px solid #666; border-radius: 8px; padding: 15px; z-index: 99999; box-shadow: 0 5px 15px rgba(0,0,0,0.6); display: none; flex-direction: column; gap: 15px; width: 90%; max-width: 450px; max-height: 85vh; font-size: 12px; color: #ccc; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
 .unified-settings-panel-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #555; padding-bottom: 8px; margin-bottom: 10px; flex-shrink: 0; }
 .unified-settings-panel-header h4 { margin: 0; font-size: 14px; color: #eee; font-weight: bold; }
 .unified-settings-panel-close-button { background: none; border: none; color: #aaa; font-size: 20px; font-weight: bold; cursor: pointer; line-height: 1; padding: 0 5px; }
@@ -217,10 +223,10 @@
 .quick-use-selection-item:last-child { border-bottom: none; }
 .quick-use-selection-item label { display: flex; align-items: center; flex-grow: 1; cursor: pointer; font-size: 11px; color: #ccc; }
 .quick-use-selection-item input[type="checkbox"] { margin-right: 8px; cursor: pointer; }
-.quick-use-selection-item .drag-handle { font-size: 14px; color: #777; margin-left: 5px; cursor: grab; padding: 0 3px; }
+.quick-use-selection-item .drag-handle { font-size: 14px; color: #777; margin-left: 5px; cursor: grab; padding: 0 3px; touch-action: manipulation; user-select: none; -webkit-user-select: none; -ms-user-select: none; }
 .quick-use-selection-item input[type="color"].quick-use-color-picker { margin-left: 8px; cursor: pointer; width: 20px; height: 20px; border: 1px solid #555; padding: 0; vertical-align: middle; background: none; }
 .quick-use-selection-item:active { cursor: grabbing; }
-.unified-tracker-temp-feedback { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 15px 20px; border-radius: 5px; color: white; z-index: 99999999; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4); opacity: 1; transition: opacity 0.5s, transform 0.3s ease-out; text-align: center; min-width: 250px; max-width: 80%; pointer-events: auto; cursor: pointer; background-color: rgba(33, 150, 243, 0.9); border: 1px solid #2196F3; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+.unified-tracker-temp-feedback { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 15px 20px; border-radius: 5px; color: white; z-index: 99999; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4); opacity: 1; transition: opacity 0.5s, transform 0.3s ease-out; text-align: center; min-width: 250px; max-width: 80%; pointer-events: auto; cursor: pointer; background-color: rgba(33, 150, 243, 0.9); border: 1px solid #2196F3; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
 .unified-tracker-temp-feedback.success { background-color: rgba(76, 175, 80, 0.9); border: 1px solid #4CAF50; }
 .unified-tracker-temp-feedback.error { background-color: rgba(244, 67, 54, 0.9); border: 1px solid #f44336; }
 .unified-tracker-temp-feedback.info { background-color: rgba(33, 150, 243, 0.9); border: 1px solid #2196F3; }
@@ -236,51 +242,45 @@
 .unified-tracker-interactive-alert .alert-button.dismiss { background-color: #BE3432; padding: 5px 8px; font-size: 14px; }
 .sortable-ghost { opacity: 0.4; background: #444 !important; }
 .sortable-chosen, .sortable-drag { opacity: 1 !important; }
-#unified-tracker-tooltip { position: fixed; display: none; padding: 5px 8px; background-color: rgba(20, 20, 20, 0.9); color: #eee; border: 1px solid #555; border-radius: 4px; font-size: 11px; z-index: 10000; pointer-events: none; white-space: pre-wrap; max-width: 200px; }
-    `); } catch (e) { }
+#unified-tracker-tooltip { position: fixed; display: none; padding: 5px 8px; background-color: rgba(20, 20, 20, 0.9); color: #eee; border: 1px solid #555; border-radius: 4px; font-size: 11px; z-index: 99999; pointer-events: none; white-space: pre-wrap; max-width: 200px; }
+    `); } catch (e) { console.error("GM_addStyle failed:", e); }
 
     function adjustTitleFontSize() {
-        if (!uiContainer) return; // Make sure the main UI container exists
+        if (!uiContainer) return;
         const titleElement = uiContainer.querySelector('h4');
-        if (!titleElement) return; // Make sure the title element exists
-    
-        // Reset font size slightly larger initially in case it was previously reduced
+        if (!titleElement) return;
+
         titleElement.style.fontSize = '0.8125rem';
-    
-        // Allow browser to render and calculate widths
+
         requestAnimationFrame(() => {
             const containerWidth = titleElement.clientWidth;
             let currentFontSize = parseFloat(window.getComputedStyle(titleElement).fontSize);
-            const MIN_FONT_SIZE = 9; // Minimum font size in pixels to prevent it becoming unreadable
-    
-            // Check if text is overflowing (scrollWidth > clientWidth)
-            // Add a small buffer (e.g., 1px) to prevent edge cases
+            const MIN_FONT_SIZE = 9;
+
             while (titleElement.scrollWidth > containerWidth + 1 && currentFontSize > MIN_FONT_SIZE) {
-                currentFontSize -= 0.5; // Decrease font size by 0.5px
+                currentFontSize -= 0.5;
                 titleElement.style.fontSize = `${currentFontSize}px`;
-    
-                // Safety break to prevent infinite loops in weird scenarios
+
                 if (currentFontSize <= MIN_FONT_SIZE) {
                     break;
                 }
             }
-             // Optional: If it goes below minimum, apply ellipsis as a fallback
              if (titleElement.scrollWidth > containerWidth + 1 && currentFontSize <= MIN_FONT_SIZE) {
                 titleElement.style.whiteSpace = 'nowrap';
                 titleElement.style.overflow = 'hidden';
                 titleElement.style.textOverflow = 'ellipsis';
              } else {
-                // Ensure these aren't set if the text fits or was adjusted successfully
                 titleElement.style.whiteSpace = '';
                 titleElement.style.overflow = '';
                 titleElement.style.textOverflow = '';
              }
         });
     }
-    
-    
+
+
     function showInteractiveNotification(message, type = 'info', navigateUrl = null, notificationId = null, isRestored = false, triggerEndTimeMs = null) {
         if (!notificationId) {
+            console.warn("showInteractiveNotification called without notificationId");
             return;
         }
 
@@ -334,6 +334,7 @@
                 const dismissalTime = Date.now();
                 updateAlertState(notificationId, true, currentState.triggeredAt, newDismissCount, dismissalTime);
             } else {
+                console.warn(`Dismiss clicked but no state found for ${notificationId}`);
             }
             n.classList.add('hiding');
             n.addEventListener('transitionend', () => {
@@ -347,6 +348,7 @@
         n.appendChild(buttonsDiv);
         container.prepend(n);
         if (!isRestored) {
+            console.log(`Showing new interactive notification: ${notificationId}`);
         }
     }
 
@@ -356,6 +358,7 @@
         try {
             currentStates = JSON.parse(GM_getValue(ACTIVE_ALERTS_STORAGE, '{}'));
         } catch (e) {
+            console.error("Error parsing active alerts from storage:", e);
             currentStates = {};
         }
         const currentState = currentStates[notificationId];
@@ -387,6 +390,7 @@
             try {
                 GM_setValue(ACTIVE_ALERTS_STORAGE, JSON.stringify(currentStates));
             } catch (e) {
+                console.error("Error saving active alerts to storage:", e);
                 GM_setValue(ACTIVE_ALERTS_STORAGE, '{}');
                 activeAlertStates = {};
             }
@@ -397,6 +401,7 @@
         let newApiData = { ...apiData, lastUpdate: Date.now(), error: null };
         if (data.error) {
             newApiData.error = `API Error ${data.error.code}`;
+            console.error(`API Error: ${data.error.code} - ${data.error.error}`);
             if (data.error.code === 2 && source === 'API') showTemporaryFeedback("Invalid API Key provided.", "error");
             newApiData.cooldowns = { drug: 0, booster: 0, medical: 0, drugEnd: 0, boosterEnd: 0, medicalEnd: 0 };
             newApiData.bars = { life: { percentage: 0 }, energy: {}, nerve: {} };
@@ -460,6 +465,7 @@
                 }
             }
         } catch (e) {
+            console.warn("Error reading API cache:", e);
             localStorage.removeItem(API_DATA_CACHE_KEY);
         }
 
@@ -485,9 +491,11 @@
                                 };
                                 localStorage.setItem(API_DATA_CACHE_KEY, JSON.stringify(cachePayload));
                             } catch (e) {
+                                console.warn("Error saving API data to cache:", e);
                             }
                         }
                     } catch (e) {
+                        console.error("Error processing API response:", e, response.responseText);
                         apiData.error = "API Parse Error";
                         apiData.lastUpdate = Date.now();
                         apiData.cooldowns = { drug: 0, booster: 0, medical: 0, drugEnd: 0, boosterEnd: 0, medicalEnd: 0 };
@@ -501,6 +509,7 @@
                     resolve();
                 },
                 onerror: function(response) {
+                    console.error("API Network Error:", response);
                     apiData.error = "API Network Error";
                     apiData.lastUpdate = Date.now();
                     isApiDataReady = true;
@@ -510,6 +519,7 @@
                     resolve();
                 },
                 ontimeout: function() {
+                    console.error("API Timeout");
                     apiData.error = "API Timeout";
                     apiData.lastUpdate = Date.now();
                     isApiDataReady = true;
@@ -554,6 +564,7 @@
                             isValid = true;
                         }
                     } catch (e) {
+                        console.error("API Key Test Error:", e);
                         if (statusEl) { statusEl.textContent = 'Test Error'; statusEl.className = 'api-key-status invalid'; }
                     }
                     resolve(isValid);
@@ -591,6 +602,7 @@
                 }
             }
         } catch (e) {
+            console.warn(`Error loading ${source} counts from localStorage:`, e);
             storedCounts = {};
         }
         return storedCounts;
@@ -602,8 +614,10 @@
             if (typeof countsToSave === 'object' && countsToSave !== null) {
                 localStorage.setItem(storageKey, JSON.stringify(countsToSave));
             } else {
+                console.warn(`Attempted to save invalid counts for ${source}:`, countsToSave);
             }
         } catch (e) {
+            console.error(`Error saving ${source} counts to localStorage:`, e);
          }
     }
 
@@ -620,10 +634,12 @@
         let itemElements = [];
         try {
             if (!container || typeof container.querySelectorAll !== 'function') {
+                console.warn("fetchInitialItemCounts: Invalid container provided, defaulting to document.");
                 container = document;
             }
             itemElements = Array.from(container.querySelectorAll(itemsSelector));
         } catch (e) {
+            console.error(`Error selecting items for ${source}:`, e);
             itemElements = [];
         }
 
@@ -634,7 +650,7 @@
                 if (altItemElements.length > 0) {
                     itemElements = altItemElements;
                 }
-            } catch(e) { }
+            } catch(e) { console.warn("Error trying alternative personal item selector:", e); }
         }
 
         itemElements.forEach((itemLi) => {
@@ -718,6 +734,7 @@
                      }
                 }
             } catch (e) {
+                console.warn("Error processing item element:", itemLi, e);
             }
         });
 
@@ -737,6 +754,7 @@
         itemId = parseInt(itemId);
         newCount = parseInt(newCount);
         if (isNaN(itemId) || isNaN(newCount) || newCount < 0 || (source !== 'personal' && source !== 'faction')) {
+            console.warn("Invalid updateItemCountDisplay call:", itemId, newCount, source);
             return;
         }
 
@@ -747,7 +765,7 @@
         saveCountsToLocalStorage(source, itemCounts[source]);
 
         const itemData = ALL_ITEMS.find(item => item.id === itemId);
-        if (!itemData) { return; }
+        if (!itemData) { console.warn(`updateItemCountDisplay: Item data not found for ID ${itemId}`); return; }
         const itemType = itemData.type;
 
         let panelContainer, currentItemSource;
@@ -776,6 +794,7 @@
         targetItemId = parseInt(targetItemId);
         const armouryContainer = document.querySelector('#faction-armoury');
         if (!armouryContainer) {
+             console.warn("findArmouryItemId: Faction armoury container not found.");
              return null;
         }
 
@@ -820,8 +839,10 @@
                     }
                 }
             } catch (e) {
+                console.warn(`Error searching for armoury item ID with selector "${selector}":`, e);
             }
         }
+        console.warn(`findArmouryItemId: Could not find armouryItemID for ${targetItemName} (ID: ${targetItemId})`);
         return null;
     }
 
@@ -903,6 +924,7 @@
                 }
             }
         } catch (e) {
+            console.warn("Error formatting cooldown from message:", e);
         }
         return message;
     }
@@ -1061,6 +1083,7 @@
                 return `On ${type.toLowerCase()} cooldown`;
             }
         } catch (e) {
+            console.warn("Error extracting cooldown message:", e);
         }
         return null;
     }
@@ -1070,7 +1093,7 @@
         const data = { id: itemId, source: source, method: method, timestamp: Date.now(), fallbackTimerId: fallbackTimerId };
         try {
             GM_setValue(key, JSON.stringify(data));
-        } catch (e) { }
+        } catch (e) { console.error("Error setting item use progress:", e); }
     }
 
     function clearItemUseProgress(itemId, source) {
@@ -1085,6 +1108,7 @@
                 GM_deleteValue(key);
             }
         } catch (e) {
+             console.warn("Error clearing item use progress:", e);
              GM_deleteValue(key);
         }
     }
@@ -1101,7 +1125,7 @@
                     GM_setValue(key, JSON.stringify(parsedData));
                 }
             }
-        } catch (e) { }
+        } catch (e) { console.warn("Error clearing fallback timer in progress data:", e); }
     }
 
     function isItemUseInProgress(itemId, source) {
@@ -1117,6 +1141,7 @@
                 }
             }
         } catch (e) {
+            console.warn("Error checking item use progress:", e);
             GM_deleteValue(key);
         }
         return false;
@@ -1126,7 +1151,7 @@
         const data = { id: itemId, name: itemName, originalCount: originalCount };
         try {
             GM_setValue(PENDING_FACTION_ITEM_USE_STORAGE, JSON.stringify(data));
-        } catch (e) { }
+        } catch (e) { console.error("Error setting pending faction use:", e); }
     }
 
     function getAndClearPendingFactionUse() {
@@ -1138,6 +1163,7 @@
                 return parsed;
             }
         } catch (e) {
+            console.warn("Error getting/clearing pending faction use:", e);
             GM_deleteValue(PENDING_FACTION_ITEM_USE_STORAGE);
         }
         return null;
@@ -1147,7 +1173,7 @@
         const data = { id: itemId, name: itemName, originalCount: originalCount };
         try {
             GM_setValue(PENDING_PERSONAL_ITEM_USE_STORAGE, JSON.stringify(data));
-        } catch (e) { }
+        } catch (e) { console.error("Error setting pending personal use:", e); }
     }
 
     function getAndClearPendingPersonalUse() {
@@ -1159,6 +1185,7 @@
                 return parsed;
             }
         } catch (e) {
+            console.warn("Error getting/clearing pending personal use:", e);
             GM_deleteValue(PENDING_PERSONAL_ITEM_USE_STORAGE);
         }
         return null;
@@ -1219,7 +1246,7 @@
                                 submitItemUseRequest(itemId, itemName, token, source, currentCount, 'faction_traditional');
                             }
                         }
-                    } catch(e) { }
+                    } catch(e) { console.warn("Error in faction use fallback timer:", e); }
                 }, FACTION_FALLBACK_TIMEOUT);
 
                 setItemUseProgress(itemId, source, 'faction_direct', fallbackTimer);
@@ -1270,6 +1297,7 @@
                  onclick: function() { window.focus(); }
              });
         } else {
+            console.warn("Desktop notifications not supported by GM_notification or Notification API.");
         }
     }
 
@@ -1352,6 +1380,12 @@
         uiContainer.id = 'unified-tracker-container-main';
         isMinimized = localStorage.getItem(MINIMIZED_STATE_STORAGE) === 'true';
 
+        const savedTop = GM_getValue(UI_POSITION_TOP_STORAGE, null);
+        const savedLeft = GM_getValue(UI_POSITION_LEFT_STORAGE, null);
+
+        if (savedTop !== null) uiContainer.style.top = savedTop;
+        if (savedLeft !== null) uiContainer.style.left = savedLeft;
+
         const toggleButton = document.createElement('button');
         toggleButton.className = 'unified-tracker-toggle-button';
         toggleButton.addEventListener('click', toggleMinimize);
@@ -1363,6 +1397,8 @@
 
         const title = document.createElement('h4');
         title.textContent = 'Cooldown Manager';
+        title.addEventListener('mousedown', startDrag);
+        title.addEventListener('touchstart', startDragTouch, { passive: false });
         contentWrapper.appendChild(title);
 
         const apiSection = document.createElement('div');
@@ -1785,6 +1821,7 @@
                 activeConfig = JSON.parse(savedConfig);
                 if (!Array.isArray(activeConfig)) throw new Error("Not an array");
             } catch (e) {
+                console.warn(`Error parsing ${itemType} quick use config, using default:`, e);
                 activeConfig = [...defaultConfig];
                 GM_setValue(configStorageKey, JSON.stringify(activeConfig));
             }
@@ -2052,7 +2089,7 @@
             sortableInstanceVar = boosterSortableInstance; globalConfigVar = 'boosterQuickUseConfig';
         } else { return; }
 
-        if (!editorContainer) { return; }
+        if (!editorContainer) { console.error(`Editor container not found for ${itemType}`); return; }
         editorContainer.innerHTML = '';
 
         const savedConfig = GM_getValue(configStorageKey, null);
@@ -2125,6 +2162,7 @@
                         GM_setValue(ITEM_COLOR_STORAGE_KEY, JSON.stringify(itemColors));
                         updateQuickUsePanel(itemType);
                     } catch (e) {
+                        console.error("Error saving item colors:", e);
                     }
                 }
             });
@@ -2140,6 +2178,7 @@
                     chosenClass: 'sortable-chosen',
                     dragClass: 'sortable-drag',
                     dataIdAttr: 'data-item-id',
+                    forceFallback: false, // Explicitly use native HTML5 drag/drop for better touch support
                     onEnd: (evt) => {
                          if (evt.oldIndex !== evt.newIndex) {
                             saveQuickUseConfig(itemType);
@@ -2150,11 +2189,13 @@
                 else if (itemType === ITEM_TYPES.DRUG) drugSortableInstance = newSortableInstance;
                 else if (itemType === ITEM_TYPES.BOOSTER) boosterSortableInstance = newSortableInstance;
             } catch(e) {
+                console.error(`Failed to initialize Sortable for ${itemType}:`, e);
                 if (itemType === ITEM_TYPES.MEDICAL) medicalSortableInstance = null;
                 else if (itemType === ITEM_TYPES.DRUG) drugSortableInstance = null;
                 else if (itemType === ITEM_TYPES.BOOSTER) boosterSortableInstance = null;
             }
         } else {
+            console.warn("Sortable library not found. Drag-and-drop customization disabled.");
             editorContainer.querySelectorAll('.drag-handle').forEach(h => h.style.display = 'none');
         }
     }
@@ -2184,6 +2225,7 @@
             try {
                 orderedIds = sortableInstanceVar.toArray().map(idStr => parseInt(idStr));
             } catch(e) {
+                console.warn(`Error getting order from Sortable for ${itemType}, falling back to DOM order:`, e);
                 orderedIds = Array.from(editorContainer.querySelectorAll('.quick-use-selection-item')).map(el => parseInt(el.getAttribute('data-item-id')));
             }
         } else {
@@ -2222,7 +2264,7 @@
             toggleButton.textContent = isMinimized ? '+' : '–';
             toggleButton.title = isMinimized ? 'Expand Tracker' : 'Minimize Tracker';
         }
-        uiContainer.style.transition = useTransition ? 'padding 0.3s ease, max-height 0.3s ease, top 0.3s ease, right 0.3s ease' : '';
+        uiContainer.style.transition = useTransition ? 'padding 0.3s ease, max-height 0.3s ease, top 0.3s ease, left 0.3s ease' : '';
 
         localStorage.setItem(MINIMIZED_STATE_STORAGE, isMinimized.toString());
         updateSectionVisibility();
@@ -2230,7 +2272,7 @@
     }
 
     function adjustUIPosition() {
-        if (!uiContainer || !document.body.contains(uiContainer)) return;
+        if (isDragging || !uiContainer || !document.body.contains(uiContainer)) return;
 
         const otherPanelSelectors = [
             '.tt-quick-items-container',
@@ -2247,15 +2289,29 @@
                         highestBottom = Math.max(highestBottom, rect.bottom);
                     }
                 }
-            } catch (e) { }
+            } catch (e) { console.warn("Error checking other panel position:", e); }
         });
 
         const margin = 10;
         const targetTop = highestBottom + margin;
-        const targetTopPx = `${targetTop}px`;
+        const savedTop = GM_getValue(UI_POSITION_TOP_STORAGE, null);
 
-        if (uiContainer.style.top !== targetTopPx) {
-            uiContainer.style.top = targetTopPx;
+        if (savedTop === null) {
+            const targetTopPx = `${targetTop}px`;
+            if (uiContainer.style.top !== targetTopPx) {
+                 uiContainer.style.top = targetTopPx;
+            }
+        } else {
+            if (uiContainer.style.top !== savedTop) {
+                 uiContainer.style.top = savedTop;
+            }
+        }
+
+        const savedLeft = GM_getValue(UI_POSITION_LEFT_STORAGE, null);
+        if (savedLeft !== null && uiContainer.style.left !== savedLeft) {
+            uiContainer.style.left = savedLeft;
+        } else if (savedLeft === null) {
+            uiContainer.style.left = 'calc(100vw - 240px)';
         }
     }
 
@@ -2310,6 +2366,7 @@
                 attributeFilter: ['style', 'class', 'data-minimized']
             });
         } catch (e) {
+            console.error("Failed to set up cooperative positioning observer:", e);
         }
 
         window.addEventListener('resize', () => {
@@ -2319,6 +2376,83 @@
         window.addEventListener('load', () => {
              setTimeout(adjustUIPosition, 500);
         });
+    }
+
+    function startDragTouch(e) {
+        if (!uiContainer || isDragging) return;
+        if (e.touches.length === 1) {
+            isDragging = true;
+            const touch = e.touches[0];
+            const rect = uiContainer.getBoundingClientRect();
+            dragOffsetX = touch.clientX - rect.left;
+            dragOffsetY = touch.clientY - rect.top;
+
+            document.addEventListener('touchmove', dragMoveTouch, { passive: false });
+            document.addEventListener('touchend', stopDragTouch);
+            document.addEventListener('touchcancel', stopDragTouch);
+            e.preventDefault();
+        }
+    }
+
+    function dragMoveTouch(e) {
+        if (!isDragging || !uiContainer) return;
+        if (e.touches.length === 1) {
+            const touch = e.touches[0];
+            let newLeft = touch.clientX - dragOffsetX;
+            let newTop = touch.clientY - dragOffsetY;
+
+            newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - uiContainer.offsetWidth));
+            newTop = Math.max(0, Math.min(newTop, window.innerHeight - uiContainer.offsetHeight));
+
+            uiContainer.style.left = `${newLeft}px`;
+            uiContainer.style.top = `${newTop}px`;
+            e.preventDefault();
+        }
+    }
+
+    function stopDragTouch() {
+        if (!isDragging || !uiContainer) return;
+        isDragging = false;
+        document.removeEventListener('touchmove', dragMoveTouch);
+        document.removeEventListener('touchend', stopDragTouch);
+        document.removeEventListener('touchcancel', stopDragTouch);
+
+        GM_setValue(UI_POSITION_LEFT_STORAGE, uiContainer.style.left);
+        GM_setValue(UI_POSITION_TOP_STORAGE, uiContainer.style.top);
+    }
+
+    function startDrag(e) {
+        if (!uiContainer || e.button !== 0 || isDragging) return;
+        isDragging = true;
+        const rect = uiContainer.getBoundingClientRect();
+        dragOffsetX = e.clientX - rect.left;
+        dragOffsetY = e.clientY - rect.top;
+
+        document.addEventListener('mousemove', dragMove);
+        document.addEventListener('mouseup', stopDrag);
+        e.preventDefault();
+    }
+
+    function dragMove(e) {
+        if (!isDragging || !uiContainer) return;
+        let newLeft = e.clientX - dragOffsetX;
+        let newTop = e.clientY - dragOffsetY;
+
+        newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - uiContainer.offsetWidth));
+        newTop = Math.max(0, Math.min(newTop, window.innerHeight - uiContainer.offsetHeight));
+
+        uiContainer.style.left = `${newLeft}px`;
+        uiContainer.style.top = `${newTop}px`;
+    }
+
+    function stopDrag() {
+        if (!isDragging || !uiContainer) return;
+        isDragging = false;
+        document.removeEventListener('mousemove', dragMove);
+        document.removeEventListener('mouseup', stopDrag);
+
+        GM_setValue(UI_POSITION_LEFT_STORAGE, uiContainer.style.left);
+        GM_setValue(UI_POSITION_TOP_STORAGE, uiContainer.style.top);
     }
 
     function checkBloodBagAlert() {
@@ -2505,6 +2639,7 @@
                 }
             }
         } catch (e) {
+            console.error("Error checking for pending actions:", e);
             GM_deleteValue(PENDING_FACTION_ITEM_USE_STORAGE);
             GM_deleteValue(PENDING_PERSONAL_ITEM_USE_STORAGE);
         }
@@ -2539,6 +2674,7 @@
 
         const SCRIPT_ID = typeof GM_info !== 'undefined' ? GM_info.script.uuid : 'TornUnifiedTracker';
         const SCRIPT_V = typeof GM_info !== 'undefined' ? GM_info.script.version : '?.?.?';
+        console.log(`Initializing ${SCRIPT_ID} v${SCRIPT_V}`);
 
         try {
             apiKey = GM_getValue(API_KEY_STORAGE, null);
@@ -2549,7 +2685,7 @@
             pointsRefillSource = GM_getValue(POINTS_REFILL_SOURCE_STORAGE, DEFAULT_POINTS_REFILL_SOURCE);
             itemCounts.personal = loadCountsFromLocalStorage('personal');
             itemCounts.faction = loadCountsFromLocalStorage('faction');
-            try { itemColors = JSON.parse(GM_getValue(ITEM_COLOR_STORAGE_KEY, '{}')); } catch (e) { itemColors = {}; GM_setValue(ITEM_COLOR_STORAGE_KEY, '{}'); }
+            try { itemColors = JSON.parse(GM_getValue(ITEM_COLOR_STORAGE_KEY, '{}')); } catch (e) { itemColors = {}; GM_setValue(ITEM_COLOR_STORAGE_KEY, '{}'); console.warn("Resetting item colors due to parse error:", e); }
             maxMedicalCooldown = GM_getValue(MAX_MED_CD_STORAGE, DEFAULT_MAX_MED_CD_HOURS * 3600);
             maxBoosterCooldown = GM_getValue(MAX_BOOSTER_CD_STORAGE, DEFAULT_MAX_BOOSTER_CD_HOURS * 3600);
             notifyEmptyBloodBag = GM_getValue(EMPTY_BB_ALERT_STORAGE, DEFAULT_NOTIFY_EMPTY_BB);
@@ -2558,7 +2694,7 @@
             notifyBoosterCD = GM_getValue(NOTIFY_BOOSTER_CD_STORAGE, DEFAULT_NOTIFY_BOOSTER_CD);
             notifyMedicalCD = GM_getValue(NOTIFY_MEDICAL_CD_STORAGE, DEFAULT_NOTIFY_MEDICAL_CD);
             try { activeAlertStates = JSON.parse(GM_getValue(ACTIVE_ALERTS_STORAGE, '{}')); }
-            catch (e) { activeAlertStates = {}; GM_setValue(ACTIVE_ALERTS_STORAGE, '{}'); }
+            catch (e) { activeAlertStates = {}; GM_setValue(ACTIVE_ALERTS_STORAGE, '{}'); console.warn("Resetting active alerts due to parse error:", e); }
 
             buildUI();
 
@@ -2625,14 +2761,23 @@
 
             isInitialized = true;
         } catch (error) {
+            console.error("Unified Tracker failed to initialize:", error);
             showTemporaryFeedback("Unified Tracker failed to initialize. Check console (F12).", "error", 15000);
             isInitialized = false;
         }
     }
 
     function runInitialization() {
-        if (!isInitialized) {
-            initialize();
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            if (!isInitialized) {
+                initialize();
+            }
+        } else {
+             window.addEventListener('DOMContentLoaded', () => {
+                 if (!isInitialized) {
+                     initialize();
+                 }
+             });
         }
     }
 
