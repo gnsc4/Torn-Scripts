@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Cooldown Manager
 // @namespace    Torn_Cooldown_Manager
-// @version      1.0.4
+// @version      1.0.5
 // @description  Tracks cooldowns, life, refills, items (Med, Drug, Booster) from Personal or Faction inventory. Quick Use buttons, persistent counts, alerts & notifications. Configurable item colors. Uses local storage to cache API data. Clickable headers for timers and quick-use sections. Points refill configurable. Mobile friendly UI. Movable UI with persistent position. Drag-and-drop quick use items enabled on mobile.
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/*
@@ -149,7 +149,10 @@
     try { GM_addStyle(`
 .unified-tracker-container { position: fixed; left: calc(100vw - 240px); top: 90px; background-color: rgba(34, 34, 34, 0.9); padding: 10px; border-radius: 5px; z-index: 99999; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.5); transition: padding 0.3s ease, max-height 0.3s ease, top 0.3s ease, left 0.3s ease; border: 1px solid #555; max-width: 220px; font-size: 12px; color: #ccc; max-height: 85vh; overflow: visible; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; box-sizing: border-box; }
 .unified-tracker-container[data-minimized="true"] { padding: 2px; max-height: 26px; overflow: visible; }
-.tracker-content-wrapper { display: flex; flex-direction: column; gap: 8px; width: 100%; overflow-y: auto; overflow-x: hidden; flex-grow: 1; padding-right: 5px; box-sizing: border-box; }
+.tracker-content-wrapper { display: flex; flex-direction: column; gap: 8px; width: 100%; overflow-y: auto; overflow-x: hidden; flex-grow: 1; padding-right: 5px; box-sizing: border-box; scrollbar-width: thin; scrollbar-color: #666 #333; }
+.tracker-content-wrapper::-webkit-scrollbar { width: 6px; }
+.tracker-content-wrapper::-webkit-scrollbar-track { background: #333; border-radius: 3px; }
+.tracker-content-wrapper::-webkit-scrollbar-thumb { background-color: #666; border-radius: 3px; border: 1px solid #333; }
 .unified-tracker-container[data-minimized="true"] .tracker-content-wrapper { display: none !important; }
 .unified-tracker-container .tracker-section { border-bottom: 1px solid #444; padding-bottom: 8px; margin-bottom: 8px; width: 100%; box-sizing: border-box; flex-shrink: 0; }
 .unified-tracker-container .tracker-section:last-child { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
@@ -198,7 +201,10 @@
 .unified-settings-panel-header h4 { margin: 0; font-size: 14px; color: #eee; font-weight: bold; }
 .unified-settings-panel-close-button { background: none; border: none; color: #aaa; font-size: 20px; font-weight: bold; cursor: pointer; line-height: 1; padding: 0 5px; }
 .unified-settings-panel-close-button:hover { color: #fff; }
-.unified-settings-panel-content { overflow-y: auto; padding-right: 10px; display: flex; flex-direction: column; gap: 15px; flex-grow: 1; }
+.unified-settings-panel-content { overflow-y: auto; padding-right: 10px; display: flex; flex-direction: column; gap: 15px; flex-grow: 1; scrollbar-width: thin; scrollbar-color: #666 #333; }
+.unified-settings-panel-content::-webkit-scrollbar { width: 6px; }
+.unified-settings-panel-content::-webkit-scrollbar-track { background: #333; border-radius: 3px; }
+.unified-settings-panel-content::-webkit-scrollbar-thumb { background-color: #666; border-radius: 3px; border: 1px solid #333; }
 .unified-settings-panel label { font-size: 11px; margin-bottom: 3px; color: #bbb; display: block; }
 .unified-settings-panel input[type="text"], .unified-settings-panel input[type="password"], .unified-settings-panel input[type="number"] { width: 100%; padding: 5px 7px; border: 1px solid #444; background-color: #333; color: white; border-radius: 3px; box-sizing: border-box; font-size: 11px; margin-bottom: 5px; }
 .unified-settings-panel input::placeholder { color: #888; }
@@ -218,7 +224,10 @@
 .settings-section input[type="checkbox"] { cursor: pointer; margin: 0; }
 .settings-section .sub-label { font-size: 10px; color: #999; margin-left: 20px; }
 .quick-use-customization-section p { font-size: 10px; color: #999; text-align: center; margin-bottom: 5px; }
-.quick-use-editor { list-style: none; padding: 0; margin: 0 0 10px 0; border: 1px solid #444; border-radius: 3px; background-color: #2a2a2a; max-height: 150px; overflow-y: auto; }
+.quick-use-editor { list-style: none; padding: 0; margin: 0 0 10px 0; border: 1px solid #444; border-radius: 3px; background-color: #2a2a2a; max-height: 150px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #666 #333; }
+.quick-use-editor::-webkit-scrollbar { width: 6px; }
+.quick-use-editor::-webkit-scrollbar-track { background: #333; border-radius: 3px; }
+.quick-use-editor::-webkit-scrollbar-thumb { background-color: #666; border-radius: 3px; border: 1px solid #333; }
 .quick-use-selection-item { display: flex; align-items: center; padding: 5px; border-bottom: 1px solid #383838; cursor: grab; background-color: #333; }
 .quick-use-selection-item:last-child { border-bottom: none; }
 .quick-use-selection-item label { display: flex; align-items: center; flex-grow: 1; cursor: pointer; font-size: 11px; color: #ccc; }
@@ -2178,7 +2187,7 @@
                     chosenClass: 'sortable-chosen',
                     dragClass: 'sortable-drag',
                     dataIdAttr: 'data-item-id',
-                    forceFallback: false, // Explicitly use native HTML5 drag/drop for better touch support
+                    forceFallback: false,
                     onEnd: (evt) => {
                          if (evt.oldIndex !== evt.newIndex) {
                             saveQuickUseConfig(itemType);
