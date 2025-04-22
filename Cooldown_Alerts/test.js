@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Cooldown Manager
 // @namespace    Torn_Cooldown_Manager
-// @version      1.0.5
+// @version      1.0.7
 // @description  Tracks cooldowns, life, refills, items (Med, Drug, Booster) from Personal or Faction inventory. Quick Use buttons, persistent counts, alerts & notifications. Configurable item colors. Uses local storage to cache API data. Clickable headers for timers and quick-use sections. Points refill configurable. Mobile friendly UI. Movable UI with persistent position. Drag-and-drop quick use items enabled on mobile.
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/*
@@ -11,7 +11,6 @@
 // @exclude      https://www.torn.com/page.php?sid=bunker*
 // @exclude      https://www.torn.com/page.php?sid=travel*
 // @connect      api.torn.com
-// @require      https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=torn.com
 // @updateURL    https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Cooldown_Alerts/Coooldown_Alerts_Unified.user.js
 // @downloadURL  https://github.com/gnsc4/Torn-Scripts/raw/refs/heads/master/Cooldown_Alerts/Coooldown_Alerts_Unified.user.js
@@ -27,7 +26,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = typeof GM_info !== 'undefined' ? GM_info.script.version : '1.0.5';
+    const SCRIPT_VERSION = typeof GM_info !== 'undefined' ? GM_info.script.version : '1.0.7';
     const FACTION_FALLBACK_TIMEOUT = 2500;
 
     const ITEM_TYPES = { MEDICAL: 'medical', DRUG: 'drug', BOOSTER: 'booster' };
@@ -130,12 +129,10 @@
     let isInitialized = false;
     let coopObserver = null;
     let coopAdjustTimeout = null;
-    let medicalSortableInstance = null;
-    let drugSortableInstance = null;
-    let boosterSortableInstance = null;
     let isDragging = false;
     let dragOffsetX = 0;
     let dragOffsetY = 0;
+    let draggedElement = null;
 
     function formatTime(seconds) { if (isNaN(seconds) || seconds === null || seconds === undefined) { return '--'; } seconds = Number(seconds); if (seconds <= 0) { return '<span style="color: #90ee90;">Ready</span>'; } const d = Math.floor(seconds / (3600 * 24)); const h = Math.floor(seconds % (3600 * 24) / 3600); const m = Math.floor(seconds % 3600 / 60); const s = Math.floor(seconds % 60); let parts = []; if (d > 0) parts.push(d + 'd'); if (h > 0) parts.push(h + 'h'); if (m > 0) parts.push(m + 'm'); if (s > 0 || parts.length === 0) parts.push(s + 's'); let color = '#ffcc00'; if (seconds < 60) color = '#ff9900'; return `<span style="color: ${color};">${parts.join(' ')}</span>`; }
     function formatSecondsSimple(seconds) { if (isNaN(seconds) || seconds <= 0) { return 'None'; } const d = Math.floor(seconds / (3600 * 24)); const h = Math.floor(seconds % (3600 * 24) / 3600); const m = Math.floor(seconds % 3600 / 60); const s = Math.floor(seconds % 60); let parts = []; if (d > 0) parts.push(d + 'd'); if (h > 0) parts.push(h + 'h'); if (m > 0) parts.push(m + 'm'); parts.push(s + 's'); return parts.join(' '); }
@@ -228,13 +225,14 @@
 .quick-use-editor::-webkit-scrollbar { width: 6px; }
 .quick-use-editor::-webkit-scrollbar-track { background: #333; border-radius: 3px; }
 .quick-use-editor::-webkit-scrollbar-thumb { background-color: #666; border-radius: 3px; border: 1px solid #333; }
-.quick-use-selection-item { display: flex; align-items: center; padding: 5px; border-bottom: 1px solid #383838; cursor: grab; background-color: #333; }
+.quick-use-selection-item { display: flex; align-items: center; padding: 5px; border-bottom: 1px solid #383838; background-color: #333; user-select: none; -webkit-user-select: none; -ms-user-select: none; }
 .quick-use-selection-item:last-child { border-bottom: none; }
 .quick-use-selection-item label { display: flex; align-items: center; flex-grow: 1; cursor: pointer; font-size: 11px; color: #ccc; }
 .quick-use-selection-item input[type="checkbox"] { margin-right: 8px; cursor: pointer; }
-.quick-use-selection-item .drag-handle { font-size: 14px; color: #777; margin-left: 5px; cursor: grab; padding: 0 3px; touch-action: manipulation; user-select: none; -webkit-user-select: none; -ms-user-select: none; !important; }
+.quick-use-selection-item .drag-handle { font-size: 14px; color: #777; margin-left: 5px; cursor: grab; padding: 0 3px; touch-action: manipulation; user-select: none; -webkit-user-select: none; -ms-user-select: none; }
 .quick-use-selection-item input[type="color"].quick-use-color-picker { margin-left: 8px; cursor: pointer; width: 20px; height: 20px; border: 1px solid #555; padding: 0; vertical-align: middle; background: none; }
-.quick-use-selection-item:active { cursor: grabbing; }
+.quick-use-selection-item.dragging { opacity: 0.5; background: #444; }
+.quick-use-selection-item.drag-over { border-top: 2px solid #007bff; }
 .unified-tracker-temp-feedback { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 15px 20px; border-radius: 5px; color: white; z-index: 99999; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4); opacity: 1; transition: opacity 0.5s, transform 0.3s ease-out; text-align: center; min-width: 250px; max-width: 80%; pointer-events: auto; cursor: pointer; background-color: rgba(33, 150, 243, 0.9); border: 1px solid #2196F3; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
 .unified-tracker-temp-feedback.success { background-color: rgba(76, 175, 80, 0.9); border: 1px solid #4CAF50; }
 .unified-tracker-temp-feedback.error { background-color: rgba(244, 67, 54, 0.9); border: 1px solid #f44336; }
@@ -249,8 +247,6 @@
 .unified-tracker-interactive-alert .alert-button:hover { filter: brightness(1.15); }
 .unified-tracker-interactive-alert .alert-button.navigate { background-color: #3478B4; min-width: 60px; text-align: center; }
 .unified-tracker-interactive-alert .alert-button.dismiss { background-color: #BE3432; padding: 5px 8px; font-size: 14px; }
-.sortable-ghost { opacity: 0.4; background: #444 !important; }
-.sortable-chosen, .sortable-drag { opacity: 1 !important; }
 #unified-tracker-tooltip { position: fixed; display: none; padding: 5px 8px; background-color: rgba(20, 20, 20, 0.9); color: #eee; border: 1px solid #555; border-radius: 4px; font-size: 11px; z-index: 99999; pointer-events: none; white-space: pre-wrap; max-width: 200px; }
     `); } catch (e) { console.error("GM_addStyle failed:", e); }
 
@@ -2080,22 +2076,94 @@
         buildQuickUseCustomizationUI(ITEM_TYPES.BOOSTER);
     }
 
+    function handleDragStart(e) {
+        draggedElement = e.target.closest('.quick-use-selection-item');
+        if (!draggedElement) return;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', draggedElement.dataset.itemId);
+        setTimeout(() => {
+            draggedElement.classList.add('dragging');
+        }, 0);
+    }
+
+    function handleDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const targetElement = e.target.closest('.quick-use-selection-item');
+        const container = e.target.closest('.quick-use-editor');
+        if (!container || !draggedElement || !draggedElement.parentNode.isSameNode(container)) return;
+
+        container.querySelectorAll('.quick-use-selection-item.drag-over').forEach(el => el.classList.remove('drag-over'));
+
+        if (targetElement && !targetElement.isSameNode(draggedElement)) {
+             targetElement.classList.add('drag-over');
+        }
+    }
+
+     function handleDragLeave(e) {
+         const targetElement = e.target.closest('.quick-use-selection-item');
+         if (targetElement) {
+             targetElement.classList.remove('drag-over');
+         }
+     }
+
+    function handleDrop(e) {
+        e.preventDefault();
+        const targetElement = e.target.closest('.quick-use-selection-item');
+        const container = e.target.closest('.quick-use-editor');
+
+        if (!container || !draggedElement || !draggedElement.parentNode.isSameNode(container)) return;
+
+        container.querySelectorAll('.quick-use-selection-item.drag-over').forEach(el => el.classList.remove('drag-over'));
+
+        if (targetElement && !targetElement.isSameNode(draggedElement)) {
+            const targetRect = targetElement.getBoundingClientRect();
+            const isAfter = e.clientY > targetRect.top + targetRect.height / 2;
+
+            if (isAfter) {
+                container.insertBefore(draggedElement, targetElement.nextSibling);
+            } else {
+                container.insertBefore(draggedElement, targetElement);
+            }
+        } else if (!targetElement) {
+             container.appendChild(draggedElement);
+        }
+
+        let itemType;
+        if (container.id === 'medical-quick-use-editor') itemType = ITEM_TYPES.MEDICAL;
+        else if (container.id === 'drug-quick-use-editor') itemType = ITEM_TYPES.DRUG;
+        else if (container.id === 'booster-quick-use-editor') itemType = ITEM_TYPES.BOOSTER;
+
+        if (itemType) {
+            saveQuickUseConfig(itemType);
+        }
+    }
+
+    function handleDragEnd(e) {
+        if (draggedElement) {
+            draggedElement.classList.remove('dragging');
+        }
+        document.querySelectorAll('.quick-use-selection-item.drag-over').forEach(el => el.classList.remove('drag-over'));
+        draggedElement = null;
+    }
+
+
     function buildQuickUseCustomizationUI(itemType) {
         if (!settingsPanel) return;
-        let editorContainer, configStorageKey, defaultConfig, itemsList, sortableInstanceVar, globalConfigVar;
+        let editorContainer, configStorageKey, defaultConfig, itemsList, globalConfigVar;
 
         if (itemType === ITEM_TYPES.MEDICAL) {
             editorContainer = settingsPanel.querySelector('#medical-quick-use-editor'); configStorageKey = MEDICAL_QUICK_USE_CONFIG_STORAGE;
             defaultConfig = DEFAULT_MEDICAL_QUICK_USE_ITEMS; itemsList = MEDICAL_ITEMS;
-            sortableInstanceVar = medicalSortableInstance; globalConfigVar = 'medicalQuickUseConfig';
+            globalConfigVar = 'medicalQuickUseConfig';
         } else if (itemType === ITEM_TYPES.DRUG) {
             editorContainer = settingsPanel.querySelector('#drug-quick-use-editor'); configStorageKey = DRUG_QUICK_USE_CONFIG_STORAGE;
             defaultConfig = DEFAULT_DRUG_QUICK_USE_ITEMS; itemsList = DRUG_ITEMS;
-            sortableInstanceVar = drugSortableInstance; globalConfigVar = 'drugQuickUseConfig';
+            globalConfigVar = 'drugQuickUseConfig';
         } else if (itemType === ITEM_TYPES.BOOSTER) {
             editorContainer = settingsPanel.querySelector('#booster-quick-use-editor'); configStorageKey = BOOSTER_QUICK_USE_CONFIG_STORAGE;
             defaultConfig = DEFAULT_BOOSTER_QUICK_USE_ITEMS; itemsList = BOOSTER_ITEMS;
-            sortableInstanceVar = boosterSortableInstance; globalConfigVar = 'boosterQuickUseConfig';
+            globalConfigVar = 'boosterQuickUseConfig';
         } else { return; }
 
         if (!editorContainer) { console.error(`Editor container not found for ${itemType}`); return; }
@@ -2140,6 +2208,7 @@
             const div = document.createElement('div');
             div.className = 'quick-use-selection-item';
             div.setAttribute('data-item-id', item.id);
+            div.setAttribute('draggable', true);
             div.innerHTML = `
                 <label>
                     <input type="checkbox" ${isChecked ? 'checked' : ''} data-item-id="${item.id}">
@@ -2152,7 +2221,16 @@
             div.querySelector('input[type="checkbox"]').addEventListener('change', () => {
                 saveQuickUseConfig(itemType);
             });
+
+            div.addEventListener('dragstart', handleDragStart);
+            div.addEventListener('dragend', handleDragEnd);
+
         });
+
+        editorContainer.addEventListener('dragover', handleDragOver);
+        editorContainer.addEventListener('dragleave', handleDragLeave);
+        editorContainer.addEventListener('drop', handleDrop);
+
 
         editorContainer.querySelectorAll('.quick-use-color-picker').forEach(picker => {
             picker.addEventListener('input', (event) => {
@@ -2176,51 +2254,20 @@
                 }
             });
         });
-
-        if (typeof Sortable !== 'undefined') {
-            if (sortableInstanceVar) { sortableInstanceVar.destroy(); }
-            try {
-                const newSortableInstance = Sortable.create(editorContainer, {
-                    animation: 150,
-                    handle: '.drag-handle',
-                    ghostClass: 'sortable-ghost',
-                    chosenClass: 'sortable-chosen',
-                    dragClass: 'sortable-drag',
-                    dataIdAttr: 'data-item-id',
-                    forceFallback: false,
-                    onEnd: (evt) => {
-                         if (evt.oldIndex !== evt.newIndex) {
-                            saveQuickUseConfig(itemType);
-                         }
-                    }
-                });
-                if (itemType === ITEM_TYPES.MEDICAL) medicalSortableInstance = newSortableInstance;
-                else if (itemType === ITEM_TYPES.DRUG) drugSortableInstance = newSortableInstance;
-                else if (itemType === ITEM_TYPES.BOOSTER) boosterSortableInstance = newSortableInstance;
-            } catch(e) {
-                console.error(`Failed to initialize Sortable for ${itemType}:`, e);
-                if (itemType === ITEM_TYPES.MEDICAL) medicalSortableInstance = null;
-                else if (itemType === ITEM_TYPES.DRUG) drugSortableInstance = null;
-                else if (itemType === ITEM_TYPES.BOOSTER) boosterSortableInstance = null;
-            }
-        } else {
-            console.warn("Sortable library not found. Drag-and-drop customization disabled.");
-            editorContainer.querySelectorAll('.drag-handle').forEach(h => h.style.display = 'none');
-        }
     }
 
     function saveQuickUseConfig(itemType) {
-        let editorContainer, configStorageKey, sortableInstanceVar, globalConfigVar;
+        let editorContainer, configStorageKey, globalConfigVar;
 
         if (itemType === ITEM_TYPES.MEDICAL) {
             editorContainer = settingsPanel?.querySelector('#medical-quick-use-editor'); configStorageKey = MEDICAL_QUICK_USE_CONFIG_STORAGE;
-            sortableInstanceVar = medicalSortableInstance; globalConfigVar = 'medicalQuickUseConfig';
+            globalConfigVar = 'medicalQuickUseConfig';
         } else if (itemType === ITEM_TYPES.DRUG) {
             editorContainer = settingsPanel?.querySelector('#drug-quick-use-editor'); configStorageKey = DRUG_QUICK_USE_CONFIG_STORAGE;
-            sortableInstanceVar = drugSortableInstance; globalConfigVar = 'drugQuickUseConfig';
+            globalConfigVar = 'drugQuickUseConfig';
         } else if (itemType === ITEM_TYPES.BOOSTER) {
             editorContainer = settingsPanel?.querySelector('#booster-quick-use-editor'); configStorageKey = BOOSTER_QUICK_USE_CONFIG_STORAGE;
-            sortableInstanceVar = boosterSortableInstance; globalConfigVar = 'boosterQuickUseConfig';
+            globalConfigVar = 'boosterQuickUseConfig';
         } else { return; }
 
         if (!editorContainer) {
@@ -2228,18 +2275,7 @@
         }
 
         const newConfig = [];
-        let orderedIds = [];
-
-        if (sortableInstanceVar) {
-            try {
-                orderedIds = sortableInstanceVar.toArray().map(idStr => parseInt(idStr));
-            } catch(e) {
-                console.warn(`Error getting order from Sortable for ${itemType}, falling back to DOM order:`, e);
-                orderedIds = Array.from(editorContainer.querySelectorAll('.quick-use-selection-item')).map(el => parseInt(el.getAttribute('data-item-id')));
-            }
-        } else {
-             orderedIds = Array.from(editorContainer.querySelectorAll('.quick-use-selection-item')).map(el => parseInt(el.getAttribute('data-item-id')));
-        }
+        const orderedIds = Array.from(editorContainer.querySelectorAll('.quick-use-selection-item')).map(el => parseInt(el.getAttribute('data-item-id')));
 
         orderedIds.forEach(id => {
              if (isNaN(id)) return;
@@ -2256,7 +2292,6 @@
 
         GM_setValue(configStorageKey, JSON.stringify(newConfig));
         updateQuickUsePanel(itemType);
-        buildQuickUseCustomizationUI(itemType);
     }
 
     function toggleMinimize() {
