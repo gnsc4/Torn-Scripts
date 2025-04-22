@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Cooldown Manager
 // @namespace    Torn_Cooldown_Manager
-// @version      1.0.10
+// @version      1.0.9
 // @description  Tracks cooldowns, life, refills, items (Med, Drug, Booster) from Personal or Faction inventory. Quick Use buttons, persistent counts, alerts & notifications. Configurable item colors. Uses local storage to cache API data. Clickable headers for timers and quick-use sections. Points refill configurable. Mobile friendly UI. Movable UI with persistent position. Drag-and-drop quick use items enabled on mobile.
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/*
@@ -27,7 +27,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = typeof GM_info !== 'undefined' ? GM_info.script.version : '1.0.10';
+    const SCRIPT_VERSION = typeof GM_info !== 'undefined' ? GM_info.script.version : '1.0.9';
     const FACTION_FALLBACK_TIMEOUT = 2500;
 
     const ITEM_TYPES = { MEDICAL: 'medical', DRUG: 'drug', BOOSTER: 'booster' };
@@ -589,8 +589,7 @@
     border-radius: 3px;
     background-color: #2a2a2a; /* Slightly different background */
     max-height: 150px; /* Limit height */
-    overflow-y: auto; /* Enable vertical scrolling */
-    overflow-x: hidden; /* Explicitly prevent horizontal scroll */
+    overflow-y: auto; /* Enable scrolling */
     scrollbar-width: thin;
     scrollbar-color: #666 #333;
 }
@@ -607,8 +606,6 @@
     border-bottom: 1px solid #383838;
     cursor: grab;
     background-color: #333;
-    /* Ensure the item itself doesn't hide overflow */
-    overflow: visible;
 }
 .quick-use-selection-item:last-child { border-bottom: none; }
 
@@ -620,7 +617,6 @@
     flex-shrink: 1; /* Allow label to shrink */
     flex-basis: 0; /* Let flex properties manage size */
     min-width: 0; /* Allow shrinking below content size */
-    max-width: 65%; /* *** ADDED: Limit maximum width to 65% of the row *** */
     margin-right: 5px; /* Space before drag handle */
     cursor: pointer;
     font-size: 11px;
@@ -648,19 +644,19 @@
 .quick-use-selection-item .drag-handle {
     font-size: 16px;
     color: #777;
-    margin-right: 6px; /* Space before color picker */
+    margin-right: 8px; /* Space before color picker */
     cursor: grab;
-    padding: 2px 4px; /* Adjusted padding */
+    padding: 2px 5px;
     touch-action: manipulation; /* Optimize touch */
     user-select: none;
     -webkit-user-select: none;
     -ms-user-select: none;
     flex-shrink: 0; /* Prevent shrinking */
     display: inline-block; /* Ensure it takes space */
-    min-width: 1.2em; /* Minimum touch target width */
+    min-width: 1.5em; /* Minimum touch target width */
     text-align: center;
     position: relative; /* Needed for z-index */
-    z-index: 999999; /* High z-index */
+    z-index: 999999; /* *** ADDED: High z-index to try and keep it on top *** */
 }
 
 /* Color picker within the item row */
@@ -782,7 +778,6 @@
     white-space: pre-wrap; /* Allow line breaks in tooltip */
     max-width: 200px;
 }
-
 
 
     `); } catch (e) { console.error("GM_addStyle failed:", e); }
