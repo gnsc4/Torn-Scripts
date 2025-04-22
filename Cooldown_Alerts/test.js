@@ -602,12 +602,14 @@
 /* Individual item row in the quick-use editor */
 .quick-use-selection-item {
     display: flex;
-    align-items: center; /* Vertically center items */
+    align-items: center; /* Default alignment */
     padding: 5px 8px;
     border-bottom: 1px solid #383838;
     cursor: grab;
     background-color: #333;
     overflow: visible;
+    flex-wrap: nowrap; /* Default: no wrapping */
+    min-height: 32px; /* Ensure minimum height */
 }
 .quick-use-selection-item:last-child { border-bottom: none; }
 
@@ -625,6 +627,8 @@
     font-size: 11px;
     color: #ccc;
     overflow: hidden;
+    order: 1; /* Default order */
+    width: auto; /* Default width */
 }
 
 /* Item name text within the label */
@@ -647,7 +651,8 @@
 .quick-use-selection-item .drag-handle {
     font-size: 16px;
     color: #777;
-    margin-right: 6px;
+    margin-right: 6px; /* Default margin */
+    margin-left: auto; /* Default: push right */
     cursor: grab;
     padding: 2px 4px;
     touch-action: manipulation;
@@ -660,6 +665,7 @@
     text-align: center;
     position: relative;
     z-index: 999999;
+    order: 2; /* Default order */
 }
 
 /* Color picker within the item row */
@@ -672,32 +678,49 @@
     vertical-align: middle;
     background: none;
     flex-shrink: 0; /* Prevent shrinking */
+    order: 3; /* Default order */
+    margin-left: 0; /* Default margin */
 }
 
 /* Change cursor when actively dragging an item */
 .quick-use-selection-item:active { cursor: grabbing; }
 
 
-/* --- Mobile Adjustments (Flex Adjustments) --- */
+/* --- Mobile Adjustments (Wrapping Layout) --- */
 @media (max-width: 480px) { /* Adjust this breakpoint based on testing */
 
+    .quick-use-selection-item {
+        flex-wrap: wrap; /* Allow items to wrap onto the next line */
+        padding-bottom: 3px; /* Add a little space below wrapped items */
+    }
+
     .quick-use-selection-item label {
-        max-width: calc(100% - 60px); /* Adjusted: Approx width for handle+picker+margins */
-        margin-right: auto; /* Push subsequent items (handle, picker) to the right */
-        flex-grow: 0; /* Prevent growing unnecessarily on mobile */
+        flex-basis: 100%; /* Make label take full width on the first line */
+        max-width: 100%; /* Allow full width */
+        margin-right: 0; /* No margin needed when it's full width */
+        margin-bottom: 4px; /* Add space below the label */
+        order: 1; /* Ensure label is first */
+        flex-grow: 0; /* Don't allow growing */
+    }
+
+    /* Container for the controls on the second line */
+    .quick-use-controls-wrapper {
+        display: flex;
+        justify-content: flex-end; /* Align controls to the right */
+        align-items: center;
+        width: 100%; /* Take full width */
+        order: 2; /* Place this wrapper after the label */
     }
 
     .quick-use-selection-item .drag-handle {
-        flex-shrink: 0; /* Ensure handle doesn't shrink */
-        margin-left: 5px; /* Add space between label and handle */
-        margin-right: 8px; /* Increase space between handle and picker slightly */
-        order: 2; /* Explicitly place handle after label */
+        order: 1; /* Handle first within the wrapper */
+        margin-left: 0; /* Reset margin */
+        margin-right: 8px; /* Space between handle and picker */
     }
 
     .quick-use-selection-item input[type="color"].quick-use-color-picker {
-        flex-shrink: 0; /* Ensure picker doesn't shrink */
+        order: 2; /* Picker second within the wrapper */
         margin-left: 0; /* Reset margin */
-        order: 3; /* Explicitly place picker after handle */
     }
 }
 
@@ -806,8 +829,6 @@
     white-space: pre-wrap; /* Allow line breaks in tooltip */
     max-width: 200px;
 }
-
-
 
     `); } catch (e) { console.error("GM_addStyle failed:", e); }
 
