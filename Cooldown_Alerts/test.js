@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Torn Cooldown Manager
 // @namespace    Torn_Cooldown_Manager
-// @version      1.0.8
-// @description  Tracks cooldowns, life, refills, items (Med, Drug, Booster) from Personal or Faction inventory. Quick Use buttons, persistent counts, alerts & notifications. Configurable item colors. Uses local storage to cache API data. Clickable headers for timers and quick-use sections. Points refill configurable. Mobile friendly UI. Movable UI with persistent position. Drag-and-drop quick use items enabled on mobile.
+// @version      1.0.9
+// @description  Tracks cooldowns, life, refills, items (Med, Drug, Booster) from Personal or Faction inventory. Quick Use buttons, persistent counts, alerts & notifications. Configurable item colors. Uses local storage to cache API data. Clickable headers for timers and quick-use sections. Points refill configurable. Mobile friendly UI. Movable UI with persistent position. Drag-and-drop quick use items enabled on mobile. Larger drag handles in settings.
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/*
 // @exclude      https://www.torn.com/loader.php?sid=attack*
@@ -26,7 +26,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = typeof GM_info !== 'undefined' ? GM_info.script.version : '1.0.8';
+    const SCRIPT_VERSION = typeof GM_info !== 'undefined' ? GM_info.script.version : '1.0.9';
     const FACTION_FALLBACK_TIMEOUT = 2500;
 
     const ITEM_TYPES = { MEDICAL: 'medical', DRUG: 'drug', BOOSTER: 'booster' };
@@ -225,11 +225,11 @@
 .quick-use-editor::-webkit-scrollbar { width: 6px; }
 .quick-use-editor::-webkit-scrollbar-track { background: #333; border-radius: 3px; }
 .quick-use-editor::-webkit-scrollbar-thumb { background-color: #666; border-radius: 3px; border: 1px solid #333; }
-.quick-use-selection-item { display: flex; align-items: center; padding: 5px; border-bottom: 1px solid #383838; background-color: #333; user-select: none; -webkit-user-select: none; -ms-user-select: none; }
+.quick-use-selection-item { display: flex; align-items: center; padding: 8px; border-bottom: 1px solid #383838; background-color: #333; user-select: none; -webkit-user-select: none; -ms-user-select: none; }
 .quick-use-selection-item:last-child { border-bottom: none; }
 .quick-use-selection-item label { display: flex; align-items: center; flex-grow: 1; cursor: pointer; font-size: 11px; color: #ccc; }
 .quick-use-selection-item input[type="checkbox"] { margin-right: 8px; cursor: pointer; }
-.quick-use-selection-item .drag-handle { font-size: 14px; color: #777; margin-left: 5px; cursor: grab; padding: 0 3px; touch-action: manipulation; user-select: none; -webkit-user-select: none; -ms-user-select: none; }
+.quick-use-selection-item .drag-handle { font-size: 16px; color: #777; margin-left: 8px; cursor: grab; padding: 5px 8px; touch-action: manipulation; user-select: none; -webkit-user-select: none; -ms-user-select: none; }
 .quick-use-selection-item input[type="color"].quick-use-color-picker { margin-left: 8px; cursor: pointer; width: 20px; height: 20px; border: 1px solid #555; padding: 0; vertical-align: middle; background: none; }
 .quick-use-selection-item.dragging { opacity: 0.5; background: #444; }
 .quick-use-selection-item.drag-over { border-top: 2px solid #007bff; }
