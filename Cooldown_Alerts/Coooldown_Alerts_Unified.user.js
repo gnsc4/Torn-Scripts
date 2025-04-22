@@ -3,7 +3,7 @@
 // @namespace    Torn_Cooldown_Manager
 // @version      1.0.4
 // @description  Tracks cooldowns, life, refills, items (Med, Drug, Booster) from Personal or Faction inventory. Quick Use buttons, persistent counts, alerts & notifications. Configurable item colors. Uses local storage to cache API data. Clickable headers for timers and quick-use sections. Points refill configurable. Mobile friendly UI. Movable UI with persistent position. Drag-and-drop quick use items enabled on mobile.
-// @author       GNSC4 [268863] & Gemini
+// @author       GNSC4 [268863]
 // @match        https://www.torn.com/*
 // @exclude      https://www.torn.com/loader.php?sid=attack*
 // @exclude      https://www.torn.com/loader2.php?sid=attack*
