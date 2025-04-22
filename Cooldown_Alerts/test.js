@@ -229,7 +229,7 @@
 .quick-use-selection-item:last-child { border-bottom: none; }
 .quick-use-selection-item label { display: flex; align-items: center; flex-grow: 1; cursor: pointer; font-size: 11px; color: #ccc; }
 .quick-use-selection-item input[type="checkbox"] { margin-right: 8px; cursor: pointer; }
-.quick-use-selection-item .drag-handle { font-size: 16px; color: #777; margin-left: 8px; cursor: grab; padding: 5px 8px; touch-action: manipulation; user-select: none; -webkit-user-select: none; -ms-user-select: none; }
+.quick-use-selection-item .drag-handle { font-size: 16px; color: #777; margin-left: 8px; cursor: grab; padding: 5px 36px; touch-action: manipulation; user-select: none; -webkit-user-select: none; -ms-user-select: none; }
 .quick-use-selection-item input[type="color"].quick-use-color-picker { margin-left: 8px; cursor: pointer; width: 20px; height: 20px; border: 1px solid #555; padding: 0; vertical-align: middle; background: none; }
 .quick-use-selection-item.dragging { opacity: 0.5; background: #444; }
 .quick-use-selection-item.drag-over { border-top: 2px solid #007bff; }
