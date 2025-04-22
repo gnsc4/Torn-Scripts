@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Cooldown Manager
 // @namespace    Torn_Cooldown_Manager
-// @version      1.0.11
+// @version      1.0.12
 // @description  Tracks cooldowns, life, refills, items (Med, Drug, Booster) from Personal or Faction inventory. Quick Use buttons, persistent counts, alerts & notifications. Configurable item colors. Uses local storage to cache API data. Clickable headers for timers and quick-use sections. Points refill configurable. Mobile friendly UI. Movable UI with persistent position. Drag-and-drop quick use items enabled on mobile.
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/*
@@ -27,7 +27,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = typeof GM_info !== 'undefined' ? GM_info.script.version : '1.0.11';
+    const SCRIPT_VERSION = typeof GM_info !== 'undefined' ? GM_info.script.version : '1.0.12';
     const FACTION_FALLBACK_TIMEOUT = 2500;
 
     const ITEM_TYPES = { MEDICAL: 'medical', DRUG: 'drug', BOOSTER: 'booster' };
@@ -686,41 +686,26 @@
 .quick-use-selection-item:active { cursor: grabbing; }
 
 
-/* --- Mobile Adjustments (Wrapping Layout) --- */
+/* --- Mobile Adjustments (Flex Adjustments - Reverted) --- */
 @media (max-width: 480px) { /* Adjust this breakpoint based on testing */
 
-    .quick-use-selection-item {
-        flex-wrap: wrap; /* Allow items to wrap onto the next line */
-        padding-bottom: 3px; /* Add a little space below wrapped items */
-    }
-
     .quick-use-selection-item label {
-        flex-basis: 100%; /* Make label take full width on the first line */
-        max-width: 100%; /* Allow full width */
-        margin-right: 0; /* No margin needed when it's full width */
-        margin-bottom: 4px; /* Add space below the label */
-        order: 1; /* Ensure label is first */
-        flex-grow: 0; /* Don't allow growing */
-    }
-
-    /* Container for the controls on the second line */
-    .quick-use-controls-wrapper {
-        display: flex;
-        justify-content: flex-end; /* Align controls to the right */
-        align-items: center;
-        width: 100%; /* Take full width */
-        order: 2; /* Place this wrapper after the label */
+        max-width: calc(100% - 60px); /* Adjusted: Approx width for handle+picker+margins */
+        margin-right: auto; /* Push subsequent items (handle, picker) to the right */
+        flex-grow: 0; /* Prevent growing unnecessarily on mobile */
     }
 
     .quick-use-selection-item .drag-handle {
-        order: 1; /* Handle first within the wrapper */
-        margin-left: 0; /* Reset margin */
-        margin-right: 8px; /* Space between handle and picker */
+        flex-shrink: 0; /* Ensure handle doesn't shrink */
+        margin-left: 5px; /* Add space between label and handle */
+        margin-right: 8px; /* Increase space between handle and picker slightly */
+        order: 2; /* Explicitly place handle after label */
     }
 
     .quick-use-selection-item input[type="color"].quick-use-color-picker {
-        order: 2; /* Picker second within the wrapper */
+        flex-shrink: 0; /* Ensure picker doesn't shrink */
         margin-left: 0; /* Reset margin */
+        order: 3; /* Explicitly place picker after handle */
     }
 }
 
@@ -829,6 +814,7 @@
     white-space: pre-wrap; /* Allow line breaks in tooltip */
     max-width: 200px;
 }
+
 
     `); } catch (e) { console.error("GM_addStyle failed:", e); }
 
