@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Cooldown Manager
 // @namespace    Torn_Cooldown_Manager
-// @version      1.0.8
+// @version      1.0.9
 // @description  Tracks cooldowns, life, refills, items (Med, Drug, Booster) from Personal or Faction inventory. Quick Use buttons, persistent counts, alerts & notifications. Configurable item colors. Uses local storage to cache API data. Clickable headers for timers and quick-use sections. Points refill configurable. Mobile friendly UI. Movable UI with persistent position. Drag-and-drop quick use items enabled on mobile.
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/*
@@ -27,7 +27,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = typeof GM_info !== 'undefined' ? GM_info.script.version : '1.0.8';
+    const SCRIPT_VERSION = typeof GM_info !== 'undefined' ? GM_info.script.version : '1.0.9';
     const FACTION_FALLBACK_TIMEOUT = 2500;
 
     const ITEM_TYPES = { MEDICAL: 'medical', DRUG: 'drug', BOOSTER: 'booster' };
@@ -147,66 +147,408 @@
     function getCsrfToken() { const rfc = getRFC(); if (rfc) { return rfc; } const pageToken = extractTokenFromPage(); if (pageToken) { return pageToken; } return null; }
 
     try { GM_addStyle(`
-.unified-tracker-container { position: fixed; left: calc(100vw - 240px); top: 90px; background-color: rgba(34, 34, 34, 0.9); padding: 10px; border-radius: 5px; z-index: 99999; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.5); transition: padding 0.3s ease, max-height 0.3s ease, top 0.3s ease, left 0.3s ease; border: 1px solid #555; max-width: 220px; font-size: 12px; color: #ccc; max-height: 85vh; overflow: visible; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; box-sizing: border-box; }
-.unified-tracker-container[data-minimized="true"] { padding: 2px; max-height: 26px; overflow: visible; }
-.tracker-content-wrapper { display: flex; flex-direction: column; gap: 8px; width: 100%; overflow-y: auto; overflow-x: hidden; flex-grow: 1; padding-right: 5px; box-sizing: border-box; scrollbar-width: thin; scrollbar-color: #666 #333; }
+/* Container for the entire tracker UI */
+.unified-tracker-container {
+    position: fixed;
+    left: calc(100vw - 240px); /* Position from right edge */
+    top: 90px;
+    background-color: rgba(34, 34, 34, 0.9); /* Semi-transparent dark background */
+    padding: 10px;
+    border-radius: 5px;
+    z-index: 99999; /* High z-index to stay on top */
+    display: flex;
+    flex-direction: column;
+    gap: 8px; /* Spacing between sections */
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5); /* Drop shadow */
+    transition: padding 0.3s ease, max-height 0.3s ease, top 0.3s ease, left 0.3s ease; /* Smooth transitions */
+    border: 1px solid #555; /* Subtle border */
+    max-width: 220px; /* Limit width */
+    font-size: 12px;
+    color: #ccc; /* Default text color */
+    max-height: 85vh; /* Limit height */
+    overflow: visible; /* Allow toggle button to overflow */
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    box-sizing: border-box; /* Include padding/border in width/height */
+}
+
+/* Styles when the tracker is minimized */
+.unified-tracker-container[data-minimized="true"] {
+    padding: 2px; /* Reduced padding */
+    max-height: 26px; /* Collapse height */
+    overflow: visible; /* Ensure toggle button remains visible */
+}
+
+/* Wrapper for the scrollable content inside the tracker */
+.tracker-content-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    overflow-y: auto; /* Enable vertical scrolling */
+    overflow-x: hidden; /* Prevent horizontal scrolling */
+    flex-grow: 1; /* Allow wrapper to fill available space */
+    padding-right: 5px; /* Space for scrollbar */
+    box-sizing: border-box;
+    scrollbar-width: thin; /* Firefox scrollbar style */
+    scrollbar-color: #666 #333; /* Firefox scrollbar colors */
+}
+
+/* Webkit scrollbar styles */
 .tracker-content-wrapper::-webkit-scrollbar { width: 6px; }
 .tracker-content-wrapper::-webkit-scrollbar-track { background: #333; border-radius: 3px; }
 .tracker-content-wrapper::-webkit-scrollbar-thumb { background-color: #666; border-radius: 3px; border: 1px solid #333; }
-.unified-tracker-container[data-minimized="true"] .tracker-content-wrapper { display: none !important; }
-.unified-tracker-container .tracker-section { border-bottom: 1px solid #444; padding-bottom: 8px; margin-bottom: 8px; width: 100%; box-sizing: border-box; flex-shrink: 0; }
-.unified-tracker-container .tracker-section:last-child { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
-.unified-tracker-container h4 { margin: 0 0 5px 0; font-size:  0.8125rem; line-height: 2.0; color: #eee; font-weight: bold; text-align: center; border-bottom: 1px solid #555; padding-bottom: 4px; width: 100%; box-sizing: border-box; flex-shrink: 0; cursor: grab; user-select: none; touch-action: none; }
-.unified-tracker-container h4:active { cursor: grabbing; }
-.unified-tracker-container .unified-tracker-toggle-button { display: flex !important; position: absolute; top: -8px; right: -12px; z-index: 99999; background-color: #007bff; color: white; border: none; width: 22px; height: 22px; border-radius: 50%; align-items: center; justify-content: center; cursor: pointer; font-size: 12px; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
-.unified-tracker-container[data-minimized="true"] .unified-tracker-toggle-button { background-color: #28a745; }
-.api-status { font-size: 10px; text-align: center; color: #888; margin-bottom: 5px; flex-shrink: 0; }
-.api-error { color: #ff6b6b; font-weight: bold; }
-.cooldown-timers-list, .refills-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
-.cooldown-timers-list li, .refills-list li { display: flex; justify-content: space-between; align-items: center; font-size: 11px; }
-.cooldown-timers-list li a { text-decoration: none; color: inherit; display: contents; }
-.refills-list li a { text-decoration: none; color: inherit; display: contents; }
-.cooldown-timers-list .timer-name, .refills-list .refill-name { color: #bbb; flex-shrink: 0; margin-right: 5px; }
-.cooldown-timers-list .timer-value, .refills-list .refill-value { font-weight: bold; color: #fff; text-align: right; }
-.cooldown-timers-list .timer-value.ready { color: #90ee90; }
-.refills-list .refill-value.available { color: #90ee90; }
-.refills-list .refill-value.used { color: #ff6b6b; }
-.life-bar-container { width: 100%; background-color: #555; border-radius: 3px; height: 14px; overflow: hidden; position: relative; border: 1px solid #666; box-sizing: border-box; margin-top: 4px;}
-.life-bar-fill { height: 100%; background-color: #e74c3c; border-radius: 2px; transition: width 0.5s ease; }
-.life-bar-text { position: absolute; top: 0; left: 0; width: 100%; height: 100%; text-align: center; line-height: 13px; font-size: 10px; color: #fff; font-weight: bold; text-shadow: 1px 1px 1px rgba(0,0,0,0.7); z-index: 99999; }
-.blood-bag-alert-active { background-color: #c0392b !important; animation: pulse-red 1.5s infinite; }
-@keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(255, 82, 82, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0); } }
-.medical-quick-use-container, .drug-quick-use-container, .booster-quick-use-container { display: flex; flex-direction: column; gap: 5px; }
-.quick-use-header { font-size: 11px; color: #aaa; font-weight: bold; text-align: center; margin: 8px 0 2px 0; padding-top: 8px; border-top: 1px solid #444; flex-shrink: 0; }
-.quick-use-header a { text-decoration: none; color: inherit; }
-.quick-use-source-toggle-container { display: flex; align-items: center; justify-content: space-between; padding: 4px 0 8px 0; margin-bottom: 5px; border-bottom: 1px solid #444; flex-shrink: 0; }
-.quick-use-source-toggle-label { font-size: 10px; color: #bbb; flex-grow: 1; margin-right: 6px; text-align: left; white-space: nowrap; }
-.quick-use-source-slider { width: 36px; height: 18px; background-color: #ccc; border-radius: 9px; position: relative; transition: background-color 0.3s ease; flex-shrink: 0; border: 1px solid #555; cursor: pointer; }
-.quick-use-source-slider::after { content: ''; position: absolute; width: 14px; height: 14px; background-color: white; border-radius: 50%; top: 1px; left: 1px; transition: left 0.3s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.3); }
-.quick-use-source-slider.personal-mode { background-color: #4CAF50; }
-.quick-use-source-slider.faction-mode { background-color: #f44336; }
-.quick-use-source-slider.faction-mode::after { left: calc(100% - 15px); }
-.quick-use-button { border: 1px solid #555; padding: 5px 8px; border-radius: 3px; cursor: pointer; font-weight: bold; text-align: left; transition: background-color 0.2s, filter 0.2s; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
-.quick-use-button-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-grow: 1; margin-right: 5px; }
-.quick-use-button-count { font-size: 10px; font-weight: normal; background-color: rgba(0, 0, 0, 0.2); padding: 1px 4px; border-radius: 2px; margin-left: 5px; flex-shrink: 0; min-width: 16px; text-align: right; }
-.quick-use-button:hover { filter: brightness(1.2); }
-.quick-use-button.type-medical.blood-bag-alert { animation: pulse-red 1.5s infinite; border-color: #ff6b6b; }
+
+/* Hide content wrapper when minimized */
+.unified-tracker-container[data-minimized="true"] .tracker-content-wrapper {
+    display: none !important;
+}
+
+/* Style for individual sections within the tracker (e.g., Cooldowns, Refills) */
+.unified-tracker-container .tracker-section {
+    border-bottom: 1px solid #444; /* Separator line */
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+    width: 100%;
+    box-sizing: border-box;
+    flex-shrink: 0; /* Prevent section from shrinking */
+}
+.unified-tracker-container .tracker-section:last-child {
+    border-bottom: none; /* No border for the last section */
+    padding-bottom: 0;
+    margin-bottom: 0;
+}
+
+/* Style for the main header/title of the tracker (draggable handle) */
+.unified-tracker-container h4 {
+    margin: 0 0 5px 0;
+    font-size: 0.8125rem; /* ~13px */
+    line-height: 2.0;
+    color: #eee;
+    font-weight: bold;
+    text-align: center;
+    border-bottom: 1px solid #555;
+    padding-bottom: 4px;
+    width: 100%;
+    box-sizing: border-box;
+    flex-shrink: 0;
+    cursor: grab; /* Indicate draggable */
+    user-select: none; /* Prevent text selection */
+    touch-action: none; /* Prevent default touch actions like scrolling */
+}
+.unified-tracker-container h4:active { cursor: grabbing; } /* Cursor when dragging */
+
+/* Minimize/Maximize toggle button */
+.unified-tracker-container .unified-tracker-toggle-button {
+    display: flex !important; /* Ensure visibility */
+    position: absolute;
+    top: -8px; /* Position slightly above the container */
+    right: -12px; /* Position slightly outside the container */
+    z-index: 99999; /* Ensure it's above the container */
+    background-color: #007bff; /* Blue background */
+    color: white;
+    border: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%; /* Circular button */
+    align-items: center; /* Center content */
+    justify-content: center; /* Center content */
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+.unified-tracker-container[data-minimized="true"] .unified-tracker-toggle-button {
+    background-color: #28a745; /* Green when minimized */
+}
+
+/* API status text */
+.api-status {
+    font-size: 10px;
+    text-align: center;
+    color: #888;
+    margin-bottom: 5px;
+    flex-shrink: 0;
+}
+.api-error { color: #ff6b6b; font-weight: bold; } /* Error color */
+
+/* Lists for cooldowns and refills */
+.cooldown-timers-list, .refills-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px; /* Spacing between list items */
+}
+.cooldown-timers-list li, .refills-list li {
+    display: flex;
+    justify-content: space-between; /* Space out name and value */
+    align-items: center;
+    font-size: 11px;
+}
+/* Make list items clickable if they contain links */
+.cooldown-timers-list li a, .refills-list li a {
+    text-decoration: none;
+    color: inherit;
+    display: contents; /* Allow link to wrap the flex items */
+}
+/* Item names */
+.cooldown-timers-list .timer-name, .refills-list .refill-name {
+    color: #bbb;
+    flex-shrink: 0; /* Prevent name from shrinking */
+    margin-right: 5px; /* Space between name and value */
+}
+/* Item values */
+.cooldown-timers-list .timer-value, .refills-list .refill-value {
+    font-weight: bold;
+    color: #fff;
+    text-align: right;
+}
+.cooldown-timers-list .timer-value.ready { color: #90ee90; } /* Green when ready */
+.refills-list .refill-value.available { color: #90ee90; } /* Green when available */
+.refills-list .refill-value.used { color: #ff6b6b; } /* Red when used */
+
+/* Life bar styles */
+.life-bar-container {
+    width: 100%;
+    background-color: #555;
+    border-radius: 3px;
+    height: 14px;
+    overflow: hidden; /* Clip the fill */
+    position: relative; /* For absolute positioning of text */
+    border: 1px solid #666;
+    box-sizing: border-box;
+    margin-top: 4px;
+}
+.life-bar-fill {
+    height: 100%;
+    background-color: #e74c3c; /* Red fill */
+    border-radius: 2px;
+    transition: width 0.5s ease; /* Smooth fill transition */
+}
+.life-bar-text {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    text-align: center;
+    line-height: 13px; /* Center text vertically */
+    font-size: 10px;
+    color: #fff;
+    font-weight: bold;
+    text-shadow: 1px 1px 1px rgba(0,0,0,0.7); /* Text shadow for readability */
+    z-index: 1; /* Ensure text is above the fill */
+}
+
+/* Alert style for low life / blood bag needed */
+.blood-bag-alert-active {
+    background-color: #c0392b !important; /* Darker red background */
+    animation: pulse-red 1.5s infinite; /* Pulsing animation */
+}
+@keyframes pulse-red {
+    0% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0.7); }
+    70% { box-shadow: 0 0 0 6px rgba(255, 82, 82, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0); }
+}
+
+/* Containers for quick-use buttons */
+.medical-quick-use-container, .drug-quick-use-container, .booster-quick-use-container {
+    display: flex;
+    flex-direction: column;
+    gap: 5px; /* Spacing between buttons */
+}
+
+/* Header for quick-use sections */
+.quick-use-header {
+    font-size: 11px;
+    color: #aaa;
+    font-weight: bold;
+    text-align: center;
+    margin: 8px 0 2px 0;
+    padding-top: 8px;
+    border-top: 1px solid #444; /* Separator line */
+    flex-shrink: 0;
+}
+.quick-use-header a { text-decoration: none; color: inherit; } /* Allow linking */
+
+/* Container for the personal/faction inventory toggle */
+.quick-use-source-toggle-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 0 8px 0;
+    margin-bottom: 5px;
+    border-bottom: 1px solid #444;
+    flex-shrink: 0;
+}
+.quick-use-source-toggle-label {
+    font-size: 10px;
+    color: #bbb;
+    flex-grow: 1; /* Take available space */
+    margin-right: 6px;
+    text-align: left;
+    white-space: nowrap; /* Prevent wrapping */
+}
+/* Slider toggle styles */
+.quick-use-source-slider {
+    width: 36px; height: 18px;
+    background-color: #ccc; /* Default background */
+    border-radius: 9px; /* Pill shape */
+    position: relative;
+    transition: background-color 0.3s ease;
+    flex-shrink: 0;
+    border: 1px solid #555;
+    cursor: pointer;
+}
+.quick-use-source-slider::after { /* The sliding knob */
+    content: '';
+    position: absolute;
+    width: 14px; height: 14px;
+    background-color: white;
+    border-radius: 50%;
+    top: 1px; left: 1px;
+    transition: left 0.3s ease; /* Animate sliding */
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+.quick-use-source-slider.personal-mode { background-color: #4CAF50; } /* Green for personal */
+.quick-use-source-slider.faction-mode { background-color: #f44336; } /* Red for faction */
+.quick-use-source-slider.faction-mode::after { left: calc(100% - 15px); } /* Move knob to right */
+
+/* Individual quick-use buttons */
+.quick-use-button {
+    border: 1px solid #555;
+    padding: 5px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-weight: bold;
+    text-align: left;
+    transition: background-color 0.2s, filter 0.2s;
+    font-size: 11px;
+    white-space: nowrap; /* Prevent wrapping */
+    overflow: hidden; /* Hide overflow */
+    text-overflow: ellipsis; /* Show ellipsis */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+.quick-use-button-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex-grow: 1; /* Allow name to take space */
+    margin-right: 5px; /* Space before count */
+}
+.quick-use-button-count {
+    font-size: 10px;
+    font-weight: normal;
+    background-color: rgba(0, 0, 0, 0.2); /* Subtle background for count */
+    padding: 1px 4px;
+    border-radius: 2px;
+    margin-left: 5px;
+    flex-shrink: 0; /* Prevent count from shrinking */
+    min-width: 16px; /* Ensure minimum width */
+    text-align: right;
+}
+.quick-use-button:hover { filter: brightness(1.2); } /* Hover effect */
+.quick-use-button.type-medical.blood-bag-alert {
+    animation: pulse-red 1.5s infinite; /* Pulse if blood bag alert */
+    border-color: #ff6b6b;
+}
+/* Colored left borders for different item types */
 .quick-use-button.type-drug { border-left: 3px solid #9C27B0; }
 .quick-use-button.type-booster { border-left: 3px solid #2196F3; }
 .quick-use-button.type-medical { border-left: 3px solid #4CAF50; }
-.unified-settings-button { background-color: #555; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-weight: bold; text-align: center; font-size: 11px; transition: background-color 0.2s; margin-top: 8px; width: 100%; flex-shrink: 0; }
+
+/* Settings button at the bottom of the tracker */
+.unified-settings-button {
+    background-color: #555;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-weight: bold;
+    text-align: center;
+    font-size: 11px;
+    transition: background-color 0.2s;
+    margin-top: 8px;
+    width: 100%;
+    flex-shrink: 0;
+}
 .unified-settings-button:hover { background-color: #666; }
-.unified-settings-panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: rgba(40, 40, 40, 0.95); border: 1px solid #666; border-radius: 8px; padding: 15px; z-index: 99999; box-shadow: 0 5px 15px rgba(0,0,0,0.6); display: none; flex-direction: column; gap: 15px; width: 90%; max-width: 450px; max-height: 85vh; font-size: 12px; color: #ccc; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
-.unified-settings-panel-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #555; padding-bottom: 8px; margin-bottom: 10px; flex-shrink: 0; }
+
+/* Main settings panel (modal) */
+.unified-settings-panel {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%); /* Center panel */
+    background-color: rgba(40, 40, 40, 0.95); /* Dark semi-transparent background */
+    border: 1px solid #666;
+    border-radius: 8px;
+    padding: 15px;
+    z-index: 99999; /* Ensure it's above most elements */
+    box-shadow: 0 5px 15px rgba(0,0,0,0.6); /* Stronger shadow */
+    display: none; /* Hidden by default */
+    flex-direction: column;
+    gap: 15px;
+    width: 90%; /* Responsive width */
+    max-width: 450px; /* Max width */
+    max-height: 85vh; /* Max height */
+    font-size: 12px;
+    color: #ccc;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+.unified-settings-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #555;
+    padding-bottom: 8px;
+    margin-bottom: 10px;
+    flex-shrink: 0; /* Prevent header shrinking */
+}
 .unified-settings-panel-header h4 { margin: 0; font-size: 14px; color: #eee; font-weight: bold; }
-.unified-settings-panel-close-button { background: none; border: none; color: #aaa; font-size: 20px; font-weight: bold; cursor: pointer; line-height: 1; padding: 0 5px; }
+.unified-settings-panel-close-button {
+    background: none; border: none;
+    color: #aaa;
+    font-size: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 5px;
+}
 .unified-settings-panel-close-button:hover { color: #fff; }
-.unified-settings-panel-content { overflow-y: auto; padding-right: 10px; display: flex; flex-direction: column; gap: 15px; flex-grow: 1; scrollbar-width: thin; scrollbar-color: #666 #333; }
+/* Scrollable content area within the settings panel */
+.unified-settings-panel-content {
+    overflow-y: auto; /* Enable vertical scroll */
+    padding-right: 10px; /* Space for scrollbar */
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    flex-grow: 1; /* Allow content to fill space */
+    scrollbar-width: thin;
+    scrollbar-color: #666 #333;
+}
+/* Webkit scrollbar styles for settings panel */
 .unified-settings-panel-content::-webkit-scrollbar { width: 6px; }
 .unified-settings-panel-content::-webkit-scrollbar-track { background: #333; border-radius: 3px; }
 .unified-settings-panel-content::-webkit-scrollbar-thumb { background-color: #666; border-radius: 3px; border: 1px solid #333; }
+
+/* General form element styles within settings */
 .unified-settings-panel label { font-size: 11px; margin-bottom: 3px; color: #bbb; display: block; }
-.unified-settings-panel input[type="text"], .unified-settings-panel input[type="password"], .unified-settings-panel input[type="number"] { width: 100%; padding: 5px 7px; border: 1px solid #444; background-color: #333; color: white; border-radius: 3px; box-sizing: border-box; font-size: 11px; margin-bottom: 5px; }
+.unified-settings-panel input[type="text"],
+.unified-settings-panel input[type="password"],
+.unified-settings-panel input[type="number"] {
+    width: 100%;
+    padding: 5px 7px;
+    border: 1px solid #444;
+    background-color: #333;
+    color: white;
+    border-radius: 3px;
+    box-sizing: border-box;
+    font-size: 11px;
+    margin-bottom: 5px;
+}
 .unified-settings-panel input::placeholder { color: #888; }
 .setting-buttons { display: flex; gap: 5px; justify-content: flex-end; margin-top: 5px;}
 .setting-buttons button { padding: 4px 9px; font-size: 11px; border-radius: 3px; border: none; cursor: pointer; font-weight: bold; }
@@ -214,45 +556,230 @@
 .save-api-key-button:hover { filter: brightness(1.1); }
 .test-api-key-button { background-color: #2196F3; color: white; }
 .test-api-key-button:hover { filter: brightness(1.1); }
+/* Status text for API key validation */
 .api-key-status { font-size: 10px; margin-top: 3px; text-align: right; min-height: 12px; }
 .api-key-status.valid { color: #90ee90; }
 .api-key-status.invalid { color: #ff6b6b; }
 .api-key-status.testing { color: #ffcc00; }
-.settings-section { border-top: 1px dashed #555; margin-top: 10px; padding-top: 10px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
+
+/* Sections within the settings panel */
+.settings-section {
+    border-top: 1px dashed #555; /* Dashed separator */
+    margin-top: 10px;
+    padding-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0; /* Prevent shrinking */
+}
 .settings-section h5 { font-size: 13px; margin: 0 0 8px 0; color: #ddd; text-align: center; }
+/* Checkbox labels */
 .settings-section label.checkbox-label { display: flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 5px; }
 .settings-section input[type="checkbox"] { cursor: pointer; margin: 0; }
-.settings-section .sub-label { font-size: 10px; color: #999; margin-left: 20px; }
+.settings-section .sub-label { font-size: 10px; color: #999; margin-left: 20px; } /* Indented helper text */
+
+/* Quick Use Customization Section */
 .quick-use-customization-section p { font-size: 10px; color: #999; text-align: center; margin-bottom: 5px; }
-.quick-use-editor { list-style: none; padding: 0; margin: 0 0 10px 0; border: 1px solid #444; border-radius: 3px; background-color: #2a2a2a; max-height: 150px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #666 #333; }
+/* Container for the sortable list of quick-use items */
+.quick-use-editor {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 10px 0;
+    border: 1px solid #444;
+    border-radius: 3px;
+    background-color: #2a2a2a; /* Slightly different background */
+    max-height: 150px; /* Limit height */
+    overflow-y: auto; /* Enable scrolling */
+    scrollbar-width: thin;
+    scrollbar-color: #666 #333;
+}
+/* Webkit scrollbar styles for quick-use editor */
 .quick-use-editor::-webkit-scrollbar { width: 6px; }
 .quick-use-editor::-webkit-scrollbar-track { background: #333; border-radius: 3px; }
 .quick-use-editor::-webkit-scrollbar-thumb { background-color: #666; border-radius: 3px; border: 1px solid #333; }
-.quick-use-selection-item { display: flex; align-items: center; padding: 5px; border-bottom: 1px solid #383838; cursor: grab; background-color: #333; }
+
+/* Individual item row in the quick-use editor */
+.quick-use-selection-item {
+    display: flex;
+    align-items: center;
+    padding: 5px 8px; /* Adjusted padding */
+    border-bottom: 1px solid #383838;
+    cursor: grab;
+    background-color: #333;
+}
 .quick-use-selection-item:last-child { border-bottom: none; }
-.quick-use-selection-item label { display: flex; align-items: center; flex-grow: 1; cursor: pointer; font-size: 11px; color: #ccc; min-width: 0; /* Prevent label from pushing out other elements */ }
-.quick-use-selection-item label span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* Ellipsis for long item names */
-.quick-use-selection-item input[type="checkbox"] { margin-right: 8px; cursor: pointer; flex-shrink: 0; }
-.quick-use-selection-item .drag-handle { font-size: 16px; /* Slightly larger for easier touch */ color: #777; margin-left: 5px; cursor: grab; padding: 2px 5px; /* More padding for touch */ touch-action: manipulation; user-select: none; -webkit-user-select: none; -ms-user-select: none; flex-shrink: 0; /* Prevent shrinking */ display: inline-block; /* Ensure it takes space */ min-width: 1.5em; /* Ensure minimum width */ text-align: center; }
-.quick-use-selection-item input[type="color"].quick-use-color-picker { margin-left: 8px; cursor: pointer; width: 20px; height: 20px; border: 1px solid #555; padding: 0; vertical-align: middle; background: none; flex-shrink: 0; }
+
+/* Label (checkbox + name) within the item row */
+.quick-use-selection-item label {
+    display: flex;
+    align-items: center;
+    flex-grow: 1; /* Allow label to grow */
+    flex-shrink: 1; /* Allow label to shrink */
+    flex-basis: 0; /* Let flex properties manage size */
+    min-width: 0; /* Allow shrinking below content size */
+    margin-right: 5px; /* Space before drag handle */
+    cursor: pointer;
+    font-size: 11px;
+    color: #ccc;
+    overflow: hidden; /* Hide overflow within label */
+}
+
+/* Item name text within the label */
+.quick-use-selection-item label span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-block; /* Helps ellipsis */
+    max-width: 100%; /* Prevent span overflowing label */
+}
+
+/* Checkbox within the item row */
+.quick-use-selection-item input[type="checkbox"] {
+    margin-right: 8px; /* Space after checkbox */
+    cursor: pointer;
+    flex-shrink: 0; /* Prevent shrinking */
+}
+
+/* Drag handle (☰) within the item row */
+.quick-use-selection-item .drag-handle {
+    font-size: 16px;
+    color: #777;
+    margin-right: 8px; /* Space before color picker */
+    cursor: grab;
+    padding: 2px 5px;
+    touch-action: manipulation; /* Optimize touch */
+    user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    flex-shrink: 0; /* Prevent shrinking */
+    display: inline-block; /* Ensure it takes space */
+    min-width: 1.5em; /* Minimum touch target width */
+    text-align: center;
+    position: relative; /* Needed for z-index */
+    z-index: 999999; /* *** ADDED: High z-index to try and keep it on top *** */
+}
+
+/* Color picker within the item row */
+.quick-use-selection-item input[type="color"].quick-use-color-picker {
+    cursor: pointer;
+    width: 20px;
+    height: 20px;
+    border: 1px solid #555;
+    padding: 0;
+    vertical-align: middle;
+    background: none;
+    flex-shrink: 0; /* Prevent shrinking */
+}
+
+/* Change cursor when actively dragging an item */
 .quick-use-selection-item:active { cursor: grabbing; }
-.unified-tracker-temp-feedback { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 15px 20px; border-radius: 5px; color: white; z-index: 99999; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4); opacity: 1; transition: opacity 0.5s, transform 0.3s ease-out; text-align: center; min-width: 250px; max-width: 80%; pointer-events: auto; cursor: pointer; background-color: rgba(33, 150, 243, 0.9); border: 1px solid #2196F3; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
-.unified-tracker-temp-feedback.success { background-color: rgba(76, 175, 80, 0.9); border: 1px solid #4CAF50; }
-.unified-tracker-temp-feedback.error { background-color: rgba(244, 67, 54, 0.9); border: 1px solid #f44336; }
-.unified-tracker-temp-feedback.info { background-color: rgba(33, 150, 243, 0.9); border: 1px solid #2196F3; }
-.unified-tracker-temp-feedback .counter-wrap { font-weight: bold; }
-#unified-tracker-alerts-container { position: fixed; top: 10px; right: 10px; z-index: 99999; display: flex; flex-direction: column; gap: 8px; max-width: 350px; pointer-events: none; }
-.unified-tracker-interactive-alert { background-color: #444; border: 1px solid #555; border-radius: 3px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); padding: 10px 12px; color: #ccc; font-size: 13px; line-height: 1.4; transition: opacity 0.3s ease, transform 0.3s ease; opacity: 1; transform: translateX(0); pointer-events: auto; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; display: flex; align-items: center; justify-content: space-between; }
-.unified-tracker-interactive-alert.hiding { opacity: 0; transform: translateX(20px); }
+
+/* Temporary feedback message (e.g., "Settings Saved") */
+.unified-tracker-temp-feedback {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 15px 20px;
+    border-radius: 5px;
+    color: white;
+    z-index: 99999; /* High z-index */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+    opacity: 1;
+    transition: opacity 0.5s, transform 0.3s ease-out; /* Fade out effect */
+    text-align: center;
+    min-width: 250px;
+    max-width: 80%;
+    pointer-events: auto; /* Allow clicking */
+    cursor: pointer; /* Indicate clickable to dismiss */
+    background-color: rgba(33, 150, 243, 0.9); /* Default: Info blue */
+    border: 1px solid #2196F3;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+.unified-tracker-temp-feedback.success { background-color: rgba(76, 175, 80, 0.9); border: 1px solid #4CAF50; } /* Green for success */
+.unified-tracker-temp-feedback.error { background-color: rgba(244, 67, 54, 0.9); border: 1px solid #f44336; } /* Red for error */
+.unified-tracker-temp-feedback.info { background-color: rgba(33, 150, 243, 0.9); border: 1px solid #2196F3; } /* Blue for info */
+.unified-tracker-temp-feedback .counter-wrap { font-weight: bold; } /* Style for countdown timer */
+
+/* Container for interactive alerts (e.g., notifications) */
+#unified-tracker-alerts-container {
+    position: fixed;
+    top: 10px; right: 10px; /* Top right corner */
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px; /* Space between alerts */
+    max-width: 350px;
+    pointer-events: none; /* Allow clicks through the container */
+}
+
+/* Individual interactive alert */
+.unified-tracker-interactive-alert {
+    background-color: #444;
+    border: 1px solid #555;
+    border-radius: 3px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    padding: 10px 12px;
+    color: #ccc;
+    font-size: 13px;
+    line-height: 1.4;
+    transition: opacity 0.3s ease, transform 0.3s ease; /* Animate appearance/disappearance */
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto; /* Make alert itself clickable */
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+/* Style for alert when hiding */
+.unified-tracker-interactive-alert.hiding {
+    opacity: 0;
+    transform: translateX(20px); /* Slide out */
+}
 .unified-tracker-interactive-alert .alert-message { margin: 0; margin-right: 10px; flex-grow: 1; }
 .unified-tracker-interactive-alert .alert-buttons { display: flex; gap: 6px; margin: 0; flex-shrink: 0; }
-.unified-tracker-interactive-alert .alert-button { border: none; border-radius: 3px; color: white; padding: 5px 10px; cursor: pointer; font-size: 12px; font-weight: bold; transition: filter 0.2s; text-shadow: none; line-height: 1.2; }
+.unified-tracker-interactive-alert .alert-button {
+    border: none;
+    border-radius: 3px;
+    color: white;
+    padding: 5px 10px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+    transition: filter 0.2s;
+    text-shadow: none;
+    line-height: 1.2;
+}
 .unified-tracker-interactive-alert .alert-button:hover { filter: brightness(1.15); }
 .unified-tracker-interactive-alert .alert-button.navigate { background-color: #3478B4; min-width: 60px; text-align: center; }
 .unified-tracker-interactive-alert .alert-button.dismiss { background-color: #BE3432; padding: 5px 8px; font-size: 14px; }
-.sortable-ghost { opacity: 0.4; background: #444 !important; }
-.sortable-chosen, .sortable-drag { opacity: 1 !important; }
-#unified-tracker-tooltip { position: fixed; display: none; padding: 5px 8px; background-color: rgba(20, 20, 20, 0.9); color: #eee; border: 1px solid #555; border-radius: 4px; font-size: 11px; z-index: 99999; pointer-events: none; white-space: pre-wrap; max-width: 200px; }
+
+/* SortableJS helper classes */
+.sortable-ghost {
+    opacity: 0.4;
+    background: #444 !important; /* Style the placeholder */
+}
+.sortable-chosen, .sortable-drag {
+    opacity: 1 !important; /* Ensure dragged item is fully visible */
+}
+
+/* Tooltip style */
+#unified-tracker-tooltip {
+    position: fixed; /* Position relative to viewport */
+    display: none; /* Hidden by default */
+    padding: 5px 8px;
+    background-color: rgba(20, 20, 20, 0.9); /* Dark background */
+    color: #eee;
+    border: 1px solid #555;
+    border-radius: 4px;
+    font-size: 11px;
+    z-index: 99999; /* High z-index */
+    pointer-events: none; /* Prevent tooltip from interfering with mouse */
+    white-space: pre-wrap; /* Allow line breaks in tooltip */
+    max-width: 200px;
+}
+
+
     `); } catch (e) { console.error("GM_addStyle failed:", e); }
 
     function adjustTitleFontSize() {
