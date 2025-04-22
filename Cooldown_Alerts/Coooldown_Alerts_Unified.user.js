@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Cooldown Manager
 // @namespace    Torn_Cooldown_Manager
-// @version      1.0.7
+// @version      1.0.8
 // @description  Tracks cooldowns, life, refills, items (Med, Drug, Booster) from Personal or Faction inventory. Quick Use buttons, persistent counts, alerts & notifications. Configurable item colors. Uses local storage to cache API data. Clickable headers for timers and quick-use sections. Points refill configurable. Mobile friendly UI. Movable UI with persistent position. Drag-and-drop quick use items enabled on mobile.
 // @author       GNSC4 [268863]
 // @match        https://www.torn.com/*
@@ -27,7 +27,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = typeof GM_info !== 'undefined' ? GM_info.script.version : '1.0.7';
+    const SCRIPT_VERSION = typeof GM_info !== 'undefined' ? GM_info.script.version : '1.0.8';
     const FACTION_FALLBACK_TIMEOUT = 2500;
 
     const ITEM_TYPES = { MEDICAL: 'medical', DRUG: 'drug', BOOSTER: 'booster' };
@@ -2146,8 +2146,9 @@
                     <input type="checkbox" ${isChecked ? 'checked' : ''} data-item-id="${item.id}">
                     <span>${item.name}</span>
                 </label>
+                <span class="drag-handle">☰</span>
                 <input type="color" class="quick-use-color-picker" value="${currentColor}" data-item-id="${item.id}" title="Change item color">
-                <span class="drag-handle">☰</span> `;
+                `;
             editorContainer.appendChild(div);
 
             div.querySelector('input[type="checkbox"]').addEventListener('change', () => {
